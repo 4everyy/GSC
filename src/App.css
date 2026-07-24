@@ -1,0 +1,21 @@
+.app-shell { min-height: 100vh; }
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: clamp(20px, 5vw, 72px);
+  background: #001529;
+}
+
+.brand-icon { color: #69b1ff; font-size: 22px; }
+.brand-name { color: #fff; font-size: 18px; font-weight: 600; }
+
+.app-content {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 64px) clamp(16px, 4vw, 32px);
+}
+
+.hero-section { margin-bottom: 40px; }
+.hero-section .ant-typography { max-width: 680px; }
