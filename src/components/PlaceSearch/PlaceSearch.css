@@ -1,0 +1,123 @@
+/* ====== 地址搜索组件 ====== */
+.place-search {
+  position: relative;
+  width: clamp(220px, 22vw, 320px);
+}
+
+.place-search__input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  background: rgba(10, 26, 47, 0.85);
+  border: 1px solid rgba(64, 169, 255, 0.4);
+  border-radius: 6px;
+  backdrop-filter: blur(6px);
+  transition: border-color 0.2s;
+}
+
+.place-search__input-wrapper:focus-within {
+  border-color: #1e90ff;
+  box-shadow: 0 0 0 2px rgba(30, 144, 255, 0.2);
+}
+
+.place-search__icon {
+  font-size: 14px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.place-search__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.place-search__input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.place-search__clear {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.place-search__clear:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ====== 搜索结果下拉列表 ====== */
+.place-search__results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: rgba(10, 26, 47, 0.95);
+  border: 1px solid rgba(64, 169, 255, 0.4);
+  border-radius: 6px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.place-search__results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.place-search__results::-webkit-scrollbar-thumb {
+  background: rgba(64, 169, 255, 0.4);
+  border-radius: 3px;
+}
+
+.place-search__result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.place-search__result-item.is-active,
+.place-search__result-item:hover {
+  background: rgba(30, 144, 255, 0.15);
+}
+
+.place-search__result-title {
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.place-search__result-address {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

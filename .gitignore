@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# 环境变量：保留 .env.example 作为示例，忽略其余包含密钥的 .env 文件
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -20,7 +20,6 @@ import iconTarget from './icon-target.png'
 import iconTask from './icon-task.png'
 import iconZoomIn from './icon-zoom-in.png'
 import iconZoomOut from './icon-zoom-out.png'
-import mapBg from './map-bg.png'
 import restrictedZoneRed from './restricted-zone-red.png'
 import signalIcon from './signal-icon.png'
 import statusBarBg from './status-bar-bg.png'
@@ -56,7 +55,6 @@ export const homeImages = {
   iconTask,
   iconZoomIn,
   iconZoomOut,
-  mapBg,
   restrictedZoneRed,
   signalIcon,
   statusBarBg,

@@ -11,7 +11,7 @@
   height: 100vh;
   min-width: 960px;
   overflow: hidden;
-  background: url('../../assets/images/home/map-bg.png') center / cover no-repeat;
+  background: #0a1a2f;
 }
 
 .design-canvas {
@@ -31,15 +31,35 @@
   flex: 1;
   overflow: hidden;
   box-sizing: border-box;
+  /* 放行鼠标事件，让滚轮/拖拽直达底层地图；仅可交互的子元素单独恢复 pointer-events */
+  pointer-events: none;
 }
 
-.map-stage::before {
-  content: '';
+/* 地图舞台内需要交互的 UI 元素：单独开启鼠标事件接收 */
+.map-stage .map-toolbar-wrapper,
+.map-stage .place-search-wrapper,
+.map-stage .view-controls,
+.map-stage .zoom-controls,
+.map-stage .map-footer,
+.map-stage .device-panel,
+.map-stage .mission-panel,
+.map-stage .alarm-info-panel {
+  pointer-events: auto;
+}
+
+/* 地址搜索框：浮于地图右上方，不遮挡已有 UI */
+.place-search-wrapper {
+  position: absolute;
+  top: clamp(16px, 1.615vw, 31px);
+  right: clamp(8px, .83vw, 16px);
+  z-index: 5;
+}
+
+/* 百度地图底图层：绝对定位铺满整个画布（含状态栏凹槽区域）并置于最底层，
+   其余 UI 元素通过各自的 z-index 浮于其上 */
+.map-base {
   position: absolute;
   inset: 0;
-  top: 0;
-  height: 100%;
-  background: url('../../assets/images/home/map-bg.png') center / cover no-repeat;
   z-index: 0;
 }
 
@@ -167,11 +187,11 @@
   justify-items: center;
   color: #ffffff66;
   font-size: clamp(7px, .73vw, 14px);
+  /* 比例尺宽度现由 MapScale 组件根据缩放级别动态计算并内联设置 */
 }
 
 .scale span {
   display: block;
-  width: clamp(50px, 5.2vw, 100px);
   height: 10px;
   border-bottom: 2px solid #ffffff66;
   border-right: 2px solid #ffffff66;
