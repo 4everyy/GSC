@@ -20,8 +20,9 @@ export function HomePage() {
         <StatusHeader activeAlarm={activeAlarm} onAlarmClick={setActiveAlarm} />
         <section className="map-stage">
           <MapToolbar />
-          <MissionPanel />
-          <AlarmInfoPanel alarmColor={currentAlarmColor} />
+          {/* MissionPanel 与 AlarmInfoPanel 暂时隐藏，待后续功能接入时恢复 */}
+          {false && <MissionPanel />}
+          {false && <AlarmInfoPanel alarmColor={currentAlarmColor} />}
           <div className="restricted-zone restricted-zone--red">
             <img src={homeImages.restrictedZoneRed} alt="红色限制区域" />
           </div>

@@ -76,37 +76,40 @@
 .aircraft {
   position: absolute;
   z-index: 4;
-  width: clamp(28px, 2.92vw, 56px);
-  height: clamp(28px, 2.92vw, 56px);
-  object-fit: contain;
-}
-
-.aircraft--red {
-  width: 48px;
+  display: block;          /* 确保 span 容器为块级 */
+  width: 48px;             /* 统一基类尺寸，四架飞机一致 */
   height: 48px;
-  transform: rotate(-45deg);
 }
 
-.aircraft--red img {
+/* 所有飞行器内部的 img 统一填满容器并保持比例，
+   避免图片原始尺寸溢出导致视觉大小不一致 */
+.aircraft img {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
+.aircraft--red {
+  transform: rotate(-45deg);
+}
+
 .aircraft--gray {
-  width: clamp(24px, 2.5vw, 48px);
-  height: clamp(24px, 2.5vw, 48px);
+  /* 统一为 48×48，与红色飞机图标尺寸保持一致 */
+  width: 48px;
+  height: 48px;
   transform: rotate(45deg);
 }
 
 .aircraft--yellow {
-  width: clamp(28px, 2.92vw, 56px);
-  height: clamp(28px, 2.92vw, 56px);
+  /* 统一为 48×48，与红色飞机图标尺寸保持一致 */
+  width: 48px;
+  height: 48px;
 }
 
 .aircraft--blue {
-  width: clamp(28px, 2.92vw, 56px);
-  height: clamp(28px, 2.92vw, 56px);
+  /* 统一为 48×48，与红色飞机图标尺寸保持一致 */
+  width: 48px;
+  height: 48px;
 }
 
 .aircraft--red {

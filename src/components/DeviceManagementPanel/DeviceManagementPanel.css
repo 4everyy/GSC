@@ -507,8 +507,8 @@
   width: 100%;
   height: clamp(8px, .63vw, 11px);
   object-fit: fill;
-  /* 用较大负 margin 向上重叠，使装饰图视觉上紧贴详情块底边 */
-  margin-top: -8px;
+  /* 微调负 margin 使装饰图贴近详情块底部 */
+  margin-top: -10px;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
