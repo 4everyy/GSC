@@ -1,0 +1,60 @@
+/* ====== 地图控制按钮 ====== */
+.view-controls {
+  position: absolute;
+  right: clamp(8px, .83vw, 16px);
+  bottom: calc(clamp(8px, .83vw, 16px) + clamp(32px, 3.33vw, 64px) * 2 + clamp(4px, .42vw, 8px));
+  z-index: 5;
+  display: grid;
+  gap: clamp(4px, .42vw, 8px);
+}
+
+.view-controls button,
+.zoom-controls button {
+  display: grid;
+  width: clamp(32px, 3.33vw, 64px);
+  height: clamp(32px, 3.33vw, 64px);
+  padding: 0;
+  border: 1px solid #315a8c;
+  color: #fff;
+  background: #15395bd9;
+  font-size: clamp(11px, 1.15vw, 22px);
+  cursor: pointer;
+  place-items: center;
+}
+
+.view-controls img,
+.zoom-controls img {
+  width: 50%;
+  height: 50%;
+  object-fit: contain;
+}
+
+.zoom-controls {
+  position: absolute;
+  right: clamp(8px, .83vw, 16px);
+  bottom: clamp(8px, .83vw, 16px);
+  z-index: 5;
+  display: grid;
+  box-sizing: border-box;
+  width: clamp(32px, 3.33vw, 64px);
+  grid-template-columns: 1fr;
+  border: 1px solid #315a8c;
+  background: #15395bd9;
+}
+
+.zoom-controls button {
+  box-sizing: border-box;
+  width: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.zoom-controls button img {
+  width: 50%;
+  height: 50%;
+  object-fit: contain;
+}
+
+.zoom-controls button+button {
+  border-top: 0;
+}

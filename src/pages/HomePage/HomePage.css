@@ -1,0 +1,176 @@
+/* ====== 页面容器 ====== */
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100vh;
+}
+
+.design-viewport {
+  width: 100vw;
+  height: 100vh;
+  min-width: 960px;
+  overflow: hidden;
+  background: url('../../assets/images/home/map-bg.png') center / cover no-repeat;
+}
+
+.design-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  font-family: 'Microsoft YaHei', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ====== 地图舞台 ====== */
+.map-stage {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.map-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  top: 0;
+  height: 100%;
+  background: url('../../assets/images/home/map-bg.png') center / cover no-repeat;
+  z-index: 0;
+}
+
+/* ====== 限制区域 ====== */
+.restricted-zone {
+  position: absolute;
+  z-index: 2;
+}
+
+.restricted-zone--red {
+  left: 10.2%;
+  bottom: 9.9%;
+  width: 15.6%;
+  height: 25.1%;
+}
+
+.restricted-zone--red img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.restricted-zone--orange {
+  right: 17.8%;
+  bottom: 22.6%;
+  width: 12.4%;
+  height: 18.3%;
+  border: 3px solid #c66000;
+  background: #be6c1e66;
+  transform: rotate(35deg);
+}
+
+/* ====== 飞行器 ====== */
+.aircraft {
+  position: absolute;
+  z-index: 4;
+  width: clamp(28px, 2.92vw, 56px);
+  height: clamp(28px, 2.92vw, 56px);
+  object-fit: contain;
+}
+
+.aircraft--red {
+  width: 48px;
+  height: 48px;
+  transform: rotate(-45deg);
+}
+
+.aircraft--red img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.aircraft--gray {
+  width: clamp(24px, 2.5vw, 48px);
+  height: clamp(24px, 2.5vw, 48px);
+  transform: rotate(45deg);
+}
+
+.aircraft--yellow {
+  width: clamp(28px, 2.92vw, 56px);
+  height: clamp(28px, 2.92vw, 56px);
+}
+
+.aircraft--blue {
+  width: clamp(28px, 2.92vw, 56px);
+  height: clamp(28px, 2.92vw, 56px);
+}
+
+.aircraft--red {
+  left: 10.6%;
+  top: 6.8%;
+}
+
+.aircraft--gray {
+  left: 61.8%;
+  top: 13.9%;
+}
+
+.aircraft--yellow {
+  left: 51.1%;
+  top: 57.3%;
+}
+
+.aircraft--blue {
+  left: 32.2%;
+  top: 69%;
+}
+
+/* ====== 底部操作栏 ====== */
+.map-footer {
+  position: absolute;
+  right: clamp(80px, 5.2vw, 100px);
+  bottom: clamp(8px, .89vw, 17px);
+  left: clamp(8px, .83vw, 16px);
+  z-index: 5;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.emergency-actions {
+  display: flex;
+  gap: clamp(3px, .42vw, 8px);
+}
+
+.emergency-actions button {
+  width: clamp(37px, 3.85vw, 74px);
+  height: clamp(16px, 1.67vw, 32px);
+  border: 0;
+  color: #fff;
+  background: url('../../assets/images/home/emergency-btn-bg.png') center / 100% 100%;
+  font-size: clamp(6px, .63vw, 12px);
+}
+
+.emergency-actions .danger {
+  background-image: url('../../assets/images/home/stop-btn-bg.png');
+}
+
+.scale {
+  display: grid;
+  justify-items: center;
+  color: #ffffff66;
+  font-size: clamp(7px, .73vw, 14px);
+}
+
+.scale span {
+  display: block;
+  width: clamp(50px, 5.2vw, 100px);
+  height: 10px;
+  border-bottom: 2px solid #ffffff66;
+  border-right: 2px solid #ffffff66;
+  border-left: 2px solid #ffffff66;
+}

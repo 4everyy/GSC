@@ -1,0 +1,482 @@
+/* ====== 设备管理面板 ====== */
+.device-panel {
+  position: absolute;
+  top: 0;
+  left: calc(100% + clamp(8px, .83vw, 16px));
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  width: clamp(220px, 16.67vw, 320px);
+  /* 高度贴合实际内容（头部+筛选+7行设备+适当底边距），消除多余留白但不溢出 */
+  height: clamp(440px, 28vw, 540px);
+  background-image: url('../../assets/images/home/device-panel-frame.png');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  /* 顶部内边距进一步减小，让内容上移；底部保留适当边距 */
+  padding: clamp(2px, .21vw, 4px) clamp(8px, .83vw, 16px) clamp(10px, .83vw, 16px);
+  color: #fff;
+  font-family: 'MiSans-Regular', MiSans, sans-serif;
+
+  /* 淡入/淡出：默认隐藏 */
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  will-change: opacity, transform;
+  pointer-events: none;
+}
+
+/* 左上角三角装饰：位于面板外框左上角 */
+.device-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: clamp(10px, .83vw, 16px);
+  height: clamp(10px, .83vw, 16px);
+  background: linear-gradient(135deg, #93FFFB 0%, #65B9FF 100%);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* 可见态：触发淡入 */
+.device-panel--visible {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* ====== 标题栏 ====== */
+.device-panel__header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: clamp(24px, 1.67vw, 32px);
+  flex-shrink: 0;
+}
+
+.device-panel__header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(14px, 1vw, 19px);
+  height: clamp(14px, 1vw, 19px);
+  flex-shrink: 0;
+}
+
+.device-panel__header-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.device-panel__title {
+  margin-left: clamp(6px, .42vw, 8px);
+  font-size: clamp(12px, .94vw, 18px);
+  font-weight: normal;
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+}
+
+.device-panel__close {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(18px, 1.25vw, 24px);
+  height: clamp(18px, 1.25vw, 24px);
+  padding: 0;
+  border: 1px solid rgba(70, 220, 231, 0.5);
+  border-radius: 2px;
+  background-color: rgba(34, 118, 243, 0.3);
+  box-shadow: 0 1px 4px 2px rgba(47, 199, 255, 0.3);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.device-panel__close img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
+/* ====== 分隔线 ====== */
+.device-panel__separator {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, .42vw, 8px);
+  height: 3px;
+  margin: 6px 0;
+  flex-shrink: 0;
+}
+
+.device-panel__separator-dot {
+  width: 3px;
+  height: 3px;
+  background: #59ECFF;
+  box-shadow: 0 0 8px 1px #76ADFE;
+  flex-shrink: 0;
+}
+
+.device-panel__separator-line {
+  flex: 1;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(70, 220, 231, 0.8), rgba(70, 220, 231, 0.2));
+  border-radius: 1.5px;
+}
+
+/* ====== 筛选栏 ====== */
+.device-panel__filters {
+  display: flex;
+  align-items: center;
+  height: clamp(20px, 1.25vw, 24px);
+  margin-bottom: clamp(8px, .83vw, 16px);
+  flex-shrink: 0;
+}
+
+.device-panel__filter-label {
+  font-size: clamp(9px, .63vw, 12px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.device-panel__select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: clamp(70px, 5.2vw, 100px);
+  height: clamp(20px, 1.25vw, 24px);
+  margin-left: clamp(6px, .42vw, 8px);
+  padding: 0 clamp(3px, .21vw, 4px);
+  background-color: rgba(217, 217, 217, 0.1);
+  border: 1px solid rgba(70, 220, 231, 1);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.device-panel__select + .device-panel__filter-label {
+  margin-left: clamp(16px, 1.25vw, 24px);
+}
+
+.device-panel__select span {
+  font-size: clamp(9px, .63vw, 12px);
+  white-space: nowrap;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.device-panel__select img {
+  width: clamp(11px, .83vw, 16px);
+  height: clamp(11px, .83vw, 16px);
+  object-fit: contain;
+}
+
+/* ====== 主体（列表 + 右侧轨道 + 遥测卡） ====== */
+.device-panel__body {
+  position: relative;
+  flex: 1;
+  display: flex;
+  /* 主体内容在面板框内水平居中 */
+  justify-content: center;
+  /* flex 子项默认 min-height:auto 会撑开容器，需重置以启用内部滚动 */
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ====== 设备列表 ====== */
+.device-panel__list-wrapper {
+  position: relative;
+  /* 自适应宽度：跟随面板缩放，并在主体内水平居中 */
+  flex: 1 1 288px;
+  max-width: 288px;
+  min-width: 0;
+  /* 同样重置 min-height，允许内部列表滚动 */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.device-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, .42vw, 8px);
+  /* 用 flex 填充剩余高度并启用滚动，比 max-height 更可靠 */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  /* Firefox：细滚动条 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(70, 220, 231, 0.4) transparent;
+}
+
+/* WebKit：细滚动条 */
+.device-panel__list::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.device-panel__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.device-panel__list::-webkit-scrollbar-thumb {
+  background: rgba(70, 220, 231, 0.4);
+  border-radius: 2px;
+}
+
+.device-panel__list::-webkit-scrollbar-thumb:hover {
+  background: rgba(70, 220, 231, 0.6);
+}
+
+/* ====== 设备行 ====== */
+.device-row-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.device-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 2px;
+  overflow: hidden;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.device-row__bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  display: block;
+  z-index: 0;
+}
+
+.device-row__checkbox {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
+  min-width: clamp(14px, 1.15vw, 20px);
+  border-radius: 2px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid #4b79e4;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.device-row__checkbox:hover {
+  background-color: rgba(75, 121, 228, 0.5);
+  border-color: rgba(75, 121, 228, 0.8);
+}
+
+.device-row__checkbox--checked {
+  background: #4b79e4;
+  border-color: #4b79e4;
+}
+
+.device-row__checkbox--checked:hover {
+  background-color: rgba(40, 85, 200, 0.95);
+}
+
+.device-row__name {
+  position: relative;
+  z-index: 1;
+  margin-left: clamp(10px, 1vw, 18px);
+  margin-right: clamp(8px, .83vw, 14px);
+  font-size: clamp(11px, .83vw, 15px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.device-row__action-icon {
+  position: relative;
+  z-index: 1;
+  width: clamp(12px, .94vw, 16px);
+  height: clamp(12px, .94vw, 16px);
+  min-width: clamp(12px, .94vw, 16px);
+  margin-left: clamp(8px, .73vw, 13px);
+  object-fit: contain;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.device-row__action-icon + .device-row__action-icon {
+  width: clamp(14px, 1.05vw, 19px);
+  height: clamp(14px, 1.05vw, 18px);
+  min-width: clamp(14px, 1.05vw, 19px);
+}
+
+.device-row__label-icon {
+  position: relative;
+  z-index: 1;
+  width: clamp(15px, 1.15vw, 21px);
+  height: clamp(13px, 1vw, 18px);
+  min-width: clamp(15px, 1.15vw, 21px);
+  margin-left: clamp(8px, .73vw, 13px);
+  object-fit: contain;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* 最右侧编队图标按钮：点击展开/收起该行遥测详情 */
+.device-row__expand {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(15px, 1.15vw, 21px);
+  height: clamp(15px, 1.15vw, 21px);
+  min-width: clamp(15px, 1.15vw, 21px);
+  margin-left: clamp(8px, .73vw, 13px);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: filter 0.2s ease;
+}
+
+.device-row__expand img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  -webkit-user-drag: none;
+}
+
+/* 展开时图标已通过 up_arrow.png 替换，无需旋转 */
+
+/* ====== 行内遥测详情（内联展开，不覆盖其他行） ====== */
+.device-row__detail {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+  padding: 12px 16px 8px 24px;
+  box-sizing: border-box;
+  background-image: linear-gradient(181deg, rgba(34, 92, 139, 0.1) 0, rgba(34, 92, 139, 0.8) 100%);
+  border-radius: 2px;
+  /* 简单的展开动画 */
+  animation: deviceRowDetailIn 0.2s ease;
+}
+
+@keyframes deviceRowDetailIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.device-row__detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.device-row__detail-row {
+  display: flex;
+  align-items: center;
+}
+
+.device-row__detail-item {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.device-row__detail-bar {
+  width: 2px;
+  height: 8px;
+  background: #8AF8EA;
+  flex-shrink: 0;
+}
+
+.device-row__detail-label {
+  font-size: clamp(11px, .73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.device-row__detail-value {
+  font-size: clamp(11px, .73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+  margin-left: 8px;
+}
+
+.device-row__detail-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+  margin-top: 12px;
+}
+
+.device-row__detail-footer {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+}
+
+/* footer 中第二个 label（"延迟"）与第一个保持间距 */
+.device-row__detail-footer .device-row__detail-label:nth-of-type(2) {
+  margin-left: 27px;
+}
+
+.device-row__detail-time {
+  font-size: clamp(9px, .63vw, 12px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #6DC0FF;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.device-row__detail-delay {
+  font-size: clamp(9px, .63vw, 12px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #07972B;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+/* 底部装饰图：贴紧详情块底部铺满 */
+.device-row__detail-deco {
+  display: block;
+  width: 100%;
+  height: clamp(8px, .63vw, 11px);
+  object-fit: fill;
+  /* 用较大负 margin 向上重叠，使装饰图视觉上紧贴详情块底边 */
+  margin-top: -8px;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}

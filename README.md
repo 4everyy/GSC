@@ -1,32 +1,25 @@
-# React + TypeScript + Vite
+# 无人机集群控制地面站（Ground Control Station）
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+基于 React 19 + TypeScript + Vite 的地面控制站前端，提供态势展示、设备管理、任务规划、告警监控与地图交互等能力。
 
-Currently, two official plugins are available:
+## 总体开发规则
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+参与本项目开发须遵循以下两条总体规则（详见 `docs/development-guide.md` 第 0 章）：
 
-## React Compiler
+1. **代码注释规范**：所有代码块（函数、类、复杂逻辑块、配置常量、组件等）必须编写清晰的功能注释说明，并随代码同步更新。
+2. **项目说明书维护规范**：项目整体结构与文件说明须实时反映在 `docs/项目说明书.md`；新增/删除/重命名/迁移文件或模块后，必须同步更新说明书。
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 文档导航
 
-## Expanding the Oxlint configuration
+- [前端开发规范](docs/development-guide.md) —— 技术基线、架构、性能、质量门禁，以及上述总体规则。
+- [项目说明书](docs/项目说明书.md) —— 项目结构概览与各目录/文件职责说明，须与代码结构保持一致。
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## 快速开始
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+| 命令 | 说明 |
+| --- | --- |
+| `npm run dev` | 启动开发服务器（HMR）。 |
+| `npm run build` | 生产构建。 |
+| `npm run preview` | 预览构建产物。 |
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+提交前自检：`npm run lint`、`npm run format:check`、`npm run test`、`npm run build`。
