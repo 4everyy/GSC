@@ -71,8 +71,9 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
           <img src={deviceImages.headerIcon} alt="" />
         </div>
         <span className="device-panel__title">设备管理</span>
-        <button className="device-panel__close" type="button" onClick={onClose}>
-          <img src={deviceImages.closeBtn} alt="关闭" />
+        {/* 关闭按钮：点击调用 onClose 关闭面板；样式含扩大热区与悬停/按下反馈 */}
+        <button className="device-panel__close" type="button" onClick={onClose} aria-label="关闭设备管理面板">
+          <img src={deviceImages.closeBtn} alt="" />
         </button>
       </div>
 
