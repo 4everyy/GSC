@@ -1,0 +1,354 @@
+/**
+ * 航线规划视觉特效样式（电影级增强版）。
+ *
+ * 设计目标：让"模拟飞行"链路具备航空电影级的视觉冲击力。
+ * 通过 BMapGL.Label 承载 HTML + CSS 动画，避免自定义 Icon 的渲染隐患。
+ *
+ * 视觉分层：
+ * - 航点：脉冲节点（起=翠绿 / 终=警示红 / 中=青色霓虹）
+ * - 无人机：四旋翼造型 + 桨叶旋转 + 尾焰喷射 + 地面光斑 + 雷达扫描
+ * - HUD：半透明信息卡（速度/航向/进度），实时反映飞行状态
+ */
+
+/* ============================
+ * 航点节点
+ * ============================ */
+.rp-node {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.rp-node__core {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Microsoft YaHei', sans-serif;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  box-sizing: border-box;
+}
+
+.rp-node__pulse {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: rp-pulse 2s ease-out infinite;
+}
+
+.rp-node--start .rp-node__core {
+  background: radial-gradient(circle at 35% 30%, #7cffb2, #1ec873 60%, #0a9d52);
+  box-shadow: 0 0 10px #2ee68a, 0 0 4px #fff;
+}
+.rp-node--start .rp-node__pulse {
+  background: rgba(46, 230, 138, 0.55);
+}
+
+.rp-node--end .rp-node__core {
+  background: radial-gradient(circle at 35% 30%, #ff9a9a, #f5544f 60%, #c92a2a);
+  box-shadow: 0 0 10px #ff5b5b, 0 0 4px #fff;
+}
+.rp-node--end .rp-node__pulse {
+  background: rgba(255, 91, 91, 0.55);
+}
+
+.rp-node--mid .rp-node__core {
+  background: radial-gradient(circle at 35% 30%, #b8fff8, #00e5ff 60%, #0094a8);
+  box-shadow: 0 0 10px #00e5ff, 0 0 4px #fff;
+}
+.rp-node--mid .rp-node__pulse {
+  background: rgba(0, 229, 255, 0.5);
+}
+
+@keyframes rp-pulse {
+  0% {
+    width: 22px;
+    height: 22px;
+    opacity: 0.75;
+  }
+  70% {
+    width: 46px;
+    height: 46px;
+    opacity: 0;
+  }
+  100% {
+    width: 46px;
+    height: 46px;
+    opacity: 0;
+  }
+}
+
+/* ============================
+ * 无人机：四旋翼造型
+ * ============================ */
+.rp-drone {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* 地面光斑：模拟高空探照灯投影，强化 3D 空间感 */
+.rp-drone__shadow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    rgba(0, 229, 255, 0.22) 0%,
+    rgba(0, 229, 255, 0.08) 50%,
+    transparent 75%
+  );
+  filter: blur(2px);
+  z-index: 0;
+}
+
+/* 雷达扫描圈 */
+.rp-drone__scan {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(0, 229, 255, 0.28) 0%, rgba(0, 229, 255, 0) 70%);
+  animation: rp-scan 2.4s ease-out infinite;
+  z-index: 1;
+}
+
+.rp-drone__ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 229, 255, 0.65);
+  transform: translate(-50%, -50%);
+  animation: rp-ring 2.4s ease-out infinite;
+  z-index: 1;
+}
+
+/* 机身旋转容器：由 JS 直接设置 transform: rotate(heading) */
+.rp-drone__body {
+  position: relative;
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+}
+
+/* 中心机身 */
+.rp-drone__hull {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 35% 30%, #ffffff, #00e5ff 55%, #006b7a);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.9), 0 0 2px #fff;
+  z-index: 4;
+}
+
+/* 四个机臂 + 旋翼（用伪元素定位四角） */
+.rp-drone__arm {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.5px;
+  height: 16px;
+  background: linear-gradient(to bottom, rgba(0, 229, 255, 0.9), rgba(255, 255, 255, 0.7));
+  border-radius: 1px;
+  transform-origin: center top;
+  box-shadow: 0 0 3px rgba(0, 229, 255, 0.6);
+  z-index: 2;
+}
+
+/* 旋翼：旋转的半透明圆盘 + 中心点 */
+.rp-drone__rotor {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.85), rgba(0, 229, 255, 0.3));
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+  z-index: 3;
+  animation: rp-rotor-spin 0.12s linear infinite;
+}
+
+/* 四个机臂方位：前左(315°) / 前右(45°) / 后左(225°) / 后右(135°)
+   机头朝上(0°)，顺时针递增 */
+.rp-drone__arm--fl { transform: translate(-50%, 0) rotate(315deg); }
+.rp-drone__arm--fr { transform: translate(-50%, 0) rotate(45deg); }
+.rp-drone__arm--bl { transform: translate(-50%, 0) rotate(225deg); }
+.rp-drone__arm--br { transform: translate(-50%, 0) rotate(135deg); }
+
+/* 旋翼方位：四角，相对机身中心偏移 */
+.rp-drone__rotor--fl { left: calc(50% - 11px); top: calc(50% - 11px); }
+.rp-drone__rotor--fr { left: calc(50% + 2px);  top: calc(50% - 11px); }
+.rp-drone__rotor--bl { left: calc(50% - 11px); top: calc(50% + 2px); }
+.rp-drone__rotor--br { left: calc(50% + 2px);  top: calc(50% + 2px); }
+
+/* 尾焰：机尾喷射的高能粒子流，沿机头反方向(向下)延伸 */
+.rp-drone__flame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: 18px;
+  transform: translate(-50%, 6px);
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 213, 79, 0.85) 25%,
+    rgba(255, 123, 0, 0.7) 60%,
+    rgba(255, 60, 0, 0) 100%
+  );
+  border-radius: 50% 50% 60% 60% / 20% 20% 80% 80%;
+  filter: blur(0.6px) drop-shadow(0 0 4px rgba(255, 140, 0, 0.8));
+  transform-origin: center top;
+  animation: rp-flame 0.18s ease-in-out infinite alternate;
+  z-index: 2;
+}
+
+@keyframes rp-rotor-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes rp-flame {
+  0% {
+    height: 14px;
+    opacity: 0.85;
+  }
+  100% {
+    height: 22px;
+    opacity: 1;
+  }
+}
+
+@keyframes rp-scan {
+  0% {
+    width: 14px;
+    height: 14px;
+    opacity: 0.9;
+  }
+  100% {
+    width: 52px;
+    height: 52px;
+    opacity: 0;
+  }
+}
+
+@keyframes rp-ring {
+  0% {
+    width: 14px;
+    height: 14px;
+    opacity: 0.9;
+  }
+  100% {
+    width: 46px;
+    height: 46px;
+    opacity: 0;
+  }
+}
+
+/* ============================
+ * HUD 信息卡
+ * ============================ */
+.rp-hud {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translate(8px, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 8px;
+  min-width: 64px;
+  background: linear-gradient(135deg, rgba(2, 18, 26, 0.85), rgba(0, 40, 52, 0.75));
+  border: 1px solid rgba(0, 229, 255, 0.55);
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.35), inset 0 0 6px rgba(0, 229, 255, 0.1);
+  color: #b8fff8;
+  font-family: 'Consolas', 'Microsoft YaHei', monospace;
+  font-size: 10px;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  backdrop-filter: blur(2px);
+}
+
+.rp-hud__title {
+  color: #00e5ff;
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+  padding-bottom: 2px;
+  margin-bottom: 1px;
+}
+
+.rp-hud__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.rp-hud__label {
+  color: rgba(184, 255, 248, 0.7);
+}
+
+.rp-hud__value {
+  color: #fff;
+  font-weight: 700;
+  text-shadow: 0 0 4px rgba(0, 229, 255, 0.6);
+}
+
+/* ============================
+ * reset Label 默认背景/边框
+ * ============================ */
+.rp-node,
+.rp-drone {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+}

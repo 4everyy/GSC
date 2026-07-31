@@ -37,22 +37,31 @@
 
 /* 地图舞台内需要交互的 UI 元素：单独开启鼠标事件接收 */
 .map-stage .map-toolbar-wrapper,
-.map-stage .place-search-wrapper,
 .map-stage .view-controls,
 .map-stage .zoom-controls,
 .map-stage .map-footer,
 .map-stage .device-panel,
 .map-stage .mission-panel,
-.map-stage .alarm-info-panel {
+.map-stage .alarm-info-panel,
+.map-stage .route-panel {
   pointer-events: auto;
 }
 
-/* 地址搜索框：浮于地图右上方，不遮挡已有 UI */
+/* 地址搜索框：定位在首页右上角（紧贴状态栏可见内容下方、右侧对齐）。
+   实现要点：
+   - 作为 .design-canvas 直接子元素，脱离 .map-stage，避开状态栏背景凹槽的遮挡；
+   - position: absolute 脱离 flex 文档流，不挤压状态栏与地图舞台；
+   - top = 状态栏可见内容下沿（状态栏内容高度 clamp(34.13px,3.33vw,64px) + 少量间距），
+     让搜索框紧贴状态栏下方，视觉占据右上角；
+   - right 与状态栏右侧 padding 对齐（status-header padding-right 为 clamp(8px,1.56vw,30px)）；
+   - z-index 高于 StatusHeader(10)，确保搜索框与结果下拉列表不被遮盖；
+   - 单独开启 pointer-events，确保可交互（它不在 .map-stage 的白名单内）。 */
 .place-search-wrapper {
   position: absolute;
-  top: clamp(16px, 1.615vw, 31px);
-  right: clamp(8px, .83vw, 16px);
-  z-index: 5;
+  top: clamp(40px, 3.8vw, 72px);
+  right: clamp(8px, 1.56vw, 30px);
+  z-index: 15;
+  pointer-events: auto;
 }
 
 /* 百度地图底图层：绝对定位铺满整个画布（含状态栏凹槽区域）并置于最底层，

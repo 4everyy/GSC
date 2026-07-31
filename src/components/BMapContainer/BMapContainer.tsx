@@ -39,6 +39,59 @@ function addLocationMarker(map: BMapGL.Map, point: BMapGL.Point, accuracy: numbe
   map.addOverlay(new BMapGL.Marker(point, { icon }))
 }
 
+/**
+ * 自动定位到用户当前位置（带回退机制）。
+ * 方案 A：百度地图 SDK 定位（直接返回 BD09 坐标，国内精度优）
+ * 方案 B：浏览器原生 Geolocation（WGS84 → BD09 转换），作为回退
+ * 两者均失败时保留默认中心点，不影响地图正常使用。
+ *
+ * 关键：传入 `isCancelled` 回调，定位请求是异步的（1~3s 才返回），
+ * 若期间用户已开始编辑航线，则回调里通过 isCancelled() 放弃 panTo，
+ * 避免把视野从用户新加的航点位置移走。
+ */
+function runAutoLocate(map: BMapGL.Map, isCancelled: () => boolean) {
+  /** 浏览器原生定位回退：WGS84 坐标转换为 BD09 后添加标注 */
+  const fallbackToBrowser = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (isCancelled()) return
+        const { longitude, latitude } = position.coords
+        const bd = wgs84ToBd09(longitude, latitude)
+        const target = new BMapGL.Point(bd.lng, bd.lat)
+        map.panTo(target)
+        addLocationMarker(map, target, position.coords.accuracy ?? 80)
+      },
+      () => {
+        /* 浏览器定位也失败，保留默认中心点 */
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+    )
+  }
+
+  // 优先尝试百度 SDK 定位
+  const geo = new BMapGL.Geolocation()
+  geo.enableHighAccuracy = true
+  geo.getCurrentPosition(
+    function (result) {
+      if (isCancelled()) return
+      if (this.getStatus() !== BMapGL.BMAP_STATUS_SUCCESS) {
+        // 百度定位失败，回退到浏览器原生定位
+        fallbackToBrowser()
+        return
+      }
+      const target = result.point
+      map.panTo(target)
+      addLocationMarker(map, target, result.accuracy ?? 50)
+    },
+    () => {
+      // 百度定位异常，回退到浏览器原生定位
+      if (isCancelled()) return
+      fallbackToBrowser()
+    },
+  )
+}
+
 /** 地图中心点坐标 */
 interface MapCenter {
   lng: number
@@ -53,6 +106,12 @@ interface BMapContainerProps {
   center?: MapCenter
   /** 地图初始缩放级别，默认 14 */
   zoom?: number
+  /**
+   * 是否自动定位到用户当前位置。
+   * 默认 false。受控属性：变 false 时会取消尚未完成的定位请求，
+   * 避免异步 panTo 在用户已开始编辑航线后把视野移走。
+   */
+  autoLocate?: boolean
   /** 地图实例就绪回调，父级可借此添加覆盖物或绑定事件 */
   onReady?: (map: BMapGL.Map) => void
   /** 叠加在地图之上的 DOM 覆盖物（如飞行器、限制区） */
@@ -67,17 +126,23 @@ interface BMapContainerProps {
  * - 暴露加载中 / 加载失败状态，便于上层展示空态或重试；
  * - 通过 `onReady` 将地图实例交给父级，供其添加覆盖物或监听事件；
  * - 组件卸载时销毁地图实例，避免内存泄漏。
+ *
+ * 自动定位设计：
+ * map 初始化（Effect 1）与定位（Effect 2）分离。定位是受控的——
+ * `autoLocate` 变 false 时，Effect 2 cleanup 会令待决的异步定位回调失效，
+ * 因此"用户进入编辑模式 → 取消定位"能可靠生效，不会在加点后突然 panTo。
  */
 export function BMapContainer({
   className,
   center = DEFAULT_MAP_CENTER,
   zoom = DEFAULT_MAP_ZOOM,
+  autoLocate = false,
   onReady,
   children,
 }: BMapContainerProps) {
   // 地图渲染容器 DOM 引用
   const containerRef = useRef<HTMLDivElement>(null)
-  // 地图实例引用，用于卸载时销毁
+  // 地图实例引用，用于卸载时销毁 + 供定位 effect 使用
   const mapRef = useRef<BMapGL.Map | null>(null)
   // onReady 回调的最新引用，避免闭包过期
   const onReadyRef = useRef(onReady)
@@ -87,19 +152,16 @@ export function BMapContainer({
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
 
+  // ============ Effect 1：加载 SDK + 初始化地图（仅一次） ============
   useEffect(() => {
-    // 容器尚未挂载，无法初始化地图
     if (!containerRef.current) return
 
-    // 标记 effect 是否已清理，防止异步回调在卸载后操作实例
     let cancelled = false
 
-    // 1. 加载 SDK -> 2. 初始化地图实例 -> 3. 通知父级
     loadBMapGL()
       .then(() => {
         if (cancelled || !containerRef.current) return
 
-        // 语义标识 -> BMapGL 全局常量映射
         const mapTypeMap: Record<string, number | undefined> = {
           normal: BMapGL.BMAP_NORMAL_MAP,
           satellite: BMapGL.BMAP_SATELLITE_MAP,
@@ -107,14 +169,12 @@ export function BMapContainer({
         }
         const mapType = mapTypeMap[DEFAULT_MAP_TYPE]
 
-        // 创建地图实例并设置中心点、缩放级别与地图类型（卫星图）
         const map = new BMapGL.Map(containerRef.current, DEFAULT_MAP_OPTIONS)
         const point = new BMapGL.Point(center.lng, center.lat)
         map.centerAndZoom(point, zoom)
         if (mapType !== undefined) map.setMapType(mapType)
         mapRef.current = map
 
-        // GL 版默认未开启滚轮缩放，显式启用各项交互以确保生效
         map.enableScrollWheelZoom(true)
         map.enableDragging()
         map.enableDoubleClickZoom()
@@ -124,53 +184,7 @@ export function BMapContainer({
         map.enableTilt()
 
         setStatus('success')
-        // 通知父级地图已就绪
         onReadyRef.current?.(map)
-
-        // ============ 定位逻辑（带回退机制） ============
-        // 方案 A：百度地图 SDK 定位（直接返回 BD09 坐标，国内精度优）
-        // 方案 B：浏览器原生 Geolocation（WGS84 → BD09 转换），作为回退
-        // 两者均失败时保留默认中心点，不影响地图正常使用
-
-        /** 浏览器原生定位回退：WGS84 坐标转换为 BD09 后添加标注 */
-        const fallbackToBrowser = () => {
-          if (typeof navigator === 'undefined' || !navigator.geolocation) return
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              if (cancelled || !mapRef.current) return
-              const { longitude, latitude } = position.coords
-              const bd = wgs84ToBd09(longitude, latitude)
-              const target = new BMapGL.Point(bd.lng, bd.lat)
-              mapRef.current.panTo(target)
-              addLocationMarker(mapRef.current, target, position.coords.accuracy ?? 80)
-            },
-            () => {
-              /* 浏览器定位也失败，保留默认中心点 */
-            },
-            { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
-          )
-        }
-
-        // 优先尝试百度 SDK 定位
-        const geo = new BMapGL.Geolocation()
-        geo.enableHighAccuracy = true
-        geo.getCurrentPosition(
-          function (result) {
-            if (cancelled || !mapRef.current) return
-            if (this.getStatus() !== BMapGL.BMAP_STATUS_SUCCESS) {
-              // 百度定位失败，回退到浏览器原生定位
-              fallbackToBrowser()
-              return
-            }
-            const target = result.point
-            mapRef.current.panTo(target)
-            addLocationMarker(mapRef.current, target, result.accuracy ?? 50)
-          },
-          () => {
-            // 百度定位异常，回退到浏览器原生定位
-            fallbackToBrowser()
-          },
-        )
       })
       .catch((err: unknown) => {
         if (cancelled) return
@@ -178,7 +192,6 @@ export function BMapContainer({
         setErrorMsg(err instanceof Error ? err.message : '地图加载失败')
       })
 
-    // 清理：销毁地图实例，释放资源
     return () => {
       cancelled = true
       if (mapRef.current) {
@@ -186,9 +199,26 @@ export function BMapContainer({
         mapRef.current = null
       }
     }
-    // center/zoom 仅作为初始值，不放入依赖，避免地图重建
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ============ Effect 2：自动定位（受控，可取消） ============
+  // 与 map 初始化分离：autoLocate 变化时不会重建地图，只启停定位。
+  // cleanup 置 cancelled=true，使尚未返回的异步定位回调放弃 panTo。
+  // 依赖 status：map 初始化是异步的，status 变 'success' 时 mapRef 才有值，
+  // 此刻才触发首次定位；autoLocate 由 true→false 时 cleanup 取消待决请求。
+  useEffect(() => {
+    if (!autoLocate || status !== 'success') return
+    const map = mapRef.current
+    if (!map) return
+
+    let cancelled = false
+    runAutoLocate(map, () => cancelled)
+
+    return () => {
+      cancelled = true
+    }
+  }, [autoLocate, status])
 
   return (
     <div className={`bmap-container ${className ?? ''}`}>

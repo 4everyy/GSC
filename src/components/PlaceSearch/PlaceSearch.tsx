@@ -14,6 +14,12 @@ interface PlaceSearchProps {
   map: BMapGL.Map | null
 }
 
+/** PlaceSearch 临时标注图标（橙色定位针），与航点图标区分 */
+const PLACE_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
+  '<path d="M16 2C9.4 2 4 7.4 4 14c0 9 12 16 12 16s12-7 12-16c0-6.6-5.4-12-12-12z" fill="#ff9800" stroke="#fff" stroke-width="2"/>' +
+  '<circle cx="16" cy="14" r="5" fill="#fff"/></svg>'
+
 /**
  * 地址搜索组件。
  *
@@ -29,6 +35,8 @@ export function PlaceSearch({ map }: PlaceSearchProps) {
   const [highlightIndex, setHighlightIndex] = useState(-1)
   // 保留 LocalSearch 实例引用，避免重复创建
   const searchRef = useRef<BMapGL.LocalSearch | null>(null)
+  // 保留本组件最近添加的标注，定位时仅移除自己的标注，避免误删航点等其它覆盖物
+  const placeMarkerRef = useRef<BMapGL.Marker | null>(null)
 
   /** 执行关键词搜索 */
   const doSearch = useCallback(
@@ -69,12 +77,23 @@ export function PlaceSearch({ map }: PlaceSearchProps) {
     debounceRef.current = setTimeout(() => doSearch(value), 300)
   }
 
-  /** 选中某个结果：移动地图并添加标注 */
+  /** 选中某个结果：移动地图并添加标注（仅清理本组件上一次的标注） */
   const handleSelect = (poi: SearchResult) => {
     if (!map) return
-    map.clearOverlays()
+    // 仅移除本组件上一次添加的标注，避免误删航点等其它覆盖物
+    if (placeMarkerRef.current) {
+      map.removeOverlay(placeMarkerRef.current)
+      placeMarkerRef.current = null
+    }
     map.panTo(poi.point)
-    map.addOverlay(new BMapGL.Marker(poi.point))
+    const icon = new BMapGL.Icon(
+      `data:image/svg+xml;charset=utf-8,${encodeURIComponent(PLACE_ICON_SVG)}`,
+      new BMapGL.Size(32, 32),
+      { anchor: new BMapGL.Size(16, 32) },
+    )
+    const marker = new BMapGL.Marker(poi.point, { icon })
+    map.addOverlay(marker)
+    placeMarkerRef.current = marker
     setKeyword(poi.title)
     setShowResults(false)
   }

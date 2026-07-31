@@ -50,10 +50,34 @@ declare namespace BMapGL {
     enableTilt?: boolean
   }
 
+  /** 个性化样式规则：针对特定 feature/element 应用 stylers */
+  interface MapStyleFeature {
+    featureType: string
+    elementType: string
+    stylers: Record<string, string>
+  }
+
+  /** 个性化地图样式配置（用于 setMapStyleV2） */
+  interface MapStyleOptions {
+    styleJson?: MapStyleFeature[]
+    styleId?: string
+  }
+
   /** 地图事件回调参数 */
   interface MapEvent {
     type: string
     target: unknown
+  }
+
+  /** 带坐标的鼠标事件（click / dblclick / rightclick / dragend 等）。
+   *  注意：BMapGL WebGL 版的事件坐标在 `latlng` 字段（旧版 2D API 为 `point`），
+   *  为兼容两种实现，两字段均声明为可选，使用时需做兼容处理。 */
+  interface MapMouseEvent extends MapEvent {
+    /** 旧版 2D API 的坐标字段 */
+    point?: Point
+    /** WebGL 版(GL)的坐标字段 */
+    latlng?: Point
+    pixel: Pixel
   }
 
   /** 地图实例，封装视图、覆盖物与控件操作 */
@@ -94,13 +118,37 @@ declare namespace BMapGL {
     disableTilt(): void
     setHeading(heading: number): void
     setTilt(tilt: number): void
+    /**
+     * 根据传入的坐标点数组自动调整地图视野，使所有点都可见。
+     * @param points 需要纳入视野的坐标点数组
+     * @param opts 可选：margins 边距、zoom 级别、animation 是否动画
+     */
+    setViewport(
+      points: Point[],
+      opts?: { margins?: number[]; zoom?: number; animation?: boolean },
+    ): void
+    /** 设置地图容器的默认鼠标光标（如 'crosshair'） */
+    setDefaultCursor(cursor: string): void
+    /**
+     * 设置个性化地图样式（V2）。
+     *
+     * 通过 styleJson 精确控制底图各类要素（道路、建筑、POI 文字等）的颜色与可见性，
+     * 常用于"洁净卫星图"场景：隐藏卫星图上密集的 POI/地名标注，保留卫星影像底图，
+     * 使态势图更清爽。也可传入云端样式 ID（styleId）替代 styleJson。
+     *
+     * 注意：在 BMapGL 中，个性化样式作用于矢量要素图层，卫星影像本身不受影响。
+     */
+    setMapStyleV2(opts: MapStyleOptions): void
     destroy(): void
     addEventListener(event: string, handler: (e: MapEvent) => void): void
     removeEventListener(event: string, handler: (e: MapEvent) => void): void
   }
 
   /** 覆盖物基类，Marker/Polygon/Polyline 均继承自该类 */
-  class Overlay {}
+  class Overlay {
+    addEventListener(event: string, handler: (e: MapEvent) => void): void
+    removeEventListener(event: string, handler: (e: MapEvent) => void): void
+  }
 
   interface MarkerOptions {
     icon?: Icon
@@ -130,6 +178,22 @@ declare namespace BMapGL {
     setImageSize(size: Size): void
   }
 
+  /** Label 选项 */
+  interface LabelOptions {
+    position?: Point
+    offset?: Size
+  }
+
+  /** 文本标签覆盖物，常用于给 Marker 附加编号/说明 */
+  class Label extends Overlay {
+    constructor(content?: string, opts?: LabelOptions)
+    setContent(content: string): void
+    setPosition(position: Point): void
+    getPosition(): Point | null
+    setStyle(style: string | Record<string, string>): void
+    setOffset(offset: Size): void
+  }
+
   interface PolygonOptions {
     strokeColor?: string
     strokeWeight?: number
@@ -149,6 +213,8 @@ declare namespace BMapGL {
     strokeColor?: string
     strokeWeight?: number
     strokeOpacity?: number
+    /** 线型：'solid' 实线 / 'dashed' 虚线 / 'dotted' 点线 */
+    style?: 'solid' | 'dashed' | 'dotted'
   }
 
   /** 折线覆盖物，用于渲染航线等轨迹 */

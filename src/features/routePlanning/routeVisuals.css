@@ -1,0 +1,181 @@
+/**
+ * 航线规划视觉特效样式。
+ *
+ * 由于 BMapGL 的 Label 本质是 DOM 覆盖物，可承载任意 HTML + CSS 动画，
+ * 且 100% 可靠显示（避免自定义 Icon 在 WebGL 模式下的渲染隐患），
+ * 航点节点与无人机图标均通过 Label + 本样式表实现酷炫效果。
+ *
+ * 用法：通过 BMapGL.Label 的 setContent 注入带下列 class 的 HTML。
+ */
+
+/* ===== 航点节点 ===== */
+.rp-node {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* 核心圆点：渐变 + 外发光 */
+.rp-node__core {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Microsoft YaHei', sans-serif;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  box-sizing: border-box;
+}
+
+/* 脉冲扩散环 */
+.rp-node__pulse {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: rp-pulse 2s ease-out infinite;
+}
+
+/* 起点：翠绿 */
+.rp-node--start .rp-node__core {
+  background: radial-gradient(circle at 35% 30%, #7cffb2, #1ec873 60%, #0a9d52);
+  box-shadow: 0 0 10px #2ee68a, 0 0 4px #fff;
+}
+.rp-node--start .rp-node__pulse {
+  background: rgba(46, 230, 138, 0.55);
+}
+
+/* 终点：警示红 */
+.rp-node--end .rp-node__core {
+  background: radial-gradient(circle at 35% 30%, #ff9a9a, #f5544f 60%, #c92a2a);
+  box-shadow: 0 0 10px #ff5b5b, 0 0 4px #fff;
+}
+.rp-node--end .rp-node__pulse {
+  background: rgba(255, 91, 91, 0.55);
+}
+
+/* 中间点：青色霓虹 */
+.rp-node--mid .rp-node__core {
+  background: radial-gradient(circle at 35% 30%, #b8fff8, #00e5ff 60%, #0094a8);
+  box-shadow: 0 0 10px #00e5ff, 0 0 4px #fff;
+}
+.rp-node--mid .rp-node__pulse {
+  background: rgba(0, 229, 255, 0.5);
+}
+
+@keyframes rp-pulse {
+  0% {
+    width: 22px;
+    height: 22px;
+    opacity: 0.75;
+  }
+  70% {
+    width: 46px;
+    height: 46px;
+    opacity: 0;
+  }
+  100% {
+    width: 46px;
+    height: 46px;
+    opacity: 0;
+  }
+}
+
+/* ===== 无人机 ===== */
+.rp-drone {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* 雷达扫描圈：暖色橙调，与青色航线分离，使飞机成为独立的暖色发光体 */
+.rp-drone__scan {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle, rgba(255, 171, 0, 0.32) 0%, rgba(255, 171, 0, 0) 70%);
+  animation: rp-scan 2.4s ease-out infinite;
+}
+
+.rp-drone__ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 171, 0, 0.7);
+  transform: translate(-50%, -50%);
+  animation: rp-ring 2.4s ease-out infinite;
+}
+
+/* 飞机图标：朝向随航向旋转，旋转中心在几何中心 */
+.rp-drone__icon {
+  position: relative;
+  z-index: 3;
+  width: 28px;
+  height: 28px;
+  filter: drop-shadow(0 0 5px rgba(255, 140, 0, 0.95)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.6));
+  transition: transform 0.4s ease;
+}
+
+@keyframes rp-scan {
+  0% {
+    width: 14px;
+    height: 14px;
+    opacity: 0.9;
+  }
+  100% {
+    width: 52px;
+    height: 52px;
+    opacity: 0;
+  }
+}
+
+@keyframes rp-ring {
+  0% {
+    width: 14px;
+    height: 14px;
+    opacity: 0.9;
+  }
+  100% {
+    width: 46px;
+    height: 46px;
+    opacity: 0;
+  }
+}
+
+/* reset Label 默认背景/边框，避免与自定义 HTML 冲突 */
+.rp-node,
+.rp-drone {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
