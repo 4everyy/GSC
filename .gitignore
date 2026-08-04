@@ -27,3 +27,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 瓦片数据与字体文件（体积大，离线按需生成，不纳入版本管理）
+tileserver/data/
+tileserver/fonts/
+tileserver/font-src/
+tileserver/suzhou.poly
+
+# tilemaker 二进制及其下载文件（体积大，离线按需下载）
+tileserver/bin/
+tileserver/release.json
+tileserver/releases.json

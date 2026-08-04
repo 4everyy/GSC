@@ -1,5 +1,11 @@
 /**
- * DroneSimulator —— 无人机模拟飞行。
+ * DroneSimulator —— 无人机模拟飞行（引擎无关版）。
+ *
+ * 重构说明：
+ * - 原实现直接依赖 BMapGL 的 Label/Polyline，位置与内容更新强耦合引擎 API；
+ * - 现通过 MapAdapter 统一接口操作覆盖物：
+ *   - 无人机：addMarker + setMarkerPosition + setMarkerElement；
+ *   - 拖尾：addPolyline（glow）+ setPolylinePoints。
  *
  * 视觉链路（结构见 routeVisuals.css）：
  * 1. `.rp-drone__scan` / `.rp-drone__ring`：雷达扫描圈与光环（CSS 动画）；
@@ -7,19 +13,20 @@
  * 3. 拖尾轨迹：实时绘制"已飞路径"高亮线，与暗色全航线形成进度对比。
  *
  * 稳定性关键：
- * - 不使用 label.getElement()（BMapGL 运行时不一定存在，会 TypeError 白屏）；
- * - 位置每帧用 setPosition 更新（平滑），内容（朝向）节流用 setContent 更新
+ * - 位置每帧用 setMarkerPosition 更新（平滑），内容（朝向）节流用 setMarkerElement 更新
  *   （仅当朝向变化>8°或间隔>150ms 才重建 DOM），兼顾平滑与减少 CSS 动画重置。
  */
 import { useEffect, useRef, useState } from 'react'
+import type { MapAdapter, MarkerHandle, PolylineHandle } from '../../map-engines'
+import { htmlToElement } from '../../utils/htmlToElement'
 import { distanceMeters, bearingDeg } from '../../utils/geo'
 import { SIM_SPEED_MULTIPLIER } from './config'
 import type { Route } from './types'
-import { LABEL_RESET_STYLE } from './waypointIcon'
 import './routeVisuals.css'
 
 interface DroneSimulatorProps {
-  map: BMapGL.Map | null
+  /** 地图适配器（引擎无关） */
+  adapter: MapAdapter | null
   route: Route
   running: boolean
 }
@@ -80,14 +87,16 @@ function interpolate(seg: Segment, progress: number) {
   }
 }
 
-export function DroneSimulator({ map, route, running }: DroneSimulatorProps) {
-  const labelRef = useRef<BMapGL.Label | null>(null)
-  const trailRef = useRef<BMapGL.Polyline | null>(null)
-  const trailGlowRef = useRef<BMapGL.Polyline | null>(null)
-  const trailPointsRef = useRef<BMapGL.Point[]>([])
+const DRONE_MARKER_ID = 'drone-sim-marker'
+const DRONE_TRAIL_ID = 'drone-sim-trail'
+
+export function DroneSimulator({ adapter, route, running }: DroneSimulatorProps) {
+  const markerHandleRef = useRef<MarkerHandle | null>(null)
+  const trailHandleRef = useRef<PolylineHandle | null>(null)
+  const trailPointsRef = useRef<{ lng: number; lat: number }[]>([])
   const rafRef = useRef<number | null>(null)
   const lastTimeRef = useRef<number | null>(null)
-  // 内容节流缓存：上次写入 Label 的朝向与时间，避免每帧重建 DOM 打断 CSS 动画
+  // 内容节流缓存：上次写入 Marker 的朝向与时间，避免每帧重建 DOM 打断 CSS 动画
   const lastHeadingRef = useRef<number>(0)
   const lastContentTimeRef = useRef<number>(0)
 
@@ -97,7 +106,7 @@ export function DroneSimulator({ map, route, running }: DroneSimulatorProps) {
     traveled: 0,
   })
 
-  // 航线变更：重置模拟状态 + 重建 Label 与轨迹线
+  // 航线变更：重置模拟状态 + 重建 Marker 与轨迹线
   useEffect(() => {
     setSim({ segIndex: 0, progress: 0, traveled: 0 })
     lastTimeRef.current = null
@@ -105,76 +114,57 @@ export function DroneSimulator({ map, route, running }: DroneSimulatorProps) {
     lastHeadingRef.current = 0
     lastContentTimeRef.current = 0
 
-    const oldLabel = labelRef.current
-    const oldTrail = trailRef.current
-    const oldGlow = trailGlowRef.current
-    if (map) {
-      if (oldLabel) {
-        try { map.removeOverlay(oldLabel) } catch { /* */ }
-      }
-      if (oldTrail) {
-        try { map.removeOverlay(oldTrail) } catch { /* */ }
-      }
-      if (oldGlow) {
-        try { map.removeOverlay(oldGlow) } catch { /* */ }
-      }
-    }
-    labelRef.current = null
-    trailRef.current = null
-    trailGlowRef.current = null
+    if (!adapter) return
 
-    if (!map || route.waypoints.length === 0) return
+    // 清理上一次的覆盖物
+    adapter.removeOverlay(DRONE_MARKER_ID)
+    adapter.removeOverlay(DRONE_TRAIL_ID)
+    markerHandleRef.current = null
+    trailHandleRef.current = null
 
-    // 创建无人机 Label（初始朝向 0）
+    if (route.waypoints.length === 0) return
+
+    // 创建无人机 Marker（初始朝向 0）
     const startPos = route.waypoints[0]
-    const point = new BMapGL.Point(startPos.lng, startPos.lat)
-    const label = new BMapGL.Label(buildDroneHTML(0), {
-      position: point,
-      offset: new BMapGL.Size(0, 0),
-    })
-    label.setStyle(LABEL_RESET_STYLE)
-    map.addOverlay(label)
-    labelRef.current = label
+    const element = htmlToElement(buildDroneHTML(0))
+    const handle = adapter.addMarker(
+      DRONE_MARKER_ID,
+      { lng: startPos.lng, lat: startPos.lat },
+      { element, anchor: { x: 14, y: 14 } },
+    )
+    markerHandleRef.current = handle
 
-    // 创建拖尾轨迹线（双层：金色光晕 + 金色亮线）。
+    // 创建拖尾轨迹线（使用 glow 选项实现金色光晕）。
     // 拖尾代表"已飞路径"，用金色与青色全航线（#00e5ff）形成冷暖对比，
     // 让飞行进度一目了然，同时与暖色飞机本体同色系，视觉协调。
-    trailPointsRef.current = [point]
-    const glow = new BMapGL.Polyline([point], {
-      strokeColor: '#ffab00',
-      strokeWeight: 10,
-      strokeOpacity: 0.3,
-    })
-    map.addOverlay(glow)
-    trailGlowRef.current = glow
-
-    const trail = new BMapGL.Polyline([point], {
-      strokeColor: '#ffd54f',
-      strokeWeight: 4,
-      strokeOpacity: 1,
-    })
-    map.addOverlay(trail)
-    trailRef.current = trail
+    const startPoint = { lng: startPos.lng, lat: startPos.lat }
+    trailPointsRef.current = [startPoint]
+    const trailHandle = adapter.addPolyline(
+      DRONE_TRAIL_ID,
+      [startPoint],
+      {
+        color: '#ffd54f',
+        width: 4,
+        opacity: 1,
+        glow: true,
+        glowColor: '#ffab00',
+        glowWidth: 2.5,
+      },
+    )
+    trailHandleRef.current = trailHandle
 
     return () => {
-      if (labelRef.current) {
-        try { map.removeOverlay(labelRef.current) } catch { /* */ }
-        labelRef.current = null
-      }
-      if (trailGlowRef.current) {
-        try { map.removeOverlay(trailGlowRef.current) } catch { /* */ }
-        trailGlowRef.current = null
-      }
-      if (trailRef.current) {
-        try { map.removeOverlay(trailRef.current) } catch { /* */ }
-        trailRef.current = null
-      }
+      adapter.removeOverlay(DRONE_MARKER_ID)
+      adapter.removeOverlay(DRONE_TRAIL_ID)
+      markerHandleRef.current = null
+      trailHandleRef.current = null
     }
-  }, [map, route])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adapter, route])
 
   // 动画主循环
   useEffect(() => {
-    if (!map || !running || route.waypoints.length < 2) return
+    if (!adapter || !running || route.waypoints.length < 2) return
 
     const segments = buildSegments(route)
     if (segments.length === 0) return
@@ -207,32 +197,35 @@ export function DroneSimulator({ map, route, running }: DroneSimulatorProps) {
         const currentSeg = segments[Math.min(segIndex, segments.length - 1)]
         const pos = interpolate(currentSeg, Math.min(progress, 1))
         const heading = currentSeg.distance > 0 ? bearingDeg(currentSeg.from, currentSeg.to) : 0
-        const newPoint = new BMapGL.Point(pos.lng, pos.lat)
 
-        // 位置：每帧 setPosition（平滑，不重建 DOM）
-        labelRef.current?.setPosition(newPoint)
+        // 位置：每帧 setMarkerPosition（平滑，不重建 DOM）
+        if (markerHandleRef.current) {
+          adapter.setMarkerPosition(markerHandleRef.current, { lng: pos.lng, lat: pos.lat })
+        }
 
-        // 内容（朝向）：节流 setContent，仅当朝向变化>8°或间隔>150ms 才重建。
+        // 内容（朝向）：节流 setMarkerElement，仅当朝向变化>8°或间隔>150ms 才重建。
         // 配合 CSS .rp-drone__icon 的 transition: transform 0.4s ease，旋转视觉连续。
         const headingDelta = Math.abs(heading - lastHeadingRef.current)
         const shouldUpdateContent =
           headingDelta > 8 || timestamp - lastContentTimeRef.current > 150
-        if (shouldUpdateContent) {
+        if (shouldUpdateContent && markerHandleRef.current) {
           lastHeadingRef.current = heading
           lastContentTimeRef.current = timestamp
-          labelRef.current?.setContent(buildDroneHTML(heading))
+          const element = htmlToElement(buildDroneHTML(heading))
+          adapter.setMarkerElement(markerHandleRef.current, element)
         }
 
         // 追加轨迹点（按距离采样，避免点过密）
         const pts = trailPointsRef.current
         const last = pts[pts.length - 1]
-        if (!last || distanceMeters({ lng: last.lng, lat: last.lat }, pos) > 2) {
-          pts.push(newPoint)
+        if (!last || distanceMeters(last, pos) > 2) {
+          pts.push({ lng: pos.lng, lat: pos.lat })
           if (pts.length > 500) {
             pts.splice(0, pts.length - 500)
           }
-          trailRef.current?.setPath(pts)
-          trailGlowRef.current?.setPath(pts)
+          if (trailHandleRef.current) {
+            adapter.setPolylinePoints(trailHandleRef.current, pts)
+          }
         }
 
         return { segIndex, progress, traveled }
@@ -251,7 +244,7 @@ export function DroneSimulator({ map, route, running }: DroneSimulatorProps) {
       lastTimeRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, running, route])
+  }, [adapter, running, route])
 
   return null
 }

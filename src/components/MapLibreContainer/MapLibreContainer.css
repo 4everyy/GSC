@@ -1,0 +1,40 @@
+/* ====== MapLibre 地图容器 ======
+   与 bmap-container 结构一致，保证切换引擎时布局无跳变 */
+.maplibre-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* 地图渲染容器：填满父级，作为 maplibregl.Map 挂载点 */
+.maplibre-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* 叠加层：铺满容器并默认放行鼠标事件，确保地图可拖拽/缩放；
+   子覆盖物按需单独开启 pointer-events:auto 以恢复交互 */
+.maplibre-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* 加载/错误态遮罩：居中显示，置于叠加层之上 */
+.maplibre-status {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  background: #0a1a2f;
+}
+
+.maplibre-status--error {
+  color: #ff6b6b;
+}

@@ -1,0 +1,26 @@
+{
+  "name": "GCS Satellite",
+  "description": "卫星影像底图。默认使用 Esri World Imagery（在线）；完全离线部署时，将 sources.satellite.tiles 替换为本地 tileserver-gl 提供的 raster mbtiles 服务地址。详见 docs/离线部署指南.md。",
+  "version": 8,
+  "sources": {
+    "satellite": {
+      "type": "raster",
+      "tiles": [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "attribution": "Imagery © Esri, Maxar, Earthstar Geographics",
+      "maxzoom": 19
+    }
+  },
+  "layers": [
+    {
+      "id": "satellite-bg",
+      "type": "raster",
+      "source": "satellite",
+      "paint": {
+        "raster-saturation": 0.1
+      }
+    }
+  ]
+}

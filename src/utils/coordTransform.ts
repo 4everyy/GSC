@@ -88,3 +88,40 @@ export function wgs84ToBd09(
     lat: z * Math.sin(theta) + 0.006,
   }
 }
+
+/** BD09（百度坐标系）转 GCJ02（火星坐标系） */
+function bd09ToGcj02(lng: number, lat: number): { lng: number; lat: number } {
+  const x = lng - 0.0065
+  const y = lat - 0.006
+  const z = Math.sqrt(x * x + y * y) - 0.00002 * Math.sin(y * X_PI)
+  const theta = Math.atan2(y, x) - 0.000003 * Math.cos(x * X_PI)
+  return { lng: z * Math.cos(theta), lat: z * Math.sin(theta) }
+}
+
+/** GCJ02（火星坐标系）转 WGS84 */
+function gcj02ToWgs84(lng: number, lat: number): { lng: number; lat: number } {
+  if (outOfChina(lng, lat)) {
+    return { lng, lat }
+  }
+  let dLat = transformLat(lng - 105.0, lat - 35.0)
+  let dLng = transformLng(lng - 105.0, lat - 35.0)
+  const radLat = (lat / 180.0) * PI
+  let magic = Math.sin(radLat)
+  magic = 1 - EE * magic * magic
+  const sqrtMagic = Math.sqrt(magic)
+  dLat = (dLat * 180.0) / (((A * (1 - EE)) / (magic * sqrtMagic)) * PI)
+  dLng = (dLng * 180.0) / ((A / sqrtMagic) * Math.cos(radLat) * PI)
+  return { lng: lng - dLng, lat: lat - dLat }
+}
+
+/**
+ * BD09（百度坐标系）转 WGS84（GPS 坐标系）。
+ * 用于将百度地图中读取到的坐标统一为 WGS84 后传给 MapLibre 等引擎。
+ */
+export function bd09ToWgs84(
+  lng: number,
+  lat: number,
+): { lng: number; lat: number } {
+  const { lng: gcjLng, lat: gcjLat } = bd09ToGcj02(lng, lat)
+  return gcj02ToWgs84(gcjLng, gcjLat)
+}

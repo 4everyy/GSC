@@ -1,0 +1,82 @@
+/**
+ * DroneMarker —— 常驻无人机位置标记样式。
+ *
+ * 借鉴参考截图（鹰眼巡检）设计：
+ * - 青色半透明覆盖范围圈（通信/侦察半径）
+ * - 浅白飞机图标 + 微弱脉冲动画
+ * - 整体风格克制，不喧宾夺主但一眼可见
+ */
+
+/* ===== 无人机标记容器 ===== */
+.drone-marker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* ===== 覆盖范围指示（内联微弱光晕，与外层 Circle 叠加增强效果） ===== */
+.drone-marker__coverage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    rgba(0, 229, 255, 0.15) 0%,
+    rgba(0, 229, 255, 0.05) 50%,
+    transparent 70%
+  );
+}
+
+/* ===== 脉冲扩散环（每3秒一次，比模拟飞行时更缓，适合静态常驻） ===== */
+.drone-marker__pulse {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid rgba(0, 229, 255, 0.6);
+  animation: drone-pulse 3s ease-out infinite;
+}
+
+/* ===== 飞机图标 ===== */
+.drone-marker__icon {
+  position: relative;
+  z-index: 3;
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.6)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+}
+
+/* ===== 脉冲动画 ===== */
+@keyframes drone-pulse {
+  0% {
+    width: 32px;
+    height: 32px;
+    opacity: 0.8;
+  }
+  100% {
+    width: 64px;
+    height: 64px;
+    opacity: 0;
+  }
+}
+
+/* reset Label 默认背景/边框（兜底） */
+.drone-marker {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}

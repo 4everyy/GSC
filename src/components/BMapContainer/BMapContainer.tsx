@@ -7,7 +7,10 @@ import {
   DEFAULT_MAP_OPTIONS,
   DEFAULT_MAP_TYPE,
   DEFAULT_MAP_ZOOM,
+  CLEAN_SATELLITE_STYLE,
 } from '../../config/map'
+import { BMapAdapter } from '../../map-engines/BMapAdapter'
+import type { MapEngineInstance } from '../../map-engines/types'
 import './BMapContainer.css'
 
 /** "我的位置"标注图标（蓝色光点 + 光晕），使用内联 SVG 无需图片资源 */
@@ -112,8 +115,10 @@ interface BMapContainerProps {
    * 避免异步 panTo 在用户已开始编辑航线后把视野移走。
    */
   autoLocate?: boolean
-  /** 地图实例就绪回调，父级可借此添加覆盖物或绑定事件 */
-  onReady?: (map: BMapGL.Map) => void
+  /**
+   * 地图实例就绪回调，父级接收 MapEngineInstance（含 BMapAdapter + raw）。
+   */
+  onReady?: (engine: MapEngineInstance) => void
   /** 叠加在地图之上的 DOM 覆盖物（如飞行器、限制区） */
   children?: ReactNode
 }
@@ -183,8 +188,24 @@ export function BMapContainer({
         map.enableRotate()
         map.enableTilt()
 
+        // 暂时禁用 setMapStyleV2：该 API 在 satellite 模式下可能导致初始化阻塞/异常
+        // 后续需验证具体哪些 featureType 规则与 satellite 底图冲突
+        // try {
+        //   map.setMapStyleV2({ styleJson: CLEAN_SATELLITE_STYLE })
+        // } catch {
+        //   /* 样式加载失败不影响地图正常使用 */
+        // }
+
+        // 创建 BMapAdapter 并通过统一 MapEngineInstance 暴露给上层，
+        // 同时兼容旧版直接接收 BMapGL.Map 的回调（通过联合类型参数）。
+        const adapter = new BMapAdapter(map)
+        const engineInstance: MapEngineInstance = {
+          adapter,
+          engine: 'baidu',
+          raw: map,
+        }
         setStatus('success')
-        onReadyRef.current?.(map)
+        onReadyRef.current?.(engineInstance)
       })
       .catch((err: unknown) => {
         if (cancelled) return

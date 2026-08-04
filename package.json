@@ -178,6 +178,7 @@
     "lru-cache": "^5.1.1",
     "lz-string": "^1.5.0",
     "magic-string": "^0.30.21",
+    "maplibre-gl": "^6.1.0",
     "math-intrinsics": "^1.1.0",
     "mdn-data": "^2.27.1",
     "media-typer": "^1.1.1",

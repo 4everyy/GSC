@@ -1,106 +1,90 @@
 /**
- * RouteOverlay —— 航线只读渲染层（视觉优化版）。
+ * RouteOverlay —— 航线只读渲染层（引擎无关版）。
  *
  * 与 RouteEditor 的区别：
  * - 编辑模式由 RouteEditor 接管（可拖拽/删除），浏览模式由本组件渲染；
  * - 本组件的航点 Marker 不可拖拽、不可右键删除，仅用于展示。
  *
  * 视觉策略：
- * - 航线：双层 Polyline 叠加（底层光晕 + 主层实线），制造霓虹发光感；
- * - 航点：默认 Marker（透明图标作可点击锚点）+ HTML Label 节点（脉冲动画）。
+ * - 航线：通过 PolylineOptions.glow 选项让适配器内部实现霓虹发光（多层叠加）；
+ * - 航点：使用 MarkerOptions.element 传入 HTML 节点（脉冲动画），居中对齐坐标点。
  */
 import { useEffect, useRef } from 'react'
+import type { MapAdapter } from '../../map-engines'
+import { htmlToElement } from '../../utils/htmlToElement'
 import type { Route } from './types'
-import { buildWaypointNodeHTML, LABEL_RESET_STYLE } from './waypointIcon'
+import { buildWaypointNodeHTML } from './waypointIcon'
 import './routeVisuals.css'
 
 interface RouteOverlayProps {
-  map: BMapGL.Map | null
+  /** 地图适配器（引擎无关） */
+  adapter: MapAdapter | null
   route: Route
   visible: boolean
 }
 
-export function RouteOverlay({ map, route, visible }: RouteOverlayProps) {
-  const overlaysRef = useRef<BMapGL.Overlay[]>([])
+export function RouteOverlay({ adapter, route, visible }: RouteOverlayProps) {
+  // 已创建覆盖物的 id 列表，便于清理
+  const overlayIdsRef = useRef<string[]>([])
+
+  // 清理所有覆盖物
+  const clearOverlays = (adapter: MapAdapter) => {
+    for (const id of overlayIdsRef.current) {
+      adapter.removeOverlay(id)
+    }
+    overlayIdsRef.current = []
+  }
 
   useEffect(() => {
-    const prev = overlaysRef.current
-    if (map && prev.length) {
-      prev.forEach((o) => map.removeOverlay(o))
-    }
-    overlaysRef.current = []
+    if (!adapter) return
 
-    if (!map || !visible || route.waypoints.length === 0) return
+    // 先清理上一次的覆盖物
+    clearOverlays(adapter)
 
-    const added: BMapGL.Overlay[] = []
+    if (!visible || route.waypoints.length === 0) return
+
     const { waypoints, color } = route
+    const ids: string[] = []
 
-    // 折线：双层叠加实现霓虹发光
+    // 折线：使用 glow 选项实现霓虹发光（适配器内部处理多层叠加）
     if (waypoints.length >= 2) {
-      const points = waypoints.map((wp) => new BMapGL.Point(wp.lng, wp.lat))
-
-      // 底层：粗、半透明光晕
-      const glow = new BMapGL.Polyline(points, {
-        strokeColor: color,
-        strokeWeight: 14,
-        strokeOpacity: 0.25,
+      const lineId = `route-overlay-line-${route.id}`
+      const points = waypoints.map((wp) => ({ lng: wp.lng, lat: wp.lat }))
+      adapter.addPolyline(lineId, points, {
+        color,
+        width: 4,
+        opacity: 1,
+        glow: true,
+        glowColor: color,
+        glowWidth: 3,
       })
-      map.addOverlay(glow)
-      added.push(glow)
-
-      // 中层：中等粗细过渡
-      const mid = new BMapGL.Polyline(points, {
-        strokeColor: color,
-        strokeWeight: 8,
-        strokeOpacity: 0.45,
-      })
-      map.addOverlay(mid)
-      added.push(mid)
-
-      // 主层：实线，带白色高光内描边感
-      const main = new BMapGL.Polyline(points, {
-        strokeColor: color,
-        strokeWeight: 4,
-        strokeOpacity: 1,
-      })
-      map.addOverlay(main)
-      added.push(main)
+      ids.push(lineId)
     }
 
-    // 航点节点：默认 Marker + HTML Label
+    // 航点节点：HTML 元素标注（不可拖拽），居中对齐坐标点
     waypoints.forEach((wp, i) => {
-      const point = new BMapGL.Point(wp.lng, wp.lat)
-
-      // 航点节点 Label：CSS 脉冲动画，节点居中对齐坐标点
+      const id = `route-overlay-wp-${route.id}-${wp.id}`
       const html = buildWaypointNodeHTML(i, waypoints.length)
-      const label = new BMapGL.Label(html, {
-        position: point,
-        // Label 左上角对齐坐标，HTML 内部用 translate(-50%, -50%) 自行居中
-        offset: new BMapGL.Size(0, 0),
-      })
-      // 重置 Label 外层容器默认白底/边框，消除白色方框
-      label.setStyle(LABEL_RESET_STYLE)
-      map.addOverlay(label)
-      added.push(label)
+      const element = htmlToElement(html)
+
+      adapter.addMarker(
+        id,
+        { lng: wp.lng, lat: wp.lat },
+        {
+          element,
+          anchor: { x: 14, y: 14 },
+        },
+      )
+      ids.push(id)
     })
 
-    overlaysRef.current = added
+    overlayIdsRef.current = ids
 
     return () => {
-      if (map && added.length) {
-        added.forEach((o) => {
-          try {
-            map.removeOverlay(o)
-          } catch {
-            /* 覆盖物可能已被清理，忽略 */
-          }
-        })
-      }
-      if (overlaysRef.current === added) {
-        overlaysRef.current = []
-      }
+      clearOverlays(adapter)
     }
-  }, [map, route, visible])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adapter, route, visible])
 
   return null
 }

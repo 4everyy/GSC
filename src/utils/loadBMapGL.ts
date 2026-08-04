@@ -40,7 +40,7 @@ export function loadBMapGL(): Promise<void> {
     }
 
     // 注册全局初始化回调：SDK 加载完成后会调用并触发 resolve
-    ;(window as unknown as Record<string, unknown>)[BMAP_CALLBACK] = () => {
+    (window as unknown as Record<string, unknown>)[BMAP_CALLBACK] = () => {
       resolve()
     }
 

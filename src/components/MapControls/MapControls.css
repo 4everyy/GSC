@@ -29,6 +29,13 @@
   object-fit: contain;
 }
 
+/* 底图切换激活态：卫星模式高亮，便于辨识当前底图 */
+.view-controls button.active {
+  border-color: #4a8bc0;
+  background: #1e4a73d9;
+  box-shadow: inset 0 0 0 1px #4a8bc0;
+}
+
 .zoom-controls {
   position: absolute;
   right: clamp(8px, .83vw, 16px);

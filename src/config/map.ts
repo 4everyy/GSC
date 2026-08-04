@@ -17,31 +17,60 @@ export const DEFAULT_MAP_ZOOM = 14
  * 组件在 SDK 加载后映射为对应的 BMapGL 全局常量，避免配置文件在模块加载期依赖 SDK。
  * 可选值：'normal'（矢量图）/ 'satellite'（卫星图）/ 'hybrid'（混合图：卫星 + 路网标注）
  *
- * 使用 'satellite'（纯卫星图）：底图为真实航拍卫星影像，原样显示，不应用任何自定义样式。
- * （地名/路名随卫星瓦片原生显示，后续如需弱化再单独处理。）
+ * 使用 'satellite'（纯卫星图）：真实航拍卫星影像底图，保留完整地质纹理与色彩细节。
+ * 目标效果：参考截图——清晰卫星影像 + 零地名干扰（建筑、道路、植被纹理完整可见）。
  */
 export const DEFAULT_MAP_TYPE = 'satellite' as const
 
 /**
- * 个性化地图样式：洁净卫星图（弱化/隐藏地名、路名、POI 等次要信息）。
+ * 洁净卫星图样式：逐个隐藏各类标注要素，保留完整卫星底图质感。
  *
- * 核弹级写法：一次性关闭所有要素的几何线条(geometry) + 文字标注(labels)，
- * 彻底清除 hybrid 叠加的全部矢量路网/地名/POI，使画面回归纯卫星影像观感；
- * 最后白名单保留 `districtlabel`（省/市/区名）并淡化为白色，便于宏观定位。
+ * ⚠️ 关键原则：
+ * - 绝对不用 `featureType: 'all'`！它会触发百度地图的全局风格替换机制，
+ *   把卫星栅格瓦片也覆盖掉，导致底图变灰或变成矢量风格。
+ * - 必须逐个指定 featureType，只操作 labels（文字），完全不碰 geometry。
+ * - 这样 setMapStyleV2 只会"过滤掉文字标注层"，而不影响底层卫星影像瓦片。
  *
- * 卫星影像本身是栅格瓦片，不受 geometry/labels 样式影响。
+ * 隐藏范围：路名、POI、建筑物名、道路编号、公交站、地铁站等所有文字标注。
+ * 保留：纯卫星影像底图（无任何文字叠加）= 参考截图效果。
  */
 export const CLEAN_SATELLITE_STYLE: BMapGL.MapStyleFeature[] = [
-  // 关闭所有要素的几何线条/面（路网线条、区域边界等矢量叠加层）
-  { featureType: 'all', elementType: 'geometry', stylers: { visibility: 'off' } },
-  // 关闭所有文字标注（路名、POI 名等）
-  { featureType: 'all', elementType: 'labels', stylers: { visibility: 'off' } },
-  // 行政区划名（省/市/区）：弱化保留为白色，便于宏观定位
-  {
-    featureType: 'districtlabel',
-    elementType: 'labels',
-    stylers: { visibility: 'on', color: '#ffffffff' },
-  },
+  // ===== 道路相关标注 =====
+  { featureType: 'highway', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'arterial', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'local', elementType: 'labels', stylers: { visibility: 'off' } },
+
+  // ===== POI / 兴趣点标注 =====
+  { featureType: 'poi', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'poiname', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'poilabel', elementType: 'labels', stylers: { visibility: 'off' } },
+
+  // ===== 建筑物标注 =====
+  { featureType: 'building', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'buildingname', elementType: 'labels', stylers: { visibility: 'off' } },
+
+  // ===== 行政区划标注（可选：保留或隐藏）=====
+  { featureType: 'districtlabel', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'citylabel', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'provincelabel', elementType: 'labels', stylers: { visibility: 'off' } },
+
+  // ===== 交通设施标注 =====
+  { featureType: 'busstop', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'subwaystation', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'railwaystation', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'airportlabel', elementType: 'labels', stylers: { visibility: 'off' } },
+
+  // ===== 地理要素标注 =====
+  { featureType: 'water', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'green', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'scenicspots', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'education', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'medical', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'finance', elementType: 'labels', stylers: { visibility: 'off' } },
+
+  // ===== 辅助线标注（道路编号、距离等）=====
+  { featureType: 'line', elementType: 'labels', stylers: { visibility: 'off' } },
+  { featureType: 'background', elementType: 'labels', stylers: { visibility: 'off' } },
 ]
 
 /** 默认地图初始化与交互选项 */
