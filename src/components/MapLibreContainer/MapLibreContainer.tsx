@@ -23,6 +23,7 @@ import {
   MAPLIBRE_MAP_OPTIONS,
   MAPLIBRE_STYLE_URL,
   MAPLIBRE_USE_OFFLINE_TILES,
+  TILESERVER_ORIGIN,
 } from '../../config/mapLibre'
 import { htmlToElement } from '../../utils/htmlToElement'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -34,6 +35,45 @@ const LOCATION_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="44" he
   <circle cx="22" cy="22" r="11" fill="#1e90ff" fill-opacity="0.3"/>
   <circle cx="22" cy="22" r="7" fill="#1e90ff" stroke="#fff" stroke-width="2.5"/>
 </svg>`
+
+/** 离线瓦片服务恢复命令提示（tileserver-gl 未启动时展示给用户） */
+const OFFLINE_TILES_HINT =
+  '离线瓦片服务不可达，请检查 tileserver-gl 是否启动（docker start gcs-tileserver 或 cd tileserver && docker compose up -d）'
+
+/**
+ * 同源代理前缀（与 vite.config.ts 中 server.proxy / preview.proxy 对应）。
+ *
+ * 生产部署时由 Nginx 配置 `location /tiles/ { proxy_pass http://localhost:8081/; }`。
+ */
+const TILE_PROXY_PREFIX = '/tiles'
+
+/**
+ * 创建 MapLibre transformRequest：将指向 tileserver-gl 的绝对 URL 重写为同源代理路径。
+ *
+ * tileserver-gl 通过 `--public_url http://localhost:8081` 将此 origin 注入到 style.json
+ * 内部的 sources.url / glyphs / sprite 字段。浏览器直接请求这些绝对 URL 时，若页面从
+ * LAN IP / IPv6 / 其他主机访问，localhost 会指向客户端自身导致 "Failed to fetch (0)"。
+ *
+ * 重写为 /tiles 同源路径后，开发环境由 Vite proxy 转发，生产环境由 Nginx 转发，
+ * 统一解决跨域与 localhost 不可达问题。
+ *
+ * 仅当 tileserver origin 有效时返回 transform 函数；若 styleUrl 本身就是同源相对
+ * 路径（如 /tiles/styles/dark/style.json），则无需重写，返回 undefined。
+ */
+function createTileserverTransformRequest() {
+  try {
+    // 验证 origin 可解析
+    new URL(TILESERVER_ORIGIN)
+  } catch {
+    return undefined
+  }
+  return (url: string) => {
+    if (url.startsWith(TILESERVER_ORIGIN)) {
+      return { url: url.replace(TILESERVER_ORIGIN, TILE_PROXY_PREFIX) }
+    }
+    return { url }
+  }
+}
 
 /**
  * 在 MapLibre 地图上添加"我的位置"标注：精度圆 + 蓝色光点 Marker。
@@ -147,21 +187,34 @@ export function MapLibreContainer({
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
+  // 重试计数器：点击"重试"时递增，触发 Effect 1 重新初始化地图
+  const [retryKey, setRetryKey] = useState(0)
 
-  // ============ Effect 1：初始化地图（仅一次） ============
+  // ============ Effect 1：初始化地图（依赖 retryKey，支持重试） ============
   useEffect(() => {
     if (!containerRef.current) return
 
     let cancelled = false
+    setStatus('loading')
+    setErrorMsg('')
 
     try {
       if (cancelled || !containerRef.current) return
 
+      // transformRequest 将 tileserver-gl 注入的绝对 URL（http://localhost:8081/...）
+      // 重写为同源代理路径 /tiles/...，避免 LAN/IPv6/生产环境 localhost 不可达。
+      // 开发环境由 Vite proxy 转发，生产环境由 Nginx 转发。
+      const tileTransform = createTileserverTransformRequest()
+      const effectiveStyleUrl = tileTransform
+        ? tileTransform(styleUrl).url
+        : styleUrl
+
       const map = new MLMap({
         container: containerRef.current,
-        style: styleUrl,
+        style: effectiveStyleUrl,
         center: [center.lng, center.lat],
         zoom,
+        transformRequest: tileTransform,
         ...MAPLIBRE_MAP_OPTIONS,
       })
       mapRef.current = map
@@ -178,9 +231,7 @@ export function MapLibreContainer({
         // 样式/瓦片加载失败时给出明确提示（离线瓦片服务未启动时常见）
         setStatus((prev) => {
           if (prev === 'success') return prev
-          const tip = MAPLIBRE_USE_OFFLINE_TILES
-            ? '离线瓦片服务不可达，请检查 tileserver-gl 是否启动'
-            : '地图样式加载失败'
+          const tip = MAPLIBRE_USE_OFFLINE_TILES ? OFFLINE_TILES_HINT : '地图样式加载失败'
           setErrorMsg(tip + (e?.error ? `：${e.error.message}` : ''))
           return 'error'
         })
@@ -200,7 +251,7 @@ export function MapLibreContainer({
       adapterRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [retryKey])
 
   // ============ Effect 2：自动定位（受控，可取消） ============
   useEffect(() => {
@@ -226,7 +277,16 @@ export function MapLibreContainer({
 
       {status === 'error' && (
         <div className="maplibre-status maplibre-status--error">
-          <span>{errorMsg}</span>
+          <div className="maplibre-error-card">
+            <span className="maplibre-error-text">{errorMsg}</span>
+            <button
+              type="button"
+              className="maplibre-retry-btn"
+              onClick={() => setRetryKey((k) => k + 1)}
+            >
+              重试
+            </button>
+          </div>
         </div>
       )}
 

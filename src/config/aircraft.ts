@@ -7,8 +7,9 @@ export interface Aircraft {
 }
 
 export const aircraft: Aircraft[] = [
-  { src: homeImages.aircraftRed, className: 'aircraft aircraft--red', label: '红色飞行器' },
-  { src: homeImages.aircraftGray, className: 'aircraft aircraft--gray', label: '灰色飞行器' },
-  { src: homeImages.aircraftYellow, className: 'aircraft aircraft--yellow', label: '黄色飞行器' },
-  { src: homeImages.aircraftBlue, className: 'aircraft aircraft--blue', label: '蓝色飞行器' },
+  { src: homeImages.aircraftRed, className: 'aircraft aircraft--red', label: '01设备' },
+  { src: homeImages.aircraftOrange, className: 'aircraft aircraft--orange', label: '03设备' },
+  { src: homeImages.aircraftBlue, className: 'aircraft aircraft--blue', label: '02设备' },
+  { src: homeImages.aircraftGray, className: 'aircraft aircraft--gray', label: '离线设备' },
+  { src: homeImages.aircraftBlue, className: 'aircraft aircraft--blue2', label: '02设备' },
 ]

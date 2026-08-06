@@ -6,7 +6,7 @@ import './MapToolbar.css'
 const FADE_MS = 500
 
 export function MapToolbar() {
-  const [active, setActive] = useState(0)
+  const [active, setActive] = useState(-1)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
   // 设备面板：mounted 控制 DOM 是否存在；visible 控制淡入/淡出 class
@@ -55,7 +55,7 @@ export function MapToolbar() {
             <button
               className={active === index ? 'is-active' : ''}
               key={item.label}
-              onClick={() => setActive(index)}
+              onClick={() => setActive(active === index ? -1 : index)}
               onMouseEnter={() => setHoveredIndex(index)}
               onMouseLeave={() => setHoveredIndex(null)}
               title={item.label}

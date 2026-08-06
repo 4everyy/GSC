@@ -41,7 +41,25 @@ interface StyleEntry {
   url: string
 }
 
-const OFFLINE_BASE = 'http://localhost:8081/styles'
+/**
+ * tileserver-gl 的绝对 origin。
+ *
+ * tileserver-gl 启动时通过 `--public_url http://localhost:8081` 将此 origin 注入到
+ * style.json 内部的 sources.url / glyphs / sprite 等字段。浏览器直接请求这些绝对
+ * URL 时，若页面从 LAN IP / IPv6 / 其他主机访问，localhost 会指向客户端自身导致
+ * "Failed to fetch (0)"。
+ *
+ * transformRequest 会将此 origin 重写为同源代理路径 /tiles，故需集中导出。
+ */
+export const TILESERVER_ORIGIN = 'http://localhost:8081'
+
+/**
+ * 离线瓦片样式的基础路径（同源相对路径，通过 Vite/Nginx 代理转发到 tileserver-gl）。
+ *
+ * 使用相对路径而非绝对 URL，确保无论从 localhost / LAN IP / IPv6 访问页面，
+ * 样式请求都走同源代理，避免浏览器跨域与 localhost 不可达问题。
+ */
+const OFFLINE_BASE = '/tiles/styles'
 
 /**
  * 底图样式映射。
@@ -110,4 +128,12 @@ export const MAPLIBRE_MAP_OPTIONS = {
   maxZoom: 18,
   /** 最小缩放级别 */
   minZoom: 3,
+  /**
+   * 关闭右下角版权归属控件。
+   *
+   * 默认 MapLibre 会渲染 AttributionControl，卫星底图下会显示
+   * "Imagery © Esri, Maxar, Earthstar Geographics ..." 等来源信息，
+   * 项目 UI 规范不需要这些控件，故全局关闭。
+   */
+  attributionControl: false,
 } as const

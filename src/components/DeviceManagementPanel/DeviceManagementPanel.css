@@ -6,12 +6,14 @@
   z-index: 10;
   display: flex;
   flex-direction: column;
-  width: clamp(220px, 16.67vw, 320px);
+  width: clamp(340px, 22vw, 400px);
   /* 高度贴合实际内容（头部+筛选+7行设备+适当底边距），消除多余留白但不溢出 */
-  height: clamp(440px, 28vw, 540px);
-  background-image: url('../../assets/images/home/device-panel-frame.png');
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
+  height: clamp(460px, 30vw, 560px);
+  background: linear-gradient(180deg, rgba(36, 86, 107, 0.7) 0%, rgba(71, 167, 209, 0.4) 100%);
+  box-shadow: 0px 5px 12px 0px rgba(12, 69, 79, 0.5);
+  border-radius: 0px;
+  border: 1px solid;
+  border-image: radial-gradient(circle, rgba(24, 134, 161, 1), rgba(24, 134, 161, 0)) 1 1;
   /* 顶部内边距进一步减小，让内容上移；底部保留适当边距 */
   padding: clamp(2px, .21vw, 4px) clamp(8px, .83vw, 16px) clamp(10px, .83vw, 16px);
   color: #fff;
@@ -163,13 +165,61 @@
 .device-panel__filters {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   height: clamp(20px, 1.25vw, 24px);
   margin-bottom: clamp(8px, .83vw, 16px);
+  /* 左右内边距与设备行一致，使筛选栏下拉框与下方设备行左右边缘对齐 */
+  padding: 0 clamp(8px, .63vw, 12px);
+  gap: clamp(6px, .42vw, 8px);
   flex-shrink: 0;
 }
 
+/* 全选框后的第一个筛选标签（"状态"）推到最右侧，
+   使"状态/类型"两个下拉框组靠右排列，右边缘与下方设备行右边缘对齐 */
+.device-panel__select-all + .device-panel__filter-label {
+  margin-left: auto;
+}
+
+/* 全选复选框：与设备行复选框（.device-row__checkbox）样式完全一致 */
+.device-panel__select-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
+  min-width: clamp(14px, 1.15vw, 20px);
+  border-radius: 2px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid #4b79e4;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.device-panel__select-all:hover {
+  background-color: rgba(75, 121, 228, 0.5);
+  border-color: rgba(75, 121, 228, 0.8);
+}
+
+.device-panel__select-all--checked {
+  background: #4b79e4;
+  border-color: #4b79e4;
+}
+
+.device-panel__select-all--checked:hover {
+  background-color: rgba(40, 85, 200, 0.95);
+}
+
+/* 半选状态（indeterminate）也使用蓝色背景 */
+.device-panel__select-all--indeterminate {
+  background: #4b79e4;
+  border-color: #4b79e4;
+}
+
 .device-panel__filter-label {
-  font-size: clamp(9px, .63vw, 12px);
+  font-size: clamp(10px, .73vw, 14px);
   white-space: nowrap;
   line-height: 1;
   color: #fff;
@@ -177,6 +227,7 @@
 }
 
 .device-panel__select {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -188,6 +239,65 @@
   border: 1px solid rgba(70, 220, 231, 1);
   border-radius: 2px;
   flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.device-panel__select:hover {
+  border-color: rgba(120, 240, 255, 0.95);
+  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.25);
+}
+
+.device-panel__select--open {
+  border-color: rgba(120, 240, 255, 0.95);
+  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.35);
+}
+
+.device-panel__select--open img {
+  transform: rotate(180deg);
+}
+
+.device-panel__select img {
+  transition: transform 0.2s ease;
+}
+
+.device-panel__select-placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* 下拉菜单 */
+.device-panel__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: rgba(18, 52, 72, 0.95);
+  border: 1px solid rgba(70, 220, 231, 0.6);
+  border-radius: 2px;
+  overflow: hidden;
+  animation: dropdownIn 0.15s ease;
+}
+
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.device-panel__dropdown-item {
+  padding: clamp(4px, .31vw, 6px) clamp(6px, .42vw, 8px);
+  font-size: clamp(10px, .73vw, 14px);
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.device-panel__dropdown-item:hover {
+  background-color: rgba(70, 220, 231, 0.25);
+  color: #fff;
 }
 
 .device-panel__select + .device-panel__filter-label {
@@ -195,10 +305,10 @@
 }
 
 .device-panel__select span {
-  font-size: clamp(9px, .63vw, 12px);
+  font-size: clamp(10px, .73vw, 14px);
   white-space: nowrap;
   line-height: 1;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .device-panel__select img {
@@ -223,8 +333,8 @@
 .device-panel__list-wrapper {
   position: relative;
   /* 自适应宽度：跟随面板缩放，并在主体内水平居中 */
-  flex: 1 1 288px;
-  max-width: 288px;
+  flex: 1 1 100%;
+  max-width: 100%;
   min-width: 0;
   /* 同样重置 min-height，允许内部列表滚动 */
   min-height: 0;
@@ -240,6 +350,10 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* 始终预留滚动条空间，防止展开详情时滚动条出现挤压内容 */
+  scrollbar-gutter: stable;
+  /* 左右对称：左侧与滚动条预留空间等宽 */
+  padding-left: 4px;
   padding-right: 4px;
   /* Firefox：细滚动条 */
   scrollbar-width: thin;
@@ -277,12 +391,15 @@
   position: relative;
   display: flex;
   align-items: center;
-  height: 40px;
-  padding: 0 12px;
+  height: clamp(36px, 2.6vw, 44px);
+  /* 左右内边距与筛选栏一致，确保行内容左边缘与筛选栏左边缘对齐 */
+  padding: 0 clamp(8px, .63vw, 12px);
   border-radius: 2px;
   overflow: hidden;
   box-sizing: border-box;
   flex-shrink: 0;
+  /* 统一列间距 */
+  gap: clamp(4px, .31vw, 6px);
 }
 
 .device-row__bg {
@@ -332,12 +449,24 @@
   background-color: rgba(40, 85, 200, 0.95);
 }
 
+/* 设备类型图标（蓝/灰无人机缩略图） */
+.device-row__type-icon {
+  position: relative;
+  z-index: 1;
+  width: clamp(14px, 1.05vw, 19px);
+  height: clamp(14px, 1.05vw, 19px);
+  min-width: clamp(14px, 1.05vw, 19px);
+  margin-left: clamp(6px, .52vw, 10px);
+  object-fit: contain;
+  flex-shrink: 0;
+  -webkit-user-drag: none;
+}
+
+/* 设备名：弹性宽度，吸收行内剩余空间，使后续各列被推到右侧统一位置 */
 .device-row__name {
   position: relative;
   z-index: 1;
-  margin-left: clamp(10px, 1vw, 18px);
-  margin-right: clamp(8px, .83vw, 14px);
-  font-size: clamp(11px, .83vw, 15px);
+  font-size: clamp(10px, .73vw, 14px);
   white-space: nowrap;
   line-height: 1;
   color: #fff;
@@ -345,6 +474,70 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
+}
+
+/* 状态文字（任务中/待命/离线）
+   宽度需容纳3个中文("任务中")在80%-125%浏览器缩放下完整显示 */
+.device-row__status {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(10px, .73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+  /* 3个中文约需 42-52px：80%缩放时 ~52px，100%时 ~42px，125%时 ~34px */
+  flex: 0 0 clamp(36px, 3vw, 54px);
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+}
+
+/* 指标组（高度/电量，图标+数值） */
+.device-row__metric {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: clamp(2px, .21vw, 4px);
+  /* 固定宽度：需容纳图标+"100%"等最长内容，适配不同屏幕 */
+  flex: 0 0 clamp(44px, 3.5vw, 60px);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.device-row__metric img {
+  /* 固定尺寸：确保所有电池图标大小一致（新图标均为24×24） */
+  width: clamp(12px, 1vw, 16px);
+  height: clamp(12px, 1vw, 16px);
+  /* 保持原始比例，不拉伸变形 */
+  object-fit: contain;
+  /* 垂直居中对齐 */
+  vertical-align: middle;
+  display: block;
+  flex-shrink: 0;
+  -webkit-user-drag: none;
+}
+
+.device-row__metric-value {
+  font-size: clamp(10px, .73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+}
+
+/* 信号图标：与展开箭头保持较大间距 */
+.device-row__signal {
+  position: relative;
+  z-index: 1;
+  width: clamp(11px, .83vw, 16px);
+  height: clamp(11px, .83vw, 16px);
+  min-width: clamp(11px, .83vw, 16px);
+  object-fit: contain;
+  flex-shrink: 0;
+  -webkit-user-drag: none;
+  /* 与右侧展开箭头的间距 */
+  margin-right: clamp(6px, .5vw, 10px);
 }
 
 .device-row__action-icon {
@@ -353,7 +546,6 @@
   width: clamp(12px, .94vw, 16px);
   height: clamp(12px, .94vw, 16px);
   min-width: clamp(12px, .94vw, 16px);
-  margin-left: clamp(8px, .73vw, 13px);
   object-fit: contain;
   cursor: pointer;
   flex-shrink: 0;
@@ -371,7 +563,6 @@
   width: clamp(15px, 1.15vw, 21px);
   height: clamp(13px, 1vw, 18px);
   min-width: clamp(15px, 1.15vw, 21px);
-  margin-left: clamp(8px, .73vw, 13px);
   object-fit: contain;
   cursor: pointer;
   flex-shrink: 0;
@@ -387,7 +578,6 @@
   width: clamp(15px, 1.15vw, 21px);
   height: clamp(15px, 1.15vw, 21px);
   min-width: clamp(15px, 1.15vw, 21px);
-  margin-left: clamp(8px, .73vw, 13px);
   padding: 0;
   border: none;
   background: transparent;
@@ -410,11 +600,16 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+  align-items: center !important;
+  justify-content: center !important;
   margin-top: 4px;
-  padding: 12px 16px 8px 24px;
+  /* 左右对称：内容水平居中 */
+  padding: 10px 10px 6px !important;
   box-sizing: border-box;
   background-image: linear-gradient(181deg, rgba(34, 92, 139, 0.1) 0, rgba(34, 92, 139, 0.8) 100%);
   border-radius: 2px;
+  /* 行间距 8px */
+  gap: 8px;
   /* 简单的展开动画 */
   animation: deviceRowDetailIn 0.2s ease;
 }
@@ -427,18 +622,43 @@
 .device-row__detail-grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  width: 100%;
 }
 
 .device-row__detail-row {
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 100%;
+  /* 左右两列（各为一个整体）之间的间距调大，配合 justify-content:center
+     仍保持两列作为整体水平居中。measure() 会自动重算等宽与 footer 对齐。 */
+  gap: clamp(56px, 7vw, 96px);
+}
+
+.device-row__detail-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* 两列等宽：各占50%减去间距 */
+  flex: 1;
+  min-width: 0;
+}
+
+/* 遥测详情两列等宽：宽度由运行时 JS（ResizeObserver）测量两列内容最大宽度后
+   统一设置，保证左右两列标签/数值严格对齐；flex:0 0 auto 确保不被拉伸或压缩，
+   配合 .device-row__detail-row 的 justify-content:center 让两列作为整体居中。
+   详见 DeviceManagementPanel.tsx 中 measure() 的等宽逻辑。 */
+.device-row__detail-row .device-row__detail-col {
+  flex: 0 0 auto;
 }
 
 .device-row__detail-item {
   display: flex;
   align-items: center;
-  flex: 1;
+  /* 固定宽度：确保所有行标签+数值对齐 */
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .device-row__detail-bar {
@@ -449,7 +669,7 @@
 }
 
 .device-row__detail-label {
-  font-size: clamp(11px, .73vw, 14px);
+  font-size: clamp(9px, .63vw, 12px);
   white-space: nowrap;
   line-height: 1;
   color: #fff;
@@ -458,24 +678,66 @@
 }
 
 .device-row__detail-value {
-  font-size: clamp(11px, .73vw, 14px);
+  font-size: clamp(9px, .63vw, 12px);
   white-space: nowrap;
   line-height: 1;
   color: #fff;
-  margin-left: 8px;
+  margin-left: 16px !important;
+  /* 移除固定宽度，让内容自然排列 */
+  flex-shrink: 0;
+}
+
+/* 右列数值右对齐 */
+.device-row__detail-col:last-child .device-row__detail-value {
+  text-align: right;
+}
+
+/* 延迟数值：绿色 */
+.device-row__detail-value--green {
+  color: #07972B;
+}
+
+/* GPS 数值：黄色 */
+.device-row__detail-value--yellow {
+  color: #FFD700;
+}
+
+/* GPS 标签：字母间距均匀，与上方3字中文标签对齐 */
+.device-row__detail-label--spaced {
+  letter-spacing: 0.35em;
+  /* 补偿 letter-spacing 在末尾多出的空间 */
+  margin-right: -0.35em;
+}
+
+/* 延迟 WiFi 图标：与左侧文字间距 */
+.device-row__detail-delay-icon {
+  margin-left: 4px;
 }
 
 .device-row__detail-divider {
-  width: 100%;
+  width: calc(100% + 20px);
   height: 1px;
   background: rgba(255, 255, 255, 0.2);
-  margin-top: 12px;
+  margin-top: 6px;
+  /* 与 padding 10px 匹配，分隔线延伸到左右边界 */
+  margin-left: -10px;
+  margin-right: -10px;
 }
 
 .device-row__detail-footer {
   display: flex;
   align-items: center;
-  margin-top: 8px;
+  justify-content: flex-end;
+  /* 垂直居中（零高度增加）：detail 的 flex gap:8px 已在分隔线与 footer 之间产生
+     8px 间距，此处用负 margin -2px 抵消多出的部分，使上方间距 = 8 + (-2) = 6px，
+     与 detail padding-bottom:6px 上下对称，文字精确处于分隔线~底边空间的垂直中心。 */
+  margin-top: -2px;
+  width: 100%;
+  /* 让"最后更新时间"内容的右边与上方右列数值（自然宽度、左对齐）的右边对齐：
+     右列值未占满列宽，右侧留有空白，这里用 padding-right 将 footer 内容
+     从内容区右边缘向内收，补偿该空白。
+     注意：此处值由 measure() 运行时动态覆盖，静态值仅作初始占位。 */
+  padding-right: clamp(14px, 1vw, 16px);
 }
 
 /* footer 中第二个 label（"延迟"）与第一个保持间距 */
@@ -487,7 +749,7 @@
   font-size: clamp(9px, .63vw, 12px);
   white-space: nowrap;
   line-height: 1;
-  color: #6DC0FF;
+  color: #fff;  /* 与标签颜色一致 */
   margin-left: 8px;
   flex-shrink: 0;
 }
@@ -505,11 +767,63 @@
 .device-row__detail-deco {
   display: block;
   width: 100%;
-  height: clamp(8px, .63vw, 11px);
+  height: clamp(6px, .5vw, 8px);
   object-fit: fill;
   /* 微调负 margin 使装饰图贴近详情块底部 */
-  margin-top: -10px;
+  margin-top: -6px;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
+}
+
+/* ====== 加载详情失败占位状态 ====== */
+/* 加载失败态容器样式与 .device-row__detail 完全一致，仅内容布局不同 */
+.device-row__detail-failed {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+  /* 与正常详情一致的 padding（左右 10px，上 10px 下 6px） */
+  padding: 10px 10px 6px;
+  box-sizing: border-box;
+  background-image: linear-gradient(181deg, rgba(34, 92, 139, 0.1) 0, rgba(34, 92, 139, 0.8) 100%);
+  border-radius: 2px;
+  gap: 8px;
+  animation: deviceRowDetailIn 0.2s ease;
+}
+
+.device-row__detail-failed-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* 与正常详情内容区高度一致，使图标+文字整体在此空间内垂直+水平居中 */
+  min-height: clamp(120px, 9vw, 150px);
+  width: 100%;
+}
+
+.device-row__detail-failed-icon {
+  /* 图标尺寸随面板缩放，进一步放大以提升醒目度 */
+  width: clamp(64px, 5vw, 84px);
+  height: clamp(64px, 5vw, 84px);
+  opacity: 0.8;
+  object-fit: contain;
+  -webkit-user-drag: none;
+}
+
+.device-row__detail-failed-text {
+  /* 设计稿指定样式 */
+  font-family: MiSans, MiSans;
+  font-weight: 400;
+  font-size: 16px;
+  color: #FFFFFF;
+  text-align: left;
+  font-style: normal;
+  text-transform: none;
+  white-space: nowrap;
+  line-height: 1;
+  /* 与上方图标的间距：16px */
+  margin-top: 16px;
 }

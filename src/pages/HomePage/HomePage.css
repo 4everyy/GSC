@@ -43,7 +43,10 @@
 .map-stage .device-panel,
 .map-stage .mission-panel,
 .map-stage .alarm-info-panel,
-.map-stage .route-panel {
+.map-stage .route-panel,
+.map-stage .aircraft,
+.map-stage .corner-marker,
+.map-stage .restricted-zone {
   pointer-events: auto;
 }
 
@@ -78,12 +81,173 @@
   z-index: 2;
 }
 
+/* 禁飞区：左下角倾斜四边形，SVG 绘制边框和填充 */
 .restricted-zone--red {
-  left: 10.2%;
-  bottom: 9.9%;
-  width: 15.6%;
-  height: 25.1%;
+  left: 8%;
+  bottom: 12%;
+  width: 16%;
+  height: 22%;
 }
+
+/* SVG 边框容器：铺满父元素 */
+.restricted-zone__border {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* 四角正方形节点标记：公共样式 */
+.corner-marker {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #9d211d;
+  border-radius: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* 左上角 (22%, 0%) */
+.corner-marker--tl {
+  left: calc(22% - 5px);
+  top: -5px;
+}
+/* 右上角 (78%, 8%) */
+.corner-marker--tr {
+  left: calc(78% - 5px);
+  top: calc(8% - 5px);
+}
+/* 右下角 (100%, 100%) */
+.corner-marker--br {
+  right: -5px;
+  bottom: -5px;
+}
+/* 左下角 (0%, 92%)：y=92%从顶部 = 8%从底部 */
+.corner-marker--bl {
+  left: -5px;
+  bottom: calc(8% - 5px);
+}
+
+/* ====== 禁飞区 Hover 信息面板（设计稿精确还原）===== */
+.block_7 {
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.3);
+  background-color: rgba(255, 95, 95, 0.4);
+  border-radius: 4px;
+  position: absolute;
+  width: 203px;
+  height: 117px;
+  border: 1px solid rgba(172, 14, 14, 1);
+  z-index: 10;
+  /* 默认隐藏，hover 禁飞区时显示 */
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  /* 定位在区域右上方（面板底部对齐区域顶部偏上） */
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-30%);
+  margin-bottom: 8px;
+  pointer-events: none;
+  /* 整体 flex 纵向布局：顶部固定，底部三行自动填充并垂直居中 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶部：标题 + 分隔线（固定高度，不参与居中） */
+.block_7__top {
+  flex-shrink: 0;
+}
+
+/* 底部：来源/面积/模式三行容器，占据剩余空间并垂直居中 */
+.block_7__bottom {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px; /* 三行之间的垂直间距 */
+  /* 不设 padding-bottom，让三行在整个剩余空间（分隔线→面板底边）内精确垂直居中 */
+}
+
+.restricted-zone--red:hover .block_7 {
+  opacity: 1;
+  visibility: visible;
+}
+
+.text_8 {
+  width: 57px;
+  height: 19px;
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans-Regular', 'Microsoft YaHei', sans-serif;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 14px;
+  margin: 9px 0 0 16px;
+  display: block;
+}
+
+.section_3 {
+  background-color: rgba(172, 14, 14, 0.4);
+  width: 201px;
+  height: 1px;
+  margin: 8px 0 0 1px;
+}
+
+.section_4,
+.section_5,
+.section_6 {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 0 0 0 16px; /* 顶部间距改由 .block_7__bottom 的 gap 统一控制 */
+}
+
+.box_13,
+.group_10,
+.group_11 {
+  background-color: rgba(172, 14, 14, 1);
+  width: 2px;
+  height: 8px;
+  flex-shrink: 0;
+}
+
+.text_9,
+.text_11,
+.text_13 {
+  width: 24px;
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 12px;
+  font-family: 'MiSans-Regular', 'Microsoft YaHei', sans-serif;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 12px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.text_10,
+.text_12,
+.text_14 {
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 12px;
+  font-family: 'MiSans-Regular', 'Microsoft YaHei', sans-serif;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 12px;
+  margin-left: 8px;
+}
+
+/* 最后一行不再单独设置底部间距；
+   三行整体由 .block_7__bottom 的 justify-content:center 在剩余空间内垂直居中 */
 
 .restricted-zone--red img {
   width: 100%;
@@ -105,40 +269,346 @@
 .aircraft {
   position: absolute;
   z-index: 4;
-  display: block;          /* 确保 span 容器为块级 */
-  width: 48px;             /* 统一基类尺寸，四架飞机一致 */
-  height: 48px;
+  display: flex; /* 改为 flex 以支持图标+标签垂直排列 */
+  flex-direction: column;
+  align-items: center;
+  width: auto; /* 宽度自适应内容 */
+}
+
+/* 可拖拽飞行器：鼠标手势 + 禁止选中文本，防止拖拽时高亮文字 */
+.aircraft--draggable {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 拖拽进行中：改用 grabbing 光标 */
+.aircraft--draggable:active {
+  cursor: grabbing;
 }
 
 /* 所有飞行器内部的 img 统一填满容器并保持比例，
    避免图片原始尺寸溢出导致视觉大小不一致 */
 .aircraft img {
-  width: 100%;
-  height: 100%;
+  width: 48px; /* 统一图标尺寸 */
+  height: 48px;
   object-fit: contain;
 }
 
-.aircraft--red {
+/* 飞行器名称标签 */
+.aircraft-label {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #fff;
+  white-space: nowrap;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  line-height: 1.2;
+}
+
+/* 离线设备：hover 面板定位上下文 */
+.aircraft--gray {
+  left: 56%;
+  top: 59%;
+}
+
+/* 旋转只作用于图标，不影响标签 */
+.aircraft--red img {
   transform: rotate(-45deg);
 }
-
-.aircraft--gray {
-  /* 统一为 48×48，与红色飞机图标尺寸保持一致 */
-  width: 48px;
-  height: 48px;
+.aircraft--gray img {
   transform: rotate(45deg);
 }
-
-.aircraft--yellow {
-  /* 统一为 48×48，与红色飞机图标尺寸保持一致 */
-  width: 48px;
-  height: 48px;
+.aircraft--orange img {
+  transform: rotate(135deg);
+}
+.aircraft--blue img {
+  transform: rotate(100deg);
+}
+.aircraft--blue2 img {
+  transform: rotate(95deg);
 }
 
-.aircraft--blue {
-  /* 统一为 48×48，与红色飞机图标尺寸保持一致 */
-  width: 48px;
-  height: 48px;
+/* ====== 离线设备 Hover 信息面板（设计稿精确还原）===== */
+.aircraft-hover-panel {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 203px;
+  height: 69px;
+  background: rgba(184, 184, 184, 0.4);
+  border-radius: 4px;
+  border: 1px solid #626262;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.3);
+  padding: 8px 12px;
+  z-index: 20;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  pointer-events: none;
+  color: #fff;
+  font-family: 'MiSans-Regular', 'Microsoft YaHei', sans-serif;
+}
+
+/* hover 时显示面板 */
+.aircraft--gray:hover .aircraft-hover-panel {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 面板整体：flex 纵向布局，让下方内容区自动填充并垂直居中 */
+.aircraft-hover-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 上半部分：头部 + 分隔线（固定高度） */
+.aircraft-hover-panel__top {
+  flex-shrink: 0;
+}
+
+/* 下半部分：信息行区域（自动填充剩余空间，仅垂直居中，保持左对齐） */
+.aircraft-hover-panel__bottom {
+  flex: 1;
+  display: flex;
+  align-items: center; /* 垂直居中 */
+}
+
+/* 面板头部：名称 + 状态（与下方信息行左右对齐） */
+.aircraft-hover-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* 不设 padding-left：让"08号无人机"与下方竖线左端对齐（均在内容区最左侧），
+     "离线"仍贴右侧不变 */
+}
+
+.aircraft-hover-panel__name {
+  font-family: 'MiSans', 'MiSans', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: #ffffff;
+  text-align: center;
+  font-style: normal;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.aircraft-hover-panel__status {
+  font-family: 'MiSans', 'MiSans', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: #ffffff;
+  text-align: center;
+  font-style: normal;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+/* 分隔线：贯穿面板全宽，无前后间距 */
+.aircraft-hover-panel__divider {
+  height: 1px;
+  background: rgba(198, 198, 198, 0.5);
+  border-radius: 0;
+  margin: 6px -12px; /* 抵消面板左右 padding，实现闭环 */
+}
+
+/* 信息行 */
+.aircraft-hover-panel__info {
+  display: flex;
+  align-items: center;
+  width: 100%; /* 占满内容区，配合下方 time 的 margin-left:auto，
+                            将时间值推到最右端，与上方"离线"右端对齐 */
+  white-space: nowrap;
+}
+
+/* 竖线装饰：与上方"08号无人机"文字左端对齐，与右侧"离线时间："间隔 4px */
+.aircraft-hover-panel__bar {
+  width: 2px;
+  height: 8px;
+  background: #b7b7b7;
+  border-radius: 0;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+/* "离线时间："标签 */
+.aircraft-hover-panel__label {
+  font-family: 'MiSans', 'MiSans', sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  color: #ffffff;
+  text-align: left;
+  font-style: normal;
+  text-transform: none;
+  flex-shrink: 0;
+}
+
+/* 日期时间值 */
+.aircraft-hover-panel__time {
+  font-family: 'MiSans', 'MiSans', sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  color: #ffffff;
+  text-align: left;
+  font-style: normal;
+  text-transform: none;
+  /* 将时间值推至行尾，与上方头部的"离线"状态右端对齐；
+     左侧"竖线 + 离线时间："则与"08号无人机"左端对齐，
+     从而实现两行文案左右两端对齐 */
+  margin-left: auto;
+}
+
+/* ====== 在线设备 Hover 信息面板（蓝色，设计稿精确还原） ====== */
+.aircraft-info-panel {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 229px;
+  height: 117px;
+  background: rgba(75, 188, 249, 0.4);
+  border-radius: 4px;
+  border: 1px solid rgba(75, 188, 249, 1);
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  pointer-events: none;
+  color: #fff;
+  font-family: 'MiSans-Regular', 'Microsoft YaHei', sans-serif;
+  /* 整体 flex 纵向布局：顶部固定，底部三行自动填充并垂直居中 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* hover 时显示：所有非 gray 的在线飞行器 */
+.aircraft--draggable:not(.aircraft--gray):hover .aircraft-info-panel {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 顶部：标题行 + 分隔线（固定高度） */
+.aircraft-info-panel__top {
+  flex-shrink: 0;
+}
+
+/* 标题行：名称在左，电量/信号指示器在右。
+   - 固定 height（非 min-height）确保空间不被放大后的图标撑高，
+     保持上半部分高度与离线面板对齐；
+   - align-items:center 让图标+文字在固定高度内垂直居中；
+   - overflow:visible 允许旋转图标视觉溢出但保持对称居中。 */
+.aircraft-info-panel__header {
+  display: flex;
+  align-items: center;
+  margin: 8px 9px 0;
+  height: 18px;
+  overflow: visible;
+}
+
+.aircraft-info-panel__name {
+  font-size: 12px;
+  color: #fff;
+  white-space: nowrap;
+  line-height: 16px;
+  /* 将指示器推至右侧 */
+  margin-right: auto;
+}
+
+.aircraft-info-panel__indicators {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+/* 提升特异性以覆盖 .aircraft img (0,1,1) 和 .aircraft--{color} img (0,2,1) 规则。
+   选择器 .aircraft-info-panel img.aircraft-info-panel__battery-icon = (0,2,1)，
+   与 .aircraft--red img 同特异性，但本规则定义在其后，故优先级更高。
+   battery-mid.png 原图为横向电池（比例约 15:9）：
+   - width/height 设为 15×9 匹配原图比例，object-fit:contain 完整铺满；
+   - rotate(-90deg) 旋转为竖向，视觉占位 9×15；
+   - transform 不影响布局，故用左右各 -3px 负 margin 将布局宽度从 15px
+     收缩回 9px，避免与"46%"文字间距过大。 */
+.aircraft-info-panel img.aircraft-info-panel__battery-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 12px;
+  object-fit: contain;
+  transform: rotate(-90deg);
+  margin-left: -4px;
+  margin-right: -4px;
+}
+
+.aircraft-info-panel__battery-text {
+  font-size: 12px;
+  color: #fff;
+  white-space: nowrap;
+  line-height: 16px;
+}
+
+.aircraft-info-panel__signal-icon {
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+/* 分隔线：贯穿面板全宽 */
+.aircraft-info-panel__divider {
+  height: 1px;
+  background: rgba(75, 188, 249, 0.5);
+  margin: 6px 1px 0;
+}
+
+/* 底部：位置/速度/模式+状态 三行，垂直居中填充剩余空间 */
+.aircraft-info-panel__bottom {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 信息行 */
+.aircraft-info-panel__row {
+  display: flex;
+  align-items: center;
+  margin-left: 16px;
+  white-space: nowrap;
+}
+
+/* 竖线装饰条（青色） */
+.aircraft-info-panel__bar {
+  width: 2px;
+  height: 8px;
+  background: rgba(138, 248, 234, 1);
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.aircraft-info-panel__label {
+  font-size: 12px;
+  color: #fff;
+  line-height: 16px;
+  flex-shrink: 0;
+}
+
+.aircraft-info-panel__value {
+  font-size: 12px;
+  color: #fff;
+  line-height: 16px;
+  margin-left: 8px;
+}
+
+/* 双列行（模式 + 状态）：第二组竖线与前一组保持 73px 间隔 */
+.aircraft-info-panel__row--dual .aircraft-info-panel__bar--gap {
+  margin-left: 73px;
 }
 
 .aircraft--red {
@@ -146,27 +616,27 @@
   top: 6.8%;
 }
 
-.aircraft--gray {
-  left: 61.8%;
-  top: 13.9%;
-}
-
-.aircraft--yellow {
-  left: 51.1%;
-  top: 57.3%;
+.aircraft--orange {
+  left: 68.8%;
+  top: 22%;
 }
 
 .aircraft--blue {
-  left: 32.2%;
-  top: 69%;
+  left: 44.6%;
+  top: 35.4%;
+}
+
+.aircraft--blue2 {
+  left: 33.7%;
+  top: 71.5%;
 }
 
 /* ====== 底部操作栏 ====== */
 .map-footer {
   position: absolute;
   right: clamp(80px, 5.2vw, 100px);
-  bottom: clamp(8px, .89vw, 17px);
-  left: clamp(8px, .83vw, 16px);
+  bottom: clamp(8px, 0.89vw, 17px);
+  left: clamp(8px, 0.83vw, 16px);
   z-index: 5;
   display: flex;
   align-items: end;
@@ -175,7 +645,7 @@
 
 .emergency-actions {
   display: flex;
-  gap: clamp(3px, .42vw, 8px);
+  gap: clamp(3px, 0.42vw, 8px);
 }
 
 .emergency-actions button {
@@ -184,7 +654,7 @@
   border: 0;
   color: #fff;
   background: url('../../assets/images/home/emergency-btn-bg.png') center / 100% 100%;
-  font-size: clamp(6px, .63vw, 12px);
+  font-size: clamp(6px, 0.63vw, 12px);
 }
 
 .emergency-actions .danger {
@@ -195,7 +665,7 @@
   display: grid;
   justify-items: center;
   color: #ffffff66;
-  font-size: clamp(7px, .73vw, 14px);
+  font-size: clamp(7px, 0.73vw, 14px);
   /* 比例尺宽度现由 MapScale 组件根据缩放级别动态计算并内联设置 */
 }
 
