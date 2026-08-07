@@ -87,8 +87,8 @@ export const MAPLIBRE_BASEMAPS: Record<MapBasemap, StyleEntry> = {
   },
 }
 
-/** 默认底图样式 */
-export const MAPLIBRE_DEFAULT_BASEMAP: MapBasemap = 'dark'
+/** 默认底图样式（卫星影像） */
+export const MAPLIBRE_DEFAULT_BASEMAP: MapBasemap = 'satellite'
 
 /**
  * 兼容旧引用：导出默认样式 URL。

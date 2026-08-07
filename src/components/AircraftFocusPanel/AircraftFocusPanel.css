@@ -1,0 +1,551 @@
+/**
+ * AircraftFocusPanel 样式
+ * 设计稿：.box_10，固定 229×569px，含视频画面、变焦控制、云台参数、设备详情
+ */
+
+/* ====== 面板容器（flex列布局，支持 margin-top:auto 垂直居中子区块）====== */
+.aircraft-focus-panel {
+  position: absolute;
+  /* left/top 由组件内联 style 根据 aircraftPosition 动态计算 */
+  width: 229px;
+  height: 569px;
+  z-index: 50;
+  /* 面板背景：纯样式（半透明青蓝 + 纯色边框） */
+  background: rgba(75, 188, 249, 0.4);
+  border: 1px solid #4bbcF9;
+  border-radius: 4px;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-family: 'MiSans-Regular', 'Microsoft YaHei', sans-serif;
+  /* Flex列布局：让子元素垂直排列，支持 margin-top:auto 居中底部区块 */
+  display: flex;
+  flex-direction: column;
+/* 入场动画：从右侧滑入 + 淡入（translateY(0) 保持内联 top 计算） */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(40px);
+  transition:
+    transform 0.25s ease,
+    opacity 0.25s ease,
+    visibility 0.25s ease;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+/* 可见态：滑入 + 显示 */
+.aircraft-focus-panel--visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+/* ====== 标题栏（group_5）====== */
+.aircraft-focus-panel__header {
+  display: flex;
+  align-items: center;
+  height: 20px;
+  margin: 8px 0 0 16px;
+  width: 197px;
+}
+
+.aircraft-focus-panel__name {
+  font-size: 14px;
+  color: #fff;
+  white-space: nowrap;
+  /* 使用 flex 友好的行高，避免 line-height 撑高影响垂直居中 */
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  /* 将右侧指示器/关闭推到行尾 */
+  margin-right: auto;
+}
+
+.aircraft-focus-panel__indicators {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+  height: 100%;
+}
+
+.aircraft-focus-panel__battery-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: block;
+}
+
+.aircraft-focus-panel__battery-text {
+  font-size: 12px;
+  color: #fff;
+  white-space: nowrap;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.aircraft-focus-panel__signal-icon {
+  width: 15px;
+  height: 14px;
+  object-fit: contain;
+  display: block;
+}
+
+/* 关闭按钮框：20×20，圆角边框 */
+.aircraft-focus-panel__close {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #fff;
+  border-radius: 2px;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.aircraft-focus-panel__close-x {
+  position: relative;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+}
+
+/* × 由两条 45° 线段组成：旋转后的水平线 + 垂直线 */
+.aircraft-focus-panel__close-x::before,
+.aircraft-focus-panel__close-x::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 1.5px;
+  background: #fff;
+  border-radius: 1px;
+  transform-origin: center;
+}
+
+.aircraft-focus-panel__close-x::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.aircraft-focus-panel__close-x::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.aircraft-focus-panel__close:hover {
+  background: rgba(75, 188, 249, 0.2);
+}
+
+.aircraft-focus-panel__close:hover .aircraft-focus-panel__close-x::before,
+.aircraft-focus-panel__close:hover .aircraft-focus-panel__close-x::after {
+  background: #fff;
+}
+
+/* ====== 分隔线 ====== */
+.aircraft-focus-panel__separator {
+  width: 227px;
+  height: 1px;
+  background: rgba(75, 188, 249, 0.5);
+  margin: 8px 0 0 1px;
+  flex-shrink: 0;
+}
+
+/* ====== 视频画面（image_3）====== */
+.aircraft-focus-panel__video {
+  width: 213px;
+  height: 213px;
+  margin: 8px 0 0 8px;
+  background: #000;
+  border: 1px solid rgba(75, 188, 249, 0.3);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* 视频回放流：铺满容器并保持比例 */
+.aircraft-focus-panel__video-stream {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+/* ====== 变焦区域（+/- + 倍数按钮 + 右侧罗盘） ====== */
+.aircraft-focus-panel__zoom-area {
+  display: flex;
+  align-items: center;
+  margin: 8px 0 0 8px;
+}
+
+/* 左侧：变焦控制行 + 倍数按钮行 */
+.aircraft-focus-panel__zoom-left {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  flex-shrink: 0;
+}
+
+/* ====== 方向操作罗盘（与视频区域右对齐，在右侧空间内居中）====== */
+.aircraft-focus-panel__compass {
+  position: relative;
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 8px;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    rgba(100, 200, 255, 0.35) 0%,
+    rgba(60, 180, 240, 0.25) 40%,
+    rgba(40, 160, 220, 0.15) 70%,
+    transparent 100%
+  );
+  border: 1.5px solid rgba(120, 210, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  overflow: hidden;
+}
+
+/* ====== 圆环分割线容器（X形对角线，仅限圆环内部——不进入内圆）====== */
+.aircraft-focus-panel__compass-dividers {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  /* 外圆裁切 */
+  border-radius: 50%;
+  overflow: hidden;
+  /* 内圆遮罩：用 radial-gradient 隐藏中心 44px 范围（内圆直径，适中大小）*/
+  -webkit-mask:
+    radial-gradient(circle at 50% 50%, transparent 21.5px, black 22px),
+    radial-gradient(circle at 50% 50%, black 44.5px, transparent 45px);
+  -webkit-mask-composite: source-in;
+  mask:
+    radial-gradient(circle at 50% 50%, transparent 21.5px, black 22px),
+    radial-gradient(circle at 50% 50%, black 44.5px, transparent 45px);
+  mask-composite: intersect;
+}
+
+/* 分割线基础样式：长度=圆的直径×√2，确保从边缘到边缘，由mask裁切为圆环段 */
+.aircraft-focus-panel__compass-dividers::before,
+.aircraft-focus-panel__compass-dividers::after {
+  content: '';
+  position: absolute;
+  background: #11A7D1; /* 青蓝色，远看近看都清晰 */
+  width: 130px; /* 90 × √2 ≈ 127，取130确保完全覆盖 */
+  height: 2px;
+  left: 50%;
+  top: 50%;
+}
+
+/* \ 对角线：左上↘右下 */
+.aircraft-focus-panel__compass-dividers::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* / 对角线：右上↙左下 */
+.aircraft-focus-panel__compass-dividers::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/* ====== 扇形区域：4个方向点击区域（与 +/- / 2x 按钮风格一致）====== */
+.aircraft-focus-panel__sector {
+  position: absolute;
+  inset: 0;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 默认背景：与 2x 按钮一致 */
+  background: rgba(196, 232, 255, 0.1);
+  box-shadow: inset 0 0 20px rgba(60, 232, 255, 0.8);
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+/* 扇形悬停效果：与 2x 按钮 hover 一致 */
+.aircraft-focus-panel__sector:hover {
+  background: rgba(60, 232, 255, 0.2);
+}
+
+/* 扇形按下/激活效果：与 2x 按钮 active 一致 */
+.aircraft-focus-panel__sector:active,
+.aircraft-focus-panel__sector--active {
+  background: rgba(60, 232, 255, 0.3);
+  box-shadow:
+    inset 0 0 20px rgba(60, 232, 255, 0.9),
+    0 0 8px rgba(60, 232, 255, 0.4);
+}
+
+/* ====== 各扇区裁剪为对应扇形（由罗盘 border-radius:50% + overflow:hidden 自动裁切外圆弧）====== */
+
+/* 上扇区 ▲：中心点 → 左上 → 右上（上半圆，被外圆裁切为半圆扇形）*/
+.aircraft-focus-panel__sector--up {
+  clip-path: polygon(50% 50%, 0% 0%, 100% 0%);
+}
+
+/* 右扇区 ►：中心点 → 右上 → 右下（右半圆）*/
+.aircraft-focus-panel__sector--right {
+  clip-path: polygon(50% 50%, 100% 0%, 100% 100%);
+}
+
+/* 下扇区 ▼：中心点 → 右下 → 左下（下半圆）*/
+.aircraft-focus-panel__sector--down {
+  clip-path: polygon(50% 50%, 100% 100%, 0% 100%);
+}
+
+/* 左扇区 ◄：中心点 → 左下 → 左上（左半圆）*/
+.aircraft-focus-panel__sector--left {
+  clip-path: polygon(50% 50%, 0% 100%, 0% 0%);
+}
+
+/* ====== 扇形内方向箭头（位于圆环区域中间）====== */
+.aircraft-focus-panel__compass-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  pointer-events: none;
+}
+
+/* 上箭头 ▲：上半区圆环垂直水平居中（环中点11.5px，箭头重心偏移≈6px）*/
+.aircraft-focus-panel__compass-arrow--up {
+  top: 5px; /* 圆环中点居中 */
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 6px 10px 6px;
+  border-color: transparent transparent rgba(255, 255, 255, 0.95) transparent;
+}
+
+/* 右箭头 ►：右半区圆环垂直水平居中 */
+.aircraft-focus-panel__compass-arrow--right {
+  right: 5px; /* 圆环中点居中 */
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 6px 0 6px 10px;
+  border-color: transparent transparent transparent rgba(255, 255, 255, 0.95);
+}
+
+/* 下箭头 ▼：下半区圆环垂直水平居中 */
+.aircraft-focus-panel__compass-arrow--down {
+  bottom: 5px; /* 圆环中点居中 */
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 10px 6px 0 6px;
+  border-color: rgba(255, 255, 255, 0.95) transparent transparent transparent;
+}
+
+/* 左箭头 ◄：左半区圆环垂直水平居中 */
+.aircraft-focus-panel__compass-arrow--left {
+  left: 5px; /* 圆环中点居中 */
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 6px 10px 6px 0;
+  border-color: transparent rgba(255, 255, 255, 0.95) transparent transparent;
+}
+
+/* 罗盘中心圆环（不透明实心背景完全遮挡扇区hover效果 + 边框）*/
+.aircraft-focus-panel__compass-center {
+  position: absolute;
+  /* 居中定位：关键！确保完全覆盖中心区域 */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(120, 210, 255, 0.55);
+  /* 不透明实心背景：与罗盘 .compass 的 radial-gradient 在内圆范围的颜色一致 */
+  background: #3a8cb8; /* 完全不透明，彻底遮挡下方扇区背景变化 */
+  pointer-events: none;
+  z-index: 13;
+}
+
+/* ====== 变焦控制（group_7）====== */
+.aircraft-focus-panel__zoom-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+}
+
+/* 变焦框（section_5）：108×40，内发光 */
+.aircraft-focus-panel__zoom-frame {
+  display: flex;
+  align-items: center;
+  width: 108px;
+  height: 40px;
+  background: rgba(196, 232, 255, 0.1);
+  border: 1px solid rgba(17, 167, 209, 1);
+  border-radius: 2px;
+  box-shadow: inset 0 0 20px rgba(60, 232, 255, 0.8);
+}
+
+.aircraft-focus-panel__zoom-side {
+  flex: 1;
+  height: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.aircraft-focus-panel__zoom-side:hover {
+  background: rgba(60, 232, 255, 0.15);
+}
+
+/* "-"号 */
+.aircraft-focus-panel__zoom-minus::before {
+  content: '';
+  display: block;
+  width: 12px;
+  height: 2px;
+  background: #fff;
+}
+
+/* "+"号 */
+.aircraft-focus-panel__zoom-plus::before,
+.aircraft-focus-panel__zoom-plus::after {
+  content: '';
+  position: absolute;
+  background: #fff;
+}
+
+.aircraft-focus-panel__zoom-plus {
+  position: relative;
+  width: 12px;
+  height: 12px;
+}
+
+.aircraft-focus-panel__zoom-plus::before {
+  width: 12px;
+  height: 2px;
+  top: 5px;
+  left: 0;
+}
+
+.aircraft-focus-panel__zoom-plus::after {
+  width: 2px;
+  height: 12px;
+  top: 0;
+  left: 5px;
+}
+
+/* 中间竖线（box_11） */
+.aircraft-focus-panel__zoom-divider {
+  width: 2px;
+  height: 40px;
+  background: rgba(17, 167, 209, 1);
+  flex-shrink: 0;
+}
+
+/* ====== 变焦倍数按钮组（group_8）====== */
+.aircraft-focus-panel__zoom-levels {
+  display: flex;
+  gap: 6px;
+  height: 32px;
+}
+
+.aircraft-focus-panel__zoom-level {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(17, 167, 209, 1);
+  border-radius: 2px;
+  background: rgba(196, 232, 255, 0.1);
+  box-shadow: inset 0 0 20px rgba(60, 232, 255, 0.8);
+  color: #fff;
+  font-size: 11px;
+  font-family: 'MiSans-Regular', 'Microsoft YaHei', sans-serif;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.aircraft-focus-panel__zoom-level:hover {
+  background: rgba(60, 232, 255, 0.2);
+}
+
+.aircraft-focus-panel__zoom-level--active {
+  background: rgba(60, 232, 255, 0.3);
+  box-shadow:
+    inset 0 0 20px rgba(60, 232, 255, 0.9),
+    0 0 8px rgba(60, 232, 255, 0.4);
+}
+
+/* ====== 区块标题（云台参数 / 设备详情）====== */
+.aircraft-focus-panel__section-title {
+  font-size: 14px;
+  font-family: 'MiSans-Demibold', 'MiSans', 'Microsoft YaHei', sans-serif;
+  font-weight: 600;
+  color: #fff;
+  margin: 8px 0 0 16px;
+  line-height: 20px;
+}
+
+/* 设备详情区块：用 margin-top:auto 将整个区块（含上方分隔线）垂直居中于剩余空间 */
+.aircraft-focus-panel__section-title:last-of-type,
+/* 最后一个分隔线（设备详情上方的那条）也推下去，确保整个区块一起移动 */
+.aircraft-focus-panel__separator:last-of-type {
+  margin-top: auto;
+}
+
+/* ====== 信息行 ====== */
+.aircraft-focus-panel__info-row {
+  display: flex;
+  align-items: center;
+  margin: 8px 16px 0 16px; /* 左右统一 16px 边距，确保对称 */
+  height: 16px;
+  white-space: nowrap;
+}
+
+.aircraft-focus-panel__info-row--last {
+  margin: 8px 16px 16px 16px; /* 左右统一 16px 边距 */
+}
+
+.aircraft-focus-panel__bar {
+  width: 2px;
+  height: 8px;
+  background: rgba(138, 248, 234, 1);
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.aircraft-focus-panel__label {
+  font-size: 12px;
+  color: #fff;
+  line-height: 16px;
+  flex-shrink: 0;
+}
+
+.aircraft-focus-panel__value {
+  font-size: 12px;
+  color: #fff;
+  line-height: 16px;
+  margin-left: 8px;
+}
+
+/* 双列行（俯仰角/偏航角）：左右两组文案布局 */
+/* 注意：不使用 justify-content: space-between（会把所有6个子元素均匀分布） */
+/* 改用 margin-left: auto 将第二组整体推到右侧 */
+
+/* 双列行：第二组的竖线用 auto 推到右侧，实现两组 space-between 效果 */
+.aircraft-focus-panel__bar--gap {
+  margin-left: auto; /* 关键：将第二组（gap + 偏航角 + 12）推到行尾 */
+}

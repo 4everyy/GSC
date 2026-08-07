@@ -146,16 +146,37 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
     setExpandedIndex((prev) => (prev === index ? null : index))
   }
 
-  // 全选 / 全不选联动
-  const isAllSelected = selectedDevices.size === deviceList.length
-  const isIndeterminate = selectedDevices.size > 0 && selectedDevices.size < deviceList.length
+  // 筛选后的可见设备（保留原始 index 以维持选中/展开等状态一致性）
+  const filteredDevices = deviceList
+    .map((device, index) => ({ device, index }))
+    .filter(({ device }) => {
+      // 类型筛选：当前 mock 数据均为无人机，选择其他类型时结果为空
+      if (typeFilter !== '请选择' && typeFilter !== '无人机') return false
+      // 状态筛选：按设备状态文字精确匹配
+      if (statusFilter !== '请选择' && device.statusText !== statusFilter) return false
+      return true
+    })
+
+  // 全选 / 全不选联动（作用于当前筛选后的可见列表）
+  const visibleSelectedCount = filteredDevices.filter(({ index }) =>
+    selectedDevices.has(index),
+  ).length
+  const isAllSelected =
+    filteredDevices.length > 0 && visibleSelectedCount === filteredDevices.length
+  const isIndeterminate =
+    visibleSelectedCount > 0 && visibleSelectedCount < filteredDevices.length
 
   const toggleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedDevices(new Set())
-    } else {
-      setSelectedDevices(new Set(deviceList.map((_, i) => i)))
-    }
+    setSelectedDevices((prev) => {
+      const next = new Set(prev)
+      // 当前可见项已全部选中 → 取消这些项；否则全部选中
+      if (filteredDevices.length > 0 && visibleSelectedCount === filteredDevices.length) {
+        filteredDevices.forEach(({ index }) => next.delete(index))
+      } else {
+        filteredDevices.forEach(({ index }) => next.add(index))
+      }
+      return next
+    })
   }
 
   const toggleDropdown = (which: 'status' | 'type') => {
@@ -167,6 +188,16 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
       setStatusFilter(value)
     } else {
       setTypeFilter(value)
+    }
+    setOpenDropdown(null)
+  }
+
+  // 清除筛选：重置为占位文本并关闭下拉
+  const clearFilter = (which: 'status' | 'type') => {
+    if (which === 'status') {
+      setStatusFilter('请选择')
+    } else {
+      setTypeFilter('请选择')
     }
     setOpenDropdown(null)
   }
@@ -242,6 +273,30 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
           <span className={statusFilter !== '请选择' ? '' : 'device-panel__select-placeholder'}>
             {statusFilter}
           </span>
+          {statusFilter !== '请选择' && (
+            <button
+              type="button"
+              className="device-panel__select-clear"
+              onClick={(e) => {
+                e.stopPropagation()
+                clearFilter('status')
+              }}
+              aria-label="清除状态筛选"
+            >
+              <svg
+                viewBox="0 0 12 12"
+                width="8"
+                height="8"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <line x1="2" y1="2" x2="10" y2="10" />
+                <line x1="10" y1="2" x2="2" y2="10" />
+              </svg>
+            </button>
+          )}
           <img src={deviceImages.dropdown} alt="" />
           {openDropdown === 'status' && (
             <div className="device-panel__dropdown">
@@ -268,6 +323,30 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
           <span className={typeFilter !== '请选择' ? '' : 'device-panel__select-placeholder'}>
             {typeFilter}
           </span>
+          {typeFilter !== '请选择' && (
+            <button
+              type="button"
+              className="device-panel__select-clear"
+              onClick={(e) => {
+                e.stopPropagation()
+                clearFilter('type')
+              }}
+              aria-label="清除类型筛选"
+            >
+              <svg
+                viewBox="0 0 12 12"
+                width="8"
+                height="8"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <line x1="2" y1="2" x2="10" y2="10" />
+                <line x1="10" y1="2" x2="2" y2="10" />
+              </svg>
+            </button>
+          )}
           <img src={deviceImages.dropdown} alt="" />
           {openDropdown === 'type' && (
             <div className="device-panel__dropdown">
@@ -292,8 +371,19 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
       <div className="device-panel__body">
         <div className="device-panel__list-wrapper">
           <div className="device-panel__list">
-            {deviceList.map((device, index) => {
-              const isSelected = selectedDevices.has(index)
+            {filteredDevices.length === 0 ? (
+              <div className="device-panel__list-empty">
+                <img
+                  className="device-panel__list-empty-icon"
+                  src={deviceImages.noData}
+                  alt="暂无设备"
+                  draggable={false}
+                />
+                <span className="device-panel__list-empty-text">暂无设备</span>
+              </div>
+            ) : (
+              filteredDevices.map(({ device, index }) => {
+                const isSelected = selectedDevices.has(index)
               const rowState = isSelected ? 'selected' : hoveredIndex === index ? 'hover' : 'normal'
               const bgImage =
                 rowState === 'selected'
@@ -527,7 +617,8 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                   )}
                 </div>
               )
-            })}
+              })
+            )}
           </div>
         </div>
       </div>

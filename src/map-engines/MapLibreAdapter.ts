@@ -102,17 +102,39 @@ function circleCoordinates(center: LngLat, radiusMeters: number, steps = 64): nu
   return coords
 }
 
-/** 把像素锚点转换为 MapLibre 的 Anchor 选项（像素中心/九宫格） */
-function pixelToAnchorString(anchor?: { x: number; y: number }): MLAnchorString | undefined {
-  if (!anchor) return undefined
-  // 以 1px 为容差判断对齐方向
-  const cx = anchor.x
-  const cy = anchor.y
-  // 这里无法知道元素尺寸，故采用"中心近似"策略：
-  // 若调用方传了像素锚点，一般意味着中心对齐，返回 'center'；
-  // 极少数情况需精确像素偏移时，业务侧可直接传 element 并在 CSS 中用 margin 调整。
-  void cx
-  void cy
+/**
+ * 根据像素锚点（相对元素左上角）与元素尺寸，推断最匹配的 MapLibre 九宫格锚点字符串。
+ *
+ * MapLibre 不支持像素级锚点，只支持九宫格 + offset。
+ * 九宫格锚点已能覆盖绝大多数业务需求（图钉底部、标签中心等），
+ * 避免使用 marker.setOffset() —— 实测在某些浏览器/合成层下 setOffset
+ * 会让 Marker 子元素被拉伸变形（如圆点变成椭圆）。
+ *
+ * 无法判断（负值锚点 / 无法测量尺寸）时返回 'center'，保持兼容。
+ */
+function pickAnchorString(
+  anchor: { x: number; y: number },
+  width: number,
+  height: number,
+): MLAnchorString {
+  // 负值锚点（如距离标签的"上方偏移"）视为语义偏移，保持 center
+  if (anchor.x < 0 || anchor.y < 0) return 'center'
+  const ax = anchor.x
+  const ay = anchor.y
+  const nearTop = ay <= height * 0.15
+  const nearBottom = ay >= height * 0.85
+  const nearLeft = ax <= width * 0.15
+  const nearRight = ax >= width * 0.85
+  const centerH = !nearLeft && !nearRight
+  const centerV = !nearTop && !nearBottom
+  if (nearTop && centerH) return 'top'
+  if (nearBottom && centerH) return 'bottom'
+  if (centerV && nearLeft) return 'left'
+  if (centerV && nearRight) return 'right'
+  if (nearTop && nearLeft) return 'top-left'
+  if (nearTop && nearRight) return 'top-right'
+  if (nearBottom && nearLeft) return 'bottom-left'
+  if (nearBottom && nearRight) return 'bottom-right'
   return 'center'
 }
 
@@ -174,11 +196,23 @@ export class MapLibreAdapter implements MapAdapter {
   // ============ 覆盖物：标注 ============
 
   addMarker(id: string, lngLat: LngLat, opts?: MarkerOptions): MarkerHandle {
-    const anchorStr = pixelToAnchorString(opts?.anchor)
+    // 选择最匹配的 MapLibre 九宫格锚点：
+    // - 提供自定义元素 + 像素锚点：测量元素尺寸后推断（图钉底部中心 → 'bottom'）
+    // - 仅提供像素锚点：无法测量尺寸，回退 'center'
+    // - 未提供：MapLibre 默认 'center'
+    let resolvedAnchor: MLAnchorString | undefined
+    if (opts?.anchor && opts?.element) {
+      const w = opts.element.offsetWidth
+      const h = opts.element.offsetHeight
+      resolvedAnchor = w > 0 && h > 0 ? pickAnchorString(opts.anchor, w, h) : 'center'
+    } else if (opts?.anchor) {
+      resolvedAnchor = 'center'
+    }
+
     const options: MLMarkerOptions = {
       draggable: opts?.draggable ?? false,
       ...(opts?.element ? { element: opts.element } : {}),
-      ...(anchorStr ? { anchor: anchorStr } : {}),
+      ...(resolvedAnchor ? { anchor: resolvedAnchor } : {}),
     }
 
     const marker = new MLMarker(options).setLngLat([lngLat.lng, lngLat.lat]).addTo(this.map)
@@ -274,6 +308,8 @@ export class MapLibreAdapter implements MapAdapter {
         'line-color': opts?.color ?? '#3388ff',
         'line-width': opts?.width ?? 4,
         'line-opacity': opts?.opacity ?? 1,
+        // 虚线（测距橡皮筋预览）：与 line-cap:round 组合时首尾端点仍为圆头
+        ...(opts?.dash ? { 'line-dasharray': [2, 2] } : {}),
       },
     })
 
@@ -414,9 +450,18 @@ export class MapLibreAdapter implements MapAdapter {
     return () => this.map.off('contextmenu', fn)
   }
 
+  onMouseMove(handler: (lngLat: LngLat) => void): () => void {
+    const fn = (e: MLMapMouseEvent) => {
+      handler({ lng: e.lngLat.lng, lat: e.lngLat.lat })
+    }
+    this.map.on('mousemove', fn)
+    return () => this.map.off('mousemove', fn)
+  }
+
   // ============ 交互设置 ============
 
   setDefaultCursor(cursor: string): void {
+    // 空串表示恢复默认光标（测距模式退出等），MapLibre canvas 默认为空串
     this.map.getCanvas().style.cursor = cursor
   }
 

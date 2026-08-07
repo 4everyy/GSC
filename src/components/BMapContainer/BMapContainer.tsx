@@ -7,7 +7,6 @@ import {
   DEFAULT_MAP_OPTIONS,
   DEFAULT_MAP_TYPE,
   DEFAULT_MAP_ZOOM,
-  CLEAN_SATELLITE_STYLE,
 } from '../../config/map'
 import { BMapAdapter } from '../../map-engines/BMapAdapter'
 import type { MapEngineInstance } from '../../map-engines/types'

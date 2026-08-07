@@ -40,13 +40,15 @@
 .map-stage .view-controls,
 .map-stage .zoom-controls,
 .map-stage .map-footer,
+.map-stage .layer-panel,
 .map-stage .device-panel,
 .map-stage .mission-panel,
 .map-stage .alarm-info-panel,
 .map-stage .route-panel,
 .map-stage .aircraft,
 .map-stage .corner-marker,
-.map-stage .restricted-zone {
+.map-stage .restricted-zone,
+.map-stage .inspection-zone {
   pointer-events: auto;
 }
 
@@ -334,8 +336,9 @@
 .aircraft-hover-panel {
   position: absolute;
   left: calc(100% + 12px);
-  top: 50%;
-  transform: translateY(-50%);
+  /* 面板底部对齐飞机图标的垂直中心线（图标 48px 高，中心在 24px 处） */
+  top: 24px;
+  transform: translateY(-100%);
   width: 203px;
   height: 69px;
   background: rgba(184, 184, 184, 0.4);
@@ -467,8 +470,9 @@
 .aircraft-info-panel {
   position: absolute;
   left: calc(100% + 12px);
-  top: 50%;
-  transform: translateY(-50%);
+  /* 面板底部对齐飞机图标的垂直中心线（图标 48px 高，中心在 24px 处） */
+  top: 24px;
+  transform: translateY(-100%);
   width: 229px;
   height: 117px;
   background: rgba(75, 188, 249, 0.4);
@@ -501,10 +505,11 @@
 }
 
 /* 标题行：名称在左，电量/信号指示器在右。
-   - 固定 height（非 min-height）确保空间不被放大后的图标撑高，
-     保持上半部分高度与离线面板对齐；
-   - align-items:center 让图标+文字在固定高度内垂直居中；
-   - overflow:visible 允许旋转图标视觉溢出但保持对称居中。 */
+   - 保持固定 height:18px（紧凑视觉），放大的电池图标通过 overflow:visible 对称溢出，
+     不通过增加高度来"撑开"对齐空间；
+   - align-items:center 让所有元素按容器中心对齐；
+   - 信号偏下问题由 .aircraft-info-panel__signal-icon 的 display:block 单独修复
+     （消除 SVG 默认 inline baseline 的 descender 偏移），而非靠增加 header 高度。 */
 .aircraft-info-panel__header {
   display: flex;
   align-items: center;
@@ -532,19 +537,16 @@
 /* 提升特异性以覆盖 .aircraft img (0,1,1) 和 .aircraft--{color} img (0,2,1) 规则。
    选择器 .aircraft-info-panel img.aircraft-info-panel__battery-icon = (0,2,1)，
    与 .aircraft--red img 同特异性，但本规则定义在其后，故优先级更高。
-   battery-mid.png 原图为横向电池（比例约 15:9）：
-   - width/height 设为 15×9 匹配原图比例，object-fit:contain 完整铺满；
-   - rotate(-90deg) 旋转为竖向，视觉占位 9×15；
-   - transform 不影响布局，故用左右各 -3px 负 margin 将布局宽度从 15px
-     收缩回 9px，避免与"46%"文字间距过大。 */
+    battery-mid.png 原图为 24×24，内部电池图形本就竖向绘制（边界框 10×18）：
+    - 使用竖向盒模型 20×33，电池自然竖向显示（与设计稿一致，不再放大）；
+    - 必须显式 transform:none，覆盖父级 .aircraft--{color} img 的旋转规则
+      (rotate -45/45/100/95/135deg)，否则电池图标会被父级旋转成倾斜/横向。 */
 .aircraft-info-panel img.aircraft-info-panel__battery-icon {
   flex-shrink: 0;
   width: 20px;
-  height: 12px;
+  height: 33px;
   object-fit: contain;
-  transform: rotate(-90deg);
-  margin-left: -4px;
-  margin-right: -4px;
+  transform: none;
 }
 
 .aircraft-info-panel__battery-text {
@@ -557,6 +559,15 @@
 .aircraft-info-panel__signal-icon {
   flex-shrink: 0;
   margin-left: 4px;
+  /* 修复"信号偏下"：
+   - display:block 消除 SVG 作为 inline 元素在 flex 中的 baseline 残留；
+   - align-self:center 显式垂直居中；
+   - translateY(-2px) 视觉补偿——SVG 内 4 根信号条底部对齐到 viewBox 底部，
+     实心集中在下半部，视觉重心偏下，上移 2px 让其与电池图标/46%文字视觉对齐；
+   - 全程不增加 header/indicators 容器高度。 */
+  display: block;
+  align-self: center;
+  transform: translateY(-2px);
 }
 
 /* 分隔线：贯穿面板全宽 */
@@ -629,6 +640,216 @@
 .aircraft--blue2 {
   left: 33.7%;
   top: 71.5%;
+}
+
+/* ====== 巡检区域（高精度还原）===== */
+.inspection-zone {
+  position: absolute;
+  z-index: 1;
+  /* 精确还原：占据首页中心的小块区域（再次缩小至3/4） */
+  left: 38.75%;
+  top: 25.5%;
+  width: 22.5%;
+  height: 33%;
+  pointer-events: auto;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 拖拽进行中：改用 grabbing 光标 */
+.inspection-zone:active {
+  cursor: grabbing;
+}
+
+/* 巡检区域背景：半透明蓝色，精确匹配参考图 */
+.inspection-zone__bg {
+  position: absolute;
+  inset: 0;
+  background: rgba(25, 95, 145, 0.18);
+  border: 1.5px solid rgba(100, 175, 230, 0.45);
+  border-radius: 3px;
+  box-shadow:
+    0 0 15px rgba(45, 130, 200, 0.15),
+    inset 0 0 25px rgba(55, 150, 210, 0.08);
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    border-radius 0.2s ease,
+    border-color 0.2s ease;
+}
+
+/* Hover：巡检区域背景高亮 + 内发光 */
+.inspection-zone:hover .inspection-zone__bg {
+  background: rgba(32, 132, 186, 0.3);
+  border-color: rgba(135, 235, 255, 0.6);
+  border-radius: 0;
+  box-shadow: inset 0px 0px 12px 0px #87ebff;
+}
+
+/* 轨迹线 hover：加粗 + 加亮 */
+.inspection-zone__path {
+  transition:
+    stroke 0.2s ease,
+    stroke-width 0.2s ease,
+    filter 0.2s ease;
+}
+
+.inspection-zone:hover .inspection-zone__path {
+  stroke-width: 4.5;
+  filter: drop-shadow(0 0 3px rgba(135, 235, 255, 0.8));
+}
+
+.inspection-zone:hover .inspection-zone__path--flown {
+  stroke: #ffffff;
+}
+
+.inspection-zone:hover .inspection-zone__path--pending {
+  stroke: #6eff9a;
+}
+
+/* ====== 巡检区域 Hover 信息面板（蓝色，定位在区域右上角外上方）====== */
+.inspection-zone__panel {
+  position: absolute;
+  bottom: 100%; /* 面板底部对齐巡检区域顶部（悬浮在区域上方） */
+  right: -100px; /* 面板右边缘相对巡检区域右边缘向右偏移 100px */
+  margin-bottom: 8px;
+  z-index: 20;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.3);
+  background-color: rgba(75, 188, 249, 0.4);
+  border-radius: 4px;
+  width: 142px;
+  height: 93px;
+  border: 1px solid rgba(75, 188, 249, 1);
+  color: #fff;
+  font-family: 'MiSans-Regular', 'Microsoft YaHei', sans-serif;
+  /* 默认隐藏，hover 巡检区域时显示 */
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  pointer-events: none;
+  /* 整体 flex 纵向布局：标题+分隔线固定高度，body 自动填充剩余空间并垂直居中 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* hover 时显示面板 */
+.inspection-zone:hover .inspection-zone__panel {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 顶部容器：标题+分隔线，固定高度，不参与 body 的垂直居中分配
+   （完全复刻禁飞区 .block_7__top 的模式） */
+.inspection-zone__panel-top {
+  flex-shrink: 0;
+}
+
+/* 标题：01号巡检区 —— 完全复刻禁飞区 .text_8 的设计稿原始定位
+   （block 布局 + margin 定位，不使用 flex 撑高，保持设计稿原始视觉位置） */
+.inspection-zone__panel-title {
+  display: block;
+  width: 71px;
+  height: 19px;
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 14px;
+  margin: 9px 0 0 16px;
+}
+
+/* 分隔线：完全复刻禁飞区 .section_3 的 margin 模式 */
+.inspection-zone__panel-divider {
+  background-color: rgba(75, 188, 249, 0.5);
+  width: 140px;
+  height: 1px;
+  margin: 8px 0 0 1px;
+}
+
+/* Body：两行的容器，占满分隔线下方的剩余空间，整体垂直居中
+   （完全复刻禁飞区 .block_7__bottom 的模式） */
+.inspection-zone__panel-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 信息行：完全复刻禁飞区 .section_4/5/6 的模式
+   （flex + align-items:center，不设固定 height，让内容自然撑开） */
+.inspection-zone__panel-row {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* 面积行 */
+.inspection-zone__panel-row--area {
+  margin-left: 16px;
+}
+
+/* 关联任务行 */
+.inspection-zone__panel-row--task {
+  margin-left: 16px;
+}
+
+/* 竖线装饰条（青色）—— 完全复刻禁飞区 .box_13 */
+.inspection-zone__panel-bar {
+  background-color: rgba(138, 248, 234, 1);
+  width: 2px;
+  height: 8px;
+  flex-shrink: 0;
+}
+
+/* 标签（面积 / 关联任务）—— 不设固定 width，
+   让文字自适应宽度，避免"关联任务"4字溢出与后面的值重叠 */
+.inspection-zone__panel-label {
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 12px;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 12px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+/* 值（109m / 情报侦察）—— 完全复刻禁飞区 .text_10 */
+.inspection-zone__panel-value {
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 12px;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 12px;
+  margin-left: 8px;
+}
+
+/* 面积单位上标（²） */
+.inspection-zone__panel-sup {
+  color: rgba(255, 255, 255, 1);
+  font-size: 6px;
+  font-weight: normal;
+  white-space: nowrap;
+  line-height: 12px;
+  margin-left: 1px;
+  align-self: flex-start;
+}
+
+/* 轨迹线 SVG 容器：铺满巡检区域 */
+.inspection-zone__trajectories {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 /* ====== 底部操作栏 ====== */

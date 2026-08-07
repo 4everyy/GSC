@@ -16,6 +16,7 @@ import dropdown from './dropdown.png'
 import headerIcon from './header-icon.png'
 import iconBlue from './icon-blue.png'
 import loadFail from './load-fail.png'
+import noData from './no-data.png'
 import rowBgBlue from './row-bg-blue.png'
 import rowBgGray from './row-bg-gray.png'
 import rowBgOrange from './row-bg-orange.png'
@@ -42,6 +43,7 @@ export const deviceImages = {
   headerIcon,
   iconBlue,
   loadFail,
+  noData,
   rowBgBlue,
   rowBgGray,
   rowBgOrange,

@@ -12,7 +12,7 @@
  * - 切换引擎时 useMapEngine 自动销毁旧实例，业务组件通过 useEffect 依赖 adapter 变化自动重建覆盖物。
  */
 import { useState } from 'react'
-import { MAPLIBRE_BASEMAPS, MAPLIBRE_DEFAULT_BASEMAP, type MapBasemap } from '../../config/mapLibre'
+import { MAPLIBRE_BASEMAPS, MAPLIBRE_DEFAULT_BASEMAP } from '../../config/mapLibre'
 import { StatusHeader } from '../../components/StatusHeader/StatusHeader'
 import { MapToolbar } from '../../components/MapToolbar/MapToolbar'
 import { MissionPanel } from '../../components/MissionPanel/MissionPanel'
@@ -26,9 +26,9 @@ import { EngineSwitch } from '../../components/EngineSwitch/EngineSwitch'
 import { useMapEngine } from '../../hooks/useMapEngine'
 import { ALARM_TYPES } from '../../config/alarms'
 import { aircraft } from '../../config/aircraft'
-import { homeImages } from '../../assets/images/home'
 import batteryMidIcon from '../../assets/images/device/battery-mid.png'
 import { useDraggable, type DragPosition } from '../../hooks/useDraggable'
+import { AircraftFocusPanel } from '../../components/AircraftFocusPanel/AircraftFocusPanel'
 import './HomePage.css'
 
 // 飞机初始位置（百分比），与 HomePage.css 中 .aircraft--xxx 的 left/top 保持一致。
@@ -41,12 +41,19 @@ const AIRCRAFT_INITIAL_POSITIONS: DragPosition[] = [
   { x: 33.7, y: 71.5 }, // blue2 (02设备)
 ]
 
+// 巡检区域初始位置（百分比），与 HomePage.css 中 .inspection-zone 的 left/top 保持一致
+const INSPECTION_ZONE_INITIAL_POSITION: DragPosition = { x: 38.75, y: 25.5 }
+
 export function HomePage() {
   const [activeAlarm, setActiveAlarm] = useState<number | null>(null)
 
-  // MapLibre 底图模式（矢量暗色 / 卫星影像）。切换时通过 key 重建容器，
-  // 自动复用引擎切换机制：adapter 变化 → 业务覆盖物自动重建。
-  const [basemap, setBasemap] = useState<MapBasemap>(MAPLIBRE_DEFAULT_BASEMAP)
+  // 聚焦视图：双击无人机图标后显示设备详情面板（存储聚焦的飞机索引）
+  const [focusedAircraft, setFocusedAircraft] = useState<number | null>(null)
+  const handleAircraftDoubleClick = (index: number) => {
+    // 双击同一架飞机时切换关闭，双击不同飞机时切换目标
+    setFocusedAircraft((prev) => (prev === index ? null : index))
+  }
+  const handleCloseFocusPanel = () => setFocusedAircraft(null)
 
   // 地图引擎管理：engineType 决定渲染哪个 Container，adapter 供业务组件使用
   const { engineType, adapter, engineInstance, switchEngine, onEngineReady } =
@@ -68,6 +75,14 @@ export function HomePage() {
       storageKey: 'gcs:aircraft-positions',
     })
 
+  // 巡检区域拖拽：鼠标左键按住拖动整个巡检区域（含轨迹线）至首页任意位置
+  const { positions: inspectionZonePositions, onDragStart: onInspectionZoneDragStart } =
+    useDraggable({
+      count: 1,
+      initialPositions: [INSPECTION_ZONE_INITIAL_POSITION],
+      storageKey: 'gcs:inspection-zone-position',
+    })
+
   return (
     <main className="design-viewport" aria-label="无人机集群控制地面站">
       <div className="design-canvas">
@@ -76,9 +91,8 @@ export function HomePage() {
           <BMapContainer className="map-base" onReady={onEngineReady} autoLocate />
         ) : (
           <MapLibreContainer
-            key={basemap}
             className="map-base"
-            styleUrl={MAPLIBRE_BASEMAPS[basemap].url}
+            styleUrl={MAPLIBRE_BASEMAPS[MAPLIBRE_DEFAULT_BASEMAP].url}
             onReady={onEngineReady}
             autoLocate
           />
@@ -159,6 +173,92 @@ export function HomePage() {
             <span className="corner-marker corner-marker--bl" /> {/* 左下 (0%, 92%) */}
           </div>
           {false && <div className="restricted-zone restricted-zone--orange" />}
+
+          {/* 巡检区域：包含1条蛇形巡检轨迹线，支持拖拽移动 */}
+          <div
+            className="inspection-zone"
+            aria-label="巡检区域"
+            style={{
+              left: `${inspectionZonePositions[0].x}%`,
+              top: `${inspectionZonePositions[0].y}%`,
+            }}
+            onMouseDown={(e) => onInspectionZoneDragStart(0, e)}
+          >
+            {/* 半透明蓝色背景 */}
+            <div className="inspection-zone__bg" />
+
+            {/* Hover 信息面板（右上角）：01号巡检区 */}
+            <div className="inspection-zone__panel">
+              {/* 顶部：标题+分隔线（固定高度，完全复刻禁飞区 .block_7__top 结构） */}
+              <div className="inspection-zone__panel-top">
+                <span className="inspection-zone__panel-title">01号巡检区</span>
+                <div className="inspection-zone__panel-divider" />
+              </div>
+              <div className="inspection-zone__panel-body">
+                <div className="inspection-zone__panel-row inspection-zone__panel-row--area">
+                  <span className="inspection-zone__panel-bar" />
+                  <span className="inspection-zone__panel-label">面积</span>
+                  <span className="inspection-zone__panel-value">109m</span>
+                  <span className="inspection-zone__panel-sup">2</span>
+                </div>
+                <div className="inspection-zone__panel-row inspection-zone__panel-row--task">
+                  <span className="inspection-zone__panel-bar" />
+                  <span className="inspection-zone__panel-label">关联任务</span>
+                  <span className="inspection-zone__panel-value">情报侦察</span>
+                </div>
+              </div>
+            </div>
+
+            {/* SVG 轨迹线：viewBox 精确映射巡检区域内部坐标系 */}
+            <svg
+              className="inspection-zone__trajectories"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* 已飞行轨迹（白色）：从起点到路径中点 (50,50) */}
+              <path
+                className="inspection-zone__path inspection-zone__path--flown"
+                d="M 9,10
+                   L 91,10
+                   A 4 4 0 0 1 95,14
+                   L 95,26
+                   A 4 4 0 0 1 91,30
+                   L 9,30
+                   A 4 4 0 0 0 5,34
+                   L 5,46
+                   A 4 4 0 0 0 9,50
+                   L 50,50"
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth="3.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+              {/* 即将飞行轨迹（绿色）：从路径中点 (50,50) 到终点 */}
+              <path
+                className="inspection-zone__path inspection-zone__path--pending"
+                d="M 50,50
+                   L 91,50
+                   A 4 4 0 0 1 95,54
+                   L 95,66
+                   A 4 4 0 0 1 91,70
+                   L 9,70
+                   A 4 4 0 0 0 5,74
+                   L 5,86
+                   A 4 4 0 0 0 9,90
+                   L 91,90"
+                fill="none"
+                stroke="#00E570"
+                strokeWidth="3.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+          </div>
+
           {aircraft.map((item, index) => (
             <span
               className={`${item.className} aircraft--draggable`}
@@ -168,11 +268,12 @@ export function HomePage() {
                 top: `${aircraftPositions[index].y}%`,
               }}
               onMouseDown={(e) => onAircraftDragStart(index, e)}
+              onDoubleClick={() => handleAircraftDoubleClick(index)}
             >
               <img src={item.src} alt={item.label} draggable={false} />
               <span className="aircraft-label">{item.label}</span>
-              {/* 离线设备 Hover 面板（灰色） */}
-              {item.className.includes('gray') && (
+              {/* 离线设备 Hover 面板（灰色）—— 聚焦时隐藏，避免与聚焦面板同时出现 */}
+              {item.className.includes('gray') && focusedAircraft !== index && (
                 <div className="aircraft-hover-panel">
                   <div className="aircraft-hover-panel__top">
                     <div className="aircraft-hover-panel__header">
@@ -190,8 +291,8 @@ export function HomePage() {
                   </div>
                 </div>
               )}
-              {/* 在线设备 Hover 面板（蓝色，统一样式） */}
-              {!item.className.includes('gray') && (
+              {/* 在线设备 Hover 面板（蓝色，统一样式）—— 聚焦时隐藏，避免与聚焦面板同时出现 */}
+              {!item.className.includes('gray') && focusedAircraft !== index && (
                 <div className="aircraft-info-panel">
                   <div className="aircraft-info-panel__top">
                     <div className="aircraft-info-panel__header">
@@ -249,12 +350,21 @@ export function HomePage() {
             </span>
           ))}
 
-          <MapControls
-            adapter={adapter}
-            engineInstance={engineInstance}
-            basemap={basemap}
-            onBasemapChange={setBasemap}
-          />
+          {/* 聚焦视图面板：双击无人机图标后从图标右侧滑入，
+              图标正好卡在面板左边缘的垂直中心 */}
+          {focusedAircraft !== null && (
+            <AircraftFocusPanel
+              name={aircraft[focusedAircraft].label}
+              onClose={handleCloseFocusPanel}
+              visible
+              aircraftPosition={{
+                x: aircraftPositions[focusedAircraft].x,
+                y: aircraftPositions[focusedAircraft].y,
+              }}
+            />
+          )}
+
+          <MapControls adapter={adapter} />
 
           <footer className="map-footer">
             <div className="emergency-actions">

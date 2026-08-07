@@ -50,6 +50,8 @@ export interface PolylineOptions {
   glowColor?: string
   /** 光晕宽度倍数（相对 width，默认 3） */
   glowWidth?: number
+  /** 是否虚线（如测距橡皮筋预览）。MapLibre 用 line-dasharray，百度用 strokeStyle:dashed */
+  dash?: boolean
 }
 
 /** 圆形覆盖物创建选项 */
@@ -142,6 +144,8 @@ export interface MapAdapter {
   onMoveEnd(handler: (center: LngLat) => void): () => void
   /** 绑定右键事件（用于删除航点） */
   onContextMenu(handler: (lngLat: LngLat) => void): () => void
+  /** 绑定鼠标移动事件（用于测距橡皮筋预览等），返回取消绑定函数 */
+  onMouseMove(handler: (lngLat: LngLat) => void): () => void
 
   // ============ 交互设置 ============
   setDefaultCursor(cursor: string): void

@@ -282,6 +282,8 @@ export class BMapAdapter implements MapAdapter {
       strokeColor: color,
       strokeWeight: width,
       strokeOpacity: opacity,
+      // 虚线（测距橡皮筋预览）
+      ...(opts?.dash ? { strokeStyle: 'dashed' } : {}),
     })
     this.map.addOverlay(main)
     raws.push(main)
@@ -408,10 +410,24 @@ export class BMapAdapter implements MapAdapter {
     }
   }
 
+  onMouseMove(handler: (lngLat: LngLat) => void): () => void {
+    const fn = (e: BMapGL.MapEvent) => {
+      const pos = getEventPoint(e)
+      if (!pos) return
+      const wgs = bd09ToWgs84(pos.lng, pos.lat)
+      handler({ lng: wgs.lng, lat: wgs.lat })
+    }
+    this.map.addEventListener('mousemove', fn)
+    return () => {
+      this.map.removeEventListener('mousemove', fn)
+    }
+  }
+
   // ============ 交互设置 ============
 
   setDefaultCursor(cursor: string): void {
-    this.map.setDefaultCursor(cursor)
+    // 空串表示恢复默认光标（测距模式退出等），百度 setDefaultCursor 需显式 default
+    this.map.setDefaultCursor(cursor || 'default')
   }
 
   enableDoubleClickZoom(enabled: boolean): void {
