@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toolbarItems } from '../../config/toolbar'
 import { DeviceManagementPanel } from '../DeviceManagementPanel/DeviceManagementPanel'
 import './MapToolbar.css'
@@ -8,6 +8,26 @@ const FADE_MS = 500
 export function MapToolbar() {
   const [active, setActive] = useState(-1)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+
+  // 预加载 hover / active 背景图：首次 hover/click 时浏览器才开始下载这些图片，
+  // 下载完成前会闪现空白，产生"背景图片替换"的闪烁感。
+  // 组件挂载时用 Image() 提前拉取，后续切换即从缓存秒读。
+  useEffect(() => {
+    const urls = new Set<string>()
+    toolbarItems.forEach((item) => {
+      urls.add(item.background.hover)
+      urls.add(item.background.active)
+    })
+    const imgEls: HTMLImageElement[] = []
+    urls.forEach((url) => {
+      const img = new Image()
+      img.src = url
+      imgEls.push(img)
+    })
+    return () => {
+      imgEls.length = 0
+    }
+  }, [])
 
   // 设备面板：mounted 控制 DOM 是否存在；visible 控制淡入/淡出 class
   const [deviceMounted, setDeviceMounted] = useState(false)

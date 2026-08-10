@@ -142,17 +142,20 @@
   user-select: none;
 }
 
-/* 加载中 spinner：从 layer-toggle-on-2.png 抠出的圆环 PNG（20×20）旋转。
-   圆环质心已精确对齐 PNG 几何中心 → 旋转零偏心，不超出外壳。
-   transform-box:fill-box + transform-origin:center 围绕 PNG 自身中心旋转。
-   PNG 自带右侧缺口，旋转时缺口位置变化清晰可见。 */
+/* 加载中 spinner：外壳不动，内圆环持续匀速旋转（参考 layer-toggle-on.png）。
+   圆环 PNG 尺寸 20×20，定位在 SVG 的 (27.77, 1.53)，中心点 = (37.77, 11.53)。
+   使用绝对坐标 transform-origin 确保围绕圆环几何中心旋转，零偏心。 */
 .layer-panel__spinner {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: layer-panel-spin 0.8s linear infinite;
+  /* 关键：使用 SVG 坐标系中的绝对中心点作为旋转原点 */
+  transform-origin: 37.77px 11.53px;
+  /* 线性匀速旋转：1s/圈，流畅稳定 */
+  animation: layer-panel-spin 1s linear infinite;
 }
 
 @keyframes layer-panel-spin {
+  from {
+    transform: rotate(0deg);
+  }
   to {
     transform: rotate(360deg);
   }

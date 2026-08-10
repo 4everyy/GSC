@@ -12,7 +12,7 @@
  * - SDK 加载：直接 import maplibre-gl，无需动态 script 注入；
  * - 样式：通过 Style JSON URL 控制，暗色底图由瓦片服务提供。
  */
-import { Map as MLMap } from 'maplibre-gl'
+import { Map as MLMap, type StyleSpecification } from 'maplibre-gl'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { MapLibreAdapter } from '../../map-engines/MapLibreAdapter'
@@ -73,6 +73,49 @@ function createTileserverTransformRequest() {
     }
     return { url }
   }
+}
+
+/**
+ * 自动重试最大次数（不含首次请求）。
+ * 总尝试次数 = 1 + MAX_STYLE_FETCH_RETRIES = 4 次。
+ */
+const MAX_STYLE_FETCH_RETRIES = 3
+
+/** 重试基础延迟（毫秒），实际延迟 = BASE × 2^attempt（指数退避：1s → 2s → 4s） */
+const STYLE_FETCH_BASE_DELAY_MS = 1000
+
+/**
+ * 带自动重试的 style.json 预取。
+ *
+ * tileserver-gl 容器重启 / Docker 端口映射建立期间，Vite proxy 上游不可达会产生
+ * 502 Bad Gateway。直接传 URL 给 MapLibre 会立即失败并弹出错误面板；此函数在失败时
+ * 按指数退避自动重试，覆盖容器启动延迟窗口，成功后将 StyleSpecification 对象返回。
+ *
+ * @param url 经 transformRequest 重写后的同源代理路径（如 /tiles/styles/dark/style.json）
+ * @returns 解析后的 StyleSpecification 对象
+ * @throws 所有重试用尽后抛出最后一次错误
+ */
+async function fetchStyleJsonWithRetry(
+  url: string,
+): Promise<StyleSpecification> {
+  let lastError: Error | null = null
+  for (let attempt = 0; attempt <= MAX_STYLE_FETCH_RETRIES; attempt++) {
+    try {
+      const resp = await fetch(url)
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status} (${resp.statusText})`)
+      }
+      return (await resp.json()) as StyleSpecification
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+      if (attempt < MAX_STYLE_FETCH_RETRIES) {
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, STYLE_FETCH_BASE_DELAY_MS * 2 ** attempt),
+        )
+      }
+    }
+  }
+  throw lastError ?? new Error('style.json 加载失败')
 }
 
 /**
@@ -198,49 +241,61 @@ export function MapLibreContainer({
     setStatus('loading')
     setErrorMsg('')
 
-    try {
-      if (cancelled || !containerRef.current) return
+    // transformRequest 将 tileserver-gl 注入的绝对 URL（http://localhost:8081/...）
+    // 重写为同源代理路径 /tiles/...，避免 LAN/IPv6/生产环境 localhost 不可达。
+    // 开发环境由 Vite proxy 转发，生产环境由 Nginx 转发。
+    const tileTransform = createTileserverTransformRequest()
+    const effectiveStyleUrl = tileTransform
+      ? tileTransform(styleUrl).url
+      : styleUrl
 
-      // transformRequest 将 tileserver-gl 注入的绝对 URL（http://localhost:8081/...）
-      // 重写为同源代理路径 /tiles/...，避免 LAN/IPv6/生产环境 localhost 不可达。
-      // 开发环境由 Vite proxy 转发，生产环境由 Nginx 转发。
-      const tileTransform = createTileserverTransformRequest()
-      const effectiveStyleUrl = tileTransform
-        ? tileTransform(styleUrl).url
-        : styleUrl
+    // 预取 style.json 并在失败时自动重试（指数退避：1s → 2s → 4s）。
+    // tileserver-gl 容器重启 / Docker 端口映射建立期间，Vite proxy 上游不可达
+    // 会产生瞬时 502 Bad Gateway。直接将 URL 交给 MapLibre 会立即触发 AJAXError；
+    // 预取重试可覆盖容器启动延迟窗口，成功后将 StyleSpecification 对象直接传给 MapLibre。
+    fetchStyleJsonWithRetry(effectiveStyleUrl)
+      .then((styleSpec) => {
+        if (cancelled || !containerRef.current) return
 
-      const map = new MLMap({
-        container: containerRef.current,
-        style: effectiveStyleUrl,
-        center: [center.lng, center.lat],
-        zoom,
-        transformRequest: tileTransform,
-        ...MAPLIBRE_MAP_OPTIONS,
-      })
-      mapRef.current = map
+        const map = new MLMap({
+          container: containerRef.current,
+          style: styleSpec,
+          center: [center.lng, center.lat],
+          zoom,
+          transformRequest: tileTransform,
+          ...MAPLIBRE_MAP_OPTIONS,
+        })
+        mapRef.current = map
 
-      map.on('load', () => {
-        if (cancelled) return
-        const adapter = new MapLibreAdapter(map)
-        adapterRef.current = adapter
-        setStatus('success')
-        onReadyRef.current?.({ adapter, raw: map, engine: 'maplibre' })
-      })
+        map.on('load', () => {
+          if (cancelled) return
+          const adapter = new MapLibreAdapter(map)
+          adapterRef.current = adapter
+          setStatus('success')
+          onReadyRef.current?.({ adapter, raw: map, engine: 'maplibre' })
+        })
 
-      map.on('error', (e: { error?: Error }) => {
-        // 样式/瓦片加载失败时给出明确提示（离线瓦片服务未启动时常见）
-        setStatus((prev) => {
-          if (prev === 'success') return prev
-          const tip = MAPLIBRE_USE_OFFLINE_TILES ? OFFLINE_TILES_HINT : '地图样式加载失败'
-          setErrorMsg(tip + (e?.error ? `：${e.error.message}` : ''))
-          return 'error'
+        map.on('error', (e: { error?: Error }) => {
+          // 样式/瓦片加载失败时给出明确提示（离线瓦片服务未启动时常见）
+          setStatus((prev) => {
+            if (prev === 'success') return prev
+            const tip = MAPLIBRE_USE_OFFLINE_TILES
+              ? OFFLINE_TILES_HINT
+              : '地图样式加载失败'
+            setErrorMsg(tip + (e?.error ? `：${e.error.message}` : ''))
+            return 'error'
+          })
         })
       })
-    } catch (err: unknown) {
-      if (cancelled) return
-      setStatus('error')
-      setErrorMsg(err instanceof Error ? err.message : '地图初始化失败')
-    }
+      .catch((err: unknown) => {
+        if (cancelled) return
+        const detail = err instanceof Error ? err.message : '地图初始化失败'
+        const tip = MAPLIBRE_USE_OFFLINE_TILES
+          ? OFFLINE_TILES_HINT
+          : '地图样式加载失败'
+        setStatus('error')
+        setErrorMsg(`${tip}：${detail}`)
+      })
 
     return () => {
       cancelled = true

@@ -29,7 +29,9 @@ import { aircraft } from '../../config/aircraft'
 import batteryMidIcon from '../../assets/images/device/battery-mid.png'
 import { useDraggable, type DragPosition } from '../../hooks/useDraggable'
 import { AircraftFocusPanel } from '../../components/AircraftFocusPanel/AircraftFocusPanel'
+import { computePanelPlacement, placementToClasses } from '../../utils/panelPlacement'
 import './HomePage.css'
+import './HoverPanelPlacement.css'
 
 // 飞机初始位置（百分比），与 HomePage.css 中 .aircraft--xxx 的 left/top 保持一致。
 // 拖拽后通过内联 style 覆盖 CSS 定位，实现自由拖动。
@@ -82,6 +84,13 @@ export function HomePage() {
       initialPositions: [INSPECTION_ZONE_INITIAL_POSITION],
       storageKey: 'gcs:inspection-zone-position',
     })
+
+  // hover 面板边缘自适应方向（巡检区域）
+  const inspectionZonePlacement = computePanelPlacement(
+    inspectionZonePositions[0].x,
+    inspectionZonePositions[0].y,
+  )
+  const inspectionZonePanelClasses = placementToClasses(inspectionZonePlacement)
 
   return (
     <main className="design-viewport" aria-label="无人机集群控制地面站">
@@ -176,7 +185,7 @@ export function HomePage() {
 
           {/* 巡检区域：包含1条蛇形巡检轨迹线，支持拖拽移动 */}
           <div
-            className="inspection-zone"
+            className={`inspection-zone ${inspectionZonePanelClasses.join(' ')}`}
             aria-label="巡检区域"
             style={{
               left: `${inspectionZonePositions[0].x}%`,
@@ -259,96 +268,104 @@ export function HomePage() {
             </svg>
           </div>
 
-          {aircraft.map((item, index) => (
-            <span
-              className={`${item.className} aircraft--draggable`}
-              key={item.label}
-              style={{
-                left: `${aircraftPositions[index].x}%`,
-                top: `${aircraftPositions[index].y}%`,
-              }}
-              onMouseDown={(e) => onAircraftDragStart(index, e)}
-              onDoubleClick={() => handleAircraftDoubleClick(index)}
-            >
-              <img src={item.src} alt={item.label} draggable={false} />
-              <span className="aircraft-label">{item.label}</span>
-              {/* 离线设备 Hover 面板（灰色）—— 聚焦时隐藏，避免与聚焦面板同时出现 */}
-              {item.className.includes('gray') && focusedAircraft !== index && (
-                <div className="aircraft-hover-panel">
-                  <div className="aircraft-hover-panel__top">
-                    <div className="aircraft-hover-panel__header">
-                      <span className="aircraft-hover-panel__name">08号无人机</span>
-                      <span className="aircraft-hover-panel__status">离线</span>
+          {aircraft.map((item, index) => {
+            // hover 面板边缘自适应方向（飞机）
+            const aircraftPlacement = computePanelPlacement(
+              aircraftPositions[index].x,
+              aircraftPositions[index].y,
+            )
+            const aircraftPanelClasses = placementToClasses(aircraftPlacement)
+            return (
+              <span
+                className={`${item.className} aircraft--draggable ${aircraftPanelClasses.join(' ')}`}
+                key={item.label}
+                style={{
+                  left: `${aircraftPositions[index].x}%`,
+                  top: `${aircraftPositions[index].y}%`,
+                }}
+                onMouseDown={(e) => onAircraftDragStart(index, e)}
+                onDoubleClick={() => handleAircraftDoubleClick(index)}
+              >
+                <img src={item.src} alt={item.label} draggable={false} />
+                <span className="aircraft-label">{item.label}</span>
+                {/* 离线设备 Hover 面板（灰色）—— 聚焦时隐藏，避免与聚焦面板同时出现 */}
+                {item.className.includes('gray') && focusedAircraft !== index && (
+                  <div className="aircraft-hover-panel">
+                    <div className="aircraft-hover-panel__top">
+                      <div className="aircraft-hover-panel__header">
+                        <span className="aircraft-hover-panel__name">08号无人机</span>
+                        <span className="aircraft-hover-panel__status">离线</span>
+                      </div>
+                      <div className="aircraft-hover-panel__divider" />
                     </div>
-                    <div className="aircraft-hover-panel__divider" />
-                  </div>
-                  <div className="aircraft-hover-panel__bottom">
-                    <div className="aircraft-hover-panel__info">
-                      <span className="aircraft-hover-panel__bar" />
-                      <span className="aircraft-hover-panel__label">离线时间：</span>
-                      <span className="aircraft-hover-panel__time">2026/08/03 23:45</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {/* 在线设备 Hover 面板（蓝色，统一样式）—— 聚焦时隐藏，避免与聚焦面板同时出现 */}
-              {!item.className.includes('gray') && focusedAircraft !== index && (
-                <div className="aircraft-info-panel">
-                  <div className="aircraft-info-panel__top">
-                    <div className="aircraft-info-panel__header">
-                      <span className="aircraft-info-panel__name">{item.label}</span>
-                      <div className="aircraft-info-panel__indicators">
-                        <img
-                          className="aircraft-info-panel__battery-icon"
-                          src={batteryMidIcon}
-                          alt="电量"
-                        />
-                        <span className="aircraft-info-panel__battery-text">46%</span>
-                        <svg
-                          className="aircraft-info-panel__signal-icon"
-                          width="15"
-                          height="14"
-                          viewBox="0 0 15 14"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <rect x="0" y="10" width="2.5" height="4" fill="#fff" />
-                          <rect x="3.5" y="7" width="2.5" height="7" fill="#fff" />
-                          <rect x="7" y="4" width="2.5" height="10" fill="#fff" />
-                          <rect x="10.5" y="1" width="2.5" height="13" fill="#fff" />
-                        </svg>
+                    <div className="aircraft-hover-panel__bottom">
+                      <div className="aircraft-hover-panel__info">
+                        <span className="aircraft-hover-panel__bar" />
+                        <span className="aircraft-hover-panel__label">离线时间：</span>
+                        <span className="aircraft-hover-panel__time">2026/08/03 23:45</span>
                       </div>
                     </div>
-                    <div className="aircraft-info-panel__divider" />
                   </div>
-                  <div className="aircraft-info-panel__bottom">
-                    <div className="aircraft-info-panel__row">
-                      <span className="aircraft-info-panel__bar" />
-                      <span className="aircraft-info-panel__label">位置</span>
-                      <span className="aircraft-info-panel__value">
-                        Lat:0000,&nbsp;Lon:0000,&nbsp;H:0000
-                      </span>
+                )}
+                {/* 在线设备 Hover 面板（蓝色，统一样式）—— 聚焦时隐藏，避免与聚焦面板同时出现 */}
+                {!item.className.includes('gray') && focusedAircraft !== index && (
+                  <div className="aircraft-info-panel">
+                    <div className="aircraft-info-panel__top">
+                      <div className="aircraft-info-panel__header">
+                        <span className="aircraft-info-panel__name">{item.label}</span>
+                        <div className="aircraft-info-panel__indicators">
+                          <img
+                            className="aircraft-info-panel__battery-icon"
+                            src={batteryMidIcon}
+                            alt="电量"
+                          />
+                          <span className="aircraft-info-panel__battery-text">46%</span>
+                          <svg
+                            className="aircraft-info-panel__signal-icon"
+                            width="15"
+                            height="14"
+                            viewBox="0 0 15 14"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <rect x="0" y="10" width="2.5" height="4" fill="#fff" />
+                            <rect x="3.5" y="7" width="2.5" height="7" fill="#fff" />
+                            <rect x="7" y="4" width="2.5" height="10" fill="#fff" />
+                            <rect x="10.5" y="1" width="2.5" height="13" fill="#fff" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="aircraft-info-panel__divider" />
                     </div>
-                    <div className="aircraft-info-panel__row">
-                      <span className="aircraft-info-panel__bar" />
-                      <span className="aircraft-info-panel__label">速度</span>
-                      <span className="aircraft-info-panel__value">
-                        X:000,&nbsp;&nbsp;Y:000,&nbsp;&nbsp;Z:000
-                      </span>
-                    </div>
-                    <div className="aircraft-info-panel__row aircraft-info-panel__row--dual">
-                      <span className="aircraft-info-panel__bar" />
-                      <span className="aircraft-info-panel__label">模式</span>
-                      <span className="aircraft-info-panel__value">悬停</span>
-                      <span className="aircraft-info-panel__bar aircraft-info-panel__bar--gap" />
-                      <span className="aircraft-info-panel__label">状态</span>
-                      <span className="aircraft-info-panel__value">待命</span>
+                    <div className="aircraft-info-panel__bottom">
+                      <div className="aircraft-info-panel__row">
+                        <span className="aircraft-info-panel__bar" />
+                        <span className="aircraft-info-panel__label">位置</span>
+                        <span className="aircraft-info-panel__value">
+                          Lat:0000,&nbsp;Lon:0000,&nbsp;H:0000
+                        </span>
+                      </div>
+                      <div className="aircraft-info-panel__row">
+                        <span className="aircraft-info-panel__bar" />
+                        <span className="aircraft-info-panel__label">速度</span>
+                        <span className="aircraft-info-panel__value">
+                          X:000,&nbsp;&nbsp;Y:000,&nbsp;&nbsp;Z:000
+                        </span>
+                      </div>
+                      <div className="aircraft-info-panel__row aircraft-info-panel__row--dual">
+                        <span className="aircraft-info-panel__bar" />
+                        <span className="aircraft-info-panel__label">模式</span>
+                        <span className="aircraft-info-panel__value">悬停</span>
+                        <span className="aircraft-info-panel__bar aircraft-info-panel__bar--gap" />
+                        <span className="aircraft-info-panel__label">状态</span>
+                        <span className="aircraft-info-panel__value">待命</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </span>
-          ))}
+                )}
+              </span>
+            )
+          })}
 
           {/* 聚焦视图面板：双击无人机图标后从图标右侧滑入，
               图标正好卡在面板左边缘的垂直中心 */}

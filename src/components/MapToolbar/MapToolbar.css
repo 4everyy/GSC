@@ -22,6 +22,8 @@
   padding: 0;
   overflow: hidden;
   border: 0;
+  /* 透明背景：浏览器默认 <button> 有白色/浅灰背景，背景图加载前会露出白底 */
+  background-color: transparent;
   background-repeat: no-repeat;
   background-position: center;
   background-size: 100% 100%;
@@ -39,11 +41,5 @@
 }
 
 .map-toolbar button.is-active {
-  background-color: transparent;
-  transform: scale(1.25);
   z-index: 10;
-}
-
-.map-toolbar button.is-active .toolbar-icon {
-  transform: scale(0.8);
 }

@@ -1,0 +1,42 @@
+/* ====== Hover 面板边缘自适应定位（方向修饰类）======
+   说明：
+   - 由 panelPlacement.ts 根据宿主（飞机/巡检区域）在视口中的百分比位置，
+     在宿主 className 上追加 `panel-left` / `panel-down` 修饰类；
+   - 默认（无修饰类）= 面板向「右 + 上」展开（设计稿原样）；
+   - `panel-left` = 水平翻转：面板改为向左侧展开，避免右侧空间不足溢出；
+   - `panel-down` = 垂直翻转：面板改为向下方展开，避免上方空间不足溢出。
+   - 本文件需在 HomePage.css 之后导入，以保证修饰类规则的特异性相同时可覆盖默认值。 */
+
+/* ===== 飞机信息面板 =====
+   默认（向右+向上）：
+     left: calc(100% + 12px); top: 24px; transform: translateY(-100%); */
+
+/* panel-left：面板改为出现在图标左侧 */
+.aircraft.panel-left .aircraft-hover-panel,
+.aircraft.panel-left .aircraft-info-panel {
+  left: auto;
+  right: calc(100% + 12px);
+}
+
+/* panel-down：面板改为向下展开 */
+.aircraft.panel-down .aircraft-hover-panel,
+.aircraft.panel-down .aircraft-info-panel {
+  transform: none;
+}
+
+/* ===== 巡检区域信息面板 =====
+   默认（向右+向上）：bottom: 100%; right: -100px; margin-bottom: 8px; */
+
+/* panel-left：水平翻转，面板改为向左展开 */
+.inspection-zone.panel-left .inspection-zone__panel {
+  right: auto;
+  left: -100px;
+}
+
+/* panel-down：垂直翻转，面板改为悬浮在巡检区域下方 */
+.inspection-zone.panel-down .inspection-zone__panel {
+  bottom: auto;
+  top: 100%;
+  margin-bottom: 0;
+  margin-top: 8px;
+}

@@ -16,6 +16,9 @@ import dropdown from './dropdown.png'
 import headerIcon from './header-icon.png'
 import iconBlue from './icon-blue.png'
 import loadFail from './load-fail.png'
+import menuBtnNormal from './menu-btn-normal.png'
+import menuBtnHover from './menu-btn-hover.png'
+import menuBtnActive from './menu-btn-active.png'
 import noData from './no-data.png'
 import rowBgBlue from './row-bg-blue.png'
 import rowBgGray from './row-bg-gray.png'
@@ -43,6 +46,9 @@ export const deviceImages = {
   headerIcon,
   iconBlue,
   loadFail,
+  menuBtnNormal,
+  menuBtnHover,
+  menuBtnActive,
   noData,
   rowBgBlue,
   rowBgGray,
