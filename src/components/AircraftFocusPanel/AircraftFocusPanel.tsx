@@ -65,6 +65,10 @@ export function AircraftFocusPanel({
       className={`aircraft-focus-panel${visible ? ' aircraft-focus-panel--visible' : ''}`}
       role="dialog"
       aria-label={`${name} 聚焦视图`}
+      // data-hover-panel 让 usePanelClamp 将本面板纳入边缘自适应平移兜底，
+      // 避免面板在 .map-stage（overflow:hidden）边缘被裁剪显示不全。
+      // 平移通过独立的 `translate` 属性注入，与下方 transform 滑入动画互不干扰。
+      data-hover-panel
       style={
         aircraftPosition
           ? {

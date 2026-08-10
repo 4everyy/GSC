@@ -97,6 +97,10 @@
   cursor: pointer;
   place-items: center;
   box-sizing: border-box;
+  /* 清除浏览器默认 <button> 白色背景与边框：
+     避免在覆盖 background 时露出 UA 默认白底/灰边框 */
+  border: 0;
+  background: transparent;
 }
 
 /* view-controls 按钮三态（设计稿：渐变背景 + 渐变边框 + 4px 圆角）

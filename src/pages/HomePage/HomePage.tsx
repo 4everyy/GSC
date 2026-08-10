@@ -30,6 +30,7 @@ import batteryMidIcon from '../../assets/images/device/battery-mid.png'
 import { useDraggable, type DragPosition } from '../../hooks/useDraggable'
 import { AircraftFocusPanel } from '../../components/AircraftFocusPanel/AircraftFocusPanel'
 import { computePanelPlacement, placementToClasses } from '../../utils/panelPlacement'
+import { usePanelClamp } from '../../hooks/usePanelClamp'
 import './HomePage.css'
 import './HoverPanelPlacement.css'
 
@@ -92,6 +93,17 @@ export function HomePage() {
   )
   const inspectionZonePanelClasses = placementToClasses(inspectionZonePlacement)
 
+  // hover 面板视口边缘平移修正（兜底）：测量实际矩形并注入 --clamp-x/--clamp-y，
+  // 确保任何 hover 面板（飞机/巡检区域/禁飞区）在任意拖拽位置都不溢出视口。
+  // 依赖宿主百分比坐标与聚焦索引：拖拽改变坐标时实时重新修正；聚焦切换时面板增删亦重算。
+  usePanelClamp({
+    deps: [
+      ...aircraftPositions.map((p) => `${p.x},${p.y}`),
+      `${inspectionZonePositions[0].x},${inspectionZonePositions[0].y}`,
+      focusedAircraft,
+    ],
+  })
+
   return (
     <main className="design-viewport" aria-label="无人机集群控制地面站">
       <div className="design-canvas">
@@ -152,7 +164,7 @@ export function HomePage() {
               <polygon points="22,0 78,8 100,100 0,92" fill="url(#hatch)" />
             </svg>
             {/* Hover 信息面板 */}
-            <div className="block_7 flex-col">
+            <div className="block_7 flex-col" data-hover-panel>
               <div className="block_7__top">
                 <span className="text_8">01禁飞区</span>
                 <div className="section_3 flex-col"></div>
@@ -197,7 +209,7 @@ export function HomePage() {
             <div className="inspection-zone__bg" />
 
             {/* Hover 信息面板（右上角）：01号巡检区 */}
-            <div className="inspection-zone__panel">
+            <div className="inspection-zone__panel" data-hover-panel>
               {/* 顶部：标题+分隔线（固定高度，完全复刻禁飞区 .block_7__top 结构） */}
               <div className="inspection-zone__panel-top">
                 <span className="inspection-zone__panel-title">01号巡检区</span>
@@ -290,7 +302,7 @@ export function HomePage() {
                 <span className="aircraft-label">{item.label}</span>
                 {/* 离线设备 Hover 面板（灰色）—— 聚焦时隐藏，避免与聚焦面板同时出现 */}
                 {item.className.includes('gray') && focusedAircraft !== index && (
-                  <div className="aircraft-hover-panel">
+                  <div className="aircraft-hover-panel" data-hover-panel>
                     <div className="aircraft-hover-panel__top">
                       <div className="aircraft-hover-panel__header">
                         <span className="aircraft-hover-panel__name">08号无人机</span>
@@ -309,7 +321,7 @@ export function HomePage() {
                 )}
                 {/* 在线设备 Hover 面板（蓝色，统一样式）—— 聚焦时隐藏，避免与聚焦面板同时出现 */}
                 {!item.className.includes('gray') && focusedAircraft !== index && (
-                  <div className="aircraft-info-panel">
+                  <div className="aircraft-info-panel" data-hover-panel>
                     <div className="aircraft-info-panel__top">
                       <div className="aircraft-info-panel__header">
                         <span className="aircraft-info-panel__name">{item.label}</span>

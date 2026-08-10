@@ -15,19 +15,28 @@ html, body { min-width: 320px; min-height: 100vh; margin: 0; padding: 0; overflo
 button, input, textarea, select { font: inherit; }
 
 /* ====== 测距距离标签（地图覆盖物 DOM 元素） ====== */
+/* 基础样式：不带背景，仅用线条颜色标注数字，加文字描边保证地图上的可读性 */
 .measure-distance-label {
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: rgba(10, 26, 47, 0.75);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border: 1px solid rgba(98, 194, 196, 0.6);
-  color: #8af7e8;
+  padding: 0 2px;
   font-size: 12px;
   font-family: 'MiSans-Regular', 'Microsoft YaHei', sans-serif;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  /* 描边代替深色背景，在任意底图上保证数字清晰可读 */
+  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.55);
+  paint-order: stroke fill;
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.9),
+    0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* 实线段标签：与已落点实线颜色一致（橙色 #D95D04） */
+.measure-distance-label--segment {
+  color: #d95d04;
+}
+
+/* 虚线预览段标签：与橡皮筋虚线颜色一致（绿色 #7BFF00） */
+.measure-distance-label--preview {
+  color: #7bff00;
 }

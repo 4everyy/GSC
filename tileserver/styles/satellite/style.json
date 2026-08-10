@@ -1,6 +1,6 @@
 {
   "name": "GCS Satellite",
-  "description": "卫星影像底图。默认使用 Esri World Imagery（在线）；完全离线部署时，将 sources.satellite.tiles 替换为本地 tileserver-gl 提供的 raster mbtiles 服务地址。详见 docs/离线部署指南.md。",
+  "description": "卫星影像底图 + 矢量地理信息叠加层（道路、水系、地标、POI）。影像默认使用 Esri World Imagery（在线）；矢量数据来自本地 tileserver-gl 的苏州 OSM mbtiles。完全离线部署时，将 sources.satellite.tiles 替换为本地 raster mbtiles 服务地址。详见 docs/离线部署指南.md。",
   "version": 8,
   "sources": {
     "satellite": {
@@ -11,8 +11,15 @@
       "tileSize": 256,
       "attribution": "Imagery © Esri, Maxar, Earthstar Geographics",
       "maxzoom": 19
+    },
+    "suzhou": {
+      "type": "vector",
+      "url": "mbtiles://suzhou.mbtiles",
+      "minzoom": 0,
+      "maxzoom": 14
     }
   },
+  "glyphs": "{fontstack}/{range}.pbf",
   "layers": [
     {
       "id": "satellite-bg",
@@ -20,6 +27,200 @@
       "source": "satellite",
       "paint": {
         "raster-saturation": 0.1
+      }
+    },
+    {
+      "id": "overlay-water",
+      "type": "fill",
+      "source": "suzhou",
+      "source-layer": "water",
+      "filter": ["==", "$type", "Polygon"],
+      "paint": {
+        "fill-color": "#0d2438",
+        "fill-opacity": 0.55
+      }
+    },
+    {
+      "id": "overlay-landuse-residential",
+      "type": "fill",
+      "source": "suzhou",
+      "source-layer": "landuse",
+      "filter": ["==", "class", "residential"],
+      "paint": {
+        "fill-color": "#2a2a2a",
+        "fill-opacity": 0.25
+      }
+    },
+    {
+      "id": "overlay-landuse-industrial",
+      "type": "fill",
+      "source": "suzhou",
+      "source-layer": "landuse",
+      "filter": ["==", "class", "industrial"],
+      "paint": {
+        "fill-color": "#3a2a1a",
+        "fill-opacity": 0.25
+      }
+    },
+    {
+      "id": "overlay-park",
+      "type": "fill",
+      "source": "suzhou",
+      "source-layer": "landuse",
+      "filter": ["==", "class", "park"],
+      "paint": {
+        "fill-color": "#1a3a1a",
+        "fill-opacity": 0.3
+      }
+    },
+    {
+      "id": "overlay-boundary-country",
+      "type": "line",
+      "source": "suzhou",
+      "source-layer": "boundary",
+      "filter": ["==", "admin_level", 2],
+      "paint": {
+        "line-color": "#ffffff",
+        "line-width": 1.2,
+        "line-opacity": 0.6
+      }
+    },
+    {
+      "id": "overlay-boundary-city",
+      "type": "line",
+      "source": "suzhou",
+      "source-layer": "boundary",
+      "filter": ["==", "admin_level", 6],
+      "paint": {
+        "line-color": "#e0e0e0",
+        "line-width": 0.8,
+        "line-dasharray": [3, 2],
+        "line-opacity": 0.5
+      }
+    },
+    {
+      "id": "overlay-road-minor",
+      "type": "line",
+      "source": "suzhou",
+      "source-layer": "transportation",
+      "filter": ["in", "class", "minor", "service"],
+      "paint": {
+        "line-color": "#e8e8e8",
+        "line-width": {
+          "base": 1.2,
+          "stops": [[14, 0.5], [18, 3]]
+        },
+        "line-opacity": 0.75
+      }
+    },
+    {
+      "id": "overlay-road-secondary",
+      "type": "line",
+      "source": "suzhou",
+      "source-layer": "transportation",
+      "filter": ["==", "class", "secondary"],
+      "paint": {
+        "line-color": "#fff4cc",
+        "line-width": {
+          "base": 1.2,
+          "stops": [[10, 0.5], [18, 6]]
+        },
+        "line-opacity": 0.85
+      }
+    },
+    {
+      "id": "overlay-road-primary",
+      "type": "line",
+      "source": "suzhou",
+      "source-layer": "transportation",
+      "filter": ["==", "class", "primary"],
+      "paint": {
+        "line-color": "#ffd966",
+        "line-width": {
+          "base": 1.2,
+          "stops": [[10, 1], [18, 8]]
+        },
+        "line-opacity": 0.9
+      }
+    },
+    {
+      "id": "overlay-road-motorway",
+      "type": "line",
+      "source": "suzhou",
+      "source-layer": "transportation",
+      "filter": ["in", "class", "motorway", "trunk"],
+      "paint": {
+        "line-color": "#ff9933",
+        "line-width": {
+          "base": 1.2,
+          "stops": [[8, 1], [18, 12]]
+        },
+        "line-opacity": 0.95
+      }
+    },
+    {
+      "id": "overlay-building",
+      "type": "fill",
+      "source": "suzhou",
+      "source-layer": "building",
+      "minzoom": 15,
+      "paint": {
+        "fill-color": "#888888",
+        "fill-opacity": 0.4
+      }
+    },
+    {
+      "id": "overlay-place-city-major",
+      "type": "symbol",
+      "source": "suzhou",
+      "source-layer": "place",
+      "filter": ["in", "class", "city", "town"],
+      "layout": {
+        "text-field": "{name:zh} {name:latin}",
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 14,
+        "text-anchor": "center"
+      },
+      "paint": {
+        "text-color": "#ffffff",
+        "text-halo-color": "#000000",
+        "text-halo-width": 2.5
+      }
+    },
+    {
+      "id": "overlay-place-village",
+      "type": "symbol",
+      "source": "suzhou",
+      "source-layer": "place",
+      "filter": ["==", "class", "village"],
+      "minzoom": 12,
+      "layout": {
+        "text-field": "{name:zh} {name:latin}",
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 12
+      },
+      "paint": {
+        "text-color": "#f0f0f0",
+        "text-halo-color": "#000000",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "overlay-poi",
+      "type": "symbol",
+      "source": "suzhou",
+      "source-layer": "poi",
+      "minzoom": 14,
+      "layout": {
+        "text-field": "{name:zh} {name:latin}",
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 11,
+        "text-offset": [0, 1.2]
+      },
+      "paint": {
+        "text-color": "#ffe082",
+        "text-halo-color": "#000000",
+        "text-halo-width": 1.5
       }
     }
   ]

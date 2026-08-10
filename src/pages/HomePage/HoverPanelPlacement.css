@@ -40,3 +40,15 @@
   margin-bottom: 0;
   margin-top: 8px;
 }
+
+/* ====== Hover 面板视口边缘平移修正（兜底）======
+   说明：
+   - usePanelClamp hook 在每次渲染/拖拽/resize 后，测量所有 [data-hover-panel]
+     的实际矩形，计算使其完全进入视口所需的平移量，通过 CSS 变量
+     `--clamp-x` / `--clamp-y` 注入面板元素；
+   - 这里用独立的 `translate` 属性叠加该平移，与各面板既有的 `transform`
+     （translateY(-100%) / translateX(-30%) / panel-down 的 none）解耦互不干扰；
+   - 变量缺省值为 0px，未启用 hook 时无副作用。 */
+[data-hover-panel] {
+  translate: var(--clamp-x, 0px) var(--clamp-y, 0px);
+}

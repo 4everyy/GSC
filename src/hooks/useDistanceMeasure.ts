@@ -85,7 +85,8 @@ function createDistanceLabelElement(text: string): HTMLElement {
   wrapper.style.overflow = 'visible'
 
   const label = document.createElement('div')
-  label.className = 'measure-distance-label'
+  // 实线段标签：用线条颜色（橙）标注，无深色背景
+  label.className = 'measure-distance-label measure-distance-label--segment'
   label.textContent = text
   label.style.position = 'absolute'
   // 水平居中（相对原点）+ 向上偏移 10px（线段上方，避免遮挡折线）
@@ -282,7 +283,8 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
       wrapper.style.overflow = 'visible'
 
       const label = document.createElement('div')
-      label.className = 'measure-distance-label'
+      // 虚线预览段标签：用线条颜色（绿）标注，无深色背景
+      label.className = 'measure-distance-label measure-distance-label--preview'
       label.textContent = formatDistance(previewSegDist)
       label.style.position = 'absolute'
       label.style.left = '0'
