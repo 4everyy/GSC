@@ -2,13 +2,13 @@
  * 地图引擎抽象层 —— 类型定义。
  *
  * 设计目标：让上层业务组件（RouteEditor / DroneSimulator / MapScale 等）
- * 依赖统一的 MapAdapter 接口，而非具体引擎（百度 BMapGL / MapLibre），
- * 从而支持运行时切换地图引擎，且业务代码无需修改。
+ * 依赖统一的 MapAdapter 接口，而非具体引擎（当前为 MapLibre），
+ * 业务代码无需修改即可适配后续可能接入的其他引擎。
  *
  * 核心概念：
  * - `MapAdapter`：引擎无关的地图操作接口（视图控制 / 覆盖物 / 事件 / 交互）
  * - `MarkerHandle` / `PolylineHandle`：覆盖物的引擎句柄，用于后续更新与移除
- * - `LngLat`：统一坐标格式（WGS84），百度引擎内部做 BD09 转换
+ * - `LngLat`：统一坐标格式（WGS84）
  */
 
 /** 经纬度坐标（WGS84 坐标系，统一输入输出格式） */
@@ -17,8 +17,16 @@ export interface LngLat {
   lat: number
 }
 
-/** 地图引擎类型标识 */
-export type MapEngineType = 'baidu' | 'maplibre'
+/**
+ * 引擎无关的底图样式描述。
+ *
+ * MapLibre 对应 maplibre-gl 的 StyleSpecification；其他引擎可自定义结构。
+ * 用于运行时热切换底图（setStyle），避免上层直接依赖具体引擎的类型。
+ */
+export type MapStyleSpec = object
+
+/** 地图引擎类型标识（当前仅 MapLibre） */
+export type MapEngineType = 'maplibre'
 
 /** 标注（Marker）创建选项 */
 export interface MarkerOptions {
@@ -50,8 +58,26 @@ export interface PolylineOptions {
   glowColor?: string
   /** 光晕宽度倍数（相对 width，默认 3） */
   glowWidth?: number
-  /** 是否虚线（如测距橡皮筋预览）。MapLibre 用 line-dasharray，百度用 strokeStyle:dashed */
+  /** 是否虚线（如测距橡皮筋预览）。MapLibre 用 line-dasharray 实现 */
   dash?: boolean
+}
+
+/** 折线悬停交互选项（setPolylineInteractive 用） */
+export interface PolylineInteractionOptions {
+  /** 透明命中层宽度（px），用于扩大悬停命中范围，默认 18 */
+  hitWidth?: number
+  /** 鼠标进入命中区（lngLat 为进入点地理坐标，用于定位悬浮删除按钮） */
+  onEnter?: (lngLat: LngLat) => void
+  /** 鼠标离开命中区 */
+  onLeave?: () => void
+}
+
+/** 折线高亮选项（setPolylineHighlight 用） */
+export interface PolylineHighlightOptions {
+  /** 高亮线宽倍数（相对原始 width），默认 1.8 */
+  widthScale?: number
+  /** 高亮颜色（默认沿用原色） */
+  color?: string
 }
 
 /** 圆形覆盖物创建选项 */
@@ -70,7 +96,7 @@ export interface CircleOptions {
 
 /** 标注（Marker）的引擎句柄，创建后可用于更新位置/内容或移除 */
 export interface MarkerHandle {
-  /** 引擎内部句柄（BMapGL.Marker / maplibregl.Marker 等） */
+  /** 引擎内部句柄（maplibregl.Marker 等） */
   raw: unknown
   /** 唯一 id，便于按 id 管理 */
   id: string
@@ -103,6 +129,8 @@ export interface MapAdapter {
   zoomIn(): void
   zoomOut(): void
   panTo(lngLat: LngLat): void
+  /** 平滑飞到目标点（用于切换城市时定位；动画由引擎实现） */
+  flyTo(lngLat: LngLat, options?: { zoom?: number; duration?: number }): void
 
   // ============ 坐标换算（供比例尺等使用） ============
   /**
@@ -110,6 +138,12 @@ export interface MapAdapter {
    * 用于 MapScale 组件，避免依赖引擎的 pointToPixel API。
    */
   getMetersPerPixel(): number
+
+  /**
+   * 获取地图容器 DOM 元素。
+   * 用于上层在容器边界内做覆盖物的避让/翻转计算（如测距完成面板避免被边缘裁切）。
+   */
+  getContainer(): HTMLElement
 
   // ============ 覆盖物：标注 ============
   addMarker(id: string, lngLat: LngLat, opts?: MarkerOptions): MarkerHandle
@@ -124,6 +158,13 @@ export interface MapAdapter {
   /** 更新折线路径（动画轨迹用） */
   setPolylinePoints(handle: PolylineHandle, points: LngLat[]): void
   removePolyline(id: string): void
+  /**
+   * 为已存在折线附加悬停交互：插入一层透明命中区（扩大可悬停范围）并绑定
+   * 进入/离开回调，用于「已确定测距」的 hover 高亮 + 悬浮删除按钮。返回取消绑定函数。
+   */
+  setPolylineInteractive(id: string, opts: PolylineInteractionOptions): () => void
+  /** 切换折线高亮（加宽/改色）；highlighted=false 恢复原始线宽/线色 */
+  setPolylineHighlight(id: string, highlighted: boolean, opts?: PolylineHighlightOptions): void
 
   // ============ 覆盖物：圆形 ============
   addCircle(id: string, center: LngLat, radiusMeters: number, opts?: CircleOptions): void
@@ -151,6 +192,16 @@ export interface MapAdapter {
   setDefaultCursor(cursor: string): void
   enableDoubleClickZoom(enabled: boolean): void
 
+  // ============ 底图样式（运行时热切换） ============
+
+  /**
+   * 运行时切换底图样式（热切换，不重建地图实例）。
+   *
+   * MapLibre 实现调用 map.setStyle()，保留中心点 / 缩放 / 业务 DOM 覆盖物。
+   * @param style 引擎无关样式描述（MapLibre 为 StyleSpecification）
+   */
+  setStyle(style: MapStyleSpec): void
+
   // ============ 生命周期 ============
   destroy(): void
 }
@@ -159,12 +210,12 @@ export interface MapAdapter {
  * 统一的地图引擎实例容器。
  *
  * HomePage 通过状态持有此对象，业务组件接收 adapter 进行操作。
- * `raw` 保留原始引擎实例，供少数高级用法（如 PlaceSearch 百度专属功能）使用。
+ * `raw` 保留原始引擎实例（maplibregl.Map），供少数高级用法使用。
  */
 export interface MapEngineInstance {
   adapter: MapAdapter
   /** 引擎类型 */
   engine: MapEngineType
-  /** 原始地图实例（BMapGL.Map / maplibregl.Map），引擎特定 */
+  /** 原始地图实例（maplibregl.Map），引擎特定 */
   raw: unknown
 }

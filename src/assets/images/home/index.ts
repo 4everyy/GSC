@@ -14,6 +14,9 @@ import iconHistory from './icon-history.png'
 import iconLayer from './icon-layer.png'
 import iconMeasure from './icon-measure.png'
 import layerToggleOn from './layer-toggle-on.png'
+import mapButton1 from './map-button-1.png'
+import mapButton2 from './map-button-2.png'
+import mapButton3 from './map-button-3.png'
 import iconTask from './icon-task.png'
 import iconZoomIn from './icon-zoom-in.png'
 import iconZoomOut from './icon-zoom-out.png'
@@ -39,6 +42,9 @@ export const homeImages = {
   iconLayer,
   iconMeasure,
   layerToggleOn,
+  mapButton1,
+  mapButton2,
+  mapButton3,
   iconTask,
   iconZoomIn,
   iconZoomOut,

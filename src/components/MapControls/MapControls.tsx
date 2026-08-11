@@ -57,7 +57,7 @@ export function MapControls({ adapter }: MapControlsProps) {
   const hintText =
     measure.points.length === 0
       ? '点击地图选择起点'
-      : `总距离 ${formatDistanceLocal(measure.totalDistance)} · 继续点击添加点，右键或 Esc 结束`
+      : `总距离 ${formatDistanceLocal(measure.totalDistance)} · 继续点击添加点`
 
   return (
     <>

@@ -18,7 +18,8 @@ export type {
   MarkerHandle,
   MarkerOptions,
   PolylineHandle,
+  PolylineHighlightOptions,
+  PolylineInteractionOptions,
   PolylineOptions,
 } from './types'
-export { BMapAdapter } from './BMapAdapter'
 export { MapLibreAdapter } from './MapLibreAdapter'

@@ -6,8 +6,8 @@
  * 但阈值是经验值，在不同视口尺寸 / 拖拽位置下，面板仍可能溢出可视区域被裁剪，
  * 导致「内容显示不全」。
  *
- * 本 hook 作为兜底：在每次渲染、拖拽、resize 后，测量所有 hover 面板的实际矩形，
- * 计算使其完全进入可视区域所需的平移量，通过 CSS 变量 `--clamp-x` / `--clamp-y`
+ * 本 hook 作为兜底：在每次渲染、拖拽、resize、DOM 变更、字体加载后，测量所有 hover 面板
+ * 的实际矩形，计算使其完全进入可视区域所需的平移量，通过 CSS 变量 `--clamp-x` / `--clamp-y`
  * 注入到面板元素；CSS 端用独立的 `translate` 属性叠加该平移，与各面板既有的
  * `transform` 解耦互不干扰。
  *
@@ -17,9 +17,14 @@
  *
  * 设计要点：
  * - 使用 useLayoutEffect，在浏览器绘制前同步完成测量与修正，避免溢出闪烁；
- * - 测量前先清除上次注入的变量，得到「自然位置」再计算位移，避免反馈循环；
+ * - 不通过 removeProperty 测量「自然位置」（会触发 MutationObserver 反馈循环），
+ *   而是读取当前 --clamp 值并从 rect 中减去，推导出自然位置；
+ * - 仅当新计算的 clamp 值与当前不同时才写入，避免触发 MutationObserver 反馈循环；
  * - panel 使用 visibility:hidden 隐藏（非 display:none），始终保留布局可被测量；
  * - 仅做「平移修正」，不改方向；方向由 panelPlacement.ts 的修饰类负责，两者互不干扰。
+ * - 每次应用前实时查询面板节点，保证动态增删的面板（如聚焦面板切换）都能被覆盖；
+ * - 通过 MutationObserver 监听 DOM 变更（面板增删、宿主 class/style 变化），
+ *   确保面板在 hover 显示后立即重新修正，不依赖外部 deps 的精确性。
  */
 import { useLayoutEffect, type DependencyList, type RefObject } from 'react'
 
@@ -74,47 +79,107 @@ export function usePanelClamp({
 }: UsePanelClampOptions = {}) {
   useLayoutEffect(() => {
     const root = containerRef?.current ?? document.body
-    const panels = Array.from(root.querySelectorAll<HTMLElement>(selector))
-    if (panels.length === 0) return
+    if (!root) return
+
+    // 实时查询面板：每次 apply 都重新查 DOM，保证动态增删的面板都能被覆盖。
+    const queryPanels = () => Array.from(root.querySelectorAll<HTMLElement>(selector))
 
     const apply = () => {
+      const panels = queryPanels()
       for (const panel of panels) {
-        // 先清除上次注入的修正，测量面板「自然位置」，避免反馈循环
-        panel.style.removeProperty('--clamp-x')
-        panel.style.removeProperty('--clamp-y')
+        // 读取当前注入的 clamp 值（inline style），用于从测量矩形中反推「自然位置」。
+        // 不使用 removeProperty + remeasure 的方式，因为那会修改 style 属性，
+        // 触发 MutationObserver → apply → 修改 style → MO → ... 的无限反馈循环。
+        const currentClampX = parseFloat(panel.style.getPropertyValue('--clamp-x')) || 0
+        const currentClampY = parseFloat(panel.style.getPropertyValue('--clamp-y')) || 0
+
         const rect = panel.getBoundingClientRect()
-        // 以最近可裁剪祖先（如 .map-stage overflow:hidden）为可见边界，
-        // 而非视口边界——面板被祖先裁剪，只有留在祖先矩形内才真正可见。
+        // 反推自然位置：当前 rect 包含了上一次注入的 clamp 平移，减去即得无修正时的位置
+        const naturalRight = rect.right - currentClampX
+        const naturalLeft = rect.left - currentClampX
+        const naturalBottom = rect.bottom - currentClampY
+        const naturalTop = rect.top - currentClampY
+
+        // 以最近可裁剪祖先（如 .map-stage overflow:hidden）为可见边界
         const clip = getClippingRect(panel)
         const boundLeft = clip.left + padding
         const boundRight = clip.right - padding
         const boundTop = clip.top + padding
         const boundBottom = clip.bottom - padding
+
         let shiftX = 0
         let shiftY = 0
         // 右溢出：向左平移
-        if (rect.right > boundRight) shiftX = boundRight - rect.right
+        if (naturalRight > boundRight) shiftX = boundRight - naturalRight
         // 左溢出（含右溢出修正后的二次校验）：向右平移
-        if (rect.left + shiftX < boundLeft) shiftX += boundLeft - (rect.left + shiftX)
+        if (naturalLeft + shiftX < boundLeft) shiftX += boundLeft - (naturalLeft + shiftX)
         // 下溢出：向上平移
-        if (rect.bottom > boundBottom) shiftY = boundBottom - rect.bottom
+        if (naturalBottom > boundBottom) shiftY = boundBottom - naturalBottom
         // 上溢出：向下平移
-        if (rect.top + shiftY < boundTop) shiftY += boundTop - (rect.top + shiftY)
-        panel.style.setProperty('--clamp-x', `${Math.round(shiftX)}px`)
-        panel.style.setProperty('--clamp-y', `${Math.round(shiftY)}px`)
+        if (naturalTop + shiftY < boundTop) shiftY += boundTop - (naturalTop + shiftY)
+
+        const newClampX = `${Math.round(shiftX)}px`
+        const newClampY = `${Math.round(shiftY)}px`
+
+        // 仅当值变化时才写入，避免触发 MutationObserver 反馈循环
+        if (panel.style.getPropertyValue('--clamp-x') !== newClampX) {
+          panel.style.setProperty('--clamp-x', newClampX)
+        }
+        if (panel.style.getPropertyValue('--clamp-y') !== newClampY) {
+          panel.style.setProperty('--clamp-y', newClampY)
+        }
       }
     }
 
     apply()
 
+    // 视口尺寸变化：重新修正
+    const onResize = () => apply()
+    window.addEventListener('resize', onResize)
+
+    // 容器尺寸变化：重新修正
     const ro =
-      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : undefined
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => apply()) : undefined
     ro?.observe(root)
-    window.addEventListener('resize', apply)
+
+    // DOM 变更监听：面板的增删（聚焦面板切换）、宿主位置/方向 class 变化
+    // 都会触发重新修正。使用微任务节流避免高频回调导致性能问题。
+    let scheduled = false
+    const scheduleApply = () => {
+      if (scheduled) return
+      scheduled = true
+      Promise.resolve().then(() => {
+        scheduled = false
+        apply()
+      })
+    }
+    const mo =
+      typeof MutationObserver !== 'undefined'
+        ? new MutationObserver(scheduleApply)
+        : undefined
+    mo?.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    })
+
+    // 字体加载完成后重新修正：字体异步加载会改变文本行高/宽度，导致面板尺寸变化
+    let fontReadyHandled = false
+    const onFontReady = () => {
+      if (fontReadyHandled) return
+      fontReadyHandled = true
+      apply()
+    }
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      document.fonts.ready.then(onFontReady).catch(() => {})
+    }
 
     return () => {
-      window.removeEventListener('resize', apply)
+      window.removeEventListener('resize', onResize)
       ro?.disconnect()
+      mo?.disconnect()
+      const panels = queryPanels()
       for (const panel of panels) {
         panel.style.removeProperty('--clamp-x')
         panel.style.removeProperty('--clamp-y')

@@ -21,7 +21,7 @@
     linear-gradient(90deg, rgba(24, 134, 161, 1), rgba(24, 134, 161, 0)) border-box;
   box-shadow: 0 5px 12px 0 rgba(12, 69, 79, 0.5);
   color: #ffffff;
-  font-family: MiSans, 'MiSans', sans-serif;
+  font-family: 'MiSans-Regular';
   font-weight: 400;
   font-size: 16px;
   font-style: normal;
@@ -76,6 +76,155 @@
   }
 }
 
+/* ====== 测距结束确认面板（依附于最新终点图钉） ======
+   排序（左→右）：取消 · 确定
+   - 取消（破坏性/低频）：ghost 弱化样式，靠左，降低误触
+   - 确定（主操作）：描边 + 半透填充，靠右
+   由 useDistanceMeasure 注入到最新红色终点图钉的零尺寸 Marker 容器内，
+   绝对定位在图钉右侧、竖直居中。仅测距激活且已落 ≥2 点时出现。
+   边界避让：靠近地图右/顶/底边缘时，由 useDistanceMeasure 动态翻到左侧或竖直收紧，避免被裁切。
+   pointer-events:auto 保证按钮可点；点击后由 hook 自行移除。 */
+.measure-finish-panel {
+  position: absolute;
+  left: 15px;
+  top: -13px;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 0.6vw, 10px);
+  padding: 5px clamp(8px, 0.8vw, 12px);
+  border-radius: 1000px;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+  /* 双背景：padding-box 主体渐变 + border-box 边框渐变（与 measure-hint 一致） */
+  background:
+    linear-gradient(90deg, rgba(36, 86, 107, 0.92) 0%, rgba(71, 167, 209, 0.6) 100%) padding-box,
+    linear-gradient(90deg, rgba(24, 134, 161, 1), rgba(24, 134, 161, 0)) border-box;
+  box-shadow: 0 4px 10px 0 rgba(12, 69, 79, 0.5);
+  color: #ffffff;
+  font-family: 'MiSans-Regular';
+  font-size: 13px;
+  pointer-events: auto;
+  animation: measure-finish-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 翻到图钉左侧：图钉靠近地图右边缘、面板在右侧会被裁切时启用。
+   仅覆盖 left/right；竖直（top/translateY）沿用基类。 */
+.measure-finish-panel.measure-finish-panel--left {
+  left: auto;
+  right: 15px;
+}
+
+.measure-finish-panel__label {
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  opacity: 0.88;
+  padding-left: 2px;
+}
+
+.measure-finish-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 0.4vw, 6px);
+}
+
+.measure-finish-panel__btn {
+  cursor: pointer;
+  padding: 3px 11px;
+  border-radius: 1000px;
+  font-family: 'MiSans-Regular';
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+/* 取消：ghost，破坏性动作弱化 */
+.measure-finish-panel__btn--cancel {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+}
+.measure-finish-panel__btn--cancel:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+}
+
+/* 确定：次级（描边 + 半透填充） */
+.measure-finish-panel__btn--confirm {
+  border: 1px solid rgba(24, 134, 161, 0.6);
+  background: rgba(24, 134, 161, 0.2);
+  color: #ffffff;
+}
+.measure-finish-panel__btn--confirm:hover {
+  background: rgba(24, 134, 161, 0.36);
+  border-color: rgba(24, 134, 161, 0.9);
+}
+
+.measure-finish-panel__btn:active {
+  transform: translateY(1px);
+}
+
+@keyframes measure-finish-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-6px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .measure-finish-panel {
+    animation: none;
+  }
+}
+
+/* ====== 测距「悬浮删除」按钮 ======
+   hover 已「确定」的测距折线时出现：折线高亮 + 本按钮位于命中点（≈光标处），
+   点击删除整条测距（折线 + 图钉 + 分段标签）。
+   由 useDistanceMeasure 注入为单例零尺寸 Marker，按钮绝对定位并 translate 居中于命中点。
+   150ms 延时隐藏避免光标在折线命中层与按钮间移动时闪烁。 */
+.measure-delete-btn {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  /* 与测距橙（#D95D04）同系，悬停加亮 */
+  background: rgba(217, 93, 4, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.measure-delete-btn:hover {
+  background: #ff6a00;
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.measure-delete-btn:active {
+  transform: translate(-50%, -50%) scale(0.95);
+}
+
 /* ====== 地图控制按钮 ====== */
 .view-controls {
   position: absolute;
@@ -103,28 +252,37 @@
   background: transparent;
 }
 
-/* view-controls 按钮三态（设计稿：渐变背景 + 渐变边框 + 4px 圆角）
-   注：border-image 会令 border-radius 失效，故采用双背景技巧——
-   padding-box 铺主体渐变，border-box 铺边框渐变，配合透明 1px 边框。 */
+/* view-controls 按钮三态（背景图：默认 / hover / active，带透明度）
+   透明度由 ::before 伪元素承载，独立于按钮内容（图标/文字），按需调整 opacity 值。
+   isolation: isolate 创建层叠上下文，把 z-index:-1 的伪元素困在按钮内，
+   确保伪元素位于按钮背景之上、内容（图标/文字）之下。 */
 .view-controls button {
+  position: relative;
+  isolation: isolate;
+  border: 0;
   border-radius: 4px;
-  border: 1px solid transparent;
-  background:
-    linear-gradient(180deg, #62c2c4 0%, #454aaa 83.12%, #2c2e5a 100%) padding-box,
-    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.6)) border-box;
+  overflow: hidden;
 }
 
-.view-controls button:hover {
-  background:
-    linear-gradient(180deg, #86e8e9 0%, #9296db 83.12%, #7578b3 100%) padding-box,
-    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.6)) border-box;
+.view-controls button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: url('../../assets/images/home/map-button-1.png');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  opacity: 0.8;
+  pointer-events: none;
 }
 
-.view-controls button:active,
-.view-controls button.active {
-  background:
-    linear-gradient(180deg, #6ee6e9 0%, #6066db 83.12%, #4e52ad 100%) padding-box,
-    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.6)) border-box;
+.view-controls button:hover::before {
+  background-image: url('../../assets/images/home/map-button-2.png');
+}
+
+.view-controls button:active::before,
+.view-controls button.active::before {
+  background-image: url('../../assets/images/home/map-button-3.png');
 }
 
 .view-controls img,
@@ -144,12 +302,23 @@
   width: clamp(32px, 3.33vw, 64px);
   grid-template-columns: 1fr;
   overflow: hidden;
-  /* 连体外框：渐变背景 + 渐变边框 + 4px 圆角（双背景技巧） */
+  /* 连体外框：背景图（默认 / hover / active 三态，带透明度）。
+     透明度由 ::before 承载，容器本身已是定位元素（层叠上下文），
+     z-index:-1 伪元素位于容器背景之上、内部按钮内容之下。 */
+  border: 0;
   border-radius: 4px;
-  border: 1px solid transparent;
-  background:
-    linear-gradient(180deg, #62c2c4 0%, #454aaa 83.12%, #2c2e5a 100%) padding-box,
-    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.6)) border-box;
+}
+
+.zoom-controls::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: url('../../assets/images/home/map-button-1.png');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  opacity: 0.8;
+  pointer-events: none;
 }
 
 /* 内部按钮：默认透明（露出容器背景），无独立圆角/边框。
@@ -162,16 +331,12 @@
   background: transparent;
 }
 
-.zoom-controls:has(button:hover) {
-  background:
-    linear-gradient(180deg, #86e8e9 0%, #9296db 83.12%, #7578b3 100%) padding-box,
-    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.6)) border-box;
+.zoom-controls:has(button:hover)::before {
+  background-image: url('../../assets/images/home/map-button-2.png');
 }
 
-.zoom-controls:has(button:active) {
-  background:
-    linear-gradient(180deg, #6ee6e9 0%, #6066db 83.12%, #4e52ad 100%) padding-box,
-    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.6)) border-box;
+.zoom-controls:has(button:active)::before {
+  background-image: url('../../assets/images/home/map-button-3.png');
 }
 
 .zoom-controls button img {

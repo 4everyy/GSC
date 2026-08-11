@@ -17,7 +17,8 @@
   /* 顶部内边距进一步减小，让内容上移；底部保留适当边距 */
   padding: clamp(2px, .21vw, 4px) clamp(8px, .83vw, 16px) clamp(10px, .83vw, 16px);
   color: #fff;
-  font-family: 'MiSans-Regular', MiSans, sans-serif;
+  font-family: 'MiSans-Regular';
+  font-weight: 400;
 
   /* 淡入/淡出：默认隐藏 */
   opacity: 0;
@@ -75,7 +76,7 @@
 .device-panel__title {
   margin-left: clamp(6px, .42vw, 8px);
   font-size: clamp(12px, .94vw, 18px);
-  font-weight: normal;
+  font-weight: 400;
   white-space: nowrap;
   line-height: 1;
   color: #fff;
@@ -362,7 +363,7 @@
   line-height: 1;
   color: #fff;
   white-space: nowrap;
-  font-family: 'MiSans-Regular', MiSans, sans-serif;
+  font-family: 'MiSans-Regular';
 }
 
 .device-panel__select span {
@@ -876,7 +877,7 @@
 
 .device-row__detail-failed-text {
   /* 设计稿指定样式 */
-  font-family: MiSans, MiSans;
+  font-family: 'MiSans-Regular';
   font-weight: 400;
   /* 与面板其他次要文本（10-14px）保持一致的响应式量级 */
   font-size: clamp(10px, .73vw, 14px);

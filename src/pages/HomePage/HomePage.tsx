@@ -1,28 +1,24 @@
 /**
  * HomePage —— 地面站主页面。
  *
- * 引擎切换设计：
- * - 使用 useMapEngine hook 管理当前引擎类型与适配器实例；
- * - 根据 engineType 条件渲染 BMapContainer 或 MapLibreContainer；
- * - 所有业务组件（控件、比例尺）统一接收 adapter（引擎无关）；
- * - PlaceSearch 是百度专有功能，仅在百度引擎下渲染，使用 raw BMapGL.Map。
+ * 地图引擎：MapLibre GL JS（离线矢量/栅格瓦片由本地 tileserver-gl 提供）。
+ * - 使用 useMapEngine hook 持有 MapLibreContainer 注入的适配器实例；
+ * - 所有业务组件（控件、比例尺）统一接收 adapter（引擎无关）。
  *
  * 解耦要点：
  * - HomePage 不直接 import 适配器实现类，仅通过 MapEngineInstance.adapter 操作地图；
- * - 切换引擎时 useMapEngine 自动销毁旧实例，业务组件通过 useEffect 依赖 adapter 变化自动重建覆盖物。
+ * - 业务组件通过 useEffect 依赖 adapter 变化自动重建覆盖物。
  */
-import { useState } from 'react'
-import { MAPLIBRE_BASEMAPS, MAPLIBRE_DEFAULT_BASEMAP } from '../../config/mapLibre'
+import { useEffect, useRef, useState } from 'react'
+import { useMapDisplay } from '../../features/map-display/useMapDisplay'
+import { CITY_DATABASE } from '../../features/offline-map/cityDatabase'
 import { StatusHeader } from '../../components/StatusHeader/StatusHeader'
 import { MapToolbar } from '../../components/MapToolbar/MapToolbar'
 import { MissionPanel } from '../../components/MissionPanel/MissionPanel'
 import { AlarmInfoPanel } from '../../components/AlarmInfoPanel/AlarmInfoPanel'
 import { MapControls } from '../../components/MapControls/MapControls'
-import { BMapContainer } from '../../components/BMapContainer/BMapContainer'
 import { MapLibreContainer } from '../../components/MapLibreContainer/MapLibreContainer'
-import { PlaceSearch } from '../../components/PlaceSearch/PlaceSearch'
 import { MapScale } from '../../components/MapScale/MapScale'
-import { EngineSwitch } from '../../components/EngineSwitch/EngineSwitch'
 import { useMapEngine } from '../../hooks/useMapEngine'
 import { ALARM_TYPES } from '../../config/alarms'
 import { aircraft } from '../../config/aircraft'
@@ -31,6 +27,10 @@ import { useDraggable, type DragPosition } from '../../hooks/useDraggable'
 import { AircraftFocusPanel } from '../../components/AircraftFocusPanel/AircraftFocusPanel'
 import { computePanelPlacement, placementToClasses } from '../../utils/panelPlacement'
 import { usePanelClamp } from '../../hooks/usePanelClamp'
+import { SystemConfigButton } from '../../features/offline-map/components/SystemConfigButton'
+import { DownloadProgressBar } from '../../features/offline-map/components/DownloadProgressBar'
+import { OfflineMapDialog } from '../../features/offline-map/components/OfflineMapDialog'
+import { useOfflineMap } from '../../features/offline-map/useOfflineMap'
 import './HomePage.css'
 import './HoverPanelPlacement.css'
 
@@ -47,6 +47,26 @@ const AIRCRAFT_INITIAL_POSITIONS: DragPosition[] = [
 // 巡检区域初始位置（百分比），与 HomePage.css 中 .inspection-zone 的 left/top 保持一致
 const INSPECTION_ZONE_INITIAL_POSITION: DragPosition = { x: 38.75, y: 25.5 }
 
+/**
+ * 按矢量城市数据源 key 查找其 bbox 中心（WGS84）。
+ *
+ * 用于「地图资源切换」时 flyTo 到目标城市中心。遍历 CITY_DATABASE，
+ * 未匹配时返回 null（调用方保持当前视图）。
+ */
+function findCityCenterByKey(key: string): { lng: number; lat: number } | null {
+  for (const region of CITY_DATABASE) {
+    for (const c of region.cities) {
+      if (c.key === key) {
+        return {
+          lng: (c.bbox.west + c.bbox.east) / 2,
+          lat: (c.bbox.south + c.bbox.north) / 2,
+        }
+      }
+    }
+  }
+  return null
+}
+
 export function HomePage() {
   const [activeAlarm, setActiveAlarm] = useState<number | null>(null)
 
@@ -58,17 +78,34 @@ export function HomePage() {
   }
   const handleCloseFocusPanel = () => setFocusedAircraft(null)
 
-  // 地图引擎管理：engineType 决定渲染哪个 Container，adapter 供业务组件使用
-  const { engineType, adapter, engineInstance, switchEngine, onEngineReady } =
-    useMapEngine('maplibre')
+  // 地图引擎实例：MapLibreContainer 初始化后通过 onEngineReady 注入，
+  // adapter 供业务组件（控件、比例尺等）引擎无关地操作地图。
+  const { adapter, onEngineReady } = useMapEngine()
 
-  // PlaceSearch 需要百度原始地图实例（百度专有 POI 搜索 API）
-  const bmapRawInstance =
-    engineType === 'baidu' && engineInstance?.engine === 'baidu'
-      ? (engineInstance.raw as BMapGL.Map)
-      : null
+  // 地图资源切换（由 App.tsx 的 MapDisplayProvider 提供）：
+  // - activeStyleUrl / activeStyleSpec：当前底图基础 URL 与改写后的完整 spec；
+  // - cityKey / flyToCityOnSwitch：当前矢量城市 + 是否切换时飞到中心。
+  const { activeStyleUrl, activeStyleSpec, cityKey, flyToCityOnSwitch } =
+    useMapDisplay()
 
   const currentAlarmColor = activeAlarm !== null ? ALARM_TYPES[activeAlarm]?.color : undefined
+
+  // 离线地图状态（由 App.tsx 的 OfflineMapProvider 提供）：
+  // - isOffline：navigator.onLine 离线态，驱动「无缓存+断网」灰显提示；
+  // - cacheSummary.totalTiles：本地缓存瓦片总数，为 0 表示完全无缓存；
+  // - openDialog：打开离线地图管理弹窗（占位层「立即下载」按钮回调）。
+  // openDialog：打开离线地图管理弹窗，作为 MapLibreContainer 离线提示层的下载入口。
+  const { openDialog: openOfflineMapDialog } = useOfflineMap()
+
+  // 切换矢量城市时，按需飞到该市中心（首次加载不触发，避免覆盖 autoLocate）
+  const firstCityRef = useRef(cityKey)
+  useEffect(() => {
+    const isFirst = firstCityRef.current === cityKey
+    firstCityRef.current = cityKey
+    if (isFirst || !flyToCityOnSwitch || !adapter) return
+    const center = findCityCenterByKey(cityKey)
+    if (center) adapter.flyTo(center, { duration: 1200 })
+  }, [cityKey, flyToCityOnSwitch, adapter])
 
   // 飞机图标拖拽：鼠标左键按住拖动图标+名称至首页任意位置
   const { positions: aircraftPositions, onDragStart: onAircraftDragStart } =
@@ -107,32 +144,31 @@ export function HomePage() {
   return (
     <main className="design-viewport" aria-label="无人机集群控制地面站">
       <div className="design-canvas">
-        {/* 地图底图：根据 engineType 条件渲染百度或 MapLibre 容器 */}
-        {engineType === 'baidu' ? (
-          <BMapContainer className="map-base" onReady={onEngineReady} autoLocate />
-        ) : (
-          <MapLibreContainer
-            className="map-base"
-            styleUrl={MAPLIBRE_BASEMAPS[MAPLIBRE_DEFAULT_BASEMAP].url}
-            onReady={onEngineReady}
-            autoLocate
-          />
-        )}
+        {/* 地图底图：MapLibre GL JS 容器，离线矢量/栅格瓦片由本地 tileserver-gl 提供 */}
+        <MapLibreContainer
+          className="map-base"
+          styleUrl={activeStyleUrl}
+          styleSpec={activeStyleSpec}
+          onReady={onEngineReady}
+          onOfflinePromptClick={openOfflineMapDialog}
+          autoLocate
+        />
 
         <StatusHeader activeAlarm={activeAlarm} onAlarmClick={setActiveAlarm} />
 
-        {/* 引擎切换按钮：浮于地图右上角，可在百度/MapLibre 之间灵活切换 */}
-        <EngineSwitch engine={engineType} onSwitch={switchEngine} />
-
-        {/* 地址搜索框：百度专有功能，仅在百度引擎下渲染 */}
-        {engineType === 'baidu' && (
-          <div className="place-search-wrapper">
-            <PlaceSearch map={bmapRawInstance} />
-          </div>
-        )}
+        {/* 系统配置（齿轮按钮）：浮于地图右上角，点击打开离线地图管理弹窗（下载/本地）。 */}
+        <SystemConfigButton />
 
         <section className="map-stage">
           <MapToolbar />
+
+          {/* 离线地图下载进度条：浮于地图顶部居中，仅当存在进行中下载任务时渲染（无任务时返回 null）。 */}
+          <DownloadProgressBar />
+
+          {/* 离线灰显提示覆盖层：仅在「断网 + 本地零缓存」时展示，引导用户前往系统配置预取瓦片。
+              其余情形由 gcs-cache 协议自动处理：命中缓存正常显示 / 未命中在线懒加载 / 未命中离线灰显瓦片。 */}
+          {/* 离线无缓存灰显提示已下沉到 MapLibreContainer：status === 'offline' 时
+              渲染 OfflineMapPlaceholder，下载入口经 onOfflinePromptClick 回调驱动。*/}
           {/* MissionPanel 与 AlarmInfoPanel 暂时隐藏，待后续功能接入时恢复 */}
           {false && <MissionPanel />}
           {false && <AlarmInfoPanel alarmColor={currentAlarmColor} />}
@@ -406,6 +442,10 @@ export function HomePage() {
             <MapScale adapter={adapter} />
           </footer>
         </section>
+
+        {/* 离线地图管理弹窗（fixed 全屏遮罩）：由 context.dialogOpen 控制显隐，
+            position:fixed 脱离 .map-stage 的 pointer-events:none 限制，可正常交互。 */}
+        <OfflineMapDialog />
       </div>
     </main>
   )

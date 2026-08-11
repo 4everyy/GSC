@@ -1,0 +1,477 @@
+/* ====== 离线地图管理弹窗 ======
+   视觉风格：暗色科技风，与 MapControls 一致。
+   定位：fixed 居中遮罩，z-index 高于地图覆盖物。 */
+
+.offline-map-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 10, 22, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.offline-map-dialog {
+  width: min(640px, 92vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(13, 20, 33, 0.96);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 10px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 229, 255, 0.08);
+  color: #fff;
+  overflow: hidden;
+}
+
+.offline-map-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.18);
+}
+
+.offline-map-dialog__title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #00e5ff;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+}
+
+.offline-map-dialog__close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.offline-map-dialog__close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ====== Tab 切换 ====== */
+.offline-map-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 20px 0;
+}
+
+.offline-map-tab {
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.offline-map-tab:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.offline-map-tab.is-active {
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.1);
+  border-color: rgba(0, 229, 255, 0.3);
+}
+
+.offline-map-dialog__body {
+  flex: 1;
+  padding: 18px 20px 20px;
+  overflow-y: auto;
+}
+
+/* ====== 表单区块 ====== */
+.offline-form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.offline-form-row__label {
+  flex: 0 0 64px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.offline-form-row__control {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* radio 分段 */
+.offline-radio {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.offline-radio__btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.offline-radio__btn.is-active {
+  color: #00e5ff;
+  border-color: rgba(0, 229, 255, 0.5);
+  background: rgba(0, 229, 255, 0.12);
+}
+
+/* 输入框 */
+.offline-input,
+.offline-select {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.offline-input:focus,
+.offline-select:focus {
+  border-color: rgba(0, 229, 255, 0.6);
+}
+
+.offline-input {
+  width: 88px;
+}
+
+.offline-select {
+  min-width: 160px;
+}
+
+.offline-select option {
+  background: #0d1421;
+  color: #fff;
+}
+
+.offline-bbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 14px;
+}
+
+.offline-bbox-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.offline-bbox-field span {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+/* 预估信息 */
+.offline-estimate {
+  margin: 14px 0;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(0, 229, 255, 0.06);
+  border: 1px solid rgba(0, 229, 255, 0.15);
+  border-radius: 6px;
+}
+
+.offline-estimate strong {
+  color: #00e5ff;
+}
+
+.offline-estimate--warn {
+  color: #ffb84d;
+  background: rgba(255, 184, 77, 0.08);
+  border-color: rgba(255, 184, 77, 0.3);
+}
+
+/* 进度条 */
+.offline-progress {
+  margin: 14px 0;
+}
+
+.offline-progress__bar {
+  position: relative;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.offline-progress__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #00e5ff, #4a9eff);
+  border-radius: 8px;
+  transition: width 0.2s ease;
+}
+
+.offline-progress__text {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+}
+
+/* 操作按钮 */
+.offline-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.offline-btn {
+  padding: 8px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.offline-btn--primary {
+  color: #fff;
+  background: linear-gradient(135deg, #00e5ff, #4a9eff);
+}
+
+.offline-btn--primary:hover {
+  filter: brightness(1.1);
+}
+
+.offline-btn--primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.offline-btn--ghost {
+  color: rgba(255, 255, 255, 0.8);
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.offline-btn--ghost:hover {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.offline-btn--danger {
+  color: #ff6b6b;
+  background: transparent;
+  border-color: rgba(255, 107, 107, 0.4);
+}
+
+.offline-btn--danger:hover {
+  background: rgba(255, 107, 107, 0.12);
+}
+
+/* 任务列表项 */
+.offline-task-item {
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+}
+
+.offline-task-item__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.offline-task-item__title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.offline-task-item__meta {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.offline-task-item__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.offline-task-item .offline-btn {
+  padding: 5px 14px;
+  font-size: 12px;
+}
+
+.offline-status-tag {
+  padding: 1px 8px;
+  font-size: 11px;
+  border-radius: 10px;
+  border: 1px solid currentColor;
+}
+
+.offline-status-tag--completed {
+  color: #4ade80;
+}
+
+.offline-status-tag--downloading {
+  color: #00e5ff;
+}
+
+.offline-status-tag--paused {
+  color: #ffb84d;
+}
+
+.offline-status-tag--failed {
+  color: #ff6b6b;
+}
+
+.offline-status-tag--pending {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* 配额条 */
+.offline-quota {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.offline-quota__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.offline-empty {
+  padding: 28px 0;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ====== 地图区悬浮进度条（DownloadProgressBar） ====== */
+.download-progress-float {
+  position: absolute;
+  left: 50%;
+  bottom: 70px;
+  transform: translateX(-50%);
+  z-index: 20;
+  width: min(520px, 70vw);
+  padding: 12px 16px;
+  background: rgba(13, 20, 33, 0.92);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  pointer-events: auto;
+}
+
+.download-progress-float__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.download-progress-float__title {
+  color: #00e5ff;
+}
+
+/* ====== 系统配置按钮（齿轮） ====== */
+.system-config-btn {
+  position: absolute;
+  /* 贴首页右上角：紧接顶部状态栏视觉区域（净高 clamp(34.13px, 3.33vw, 64px)）下方，
+     右侧与 view-controls / zoom-controls 对齐 */
+  top: calc(clamp(34.13px, 3.33vw, 64px) + clamp(10px, 1vw, 18px));
+  right: clamp(8px, 0.83vw, 16px);
+  z-index: 15;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(13, 20, 33, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.system-config-btn:hover {
+  color: #00e5ff;
+  border-color: rgba(0, 229, 255, 0.6);
+  background: rgba(0, 229, 255, 0.1);
+}
+
+/* ====== 离线灰显覆盖层（OfflineMapPlaceholder） ====== */
+.maplibre-status--offline {
+  color: #ffb84d;
+}
+
+.offline-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 80%;
+  padding: 22px 26px;
+  border: 1px solid rgba(255, 184, 77, 0.4);
+  border-radius: 8px;
+  background: rgba(10, 26, 47, 0.88);
+  text-align: center;
+  line-height: 1.7;
+}
+
+.offline-card__icon {
+  font-size: 34px;
+}
+
+.offline-card__text {
+  color: #ffb84d;
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.offline-card__hint {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+

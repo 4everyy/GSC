@@ -1,10 +1,8 @@
 /**
  * MapLibre 地图配置。
  *
- * 与百度地图配置（config/map.ts）分离，因为：
- * - 坐标系不同：百度用 BD09，MapLibre 用 WGS84；
- * - 样式机制不同：百度用 setMapStyleV2，MapLibre 用 Style JSON；
- * - 瓦片源不同：百度在线瓦片，MapLibre 使用本地 tileserver-gl。
+ * 集中管理 MapLibre GL JS 的默认样式、中心点（WGS84）、缩放级别与交互选项，
+ * 便于在多组件间共享与统一调整。
  */
 
 /**
@@ -28,7 +26,7 @@ export const MAPLIBRE_DEFAULT_ZOOM = Number(
  * 地图底图样式枚举。
  *
  * - dark：暗色矢量底图（默认，离线，OSM 数据）
- * - satellite：卫星影像底图（默认 Esri World Imagery 在线；离线替换为本地 raster mbtiles）
+ * - satellite：卫星影像底图（同源代理路径 /satellite-tiles 经 gcs-cache 协议优先命中离线缓存，未命中在线时回源 Esri World Imagery）
  *
  * 各样式 URL 均可通过环境变量覆盖，便于不同部署环境灵活配置。
  */
@@ -66,7 +64,7 @@ const OFFLINE_BASE = '/tiles/styles'
  *
  * 每个 key 对应一种底图模式：
  * - dark：矢量暗色底图（默认离线）
- * - satellite：卫星影像底图（默认 Esri 在线；离线时在 style.json 中替换 source）
+ * - satellite：卫星影像底图（代理源 /satellite-tiles + gcs-cache 离线缓存，回源 Esri）
  *
  * 环境变量覆盖规则（按底图类型）：
  * - VITE_MAPLIBRE_STYLE_URL：覆盖 dark 矢量样式 URL
@@ -91,6 +89,14 @@ export const MAPLIBRE_BASEMAPS: Record<MapBasemap, StyleEntry> = {
 export const MAPLIBRE_DEFAULT_BASEMAP: MapBasemap = 'satellite'
 
 /**
+ * 默认矢量城市数据源 key。
+ *
+ * 与本地 mbtiles 文件名前缀（suzhou.mbtiles）及 tileserver-gl config.json 的 data
+ * 段 key 对齐。地图资源切换功能的默认城市；部署到其他区域时改 .env.local 或此处即可。
+ */
+export const MAPLIBRE_DEFAULT_CITY_KEY = 'suzhou'
+
+/**
  * 兼容旧引用：导出默认样式 URL。
  * @deprecated 使用 MAPLIBRE_BASEMAPS[basemap].url 替代。
  */
@@ -109,7 +115,6 @@ export const MAPLIBRE_USE_OFFLINE_TILES =
 
 /**
  * MapLibre 地图初始化选项。
- * 保持与百度地图一致的基础交互能力。
  */
 export const MAPLIBRE_MAP_OPTIONS = {
   /** 允许滚轮缩放 */

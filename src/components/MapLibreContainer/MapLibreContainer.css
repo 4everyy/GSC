@@ -1,5 +1,4 @@
-/* ====== MapLibre 地图容器 ======
-   与 bmap-container 结构一致，保证切换引擎时布局无跳变 */
+/* ====== MapLibre 地图容器 ====== */
 .maplibre-container {
   position: absolute;
   inset: 0;

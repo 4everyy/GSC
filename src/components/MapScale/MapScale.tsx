@@ -1,10 +1,8 @@
 /**
- * MapScale —— 动态比例尺组件（引擎无关版）。
+ * MapScale —— 动态比例尺组件（基于 MapAdapter 引擎抽象接口）。
  *
- * 重构说明：
- * - 原实现直接调用 `map.getCenter()` / `map.pointToPixel()` 等百度 API；
- * - 现通过 `MapAdapter.getMetersPerPixel()` 与 `onZoomEnd/onMoveEnd` 抽象出引擎差异，
- *   业务逻辑保持不变，仅把"每像素米数"的计算下沉到适配器。
+ * 通过 `adapter.getMetersPerPixel()` 与 `onZoomEnd/onMoveEnd` 事件计算
+ * 每像素对应的实际米数，渲染比例尺线段与文字。
  */
 import { useState, useEffect, useCallback } from 'react'
 import type { MapAdapter } from '../../map-engines'

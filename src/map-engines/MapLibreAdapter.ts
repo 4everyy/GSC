@@ -19,14 +19,18 @@ import {
   type MarkerOptions as MLMarkerOptions,
   type MapMouseEvent as MLMapMouseEvent,
   type GeoJSONSource as MLGeoJSONSource,
+  type StyleSpecification as MLStyleSpecification,
 } from 'maplibre-gl'
 import type {
   CircleOptions,
   LngLat,
   MapAdapter,
+  MapStyleSpec,
   MarkerHandle,
   MarkerOptions,
   PolylineHandle,
+  PolylineHighlightOptions,
+  PolylineInteractionOptions,
   PolylineOptions,
 } from './types'
 
@@ -68,6 +72,12 @@ interface MapLibreOverlayEntry {
   sourceId?: string
   /** layer id 列表（polyline 可能有多层光晕） */
   layerIds?: string[]
+  /** 透明命中层 id（setPolylineInteractive 创建，纳入 layerIds 由 removeOverlay 统一清理） */
+  hitLayerId?: string
+  /** 高亮前的原始线宽（setPolylineHighlight 缓存，用于恢复） */
+  baseLineWidth?: number
+  /** 高亮前的原始线色（setPolylineHighlight 缓存，用于恢复） */
+  baseLineColor?: string
 }
 
 /** 生成带前缀的唯一 id（用于 source/layer 命名） */
@@ -184,6 +194,14 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.panTo([lngLat.lng, lngLat.lat])
   }
 
+  flyTo(lngLat: LngLat, options?: { zoom?: number; duration?: number }): void {
+    this.map.flyTo({
+      center: [lngLat.lng, lngLat.lat],
+      ...(options?.zoom !== undefined ? { zoom: options.zoom } : {}),
+      ...(options?.duration !== undefined ? { duration: options.duration } : {}),
+    })
+  }
+
   // ============ 坐标换算 ============
 
   getMetersPerPixel(): number {
@@ -191,6 +209,10 @@ export class MapLibreAdapter implements MapAdapter {
     const zoom = this.map.getZoom()
     // 标准墨卡托每像素米数：地球周长 × cos(lat) / 2^(zoom+8)
     return (EARTH_CIRCUMFERENCE * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, zoom + 8)
+  }
+
+  getContainer(): HTMLElement {
+    return this.map.getContainer()
   }
 
   // ============ 覆盖物：标注 ============
@@ -338,6 +360,86 @@ export class MapLibreAdapter implements MapAdapter {
     this.removeOverlay(id)
   }
 
+  setPolylineInteractive(id: string, opts: PolylineInteractionOptions): () => void {
+    const entry = this.overlays.get(id)
+    // 仅折线、且存在主线层与 source 时才可附加交互；否则返回空函数保持幂等
+    if (!entry || entry.kind !== 'polyline' || !entry.sourceId) return () => {}
+    const mainLayerId = entry.layerIds?.[0]
+    if (!mainLayerId) return () => {}
+
+    // 复用既有命中层（幂等），否则新建一条与主线同 source 的透明宽线作为命中区
+    let hitLayerId = entry.hitLayerId
+    if (!hitLayerId || !this.map.getLayer(hitLayerId)) {
+      hitLayerId = nextId('hit')
+      this.map.addLayer({
+        id: hitLayerId,
+        type: 'line',
+        source: entry.sourceId,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          // 完全透明：仅承担命中检测，不产生视觉
+          'line-color': '#000000',
+          'line-opacity': 0,
+          'line-width': opts.hitWidth ?? 18,
+        },
+      })
+      // 纳入 layerIds，removeOverlay 时随主线/光晕一并清理
+      entry.layerIds = [...(entry.layerIds ?? []), hitLayerId]
+      entry.hitLayerId = hitLayerId
+    } else if (opts.hitWidth !== undefined) {
+      // 复用命中层但传入新宽度时同步
+      this.map.setPaintProperty(hitLayerId, 'line-width', opts.hitWidth)
+    }
+
+    const onEnterFn = (e: MLMapMouseEvent) => {
+      opts.onEnter?.({ lng: e.lngLat.lng, lat: e.lngLat.lat })
+    }
+    const onLeaveFn = () => {
+      opts.onLeave?.()
+    }
+    this.map.on('mouseenter', hitLayerId, onEnterFn)
+    this.map.on('mouseleave', hitLayerId, onLeaveFn)
+
+    // 仅解绑事件；命中层交由 removeOverlay 统一删除（删除/卸载流程必经 removeOverlay）
+    return () => {
+      this.map.off('mouseenter', hitLayerId, onEnterFn)
+      this.map.off('mouseleave', hitLayerId, onLeaveFn)
+    }
+  }
+
+  setPolylineHighlight(
+    id: string,
+    highlighted: boolean,
+    opts?: PolylineHighlightOptions,
+  ): void {
+    const entry = this.overlays.get(id)
+    if (!entry || entry.kind !== 'polyline') return
+    const mainLayerId = entry.layerIds?.[0]
+    if (!mainLayerId || !this.map.getLayer(mainLayerId)) return
+
+    if (highlighted) {
+      // 首次高亮时缓存原始线宽/线色，供恢复
+      if (entry.baseLineWidth === undefined) {
+        const w = this.map.getPaintProperty(mainLayerId, 'line-width') as number | undefined
+        entry.baseLineWidth = typeof w === 'number' ? w : 4
+      }
+      if (entry.baseLineColor === undefined) {
+        const c = this.map.getPaintProperty(mainLayerId, 'line-color') as string | undefined
+        entry.baseLineColor = typeof c === 'string' ? c : undefined
+      }
+      const scale = opts?.widthScale ?? 1.8
+      this.map.setPaintProperty(mainLayerId, 'line-width', (entry.baseLineWidth ?? 4) * scale)
+      if (opts?.color) this.map.setPaintProperty(mainLayerId, 'line-color', opts.color)
+    } else {
+      if (entry.baseLineWidth !== undefined) {
+        this.map.setPaintProperty(mainLayerId, 'line-width', entry.baseLineWidth)
+      }
+      if (entry.baseLineColor !== undefined) {
+        this.map.setPaintProperty(mainLayerId, 'line-color', entry.baseLineColor)
+      }
+    }
+  }
+
   // ============ 覆盖物：圆形 ============
 
   addCircle(id: string, center: LngLat, radiusMeters: number, opts?: CircleOptions): void {
@@ -471,6 +573,12 @@ export class MapLibreAdapter implements MapAdapter {
     } else {
       this.map.doubleClickZoom.disable()
     }
+  }
+
+  // ============ 底图样式（运行时热切换） ============
+
+  setStyle(style: MapStyleSpec): void {
+    this.map.setStyle(style as MLStyleSpecification)
   }
 
   // ============ 生命周期 ============

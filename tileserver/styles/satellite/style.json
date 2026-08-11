@@ -1,12 +1,12 @@
 {
   "name": "GCS Satellite",
-  "description": "卫星影像底图 + 矢量地理信息叠加层（道路、水系、地标、POI）。影像默认使用 Esri World Imagery（在线）；矢量数据来自本地 tileserver-gl 的苏州 OSM mbtiles。完全离线部署时，将 sources.satellite.tiles 替换为本地 raster mbtiles 服务地址。详见 docs/离线部署指南.md。",
+  "description": "卫星影像底图 + 矢量地理信息叠加层（道路、水系、地标、POI）。影像通过同源代理路径 /satellite-tiles/{z}/{x}/{y}.png 提供并由 transformRequest 包装为 gcs-cache:// 自定义协议：优先命中 IndexedDB 离线缓存（用户在「下载离线地图」预取），未命中在线时经 Vite/Nginx 代理回源 Esri World Imagery 并异步写回，离线未缓存返回灰色占位——与矢量瓦片缓存流程一致。矢量数据来自本地 tileserver-gl 的苏州 OSM mbtiles。",
   "version": 8,
   "sources": {
     "satellite": {
       "type": "raster",
       "tiles": [
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+        "/satellite-tiles/{z}/{x}/{y}.png"
       ],
       "tileSize": 256,
       "attribution": "Imagery © Esri, Maxar, Earthstar Geographics",

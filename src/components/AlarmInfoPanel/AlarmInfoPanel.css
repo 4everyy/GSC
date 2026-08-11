@@ -30,7 +30,7 @@
   overflow-wrap: break-word;
   color: rgba(255, 255, 255, 1);
   font-size: 18px;
-  font-family: MiSans-Demibold, sans-serif;
+  font-family: 'MiSans-Regular';
   font-weight: normal;
   text-align: left;
   white-space: nowrap;
@@ -114,7 +114,7 @@
   overflow-wrap: break-word;
   color: rgba(255, 255, 255, 1);
   font-size: 14px;
-  font-family: 'MiSans-Regular', MiSans, sans-serif;
+  font-family: 'MiSans-Regular';
   font-weight: normal;
   text-align: left;
   white-space: nowrap;
