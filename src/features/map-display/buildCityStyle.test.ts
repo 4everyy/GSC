@@ -3,7 +3,7 @@ import type { StyleSpecification } from 'maplibre-gl'
 import { applyCityToVectorSources, cityTileJsonUrl } from './buildCityStyle'
 import { TILESERVER_ORIGIN } from '../../config/mapLibre'
 
-/** 构造类似卫星 style 的 spec：含 raster(Esri) + vector(城市) 两个 source */
+/** 构造类似卫星 style 的 spec：含 raster(卫星影像) + vector(城市) 两个 source */
 function makeSatelliteLikeSpec(): StyleSpecification {
   return {
     version: 8,
@@ -41,7 +41,7 @@ describe('applyCityToVectorSources', () => {
     )
   })
 
-  it('栅格源（Esri 影像）保持不变', () => {
+  it('栅格源（卫星影像）保持不变', () => {
     const out = applyCityToVectorSources(makeSatelliteLikeSpec(), 'nanjing')
     const sat = out.sources.satellite as { tiles?: string[]; url?: string }
     expect(sat.tiles).toEqual(['https://example.com/{z}/{x}/{y}.png'])

@@ -1,15 +1,12 @@
 {
   "name": "GCS Satellite",
-  "description": "卫星影像底图 + 矢量地理信息叠加层（道路、水系、地标、POI）。影像通过同源代理路径 /satellite-tiles/{z}/{x}/{y}.png 提供并由 transformRequest 包装为 gcs-cache:// 自定义协议：优先命中 IndexedDB 离线缓存（用户在「下载离线地图」预取），未命中在线时经 Vite/Nginx 代理回源 Esri World Imagery 并异步写回，离线未缓存返回灰色占位——与矢量瓦片缓存流程一致。矢量数据来自本地 tileserver-gl 的苏州 OSM mbtiles。",
+  "description": "卫星影像底图 + 矢量地理信息叠加层（道路、水系、地标、POI）。影像与矢量数据均来自本地 tileserver-gl 的 mbtiles（严格离线，无任何在线回源）：栅格影像源 satellite（satellite.mbtiles），矢量源 suzhou（suzhou.mbtiles）。运行时 transformRequest 将 tileserver 注入的绝对 origin 重写为 /tiles 同源代理路径并包装为 gcs-cache:// 自定义协议——与矢量瓦片走完全一致的缓存流程（IndexedDB 命中优先；未命中则灰显——严格离线，不回源任何 tileserver）。",
   "version": 8,
   "sources": {
     "satellite": {
       "type": "raster",
-      "tiles": [
-        "/satellite-tiles/{z}/{x}/{y}.png"
-      ],
+      "url": "mbtiles://satellite.mbtiles",
       "tileSize": 256,
-      "attribution": "Imagery © Esri, Maxar, Earthstar Geographics",
       "maxzoom": 19
     },
     "suzhou": {

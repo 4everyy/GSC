@@ -172,11 +172,13 @@ export async function downloadTiles(
   const total = coords.length
   let completed = 0
   let failed = 0
+  let skipped = 0
   let bytes = 0
   const emit = (): void => {
     options.onProgress?.({
       completed,
       failed,
+      skipped,
       total,
       bytes,
       aborted: !!signal?.aborted,
@@ -184,7 +186,14 @@ export async function downloadTiles(
   }
 
   if (total === 0) {
-    return { completed: 0, failed: 0, total: 0, bytes: 0, aborted: false }
+    return {
+      completed: 0,
+      failed: 0,
+      skipped: 0,
+      total: 0,
+      bytes: 0,
+      aborted: false,
+    }
   }
 
   // 断点续传：批量查询已缓存块，命中则跳过
@@ -213,6 +222,15 @@ export async function downloadTiles(
         const resp = await fetch(cur.key, { signal })
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
         const buf = await resp.arrayBuffer()
+        // 204 No Content / 0 字节响应：数据源无此瓦片（如占位 mbtiles 缺失高层级、
+        // 栅格源在海域/边界无数据）。视为「跳过」——不写入缓存（避免 0 字节空 Blob
+        // 污染 IndexedDB），不计入 completed 也不计入 failed，单独累计 skipped。
+        // 注意：204 的 resp.ok 为 true（2xx），故必须在此显式判断而非依赖 !resp.ok。
+        if (resp.status === 204 || buf.byteLength === 0) {
+          skipped++
+          emit()
+          continue
+        }
         const contentType = resp.headers.get('content-type') ?? tileContentType
         const len = Number(resp.headers.get('content-length')) || buf.byteLength
         await putTile({
@@ -246,6 +264,7 @@ export async function downloadTiles(
   return {
     completed,
     failed,
+    skipped,
     total,
     bytes,
     aborted: !!signal?.aborted,
@@ -260,4 +279,44 @@ export async function downloadTiles(
  */
 export async function isTileCached(key: string): Promise<boolean> {
   return !!(await getTile(key))
+}
+
+/**
+ * 下载前探测数据源是否包含有效瓦片数据。
+ *
+ * 通过采样少量瓦片（建议 2-3 个不同层级）判断数据源是否为空
+ * （如占位 mbtiles、仅含元数据无实际瓦片的文件）。所有采样瓦片
+ * 均返回 204 No Content / 0 字节时判定为「无数据」，调用方可据此
+ * 阻止无意义的全量下载（如 5722 块全部 skip 的场景）。
+ *
+ * 判定逻辑与 {@link downloadTiles} 的 204/0-byte skip 逻辑一致：
+ * 响应状态码 204 或 body 为 0 字节均视为「无数据」。只要有任一采样
+ * 返回有效数据（非 204 且 body > 0）即认为数据源可用。
+ *
+ * 单个采样失败（网络错误 / HTTP 错误）不中断探测——跳过该采样尝试下一个，
+ * 因为单点失败不代表数据源整体为空。
+ *
+ * @param tileUrlTemplate 瓦片 URL 模板（含 {z}/{x}/{y}）
+ * @param sampleCoords 采样瓦片坐标集合（建议覆盖多个层级）
+ * @param signal 可选中断信号
+ * @returns true = 至少一个采样瓦片有有效数据；false = 所有采样均为空/失败
+ */
+export async function probeTileSource(
+  tileUrlTemplate: string,
+  sampleCoords: TileCoord[],
+  signal?: AbortSignal,
+): Promise<boolean> {
+  for (const coord of sampleCoords) {
+    if (signal?.aborted) return false
+    try {
+      const key = buildTileUrl(tileUrlTemplate, coord)
+      const resp = await fetch(key, { signal })
+      if (!resp.ok) continue
+      const buf = await resp.arrayBuffer()
+      if (resp.status !== 204 && buf.byteLength > 0) return true
+    } catch {
+      // 单个采样网络失败：尝试下一个采样点
+    }
+  }
+  return false
 }

@@ -94,6 +94,28 @@ export async function deleteTilesBySource(sourceId: string): Promise<number> {
   return deleted
 }
 
+/**
+ * 按 key 集合精确删除瓦片（作用域删除），返回实际删除数量。
+ *
+ * 用于「按任务/区域清除」场景：只删除传入 key 对应的瓦片，不影响同 sourceId
+ * 下其他区域/任务的缓存，修复「清除一个区域却误删整个数据源」的缺陷。
+ * 仅删除确实存在的 key（get 命中才 delete），计数与实际删除条数一致。
+ */
+export async function deleteTilesByKeys(keys: string[]): Promise<number> {
+  if (keys.length === 0) return 0
+  const db = await getDB()
+  const tx = db.transaction(STORE_TILES, 'readwrite')
+  let deleted = 0
+  for (const key of keys) {
+    if (await tx.store.get(key)) {
+      await tx.store.delete(key)
+      deleted++
+    }
+  }
+  await tx.done
+  return deleted
+}
+
 /** 清空全部瓦片缓存 */
 export async function clearAllTiles(): Promise<void> {
   const db = await getDB()

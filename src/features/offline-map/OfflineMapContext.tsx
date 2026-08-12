@@ -26,6 +26,7 @@ import {
   clearAllTiles,
   clearAllTasks,
   deleteTask,
+  deleteTilesByKeys,
   deleteTilesBySource,
   getAllTasks,
   getCacheEstimate,
@@ -34,6 +35,7 @@ import {
   requestPersistentStorage,
 } from './tileCache'
 import {
+  buildTileUrl,
   contentTypeForBasemap,
   deriveSourceId,
   downloadTiles,
@@ -136,6 +138,7 @@ export interface OfflineMapContextValue extends OfflineMapState {
   resumeDownload: (taskId: string) => Promise<void>
   removeTask: (taskId: string) => Promise<void>
   deleteCache: (sourceId: string) => Promise<void>
+  deleteTaskCache: (task: DownloadTask) => Promise<void>
   clearAllCache: () => Promise<void>
   refreshStats: () => Promise<void>
   /** 派生：所有数据源汇总（块数 / 字节 / 数据源个数），供 LocalTab 概览 */
@@ -158,6 +161,22 @@ function genId(): string {
 }
 
 /**
+ * 判断两个 bbox 是否在容差内相等。
+ *
+ * 预设区域的 bbox 来自常量，同预设恒等；自定义区域可能因同名「自定义区域」
+ * 但坐标不同，故去重匹配时以 bbox 区分，避免不同坐标的自定义框误合并。
+ * 容差 1e-4° ≈ 11m，足以吸收浮点输入抖动。
+ */
+function bboxEqual(a: BBox, b: BBox): boolean {
+  return (
+    Math.abs(a.west - b.west) < 1e-4 &&
+    Math.abs(a.east - b.east) < 1e-4 &&
+    Math.abs(a.south - b.south) < 1e-4 &&
+    Math.abs(a.north - b.north) < 1e-4
+  )
+}
+
+/**
  * 离线地图全局状态 Provider。
  *
  * 挂载在应用根部（或 HomePage），向下提供离线地图状态与命令。
@@ -169,6 +188,8 @@ export function OfflineMapProvider({ children }: { children: ReactNode }) {
   const abortControllers = useRef<Map<string, AbortController>>(new Map())
   // 运行中的任务对象引用（避免闭包读到旧 task）
   const runningTasks = useRef<Map<string, DownloadTask>>(new Map())
+  // 最新任务列表引用（供 startDownload 去重判断读取最新 tasks，避免闭包陈旧）
+  const tasksRef = useRef<DownloadTask[]>([])
   // 持久化防抖
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -215,6 +236,11 @@ export function OfflineMapProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshStats])
 
+  /** 同步 tasksRef 到最新任务列表（供 startDownload 去重判断） */
+  useEffect(() => {
+    tasksRef.current = state.tasks
+  }, [state.tasks])
+
   /** 核心下载循环（供 start/resume 复用） */
   const runDownload = useCallback(
     async (task: DownloadTask) => {
@@ -241,12 +267,13 @@ export function OfflineMapProvider({ children }: { children: ReactNode }) {
           task.tileContentType,
           {
             signal: controller.signal,
-            onProgress: ({ completed, failed, bytes, total }) => {
+            onProgress: ({ completed, failed, skipped, bytes, total }) => {
               const next: DownloadTask = {
                 ...running,
                 totalTiles: total,
                 completedTiles: completed,
                 failedTiles: failed,
+                skippedTiles: skipped,
                 bytesDownloaded: bytes,
                 updatedAt: Date.now(),
               }
@@ -262,6 +289,7 @@ export function OfflineMapProvider({ children }: { children: ReactNode }) {
           totalTiles: snapshot.total || running.totalTiles,
           completedTiles: snapshot.completed,
           failedTiles: snapshot.failed,
+          skippedTiles: snapshot.skipped,
           bytesDownloaded: snapshot.bytes,
           status: aborted
             ? 'paused'
@@ -309,8 +337,22 @@ export function OfflineMapProvider({ children }: { children: ReactNode }) {
         params.maxZoom,
       ).length
       const now = Date.now()
+
+      // 去重/合并：若同 basemap + regionName + 同 bbox 的「已完成」任务已存在，
+      // 复用其 id 并用本次参数（zoom 可能扩大）更新该任务，避免任务列表堆积重复记录。
+      // 断点续传（downloadTiles 内部 getTiles 预查已缓存块）会自动跳过既有瓦片，
+      // 仅拉取新增层级，实现「增量合并」而非重复下载。
+      // 以 bbox 区分：预设区域 bbox 恒定 → 同区域合并；自定义区域不同坐标 → 视为不同任务。
+      const existing = tasksRef.current.find(
+        (t) =>
+          t.basemap === params.basemap &&
+          t.regionName === params.regionName &&
+          t.status === 'completed' &&
+          bboxEqual(t.bbox, params.bbox),
+      )
+
       const task: DownloadTask = {
-        id: genId(),
+        id: existing?.id ?? genId(),
         basemap: params.basemap,
         regionName: params.regionName,
         bbox: params.bbox,
@@ -322,8 +364,9 @@ export function OfflineMapProvider({ children }: { children: ReactNode }) {
         totalTiles: total,
         completedTiles: 0,
         failedTiles: 0,
+        skippedTiles: 0,
         bytesDownloaded: 0,
-        createdAt: now,
+        createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       }
       dispatch({ type: 'UPSERT_TASK', task })
@@ -368,6 +411,30 @@ export function OfflineMapProvider({ children }: { children: ReactNode }) {
     [refreshStats],
   )
 
+  /**
+   * 按任务精确清除其瓦片缓存（仅删该任务 bbox+zoom 范围内的瓦片，不影响
+   * 同 sourceId 下其他区域/任务），并删除任务记录。
+   *
+   * 修复「按任务清除瓦片却误删整源」的缺陷：原实现按 sourceId 全量删除，
+   * 会连带删除同底图其他区域的瓦片；现改为枚举该任务精确瓦片 key 集合删除。
+   */
+  const deleteTaskCache = useCallback(
+    async (task: DownloadTask) => {
+      const controller = abortControllers.current.get(task.id)
+      if (controller) controller.abort()
+      const keys = enumerateTiles(
+        task.bbox,
+        task.minZoom,
+        task.maxZoom,
+      ).map((c) => buildTileUrl(task.tileUrlTemplate, c))
+      await deleteTilesByKeys(keys)
+      await deleteTask(task.id)
+      dispatch({ type: 'REMOVE_TASK', id: task.id })
+      await refreshStats()
+    },
+    [refreshStats],
+  )
+
   const clearAllCache = useCallback(async () => {
     // 同时清空 tiles（瓦片数据）与 tasks（下载任务记录）两个 store；
     // 清空后同步 React state（SET_TASKS 置空），使任务列表立即消失，
@@ -406,6 +473,7 @@ export function OfflineMapProvider({ children }: { children: ReactNode }) {
       resumeDownload,
       removeTask,
       deleteCache,
+      deleteTaskCache,
       clearAllCache,
       refreshStats,
       cacheSummary,
@@ -420,6 +488,7 @@ export function OfflineMapProvider({ children }: { children: ReactNode }) {
       resumeDownload,
       removeTask,
       deleteCache,
+      deleteTaskCache,
       clearAllCache,
       refreshStats,
       cacheSummary,

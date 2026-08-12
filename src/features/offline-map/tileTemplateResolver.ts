@@ -75,6 +75,83 @@ export function buildLocalVectorTemplate(sourceKey: string): string {
 }
 
 /**
+ * 由数据源 key 构造本地栅格影像瓦片 URL 模板（静态默认，扩展名固定 .png）。
+ *
+ * ⚠️ 静态默认扩展名可能与 tileserver 实际提供的不一致——tileserver-gl 按
+ * mbtiles 的 format 元数据（png/jpg/webp）决定瓦片扩展名，且**仅**在该扩展名
+ * 提供。下载场景应优先用 {@link resolveRasterTemplateFromTileJson} 从 tilejson
+ * 动态获取真实扩展名；本函数仅作为 tilejson 不可达时的兜底。
+ *
+ *   /data/{key}/{z}/{x}/{y}.png → 经同源代理重写为 /tiles/data/{key}/{z}/{x}/{y}.png。
+ */
+export function buildLocalRasterTemplate(sourceKey: string): string {
+  return `${TILE_PROXY_PREFIX}/data/${sourceKey}/{z}/{x}/{y}.png`
+}
+
+/**
+ * 从 tileserver-gl 的 TileJSON 文档动态解析栅格瓦片 URL 模板。
+ *
+ * tileserver-gl 按 mbtiles 的 format 元数据（png/jpg/webp）决定瓦片扩展名，
+ * 且**仅**在该扩展名的 URL 提供瓦片，其余扩展名一律 404。若下载模板硬编码
+ * 扩展名，会出现：① 探测/请求 404（probe 误判数据源为空）；② 预下载缓存键
+ * 与运行时渲染键不一致（离线渲染命不中缓存）。
+ *
+ * 本函数实时拉取 `${TILESERVER_ORIGIN}/data/{key}.json`，取 tiles[0] 并重写为
+ * 同源代理路径，保证与运行时 transformRequest 拦截键空间完全一致（断点续传 +
+ * 离线渲染的前提）。tileserver 更换 mbtiles（png↔jpg）时无需改代码。
+ *
+ * @returns 重写后的模板；tilejson 不可达 / 非 2xx / 无 tiles 时返回 null，
+ *          调用方应回退到 {@link buildLocalRasterTemplate}。
+ */
+export async function resolveRasterTemplateFromTileJson(
+  sourceKey: string,
+): Promise<string | null> {
+  const tileJsonUrl = `${TILESERVER_ORIGIN}/data/${sourceKey}.json`
+  try {
+    const resp = await fetch(tileJsonUrl)
+    if (!resp.ok) return null
+    const tj = (await resp.json()) as { tiles?: string[] }
+    const first = tj.tiles?.[0]
+    if (!first) return null
+    return rewriteOriginToProxy(first)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * tileserver-gl TileJSON 暴露的数据源实际缩放覆盖。
+ *
+ * 严格离线下，本地 mbtiles 的真实数据覆盖（缩放区间）才是离线下载的边界——
+ * 用户选择的层级必须与数据源实际覆盖取交集，否则越界层级会全部返回 204（数据源
+ * 无此瓦片），造成「下载完成但大量跳过」的误导。例如 satellite.mbtiles 仅含
+ * z10-z12 时，按 z8-z14 枚举会让 z8/z9/z13/z14 全部 204 跳过。
+ *
+ * 复用与 {@link resolveRasterTemplateFromTileJson} 相同的 TileJSON 端点
+ * （/data/{key}.json），读取 minzoom/maxzoom。mbtiles 元数据须准确（由
+ * prepare-satellite.py 打包完成后回填实际 minzoom/maxzoom/bounds）。
+ *
+ * @returns {minzoom, maxzoom}；tilejson 不可达 / 无 minzoom|maxzoom / 非有限数时
+ *          返回 null，调用方据此放弃钳制（回退 UI 默认层级范围）。
+ */
+export async function fetchSourceCoverage(
+  sourceKey: string,
+): Promise<{ minzoom: number; maxzoom: number } | null> {
+  const tileJsonUrl = `${TILESERVER_ORIGIN}/data/${sourceKey}.json`
+  try {
+    const resp = await fetch(tileJsonUrl, { cache: 'no-store' })
+    if (!resp.ok) return null
+    const tj = (await resp.json()) as { minzoom?: unknown; maxzoom?: unknown }
+    const min = Number(tj.minzoom)
+    const max = Number(tj.maxzoom)
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return null
+    return { minzoom: min, maxzoom: max }
+  } catch {
+    return null
+  }
+}
+
+/**
  * 从 style.json 中选取瓦片 URL 模板。
  *
  * 仅识别 sources 中已填充的内联 `tiles` 数组；对于用 `url` 指向 TileJSON

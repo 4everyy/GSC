@@ -31,21 +31,6 @@ export default defineConfig({
   server: {
     host: true,
     proxy: {
-      // 卫星影像瓦片代理：/satellite-tiles/{z}/{x}/{y}.png → Esri World Imagery。
-      // 路径段顺序从标准 XYZ {z}/{x}/{y} 转为 Esri 的 {z}/{y}/{x}（Level/Row/Col）。
-      // transformRequest 将此路径包装为 gcs-cache 协议，使「下载离线地图」预取的
-      // 瓦片优先从 IndexedDB 命中；缓存未命中时由此代理回源 Esri 并异步写回（懒加载）。
-      // 生产部署由 Nginx 配置等价 location /satellite-tiles/ { ... }。
-      '/satellite-tiles': {
-        target: 'https://server.arcgisonline.com',
-        changeOrigin: true,
-        rewrite: (path) => {
-          const m = path.match(/^\/satellite-tiles\/(\d+)\/(\d+)\/(\d+)\.png$/)
-          return m
-            ? `/ArcGIS/rest/services/World_Imagery/MapServer/tile/${m[1]}/${m[3]}/${m[2]}`
-            : path
-        },
-      },
       // 开发环境代理：将 /tiles/* 请求转发到本地 tileserver-gl (8081)。
       // 解决浏览器跨域 / IPv6 / LAN 访问时 localhost:8081 不可达的问题。
       // MapLibreContainer 通过 transformRequest 将 localhost:8081 的请求
@@ -73,17 +58,6 @@ export default defineConfig({
     // 确保构建产物通过 vite preview 本地验证时，/tiles/* 与 /api/* 均转发到本地服务。
     // 正式生产部署时由 Nginx 配置 `location /api/ { proxy_pass http://127.0.0.1:8082/; }`。
     proxy: {
-      // 卫星影像瓦片代理：详见 server.proxy 同名条目说明。
-      '/satellite-tiles': {
-        target: 'https://server.arcgisonline.com',
-        changeOrigin: true,
-        rewrite: (path) => {
-          const m = path.match(/^\/satellite-tiles\/(\d+)\/(\d+)\/(\d+)\.png$/)
-          return m
-            ? `/ArcGIS/rest/services/World_Imagery/MapServer/tile/${m[1]}/${m[3]}/${m[2]}`
-            : path
-        },
-      },
       '/tiles': {
         target: 'http://127.0.0.1:8081',
         changeOrigin: true,

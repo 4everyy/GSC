@@ -166,7 +166,7 @@ export function HomePage() {
           <DownloadProgressBar />
 
           {/* 离线灰显提示覆盖层：仅在「断网 + 本地零缓存」时展示，引导用户前往系统配置预取瓦片。
-              其余情形由 gcs-cache 协议自动处理：命中缓存正常显示 / 未命中在线懒加载 / 未命中离线灰显瓦片。 */}
+              其余情形由 gcs-cache 协议自动处理：命中缓存正常显示；未命中灰显（严格离线，绝不在线回源）。 */}
           {/* 离线无缓存灰显提示已下沉到 MapLibreContainer：status === 'offline' 时
               渲染 OfflineMapPlaceholder，下载入口经 onOfflinePromptClick 回调驱动。*/}
           {/* MissionPanel 与 AlarmInfoPanel 暂时隐藏，待后续功能接入时恢复 */}

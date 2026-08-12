@@ -1,22 +1,27 @@
 /**
- * MapLibre 自定义协议注册 —— 运行时瓦片缓存拦截层。
+ * MapLibre 自定义协议注册 —— 运行时瓦片缓存拦截层（严格离线）。
  *
  * 设计依据：docs/离线地图下载方案.md §5.4、§6.1。
  *
  * 背景：MapLibre 的 transformRequest 是同步的，只能返回 `{ url }`，无法
  * 直接返回 Blob。因此采用官方 addProtocol API 注册自定义协议 `gcs-cache://`：
- *  1. transformRequest 将 tileserver 瓦片/字体/sprite URL 重写为 gcs-cache://<path>；
+ *  1. transformRequest 将 tileserver **瓦片** URL（匹配 /{z}/{x}/{y}.{ext}）重写为 gcs-cache://<path>；
+ *     非瓦片资源（source TileJSON .json / glyphs / sprite）走同源代理由本地 tileserver-gl 提供；
  *  2. 协议处理器按 path 查 IndexedDB 缓存 → 命中返回本地 ArrayBuffer；
- *  3. 未命中 + 在线 → fetch 回源并异步写回缓存（懒加载）；
- *  4. 未命中 + 离线 → 栅格瓦片返回灰色占位（§6.1 方案 A）；矢量瓦片抛错
- *     （露出底图暗色背景，达到"灰显"视觉效果）。
+ *  3. 未命中 → 严格离线，绝不回源任何 tileserver / 在线服务：
+ *     栅格瓦片（含栅格影像）返回灰色 PNG 占位（§6.1 方案 A）；
+ *     矢量瓦片抛错（露出底图暗色背景，达到"灰显"视觉效果）。
+ *
+ * 矢量瓦片与栅格影像瓦片均来自本地 tileserver-gl，但运行时不做懒加载回源——
+ * 所有瓦片必须由预下载引擎（tileDownload.ts + OfflineMapContext）提前入库，
+ * 否则按灰显处理。这保证地图渲染完全离线，无任何网络依赖。
  *
  * 缓存主键 = 归一化同源代理路径（如 `/tiles/data/v3/12/3456/7890.pbf`），
  * 与预下载引擎（tileDownload.ts）键空间一致。
  */
 
 import { addProtocol, type AddProtocolAction } from 'maplibre-gl'
-import { getTile, putTile } from './tileCache'
+import { getTile } from './tileCache'
 import type { TileCoord } from './types'
 
 /** 自定义协议名：transformRequest 会将 tileserver 资源 URL 重写为以此协议开头 */
@@ -116,51 +121,23 @@ export function registerTileCacheProtocol(): void {
   registered = true
   addProtocol(
     CACHE_PROTOCOL,
-    (async (params, abortController): Promise<{ data: ArrayBuffer }> => {
+    (async (params): Promise<{ data: ArrayBuffer }> => {
       const path = normalizeUrlToPath(params.url)
 
-      // 1. 命中缓存 → 返回本地 ArrayBuffer（零网络）
+      // 1. 命中缓存 → 返回本地 ArrayBuffer（严格离线：唯一数据来源，零网络）
       const cached = await getTile(path)
       if (cached) {
         return { data: await cached.blob.arrayBuffer() }
       }
 
-      // 2. 未命中 + 在线 → 回源拉取并异步写回缓存（懒加载）
-      const online =
-        typeof navigator === 'undefined' ? true : navigator.onLine !== false
-      if (online) {
-        const resp = await fetch(path, { signal: abortController.signal })
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-        const buf = await resp.arrayBuffer()
-        const contentType =
-          resp.headers.get('content-type') ?? 'application/octet-stream'
-        // 异步写回缓存（fire-and-forget，不阻塞渲染）
-        const m = matchTilePath(path)
-        if (m) {
-          putTile({
-            key: path,
-            sourceId: m.sourceId,
-            z: m.coord.z,
-            x: m.coord.x,
-            y: m.coord.y,
-            blob: new Blob([buf], { type: contentType }),
-            contentType,
-            cachedAt: Date.now(),
-          }).catch(() => {
-            /* 写缓存失败不影响渲染 */
-          })
-        }
-        return { data: buf }
-      }
-
-      // 3. 未命中 + 离线 → 灰显处理（§6.1）
+      // 2. 未命中 → 严格离线，绝不回源任何 tileserver / 在线服务。
+      //    栅格瓦片（含栅格影像）→ 灰色 PNG 占位（与已下载块形成对比）；
+      //    矢量瓦片 → 抛错，MapLibre 显示透明（露出暗色背景）。
       const m = matchTilePath(path)
       if (m && m.ext !== 'pbf') {
-        // 栅格瓦片：返回灰色 PNG 占位（与已下载块形成对比）
         const gray = await getGrayPngTile()
         if (gray) return { data: gray }
       }
-      // 矢量瓦片或灰色占位不可用：抛错，MapLibre 显示透明（露出暗色背景）
       throw new Error('offline: tile not cached')
     }) as AddProtocolAction,
   )

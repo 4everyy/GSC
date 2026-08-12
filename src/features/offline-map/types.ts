@@ -92,6 +92,8 @@ export interface DownloadTask {
   completedTiles: number
   /** 失败瓦片数 */
   failedTiles: number
+  /** 跳过瓦片数（数据源无内容，204/0字节，未入库） */
+  skippedTiles: number
   /** 已下载字节数 */
   bytesDownloaded: number
   /** 错误信息（status === 'failed' 时） */
@@ -134,6 +136,14 @@ export interface DownloadSnapshot {
   completed: number
   /** 失败数 */
   failed: number
+  /**
+   * 跳过数：服务端返回 204 No Content / 0 字节响应的瓦片数。
+   *
+   * 表示「数据源无此瓦片」（如占位 mbtiles 缺失高层级、栅格源在海域/边界无数据），
+   * 既非下载成功（不入库，避免 0 字节空 Blob 污染 IndexedDB）也非网络错误
+   * （不触发任务 failed 状态与续传），单独统计。
+   */
+  skipped: number
   /** 总数 */
   total: number
   /** 已下载字节数 */

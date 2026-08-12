@@ -27,6 +27,7 @@ import {
 } from '../../config/mapLibre'
 import {
   CACHE_PROTOCOL,
+  matchTilePath,
   registerTileCacheProtocol,
 } from '../../features/offline-map/tileProtocol'
 import { getStyle, putStyle } from '../../features/offline-map/tileCache'
@@ -54,16 +55,6 @@ const OFFLINE_TILES_HINT =
 const TILE_PROXY_PREFIX = '/tiles'
 
 /**
- * 卫星影像瓦片同源代理前缀（与 vite.config.ts 的 /satellite-tiles 代理对应）。
- *
- * 卫星样式 source.tiles 指向此前缀（/satellite-tiles/{z}/{x}/{y}.png），
- * 开发环境由 Vite 代理转发到 Esri World Imagery，生产环境由 Nginx 转发。
- * transformRequest 将此路径包装为 gcs-cache 自定义协议，使「下载离线地图」
- * 预取的瓦片优先从 IndexedDB 命中，启用与矢量瓦片一致的缓存流程。
- */
-const SATELLITE_TILE_PROXY = '/satellite-tiles/'
-
-/**
  * 创建 MapLibre transformRequest：将指向 tileserver-gl 的绝对 URL 重写为同源代理路径。
  *
  * tileserver-gl 通过 `--public_url http://localhost:8081` 将此 origin 注入到 style.json
@@ -73,16 +64,13 @@ const SATELLITE_TILE_PROXY = '/satellite-tiles/'
  * 重写为 /tiles 同源路径后，开发环境由 Vite proxy 转发，生产环境由 Nginx 转发，
  * 统一解决跨域与 localhost 不可达问题。
  *
- * `useCacheProtocol` 为 true 时，进一步把同源代理路径包装为 `gcs-cache://<path>`，
- * 交由 {@link registerTileCacheProtocol} 注册的自定义协议处理：
- *   - 命中 IndexedDB 缓存 → 零网络返回；
- *   - 未命中且在线 → 回源拉取并写回（懒加载缓存）；
- *   - 未命中且离线 → 栅格瓦片返回灰色占位、矢量瓦片抛错（露出暗色背景）。
+ * `useCacheProtocol` 为 true 时，**仅瓦片请求**（匹配 `/{z}/{x}/{y}.{ext}` 坐标模式）包装为
+ * `gcs-cache://<path>` 交由 {@link registerTileCacheProtocol} 处理（IndexedDB 缓存，严格离线）：
+ *   - 命中 → 零网络返回；未命中 → 栅格灰显 / 矢量抛错，绝不在线回源。
  *
- * 除 tileserver 源外，卫星影像瓦片使用独立的同源代理路径 `/satellite-tiles/`（经
- * Vite/Nginx 代理转发到 Esri World Imagery）。`useCacheProtocol` 为 true 时同样
- * 包装为 gcs-cache 协议，使「下载离线地图」预取的卫星瓦片优先命中 IndexedDB，
- * 实现与矢量瓦片完全一致的缓存命中 / 回源写回 / 离线灰显流程。
+ * 非瓦片资源（source TileJSON `.json` / glyphs / sprite）仍走同源代理，由本地 tileserver-gl
+ * 提供——tileserver-gl 作为离线基础设施常驻运行（非 ESRI/在线服务）。若 TileJSON 也走
+ * gcs-cache 而又未预下载，source 无法解析瓦片模板，会导致整图空白。
  *
  * 仅当 tileserver origin 有效时返回 transform 函数；若 styleUrl 本身就是同源相对
  * 路径（如 /tiles/styles/dark/style.json），则无需重写，返回 undefined。
@@ -97,18 +85,13 @@ function createTileserverTransformRequest(useCacheProtocol = false) {
   return (url: string) => {
     if (url.startsWith(TILESERVER_ORIGIN)) {
       const proxyPath = url.replace(TILESERVER_ORIGIN, TILE_PROXY_PREFIX)
-      if (useCacheProtocol) {
-        // 路由到 gcs-cache 自定义协议：缓存命中 / 回源写回 / 离线灰显
+      // 仅瓦片请求（含 z/x/y 坐标模式）路由到 gcs-cache（IndexedDB 缓存）；
+      // 非瓦片资源（TileJSON .json / glyphs / sprite）走同源代理，由本地 tileserver-gl
+      // （离线基础设施，非在线服务）提供——否则 TileJSON 未缓存导致 source 无法解析、整图空白。
+      if (useCacheProtocol && matchTilePath(proxyPath)) {
         return { url: `${CACHE_PROTOCOL}://${proxyPath}` }
       }
       return { url: proxyPath }
-    }
-    // 卫星影像瓦片：同源代理路径（/satellite-tiles/...，经 Vite/Nginx 代理转发到 Esri）。
-    // 包装为 gcs-cache 自定义协议后，下载的离线瓦片优先从 IndexedDB 命中；未命中在线时
-    // 经代理回源 Esri 并异步写回缓存；离线未缓存返回灰色占位——与矢量瓦片缓存流程一致。
-    if (useCacheProtocol && url.includes(SATELLITE_TILE_PROXY)) {
-      const pathname = url.slice(url.indexOf(SATELLITE_TILE_PROXY))
-      return { url: `${CACHE_PROTOCOL}://${pathname}` }
     }
     return { url }
   }
@@ -329,9 +312,10 @@ export function MapLibreContainer({
     // 重写为同源代理路径 /tiles/...，避免 LAN/IPv6/生产环境 localhost 不可达。
     // 开发环境由 Vite proxy 转发，生产环境由 Nginx 转发。
     //
-    // style.json 的预取（fetch）不支持自定义协议，故走普通同源代理路径；
-    // 运行时的瓦片 / 字体 / sprite 资源则改走 gcs-cache 自定义协议，以启用
-    // 本地 IndexedDB 缓存命中 / 回源写回 / 离线灰显。
+    // style.json 的预取（fetch）不支持自定义协议，故走普通同源代理路径
+    // （在线预取并写缓存，失败回退 IndexedDB style 缓存）。运行时仅瓦片请求
+    // 走 gcs-cache 协议（IndexedDB 命中返回，未命中灰显——严格离线，绝不回源）；
+    // TileJSON / glyphs / sprite 走同源代理由本地 tileserver-gl 提供。
     const styleTransform = createTileserverTransformRequest(false)
     const tileTransform = createTileserverTransformRequest(MAPLIBRE_USE_OFFLINE_TILES)
     const effectiveStyleUrl = styleTransform

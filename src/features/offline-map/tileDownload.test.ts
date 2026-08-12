@@ -16,6 +16,7 @@ import {
   buildTileUrl,
   deriveSourceId,
   downloadTiles,
+  probeTileSource,
 } from './tileDownload'
 import { getTiles, putTile } from './tileCache'
 import type { BBox, TileCacheRecord, TileCoord } from './types'
@@ -211,7 +212,7 @@ describe('downloadTiles', () => {
 
   it('空坐标集合返回零值快照', async () => {
     const snap = await downloadTiles([], SOURCE_ID, TEMPLATE, CT)
-    expect(snap).toEqual({ completed: 0, failed: 0, total: 0, bytes: 0, aborted: false })
+    expect(snap).toEqual({ completed: 0, failed: 0, skipped: 0, total: 0, bytes: 0, aborted: false })
     expect(putTile).not.toHaveBeenCalled()
   })
 
@@ -255,6 +256,46 @@ describe('downloadTiles', () => {
     expect(putTile).not.toHaveBeenCalled()
   })
 
+  it('204 No Content / 0 字节响应计入 skipped 且不入库（避免污染 IndexedDB）', async () => {
+    // tileserver-gl 对 mbtiles 中缺失的瓦片返回 204 No Content（0 字节体）。
+    // 此类瓦片既非下载成功也非网络错误，须跳过入库，单独计入 skipped。
+    vi.mocked(getTiles).mockResolvedValue([undefined, undefined, undefined])
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 204,
+        headers: { get: () => null },
+        arrayBuffer: async () => new ArrayBuffer(0),
+      })),
+    )
+    const snap = await downloadTiles(COORDS, SOURCE_ID, TEMPLATE, CT)
+    expect(snap.skipped).toBe(3)
+    expect(snap.completed).toBe(0)
+    expect(snap.failed).toBe(0)
+    expect(snap.bytes).toBe(0)
+    // 关键断言：不写入缓存，避免 0 字节空 Blob 污染 IndexedDB
+    expect(putTile).not.toHaveBeenCalled()
+  })
+
+  it('0 字节 200 响应同样计入 skipped（防御 content-length 缺失的空体）', async () => {
+    vi.mocked(getTiles).mockResolvedValue([undefined, undefined, undefined])
+    // 部分实现返回 200 但 body 为空（无 content-length），亦应跳过
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        arrayBuffer: async () => new ArrayBuffer(0),
+      })),
+    )
+    const snap = await downloadTiles(COORDS, SOURCE_ID, TEMPLATE, CT)
+    expect(snap.skipped).toBe(3)
+    expect(snap.completed).toBe(0)
+    expect(putTile).not.toHaveBeenCalled()
+  })
+
   it('开始前已 abort 时跳过全部下载', async () => {
     vi.mocked(getTiles).mockResolvedValue([undefined, undefined, undefined])
     const controller = new AbortController()
@@ -281,5 +322,87 @@ describe('downloadTiles', () => {
     await downloadTiles(COORDS, SOURCE_ID, TEMPLATE, CT, { onProgress: (s) => log.push(s.completed) })
     expect(log.length).toBeGreaterThanOrEqual(4) // 初始 emit + 3 次成功
     expect(log[log.length - 1]).toBe(3)
+  })
+})
+
+// ===================== 异步：下载前探测 probeTileSource =====================
+
+describe('probeTileSource', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('采样瓦片返回有效数据 → true', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => okResponse(100)))
+    const result = await probeTileSource(TEMPLATE, [{ z: 10, x: 855, y: 418 }])
+    expect(result).toBe(true)
+  })
+
+  it('采样瓦片全部 204 No Content → false（占位 mbtiles 场景）', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 204,
+        headers: { get: () => null },
+        arrayBuffer: async () => new ArrayBuffer(0),
+      })),
+    )
+    const result = await probeTileSource(TEMPLATE, COORDS)
+    expect(result).toBe(false)
+  })
+
+  it('多个采样中任一返回数据 → true（混合 204 与正常）', async () => {
+    let call = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        call++
+        if (call === 1) {
+          return {
+            ok: true,
+            status: 204,
+            headers: { get: () => null },
+            arrayBuffer: async () => new ArrayBuffer(0),
+          }
+        }
+        return okResponse(50)
+      }),
+    )
+    const result = await probeTileSource(TEMPLATE, [
+      { z: 10, x: 855, y: 418 },
+      { z: 10, x: 856, y: 418 },
+    ])
+    expect(result).toBe(true)
+  })
+
+  it('HTTP 错误（如 404）不视为有数据，继续尝试下一个采样', async () => {
+    let call = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        call++
+        if (call === 1) return { ok: false, status: 404 }
+        return okResponse(80)
+      }),
+    )
+    const result = await probeTileSource(TEMPLATE, [
+      { z: 10, x: 855, y: 418 },
+      { z: 10, x: 856, y: 418 },
+    ])
+    expect(result).toBe(true)
+  })
+
+  it('采样网络异常不中断探测 → false', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network') }))
+    const result = await probeTileSource(TEMPLATE, COORDS)
+    expect(result).toBe(false)
+  })
+
+  it('空采样列表 → false', async () => {
+    vi.stubGlobal('fetch', vi.fn())
+    const result = await probeTileSource(TEMPLATE, [])
+    expect(result).toBe(false)
+    expect(fetch).not.toHaveBeenCalled()
   })
 })

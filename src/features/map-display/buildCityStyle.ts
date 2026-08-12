@@ -6,7 +6,7 @@
  * 把矢量 source 的 url 重定向到目标城市，layer 的 "source" 引用（source key 名）
  * 保持不变——source 名字不换，只是它指向的数据换了。
  *
- * 卫星栅格源（/satellite-tiles/... 代理 + gcs-cache 离线缓存）不受影响：城市切换只换矢量叠加层（道路/水系/POI）。
+ * 卫星栅格源（本地 satellite.mbtiles + gcs-cache 离线缓存）不受影响：城市切换只换矢量叠加层（道路/水系/POI）。
  *
  * 与 tileTemplateResolver / tileSourceAvailability 共用同一套 /data/{key}.json 约定；
  * url 形如 tileserver-gl 的绝对 origin，经 MapLibre transformRequest 重写为同源

@@ -13,10 +13,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { MAPLIBRE_BASEMAPS } from '../../../config/mapLibre'
 import {
+  buildLocalRasterTemplate,
   buildLocalVectorTemplate,
+  fetchSourceCoverage,
+  resolveRasterTemplateFromTileJson,
   resolveTileSource,
 } from '../tileTemplateResolver'
-import { estimateDownload } from '../tileDownload'
+import { estimateDownload, lonLatToTile, probeTileSource } from '../tileDownload'
 import { useOfflineMap } from '../useOfflineMap'
 import { formatBytes, formatNumber } from '../format'
 import {
@@ -27,8 +30,9 @@ import {
 } from '../constants'
 import { CITY_DATABASE, findCityBbox, findCityKey } from '../cityDatabase'
 import {
+  SATELLITE_SOURCE_KEY,
   basemapNeedsLocalSource,
-  fetchAvailableVectorSources,
+  fetchAvailableRasterSources,
 } from '../tileSourceAvailability'
 import type { Basemap, BBox, DownloadTask } from '../types'
 import './OfflineMapDialog.css'
@@ -50,6 +54,11 @@ export function DownloadTab() {
     null,
   )
   const [availabilityLoading, setAvailabilityLoading] = useState(true)
+  /** 卫星数据源实际缩放覆盖（来自 TileJSON，钳制下载层级范围的真值） */
+  const [sourceCoverage, setSourceCoverage] = useState<{
+    minzoom: number
+    maxzoom: number
+  } | null>(null)
 
   // 当前生效的 bbox（本地预设 / 城市库 / 自定义经纬度）
   const bbox: BBox = useMemo(() => {
@@ -72,16 +81,23 @@ export function DownloadTab() {
   // 卫星影像底图的最大层级上限
   const maxZoomCap = MAX_ZOOM_LIMIT_SATELLITE
 
-  // 预估（实时）
+  // 数据源实际缩放覆盖（严格离线下为下载的真实边界，来自 TileJSON）。
+  // 用户选择的层级必须与数据源覆盖取交集，否则越界层级全部 204（无瓦片）
+  // 被计为「跳过」，造成「下载不完整」的误导。
+  const sourceMinZoom = sourceCoverage?.minzoom
+  const sourceMaxZoom = sourceCoverage?.maxzoom
+  // 有效下载层级 = [minZoom, maxZoom] ∩ [sourceMin, sourceMax] ∩ [MIN_ZOOM_LIMIT, maxZoomCap]
+  const effMinZoom = Math.max(minZoom, sourceMinZoom ?? MIN_ZOOM_LIMIT)
+  const effMaxZoom = Math.min(maxZoom, sourceMaxZoom ?? maxZoomCap)
+  const rangeEmpty = effMinZoom > effMaxZoom
+
+  // 预估（实时，按有效层级范围）
   const estimate = useMemo(
     () =>
-      estimateDownload(
-        bbox,
-        Math.min(minZoom, maxZoomCap),
-        Math.min(maxZoom, maxZoomCap),
-        basemap,
-      ),
-    [bbox, minZoom, maxZoom, maxZoomCap, basemap],
+      rangeEmpty
+        ? { tileCount: 0, estimatedBytes: 0 }
+        : estimateDownload(bbox, effMinZoom, effMaxZoom, basemap),
+    [bbox, effMinZoom, effMaxZoom, basemap, rangeEmpty],
   )
 
   // 切换底图时钳制层级到合法范围
@@ -90,15 +106,22 @@ export function DownloadTab() {
     setMaxZoom((z) => Math.min(z, maxZoomCap))
   }, [maxZoomCap])
 
-  // 探测 tileserver-gl 可用矢量数据源（决定哪些城市可选，依据 §3.2）
+  // 探测 tileserver-gl 可用栅格数据源（卫星底图依赖本地 satellite mbtiles，依据 §3.2）
+  // 并在卫星源可用时拉取其实际缩放覆盖（钳制下载层级，避免越界层级全 204 跳过）
   useEffect(() => {
     let cancelled = false
     void (async () => {
       setAvailabilityLoading(true)
-      const v = await fetchAvailableVectorSources()
+      const r = await fetchAvailableRasterSources()
       if (!cancelled) {
-        setAvailableSources(v)
+        setAvailableSources(r)
         setAvailabilityLoading(false)
+        if (r?.has(SATELLITE_SOURCE_KEY)) {
+          const cov = await fetchSourceCoverage(SATELLITE_SOURCE_KEY)
+          if (!cancelled) setSourceCoverage(cov)
+        } else {
+          setSourceCoverage(null)
+        }
       }
     })()
     return () => {
@@ -107,21 +130,33 @@ export function DownloadTab() {
   }, [])
 
   const overLarge = estimate.estimatedBytes >= LARGE_DOWNLOAD_THRESHOLD
-  const zoomInvalid = minZoom > maxZoom || minZoom < MIN_ZOOM_LIMIT
+  const zoomInvalid = minZoom > maxZoom || minZoom < MIN_ZOOM_LIMIT || rangeEmpty
 
-  // 矢量暗色底图依赖本地 tileserver-gl 数据源；卫星影像走在线源无需探测
+  // 卫星底图依赖本地 tileserver-gl 栅格数据源（satellite mbtiles）
   const needsLocalSource = basemapNeedsLocalSource(basemap)
   const sourceDetectionFailed =
     !availabilityLoading && availableSources === null
-  /** 选中区域的数据源是否可用（仅矢量 + 有明确源 key 的预设/城市生效；自定义区域不拦截） */
+  /**
+   * 当前底图的数据源 key：卫星固定为 'satellite' 栅格源；矢量为预设/城市 key。
+   * 卫星源是否可用决定能否下载（satellite mbtiles 未准备则灰显「开始下载」）。
+   */
+  const sourceKey = basemap === 'satellite' ? SATELLITE_SOURCE_KEY : selectedSourceKey
   const selectedSourceUnavailable =
     needsLocalSource &&
-    selectedSourceKey !== undefined &&
-    !(availableSources?.has(selectedSourceKey) ?? false)
+    sourceKey !== undefined &&
+    !(availableSources?.has(sourceKey) ?? false)
   const availableCount = availableSources?.size ?? 0
-  /** 下拉项是否可选（矢量按可用性过滤；卫星全部可选） */
-  const optionAvailable = (key: string): boolean =>
-    !needsLocalSource || (availableSources?.has(key) ?? false)
+  /**
+   * 下拉项是否可选：卫星底图所有区域共用同一 satellite 源（一可用全可用）；
+   * 矢量底图按城市 key 过滤。
+   */
+  const optionAvailable = (key: string): boolean => {
+    if (!needsLocalSource) return true
+    if (basemap === 'satellite') {
+      return availableSources?.has(SATELLITE_SOURCE_KEY) ?? false
+    }
+    return availableSources?.has(key) ?? false
+  }
 
   const handleStart = async () => {
     setError('')
@@ -131,7 +166,7 @@ export function DownloadTab() {
     }
     if (selectedSourceUnavailable) {
       setError(
-        '所选区域在 tileserver-gl 中暂无矢量数据。请先运行 prepare-data.ps1 准备该城市数据，或切换到卫星底图。',
+        'tileserver-gl 中暂无卫星栅格数据（satellite.mbtiles）。卫星影像须由运维离线准备：在服务端运行 tileserver/bin/prepare-satellite.py（自有 GeoTIFF / GDAL）生成 satellite.mbtiles 后重启 tileserver。',
       )
       return
     }
@@ -151,25 +186,52 @@ export function DownloadTab() {
     try {
       let tileUrlTemplate: string
       let resolvedBasemap: Basemap = basemap
-      if (needsLocalSource && selectedSourceKey) {
+      if (basemap === 'satellite') {
+        // 卫星底图：从 tilejson 动态解析栅格瓦片模板（扩展名随 mbtiles format
+        // 变化 png/jpg/webp，tileserver 仅在该扩展名提供瓦片）。tilejson 不可达时
+        // 回退静态模板，保证缓存键与运行时 transformRequest 拦截键空间一致。
+        tileUrlTemplate =
+          (await resolveRasterTemplateFromTileJson(SATELLITE_SOURCE_KEY)) ??
+          buildLocalRasterTemplate(SATELLITE_SOURCE_KEY)
+      } else if (needsLocalSource && selectedSourceKey) {
         // 矢量 + 已知城市/预设源：按数据源 key 直接构造本地模板
         // （style.json 通常只引用单一源，无法覆盖多城市）
         tileUrlTemplate = buildLocalVectorTemplate(selectedSourceKey)
       } else {
-        // 卫星（在线源）或自定义矢量区域：回退到 style.json 解析
+        // 自定义矢量区域：回退到 style.json 解析。
+        // 注意：basemap 当前硬编码为 'satellite'（const 字面量窄化），此分支为
+        // 预留扩展；as Basemap 还原联合类型避免 TS 将其窄化为 never。
         const resolved = await resolveTileSource(
-          MAPLIBRE_BASEMAPS[basemap].url,
+          MAPLIBRE_BASEMAPS[basemap as Basemap].url,
           basemap,
         )
         tileUrlTemplate = resolved.tileUrlTemplate
         resolvedBasemap = resolved.basemap
       }
+
+      // ── 下载前探测：采样中心瓦片，检测数据源是否为空（如占位 mbtiles 无实际影像瓦片） ──
+      const centerLon = (bbox.west + bbox.east) / 2
+      const centerLat = (bbox.south + bbox.north) / 2
+      const probeZ1 = effMinZoom
+      const probeZ2 = Math.min(effMaxZoom, Math.floor((effMinZoom + effMaxZoom) / 2))
+      const sourceHasData = await probeTileSource(tileUrlTemplate, [
+        { z: probeZ1, ...lonLatToTile(probeZ1, centerLon, centerLat) },
+        { z: probeZ2, ...lonLatToTile(probeZ2, centerLon, centerLat) },
+      ])
+      if (!sourceHasData) {
+        setError(
+          '数据源采样瓦片均返回空响应（204 No Content）。' +
+            'satellite.mbtiles 疑似占位文件（仅含元数据无影像瓦片），请替换为真实卫星影像 mbtiles 后重试。',
+        )
+        return
+      }
+
       await startDownload({
         basemap: resolvedBasemap,
         regionName,
         bbox,
-        minZoom: Math.min(minZoom, maxZoomCap),
-        maxZoom: Math.min(maxZoom, maxZoomCap),
+        minZoom: effMinZoom,
+        maxZoom: effMaxZoom,
         tileUrlTemplate,
       })
     } catch (err) {
@@ -185,7 +247,16 @@ export function DownloadTab() {
     : undefined
   const percent = activeTask
     ? activeTask.totalTiles > 0
-      ? Math.min(100, Math.round((activeTask.completedTiles / activeTask.totalTiles) * 100))
+      ? Math.min(
+          100,
+          Math.round(
+            ((activeTask.completedTiles +
+              activeTask.failedTiles +
+              (activeTask.skippedTiles ?? 0)) /
+              activeTask.totalTiles) *
+              100,
+          ),
+        )
       : 0
     : 0
 
@@ -289,7 +360,7 @@ export function DownloadTab() {
           <input
             className="offline-input"
             type="number"
-            min={MIN_ZOOM_LIMIT}
+            min={sourceMinZoom ?? MIN_ZOOM_LIMIT}
             max={maxZoomCap}
             value={minZoom}
             onChange={(e) => setMinZoom(Number(e.target.value))}
@@ -299,12 +370,31 @@ export function DownloadTab() {
             className="offline-input"
             type="number"
             min={MIN_ZOOM_LIMIT}
-            max={maxZoomCap}
+            max={sourceMaxZoom ?? maxZoomCap}
             value={maxZoom}
             onChange={(e) => setMaxZoom(Number(e.target.value))}
           />
         </div>
       </div>
+      {/* 卫星数据源实际缩放覆盖提示（钳制下载层级，避免越界层级全 204 跳过） */}
+      {sourceCoverage && (
+        <div className="offline-estimate" style={{ padding: '6px 12px', fontSize: 12 }}>
+          {rangeEmpty ? (
+            <>
+              ⚠️ 所选层级 z{minZoom}-z{maxZoom} 与卫星数据覆盖 z
+              {sourceCoverage.minzoom}-z{sourceCoverage.maxzoom} 无交集，请调整层级至覆盖范围内。
+            </>
+          ) : (
+            <>
+              卫星数据源实际覆盖层级 z{sourceCoverage.minzoom}-z{sourceCoverage.maxzoom}
+              {effMinZoom > minZoom || effMaxZoom < maxZoom
+                ? `，已自动限定下载区间为 z${effMinZoom}-z${effMaxZoom}（其余层级无离线数据）`
+                : ''}
+              。
+            </>
+          )}
+        </div>
+      )}
 
       {/* 预估 */}
       <div className={`offline-estimate ${overLarge ? 'offline-estimate--warn' : ''}`}>
@@ -352,7 +442,7 @@ export function DownloadTab() {
             isOffline
               ? '断网状态下无法预下载，请恢复网络后重试'
               : selectedSourceUnavailable
-                ? '该区域暂无矢量数据，请先准备数据或切换底图'
+                ? '暂无卫星栅格数据，请在服务端离线准备 satellite.mbtiles（自有影像/GDAL）'
                 : undefined
           }
         >
@@ -382,6 +472,16 @@ function TaskFeedback() {
   const last = tasks[tasks.length - 1]
   if (!last) return null
   if (last.status === 'completed') {
+    // 全部瓦片返回空响应（占位/空 mbtiles）时不算成功，显示警告而非绿色 ✅
+    const noData = last.completedTiles === 0 && last.totalTiles > 0
+    if (noData) {
+      return (
+        <div className="offline-estimate offline-estimate--warn">
+          ⚠️ 下载结束但未获取任何有效瓦片：全部 {formatNumber(last.totalTiles)} 块返回空响应（204 No Content）。
+          satellite.mbtiles 疑似占位文件（仅含元数据无影像瓦片），请替换为真实卫星影像 mbtiles 后重试。
+        </div>
+      )
+    }
     return (
       <div
         className="offline-estimate"
@@ -391,7 +491,7 @@ function TaskFeedback() {
           borderColor: 'rgba(74,222,128,0.3)',
         }}
       >
-        ✅ 离线瓦片下载完成（共 {formatNumber(last.completedTiles)} 块，{formatBytes(last.bytesDownloaded)}）
+        ✅ 离线瓦片下载完成（共 {formatNumber(last.completedTiles)} 块{last.skippedTiles ? `，跳过 ${formatNumber(last.skippedTiles)} 块无数据` : ''}，{formatBytes(last.bytesDownloaded)}）
       </div>
     )
   }

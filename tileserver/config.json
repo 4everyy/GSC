@@ -35,6 +35,9 @@
   "data": {
     "suzhou": {
       "mbtiles": "suzhou.mbtiles"
+    },
+    "satellite": {
+      "mbtiles": "satellite.mbtiles"
     }
   }
 }

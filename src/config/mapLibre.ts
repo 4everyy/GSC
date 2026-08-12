@@ -26,7 +26,7 @@ export const MAPLIBRE_DEFAULT_ZOOM = Number(
  * 地图底图样式枚举。
  *
  * - dark：暗色矢量底图（默认，离线，OSM 数据）
- * - satellite：卫星影像底图（同源代理路径 /satellite-tiles 经 gcs-cache 协议优先命中离线缓存，未命中在线时回源 Esri World Imagery）
+ * - satellite：卫星影像底图（本地 tileserver-gl 栅格源 satellite.mbtiles，经 gcs-cache 协议统一缓存：IndexedDB 命中优先；未命中灰显，严格离线、绝不在线回源）
  *
  * 各样式 URL 均可通过环境变量覆盖，便于不同部署环境灵活配置。
  */
@@ -64,7 +64,7 @@ const OFFLINE_BASE = '/tiles/styles'
  *
  * 每个 key 对应一种底图模式：
  * - dark：矢量暗色底图（默认离线）
- * - satellite：卫星影像底图（代理源 /satellite-tiles + gcs-cache 离线缓存，回源 Esri）
+ * - satellite：卫星影像底图（本地 tileserver-gl 栅格源 satellite.mbtiles，与矢量瓦片走完全一致的缓存/懒加载流程）
  *
  * 环境变量覆盖规则（按底图类型）：
  * - VITE_MAPLIBRE_STYLE_URL：覆盖 dark 矢量样式 URL
@@ -136,8 +136,7 @@ export const MAPLIBRE_MAP_OPTIONS = {
   /**
    * 关闭右下角版权归属控件。
    *
-   * 默认 MapLibre 会渲染 AttributionControl，卫星底图下会显示
-   * "Imagery © Esri, Maxar, Earthstar Geographics ..." 等来源信息，
+   * 默认 MapLibre 会渲染 AttributionControl，显示数据来源信息，
    * 项目 UI 规范不需要这些控件，故全局关闭。
    */
   attributionControl: false,

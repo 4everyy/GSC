@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 
 // ── Mock 依赖，避免加载真实 maplibre-gl（worker / WebGL）与 IndexedDB ──
 vi.mock('maplibre-gl', () => ({
@@ -6,10 +6,16 @@ vi.mock('maplibre-gl', () => ({
 }))
 vi.mock('./tileCache', () => ({
   getTile: vi.fn(),
-  putTile: vi.fn(),
 }))
 
-import { CACHE_PROTOCOL, matchTilePath, normalizeUrlToPath } from './tileProtocol'
+import { addProtocol } from 'maplibre-gl'
+import {
+  CACHE_PROTOCOL,
+  matchTilePath,
+  normalizeUrlToPath,
+  registerTileCacheProtocol,
+} from './tileProtocol'
+import { getTile } from './tileCache'
 
 // ===================== 协议常量 =====================
 
@@ -114,5 +120,125 @@ describe('normalizeUrlToPath', () => {
     const m = matchTilePath(path)
     expect(m).not.toBeNull()
     expect(m!.coord).toEqual({ z: 10, x: 855, y: 418 })
+  })
+})
+
+// ===================== 协议处理器：严格离线（缓存命中 / 灰显） =====================
+
+/** 协议处理器闭包签名（简化版，便于在测试中直接调用） */
+type ProtocolHandler = (
+  params: { url: string },
+  abort: AbortController,
+) => Promise<{ data: ArrayBuffer }>
+
+/**
+ * 桩一个可用的 OffscreenCanvas，使 getGrayPngTile 在 jsdom 中能生成灰色占位。
+ * jsdom 原生不支持 Canvas（需 canvas npm 包），故手动桩 convertToBlob。
+ */
+function stubOffscreenCanvas(): void {
+  class MockCtx {
+    fillStyle = ''
+    fillRect(): void {}
+  }
+  class MockCanvas {
+    width = 1
+    height = 1
+    getContext(): MockCtx {
+      return new MockCtx()
+    }
+    async convertToBlob(): Promise<Blob> {
+      return new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], {
+        type: 'image/png',
+      })
+    }
+  }
+  vi.stubGlobal('OffscreenCanvas', MockCanvas)
+}
+
+describe('registerTileCacheProtocol: 协议处理器（严格离线）', () => {
+  let handler: ProtocolHandler
+
+  beforeAll(() => {
+    registerTileCacheProtocol()
+    const calls = vi.mocked(addProtocol).mock.calls
+    handler = calls[0][1] as unknown as ProtocolHandler
+  })
+
+  beforeEach(() => {
+    vi.mocked(getTile).mockReset()
+    vi.unstubAllGlobals()
+  })
+
+  it('注册的协议名为 gcs-cache', () => {
+    expect(vi.mocked(addProtocol)).toHaveBeenCalledWith(
+      CACHE_PROTOCOL,
+      expect.any(Function),
+    )
+  })
+
+  it('缓存命中（卫星栅格瓦片）→ 直接返回本地 ArrayBuffer，零网络', async () => {
+    vi.mocked(getTile).mockResolvedValue({
+      blob: new Blob([new Uint8Array([1, 2, 3])]),
+    } as never)
+    const result = await handler(
+      { url: 'gcs-cache:///tiles/data/satellite/12/3420/1684.png' },
+      new AbortController(),
+    )
+    expect(result.data.byteLength).toBe(3)
+  })
+
+  it('缓存命中（矢量瓦片）→ 直接返回本地 ArrayBuffer', async () => {
+    vi.mocked(getTile).mockResolvedValue({
+      blob: new Blob([new Uint8Array([1, 2, 3, 4])]),
+    } as never)
+    const result = await handler(
+      { url: 'gcs-cache:///tiles/data/suzhou/12/1/2.pbf' },
+      new AbortController(),
+    )
+    expect(result.data.byteLength).toBe(4)
+  })
+
+  it('栅格瓦片未命中 → 返回灰色 PNG 占位，绝不回源 tileserver（严格离线）', async () => {
+    vi.mocked(getTile).mockResolvedValue(undefined)
+    stubOffscreenCanvas()
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const result = await handler(
+      { url: 'gcs-cache:///tiles/data/satellite/12/3420/1684.png' },
+      new AbortController(),
+    )
+    // 核心断言：严格离线，未命中时绝不回源任何 tileserver
+    expect(fetchSpy).not.toHaveBeenCalled()
+    // 灰色占位 PNG（Canvas 生成）
+    expect(result.data.byteLength).toBeGreaterThan(0)
+  })
+
+  it('矢量瓦片未命中 → 抛错，绝不回源 tileserver（严格离线）', async () => {
+    vi.mocked(getTile).mockResolvedValue(undefined)
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    await expect(
+      handler(
+        { url: 'gcs-cache:///tiles/data/suzhou/12/1/2.pbf' },
+        new AbortController(),
+      ),
+    ).rejects.toThrow('offline: tile not cached')
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('严格离线核心不变式：navigator.onLine === true 时未命中也不回源', async () => {
+    // 旧版懒加载逻辑依赖 navigator.onLine；严格离线移除此依赖——
+    // 无论在线/离线，未命中一律不回源，保证渲染完全离线。
+    vi.mocked(getTile).mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { onLine: true })
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    await expect(
+      handler(
+        { url: 'gcs-cache:///tiles/data/suzhou/12/1/2.pbf' },
+        new AbortController(),
+      ),
+    ).rejects.toThrow('offline: tile not cached')
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

@@ -11,7 +11,6 @@
  */
 import { useOfflineMap } from '../useOfflineMap'
 import { BASEMAP_LABELS } from '../constants'
-import { deriveSourceId } from '../tileDownload'
 import { formatBytes, formatNumber, formatTime } from '../format'
 import type { DownloadTaskStatus } from '../types'
 import './OfflineMapDialog.css'
@@ -38,7 +37,7 @@ export function LocalTab() {
     cacheSummary,
     storageQuota,
     removeTask,
-    deleteCache,
+    deleteTaskCache,
     clearAllCache,
   } = useOfflineMap()
 
@@ -90,7 +89,7 @@ export function LocalTab() {
               </div>
               <div className="offline-task-item__meta">
                 层级 z{task.minZoom}-z{task.maxZoom}
-                {' '}· {formatNumber(task.completedTiles)} / {formatNumber(task.totalTiles)} 块
+                {' '}· {formatNumber(task.completedTiles)} / {formatNumber(task.totalTiles)} 块{task.skippedTiles ? `（跳过 ${formatNumber(task.skippedTiles)} 无数据）` : ''}
                 {' '}· {formatBytes(task.bytesDownloaded)}
                 {' '}· {formatTime(task.updatedAt)}
                 {task.error ? ` · ${task.error}` : ''}
@@ -117,8 +116,7 @@ export function LocalTab() {
                           `清除「${task.regionName}」已缓存的瓦片数据？该任务记录将一并删除。`,
                         )
                       ) {
-                        void deleteCache(deriveSourceId(task.tileUrlTemplate))
-                        void removeTask(task.id)
+                        void deleteTaskCache(task)
                       }
                     }}
                   >
