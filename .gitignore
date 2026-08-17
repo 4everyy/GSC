@@ -28,13 +28,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# 瓦片数据与字体文件（体积大，离线按需生成，不纳入版本管理）
-tileserver/data/
-tileserver/fonts/
-tileserver/font-src/
-tileserver/suzhou.poly
-
-# tilemaker 二进制及其下载文件（体积大，离线按需下载）
-tileserver/bin/
-tileserver/release.json
-tileserver/releases.json
+# 离线地图 MBTiles 源包（体积大，运维按需导入，不纳入版本管理）
+mbtiles/
+# 前端同源静态目录下的城市瓦片包（按需投放，不纳入版本管理；README.md 仍跟踪）
+public/maps/*.mbtiles

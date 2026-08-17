@@ -40,6 +40,7 @@
 .map-stage .view-controls,
 .map-stage .zoom-controls,
 .map-stage .map-footer,
+.map-stage .bottom-bar,
 .map-stage .layer-panel,
 .map-stage .device-panel,
 .map-stage .mission-panel,
@@ -49,7 +50,7 @@
 .map-stage .corner-marker,
 .map-stage .restricted-zone,
 .map-stage .inspection-zone,
-.map-stage .maplibre-status--offline {
+.map-stage .offline-map-panel {
   pointer-events: auto;
 }
 
@@ -880,4 +881,60 @@
   border-bottom: 2px solid #ffffff66;
   border-right: 2px solid #ffffff66;
   border-left: 2px solid #ffffff66;
+}
+
+/* ====== 底部水平居中按钮条 ====== */
+/* 13 段弧形背景切图拼接：容器绝对定位于底部水平居中，与 .map-footer 同一底部基线；
+   各切缝为斜边，按切缝角逐缝补偿水平间距使垂直缝宽视觉相等（见下方 nth-child 规则） */
+.bottom-bar {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(8px, 0.89vw, 17px);
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  /* 不使用统一 gap：各段切图自带不相等的透明内边距，且切缝为倾角不同的斜边
+     （端部约 45°、中部近垂直），统一水平间距无法得到相等的视觉缝宽，
+     改为下方 .bottom-bar__btn:nth-child 逐缝 margin-right 精确补偿 */
+}
+
+/* 逐缝水平间距：以"垂直于斜缝方向的视觉缝宽统一为 12px"为目标。
+   margin = 12 / cos(切缝角 θ) − 零间距拼接水平缝宽 h0；h0 与 θ 由
+   scripts/equalize_bottom_bar_gaps.py 对各切图不透明边缘做最小二乘拟合求得。
+   切图自带大量不相等的透明内边距（端部缝 h0 达 61px、中部仅 9px），故多数
+   margin 为负值——仅重叠相邻切图的透明区域，不遮挡实体像素。
+   clamp 缩放曲线与按钮高度 clamp(30px, 3.125vw, 60px) 一致：
+   1920px 视口取设计值（绝对值大的一端），960px 最小视口取其一半 */
+.bottom-bar__btn:nth-child(1) { margin-right: clamp(-44.43px, -2.3141vw, -22.21px); } /* 缝角约45.4° */
+.bottom-bar__btn:nth-child(2) { margin-right: clamp(-22.57px, -1.1755vw, -11.29px); } /* 约33.7° */
+.bottom-bar__btn:nth-child(3) { margin-right: clamp(-14.58px, -0.7594vw, -7.29px); } /* 约26.6° */
+.bottom-bar__btn:nth-child(4) { margin-right: clamp(-14.58px, -0.7594vw, -7.29px); } /* 约26.6° */
+.bottom-bar__btn:nth-child(5) { margin-right: clamp(-6.02px, -0.3135vw, -3.01px); } /* 约18.4° */
+.bottom-bar__btn:nth-child(6) { margin-right: clamp(1.33px, 0.1391vw, 2.67px); } /* 约9.4° */
+.bottom-bar__btn:nth-child(7) { margin-right: clamp(1.42px, 0.1474vw, 2.83px); } /* 约9.5° */
+.bottom-bar__btn:nth-child(8) { margin-right: clamp(-6.07px, -0.3161vw, -3.04px); } /* 约18.6° */
+.bottom-bar__btn:nth-child(9) { margin-right: clamp(-14.08px, -0.7333vw, -7.04px); } /* 约26.6° */
+.bottom-bar__btn:nth-child(10) { margin-right: clamp(-14.59px, -0.7599vw, -7.29px); } /* 约26.5° */
+.bottom-bar__btn:nth-child(11) { margin-right: clamp(-22.58px, -1.176vw, -11.29px); } /* 约33.7° */
+.bottom-bar__btn:nth-child(12) { margin-right: clamp(-44.45px, -2.3151vw, -22.23px); } /* 约45.4° */
+
+/* 各段宽度由内联 aspect-ratio（切图原始宽 / 60）与高度联动保持比例；
+   高度按 60px 设计稿（1920 基准）随视口等比缩放 */
+.bottom-bar__btn {
+  height: clamp(30px, 3.125vw, 60px);
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.bottom-bar__btn:hover {
+  filter: brightness(1.2);
+}
+
+.bottom-bar__btn:active {
+  filter: brightness(0.9);
 }

@@ -1,7 +1,7 @@
 /**
  * HomePage —— 地面站主页面。
  *
- * 地图引擎：MapLibre GL JS（离线矢量/栅格瓦片由本地 tileserver-gl 提供）。
+ * 地图引擎：MapLibre GL JS（严格离线，瓦片由本地 MBTiles 包经 IndexedDB 渲染）。
  * - 使用 useMapEngine hook 持有 MapLibreContainer 注入的适配器实例；
  * - 所有业务组件（控件、比例尺）统一接收 adapter（引擎无关）。
  *
@@ -9,9 +9,7 @@
  * - HomePage 不直接 import 适配器实现类，仅通过 MapEngineInstance.adapter 操作地图；
  * - 业务组件通过 useEffect 依赖 adapter 变化自动重建覆盖物。
  */
-import { useEffect, useRef, useState } from 'react'
-import { useMapDisplay } from '../../features/map-display/useMapDisplay'
-import { CITY_DATABASE } from '../../features/offline-map/cityDatabase'
+import { useState, useEffect } from 'react'
 import { StatusHeader } from '../../components/StatusHeader/StatusHeader'
 import { MapToolbar } from '../../components/MapToolbar/MapToolbar'
 import { MissionPanel } from '../../components/MissionPanel/MissionPanel'
@@ -23,16 +21,15 @@ import { useMapEngine } from '../../hooks/useMapEngine'
 import { ALARM_TYPES } from '../../config/alarms'
 import { aircraft } from '../../config/aircraft'
 import batteryMidIcon from '../../assets/images/device/battery-mid.png'
+import { homeImages } from '../../assets/images/home'
 import { useDraggable, type DragPosition } from '../../hooks/useDraggable'
 import { AircraftFocusPanel } from '../../components/AircraftFocusPanel/AircraftFocusPanel'
 import { computePanelPlacement, placementToClasses } from '../../utils/panelPlacement'
 import { usePanelClamp } from '../../hooks/usePanelClamp'
-import { SystemConfigButton } from '../../features/offline-map/components/SystemConfigButton'
-import { DownloadProgressBar } from '../../features/offline-map/components/DownloadProgressBar'
-import { OfflineMapDialog } from '../../features/offline-map/components/OfflineMapDialog'
-import { useOfflineMap } from '../../features/offline-map/useOfflineMap'
 import './HomePage.css'
 import './HoverPanelPlacement.css'
+import { useOfflineMap } from '../../features/offline-map/useOfflineMap'
+import { OfflineMapPanel } from '../../features/offline-map/components/OfflineMapPanel'
 
 // 飞机初始位置（百分比），与 HomePage.css 中 .aircraft--xxx 的 left/top 保持一致。
 // 拖拽后通过内联 style 覆盖 CSS 定位，实现自由拖动。
@@ -47,25 +44,24 @@ const AIRCRAFT_INITIAL_POSITIONS: DragPosition[] = [
 // 巡检区域初始位置（百分比），与 HomePage.css 中 .inspection-zone 的 left/top 保持一致
 const INSPECTION_ZONE_INITIAL_POSITION: DragPosition = { x: 38.75, y: 25.5 }
 
-/**
- * 按矢量城市数据源 key 查找其 bbox 中心（WGS84）。
- *
- * 用于「地图资源切换」时 flyTo 到目标城市中心。遍历 CITY_DATABASE，
- * 未匹配时返回 null（调用方保持当前视图）。
- */
-function findCityCenterByKey(key: string): { lng: number; lat: number } | null {
-  for (const region of CITY_DATABASE) {
-    for (const c of region.cities) {
-      if (c.key === key) {
-        return {
-          lng: (c.bbox.west + c.bbox.east) / 2,
-          lat: (c.bbox.south + c.bbox.north) / 2,
-        }
-      }
-    }
-  }
-  return null
-}
+// 底部水平居中按钮条：13 段背景切图按显示顺序（从左到右）编号拼接（高度统一 60px）。
+// width 为各切图原始宽度，经 aspect-ratio 与高度联动保持每段比例，整体随视口等比缩放。
+// 各段切缝的水平间距补偿见 HomePage.css 中 .bottom-bar__btn:nth-child 逐缝 margin 规则。
+const BOTTOM_BAR_ITEMS: { background: string; width: number }[] = [
+  { background: homeImages.bottomBarSeg1, width: 119 },
+  { background: homeImages.bottomBarSeg2, width: 129 },
+  { background: homeImages.bottomBarSeg3, width: 110 },
+  { background: homeImages.bottomBarSeg4, width: 100 },
+  { background: homeImages.bottomBarSeg5, width: 101 },
+  { background: homeImages.bottomBarSeg6, width: 92 },
+  { background: homeImages.bottomBarSeg7, width: 92 },
+  { background: homeImages.bottomBarSeg8, width: 92 },
+  { background: homeImages.bottomBarSeg9, width: 101 },
+  { background: homeImages.bottomBarSeg10, width: 100 },
+  { background: homeImages.bottomBarSeg11, width: 110 },
+  { background: homeImages.bottomBarSeg12, width: 129 },
+  { background: homeImages.bottomBarSeg13, width: 119 },
+]
 
 export function HomePage() {
   const [activeAlarm, setActiveAlarm] = useState<number | null>(null)
@@ -82,30 +78,19 @@ export function HomePage() {
   // adapter 供业务组件（控件、比例尺等）引擎无关地操作地图。
   const { adapter, onEngineReady } = useMapEngine()
 
-  // 地图资源切换（由 App.tsx 的 MapDisplayProvider 提供）：
-  // - activeStyleUrl / activeStyleSpec：当前底图基础 URL 与改写后的完整 spec；
-  // - cityKey / flyToCityOnSwitch：当前矢量城市 + 是否切换时飞到中心。
-  const { activeStyleUrl, activeStyleSpec, cityKey, flyToCityOnSwitch } =
-    useMapDisplay()
+  // 离线地图：注册 gcs-pkg:// 协议 + 加载已导入包 + 派生活跃栅格样式。
+  // 严格离线机制——地图容器不读取 navigator.onLine、无「在线/离线」分支；
+  // 尚未导入离线地图包时 activeStyle 为 null（渲染纯色占位底图），
+  // 导入后由 gcs-pkg:// 协议从 IndexedDB 渲染。
+  const { activeStyle, activePackage } = useOfflineMap()
+
+  // 激活包变化时（导入新包 / 切换城市）平滑飞到包中心。
+  useEffect(() => {
+    if (!adapter || !activePackage) return
+    adapter.flyTo(activePackage.center, { zoom: 14, duration: 1500 })
+  }, [adapter, activePackage])
 
   const currentAlarmColor = activeAlarm !== null ? ALARM_TYPES[activeAlarm]?.color : undefined
-
-  // 离线地图状态（由 App.tsx 的 OfflineMapProvider 提供）：
-  // - isOffline：navigator.onLine 离线态，驱动「无缓存+断网」灰显提示；
-  // - cacheSummary.totalTiles：本地缓存瓦片总数，为 0 表示完全无缓存；
-  // - openDialog：打开离线地图管理弹窗（占位层「立即下载」按钮回调）。
-  // openDialog：打开离线地图管理弹窗，作为 MapLibreContainer 离线提示层的下载入口。
-  const { openDialog: openOfflineMapDialog } = useOfflineMap()
-
-  // 切换矢量城市时，按需飞到该市中心（首次加载不触发，避免覆盖 autoLocate）
-  const firstCityRef = useRef(cityKey)
-  useEffect(() => {
-    const isFirst = firstCityRef.current === cityKey
-    firstCityRef.current = cityKey
-    if (isFirst || !flyToCityOnSwitch || !adapter) return
-    const center = findCityCenterByKey(cityKey)
-    if (center) adapter.flyTo(center, { duration: 1200 })
-  }, [cityKey, flyToCityOnSwitch, adapter])
 
   // 飞机图标拖拽：鼠标左键按住拖动图标+名称至首页任意位置
   const { positions: aircraftPositions, onDragStart: onAircraftDragStart } =
@@ -144,31 +129,25 @@ export function HomePage() {
   return (
     <main className="design-viewport" aria-label="无人机集群控制地面站">
       <div className="design-canvas">
-        {/* 地图底图：MapLibre GL JS 容器，离线矢量/栅格瓦片由本地 tileserver-gl 提供 */}
+        {/* 地图底图：MapLibre GL JS 容器（严格离线）。尚未导入地图包时渲染纯色占位底图，
+            导入后由父组件通过 styleSpec 注入 MBTiles 派生样式（P1+）。 */}
         <MapLibreContainer
           className="map-base"
-          styleUrl={activeStyleUrl}
-          styleSpec={activeStyleSpec}
           onReady={onEngineReady}
-          onOfflinePromptClick={openOfflineMapDialog}
+          styleSpec={activeStyle}
           autoLocate
         />
 
         <StatusHeader activeAlarm={activeAlarm} onAlarmClick={setActiveAlarm} />
 
-        {/* 系统配置（齿轮按钮）：浮于地图右上角，点击打开离线地图管理弹窗（下载/本地）。 */}
-        <SystemConfigButton />
-
         <section className="map-stage">
           <MapToolbar />
 
-          {/* 离线地图下载进度条：浮于地图顶部居中，仅当存在进行中下载任务时渲染（无任务时返回 null）。 */}
-          <DownloadProgressBar />
+          {/* 离线地图管理面板（导入 / 城市切换 / 包列表）—— 严格离线，仅读写本地 IndexedDB */}
+          <OfflineMapPanel />
 
-          {/* 离线灰显提示覆盖层：仅在「断网 + 本地零缓存」时展示，引导用户前往系统配置预取瓦片。
-              其余情形由 gcs-cache 协议自动处理：命中缓存正常显示；未命中灰显（严格离线，绝不在线回源）。 */}
-          {/* 离线无缓存灰显提示已下沉到 MapLibreContainer：status === 'offline' 时
-              渲染 OfflineMapPlaceholder，下载入口经 onOfflinePromptClick 回调驱动。*/}
+          {/* 严格离线：瓦片缓存命中即渲染；未命中灰显（绝不在线回源）。
+              尚未导入地图包时渲染纯色占位底图。导入/切换入口由离线地图管理模块提供（P1+）。 */}
           {/* MissionPanel 与 AlarmInfoPanel 暂时隐藏，待后续功能接入时恢复 */}
           {false && <MissionPanel />}
           {false && <AlarmInfoPanel alarmColor={currentAlarmColor} />}
@@ -431,6 +410,24 @@ export function HomePage() {
 
           <MapControls adapter={adapter} />
 
+          {/* 底部水平居中按钮条：13 段背景图拼接，具体功能待接入 */}
+          <nav className="bottom-bar" aria-label="底部功能按钮条">
+            {BOTTOM_BAR_ITEMS.map((item, index) => (
+              <button
+                key={item.background}
+                type="button"
+                className="bottom-bar__btn"
+                aria-label={`功能按钮${index + 1}`}
+                style={{
+                  // 切图文件名（bottom-bar-seg-01.png 等）含连字符，url() 统一加引号
+                  // 以避免 unquoted URL 的解析歧义
+                  backgroundImage: `url("${item.background}")`,
+                  aspectRatio: `${item.width} / 60`,
+                }}
+              />
+            ))}
+          </nav>
+
           <footer className="map-footer">
             <div className="emergency-actions">
               <button type="button">一键RTL</button>
@@ -443,9 +440,6 @@ export function HomePage() {
           </footer>
         </section>
 
-        {/* 离线地图管理弹窗（fixed 全屏遮罩）：由 context.dialogOpen 控制显隐，
-            position:fixed 脱离 .map-stage 的 pointer-events:none 限制，可正常交互。 */}
-        <OfflineMapDialog />
       </div>
     </main>
   )

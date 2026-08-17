@@ -23,95 +23,13 @@ export const MAPLIBRE_DEFAULT_ZOOM = Number(
 )
 
 /**
- * 地图底图样式枚举。
+ * 地图样式与底图来源。
  *
- * - dark：暗色矢量底图（默认，离线，OSM 数据）
- * - satellite：卫星影像底图（本地 tileserver-gl 栅格源 satellite.mbtiles，经 gcs-cache 协议统一缓存：IndexedDB 命中优先；未命中灰显，严格离线、绝不在线回源）
- *
- * 各样式 URL 均可通过环境变量覆盖，便于不同部署环境灵活配置。
+ * 离线地图包方案下，地图样式由「离线地图包」驱动（见 src/features/offline-map，P1+ 实现）：
+ * 运行时 MapLibre 通过 gcs-pkg:// 自定义协议从 IndexedDB 读取已导入的 MBTiles 包渲染；
+ * 尚未导入任何包时，MapLibreContainer 渲染纯色占位底图。本文件只保留与样式无关的
+ * 地图初始化常量（中心点 / 缩放 / 交互选项），不再持有任何瓦片服务器或样式 URL 配置。
  */
-export type MapBasemap = 'dark' | 'satellite'
-
-interface StyleEntry {
-  /** 样式显示名 */
-  label: string
-  /** 样式 URL（默认值，可被环境变量覆盖） */
-  url: string
-}
-
-/**
- * tileserver-gl 的绝对 origin。
- *
- * tileserver-gl 启动时通过 `--public_url http://localhost:8081` 将此 origin 注入到
- * style.json 内部的 sources.url / glyphs / sprite 等字段。浏览器直接请求这些绝对
- * URL 时，若页面从 LAN IP / IPv6 / 其他主机访问，localhost 会指向客户端自身导致
- * "Failed to fetch (0)"。
- *
- * transformRequest 会将此 origin 重写为同源代理路径 /tiles，故需集中导出。
- */
-export const TILESERVER_ORIGIN = 'http://localhost:8081'
-
-/**
- * 离线瓦片样式的基础路径（同源相对路径，通过 Vite/Nginx 代理转发到 tileserver-gl）。
- *
- * 使用相对路径而非绝对 URL，确保无论从 localhost / LAN IP / IPv6 访问页面，
- * 样式请求都走同源代理，避免浏览器跨域与 localhost 不可达问题。
- */
-const OFFLINE_BASE = '/tiles/styles'
-
-/**
- * 底图样式映射。
- *
- * 每个 key 对应一种底图模式：
- * - dark：矢量暗色底图（默认离线）
- * - satellite：卫星影像底图（本地 tileserver-gl 栅格源 satellite.mbtiles，与矢量瓦片走完全一致的缓存/懒加载流程）
- *
- * 环境变量覆盖规则（按底图类型）：
- * - VITE_MAPLIBRE_STYLE_URL：覆盖 dark 矢量样式 URL
- * - VITE_MAPLIBRE_SATELLITE_STYLE_URL：覆盖 satellite 卫星样式 URL
- */
-export const MAPLIBRE_BASEMAPS: Record<MapBasemap, StyleEntry> = {
-  dark: {
-    label: '矢量暗色',
-    url:
-      import.meta.env.VITE_MAPLIBRE_STYLE_URL ??
-      `${OFFLINE_BASE}/dark/style.json`,
-  },
-  satellite: {
-    label: '卫星影像',
-    url:
-      import.meta.env.VITE_MAPLIBRE_SATELLITE_STYLE_URL ??
-      `${OFFLINE_BASE}/satellite/style.json`,
-  },
-}
-
-/** 默认底图样式（卫星影像） */
-export const MAPLIBRE_DEFAULT_BASEMAP: MapBasemap = 'satellite'
-
-/**
- * 默认矢量城市数据源 key。
- *
- * 与本地 mbtiles 文件名前缀（suzhou.mbtiles）及 tileserver-gl config.json 的 data
- * 段 key 对齐。地图资源切换功能的默认城市；部署到其他区域时改 .env.local 或此处即可。
- */
-export const MAPLIBRE_DEFAULT_CITY_KEY = 'suzhou'
-
-/**
- * 兼容旧引用：导出默认样式 URL。
- * @deprecated 使用 MAPLIBRE_BASEMAPS[basemap].url 替代。
- */
-export const MAPLIBRE_STYLE_URL = MAPLIBRE_BASEMAPS[MAPLIBRE_DEFAULT_BASEMAP].url
-
-/**
- * 是否使用离线瓦片服务（用于决定加载失败时的提示信息）
- *
- * 判定逻辑：URL 指向 localhost / 内网 IP 且非 demotiles 即视为离线模式。
- */
-const DEMO_STYLE_URL = 'https://demotiles.maplibre.org/style.json'
-
-export const MAPLIBRE_USE_OFFLINE_TILES =
-  MAPLIBRE_STYLE_URL !== DEMO_STYLE_URL &&
-  !MAPLIBRE_STYLE_URL.includes('demotiles.maplibre.org')
 
 /**
  * MapLibre 地图初始化选项。

@@ -1,0 +1,58 @@
+/* ====== 全局错误兜底边界 ====== */
+/* 调色板与 MapLibreContainer 一致：深色底 #0a1a2f / 强调 #4a9eff / 错误 #ff6b6b */
+.error-boundary {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a1a2f;
+  color: #fff;
+  font-size: 14px;
+}
+
+/* 错误卡片：垂直堆叠标题 / 信息 / 重试按钮，宽度受限便于阅读 */
+.error-boundary__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 80%;
+  padding: 24px 28px;
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  border-radius: 8px;
+  background: rgba(10, 26, 47, 0.85);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.error-boundary__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ff6b6b;
+}
+
+/* 错误信息：允许换行，避免长堆栈溢出 */
+.error-boundary__msg {
+  word-break: break-word;
+  white-space: pre-wrap;
+  opacity: 0.85;
+}
+
+/* 重试按钮：高对比度，便于在错误态下引导恢复 */
+.error-boundary__retry {
+  padding: 6px 20px;
+  border: 1px solid #4a9eff;
+  border-radius: 4px;
+  background: rgba(74, 158, 255, 0.15);
+  color: #4a9eff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.error-boundary__retry:hover {
+  background: #4a9eff;
+  color: #fff;
+}

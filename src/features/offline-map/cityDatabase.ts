@@ -1,23 +1,35 @@
 /**
- * 城市坐标数据库 —— 按城市名选择下载区域，替代手填经纬度。
+ * 城市坐标数据库 —— 离线地图「按城市导入 / 切换」的城市目录。
  *
- * 设计依据：docs/离线地图下载方案.md §3.2 Tab1「区域选择」易用性改进。
- *
- * 数据源：./cities.json —— 前端下拉框与 tileserver 数据准备脚本（prepare-data.ps1）
- * 共用同一份城市清单（单一数据源）。新增/修改城市只需编辑 cities.json，无需多处同步。
+ * 数据源：./cities.json —— 前端城市选择与离线 MBTiles 包命名的单一数据源。
+ * 新增 / 修改城市只需编辑 cities.json，无需多处同步。
  *
  * 数据说明：
  * - bbox 为各市市域的近似外接矩形（WGS84），并非精确行政边界；
- * - key 为城市拼音标识，对应 tileserver-gl config.json 的 data 段 key 与 mbtiles 文件名前缀；
- * - 瓦片覆盖范围受限于本地 tileserver-gl 已注册的 mbtiles，DownloadTab 会按 key 探测
- *   /data.json 实时过滤可选城市。
+ * - key 为城市拼音标识，约定为该城市 MBTiles 包的文件名前缀（如 suzhou.mbtiles → suzhou），
+ *   供离线包导入与多包切换定位使用。
  */
 import citiesData from './cities.json'
-import type { BBox } from './types'
+
+/**
+ * 经纬度边界框（WGS84）。
+ *
+ * 离线地图包方案的公共类型：城市目录条目、MBTiles 包元数据均复用此结构。
+ */
+export interface BBox {
+  /** 西经（最小经度） */
+  west: number
+  /** 东经（最大经度） */
+  east: number
+  /** 南纬（最小纬度） */
+  south: number
+  /** 北纬（最大纬度） */
+  north: number
+}
 
 /** 单个城市条目 */
 export interface CityEntry {
-  /** 数据源 key（拼音，对应 tileserver-gl 的 data 段 key / mbtiles 文件名前缀） */
+  /** 数据源 key（拼音，约定为该城市 MBTiles 包的文件名前缀，如 suzhou） */
   key: string
   /** 城市显示名 */
   name: string
@@ -70,16 +82,16 @@ const FLAT: CityEntry[] = RAW.map((r) => ({
 
 /**
  * 按城市名查找 bbox（O(城市数)，数据量小无需索引）。
- * 用于 DownloadTab 选择城市后填充下载区域边界。
- * @returns 找不到时返回 undefined（调用方回退为自定义经纬度）。
+ * 通用城市目录查询：返回该市市域近似边界框（WGS84）。
+ * @returns 找不到时返回 undefined。
  */
 export function findCityBbox(name: string): BBox | undefined {
   return FLAT.find((c) => c.name === name)?.bbox
 }
 
 /**
- * 按城市名查找数据源 key。
- * 用于构造矢量瓦片下载模板（/tiles/data/{key}/{z}/{x}/{y}.pbf）。
+ * 按城市名查找数据源 key（拼音，约定为该城市 MBTiles 包文件名前缀）。
+ * 通用城市目录查询。
  */
 export function findCityKey(name: string): string | undefined {
   return FLAT.find((c) => c.name === name)?.key
@@ -87,7 +99,7 @@ export function findCityKey(name: string): string | undefined {
 
 /**
  * 按数据源 key 反查城市显示名。
- * 用于城市数据准备流程展示中文城市名（MapDisplayTab 触发生成 / 进度完成提示）。
+ * 用于离线地图管理面板（城市切换）与 ensureCityPackage 的错误提示展示中文城市名。
  * @returns 找不到时返回 undefined（调用方回退为 key 本身）。
  */
 export function findCityName(key: string): string | undefined {

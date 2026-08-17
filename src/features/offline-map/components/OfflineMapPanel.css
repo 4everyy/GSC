@@ -1,0 +1,227 @@
+/**
+ * 离线地图管理面板样式。
+ *
+ * 浮动面板：右上角触发按钮 + 可折叠内容（导入 / 城市切换 / 包列表）。
+ * 配色与 HomePage 深色科技风一致。
+ */
+
+.offline-map-panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 280px;
+  max-width: 340px;
+  font-size: 13px;
+}
+
+.offline-map-panel__toggle {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(20, 35, 55, 0.92);
+  color: #cfe3ff;
+  border: 1px solid rgba(64, 159, 255, 0.4);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.offline-map-panel__toggle:hover {
+  background: rgba(30, 50, 75, 0.95);
+  border-color: rgba(64, 159, 255, 0.7);
+}
+
+.offline-map-panel__toggle--active {
+  background: rgba(30, 80, 130, 0.95);
+  border-color: #409fff;
+  color: #fff;
+}
+
+.offline-map-panel__body {
+  margin-top: 8px;
+  background: rgba(16, 28, 44, 0.96);
+  border: 1px solid rgba(64, 159, 255, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.offline-map-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.offline-map-panel__label {
+  color: #8aa8c8;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.offline-map-panel__import-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(64, 159, 255, 0.15);
+  color: #6fb7ff;
+  border: 1px solid rgba(64, 159, 255, 0.45);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.offline-map-panel__import-btn:hover {
+  background: rgba(64, 159, 255, 0.28);
+}
+
+.offline-map-panel__import-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.offline-map-panel__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.offline-map-panel__progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.offline-map-panel__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #409fff, #6fb7ff);
+  transition: width 0.2s;
+}
+
+.offline-map-panel__progress-text {
+  color: #8aa8c8;
+  font-size: 11px;
+}
+
+.offline-map-panel__select {
+  width: 100%;
+  padding: 7px 10px;
+  background: rgba(20, 35, 55, 0.9);
+  color: #cfe3ff;
+  border: 1px solid rgba(64, 159, 255, 0.35);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.offline-map-panel__select:focus {
+  outline: none;
+  border-color: #409fff;
+}
+
+.offline-map-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.offline-map-panel__pkg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(20, 35, 55, 0.7);
+  border: 1px solid rgba(64, 159, 255, 0.2);
+  border-radius: 6px;
+  transition: border-color 0.15s;
+}
+
+.offline-map-panel__pkg--active {
+  border-color: #409fff;
+  background: rgba(30, 80, 130, 0.6);
+}
+
+.offline-map-panel__pkg-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.offline-map-panel__pkg-name {
+  color: #e0eeff;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.offline-map-panel__pkg-meta {
+  color: #7a96b6;
+  font-size: 11px;
+}
+
+.offline-map-panel__pkg-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.offline-map-panel__pkg-btn {
+  padding: 4px 8px;
+  background: rgba(64, 159, 255, 0.12);
+  color: #6fb7ff;
+  border: 1px solid rgba(64, 159, 255, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.offline-map-panel__pkg-btn:hover {
+  background: rgba(64, 159, 255, 0.25);
+}
+
+.offline-map-panel__pkg-btn--danger {
+  color: #ff7a7a;
+  border-color: rgba(255, 122, 122, 0.35);
+  background: rgba(255, 122, 122, 0.08);
+}
+
+.offline-map-panel__pkg-btn--danger:hover {
+  background: rgba(255, 122, 122, 0.2);
+}
+
+.offline-map-panel__empty {
+  color: #6a86a6;
+  font-size: 12px;
+  text-align: center;
+  padding: 16px 8px;
+}
+
+.offline-map-panel__error {
+  color: #ff9a9a;
+  font-size: 12px;
+  padding: 6px 8px;
+  background: rgba(255, 80, 80, 0.1);
+  border-radius: 4px;
+}
+
+.offline-map-panel__hint {
+  color: #6a86a6;
+  font-size: 11px;
+  line-height: 1.5;
+}

@@ -1,244 +1,96 @@
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
+/**
+ * tileProtocol 单元测试 —— 验证 gcs-pkg:// URL 解析。
+ *
+ * 注意：registerTileProtocol 依赖 maplibregl.addProtocol + IndexedDB，
+ * 不在此测试（需集成环境）；仅测纯函数 parseTileUrl。
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// ── Mock 依赖，避免加载真实 maplibre-gl（worker / WebGL）与 IndexedDB ──
-vi.mock('maplibre-gl', () => ({
-  addProtocol: vi.fn(),
-}))
-vi.mock('./tileCache', () => ({
+// 严格离线不变式测试：mock 掉 IndexedDB 层，断言协议处理器「未命中不回源、不在线兜底」。
+vi.mock('./indexedDb', () => ({
   getTile: vi.fn(),
 }))
 
-import { addProtocol } from 'maplibre-gl'
 import {
-  CACHE_PROTOCOL,
-  matchTilePath,
-  normalizeUrlToPath,
-  registerTileCacheProtocol,
+  parseTileUrl,
+  GCS_PKG_PROTOCOL,
+  handleGcsPkgRequest,
 } from './tileProtocol'
-import { getTile } from './tileCache'
+import { getTile } from './indexedDb'
 
-// ===================== 协议常量 =====================
+const mockedGetTile = vi.mocked(getTile)
 
-describe('CACHE_PROTOCOL', () => {
-  it('协议名固定为 gcs-cache（与 transformRequest 重写前缀一致）', () => {
-    expect(CACHE_PROTOCOL).toBe('gcs-cache')
+describe('parseTileUrl', () => {
+  it('解析标准 gcs-pkg:// URL', () => {
+    const result = parseTileUrl(`gcs-pkg://suzhou/12/3456/7890`)
+    expect(result).toEqual({ pkgId: 'suzhou', z: 12, x: 3456, y: 7890 })
+  })
+
+  it('去除查询串与 hash', () => {
+    const result = parseTileUrl(`gcs-pkg://shanghai/8/100/200?token=abc#frag`)
+    expect(result).toEqual({ pkgId: 'shanghai', z: 8, x: 100, y: 200 })
+  })
+
+  it('合法化不带协议前缀的 URL（防御性）', () => {
+    const result = parseTileUrl('beijing/0/0/0')
+    expect(result).toEqual({ pkgId: 'beijing', z: 0, x: 0, y: 0 })
+  })
+
+  it('段数不足时抛错', () => {
+    expect(() => parseTileUrl('gcs-pkg://only-pkg/12')).toThrow(/非法/)
+  })
+
+  it('坐标非数字时抛错', () => {
+    expect(() => parseTileUrl('gcs-pkg://pkg/abc/1/2')).toThrow(/非法/)
+  })
+
+  it('协议名常量正确', () => {
+    expect(GCS_PKG_PROTOCOL).toBe('gcs-pkg')
   })
 })
 
-// ===================== matchTilePath：瓦片路径解析 =====================
-
-describe('matchTilePath', () => {
-  it('矢量瓦片 .pbf 解析出 sourceId 与坐标', () => {
-    const m = matchTilePath('/tiles/data/suzhou/12/3456/7890.pbf')
-    expect(m).not.toBeNull()
-    expect(m!.sourceId).toBe('/tiles/data/suzhou')
-    expect(m!.coord).toEqual({ z: 12, x: 3456, y: 7890 })
-    expect(m!.ext).toBe('pbf')
-  })
-
-  it('栅格瓦片 .png 解析正确', () => {
-    const m = matchTilePath('/tiles/satellite/10/100/200.png')
-    expect(m!.sourceId).toBe('/tiles/satellite')
-    expect(m!.coord).toEqual({ z: 10, x: 100, y: 200 })
-    expect(m!.ext).toBe('png')
-  })
-
-  it('.jpg 扩展名归一化为 jpg', () => {
-    expect(matchTilePath('/tiles/photo/5/1/2.jpg')!.ext).toBe('jpg')
-  })
-
-  it('.jpeg 扩展名归一化为 jpeg', () => {
-    expect(matchTilePath('/tiles/photo/5/1/2.jpeg')!.ext).toBe('jpeg')
-  })
-
-  it('.webp 栅格格式匹配', () => {
-    expect(matchTilePath('/tiles/photo/8/100/200.webp')!.ext).toBe('webp')
-  })
-
-  it('扩展名大小写不敏感', () => {
-    const pbfUpper = matchTilePath('/tiles/data/v3/8/100/200.PBF')
-    expect(pbfUpper).not.toBeNull()
-    expect(pbfUpper!.ext).toBe('pbf')
-
-    const pngUpper = matchTilePath('/tiles/sat/8/100/200.PNG')
-    expect(pngUpper!.ext).toBe('png')
-  })
-
-  it('多段路径前缀正确提取（如 /tiles/data/v3）', () => {
-    const m = matchTilePath('/tiles/data/v3/14/13000/6500.pbf')
-    expect(m!.sourceId).toBe('/tiles/data/v3')
-  })
-
-  it('字体资源（无 z/x/y 数字段）返回 null', () => {
-    // 字体路径形如 /tiles/fonts/{fontstack}/{range}.pbf
-    expect(matchTilePath('/tiles/fonts/Noto Sans/0-255.pbf')).toBeNull()
-    expect(matchTilePath('/tiles/fonts/Open Sans/0-255.pbf')).toBeNull()
-  })
-
-  it('sprite 资源（无数字段）返回 null，不被误判为瓦片', () => {
-    expect(matchTilePath('/tiles/styles/dark/sprite.json')).toBeNull()
-    expect(matchTilePath('/tiles/styles/dark/sprite.png')).toBeNull()
-    expect(matchTilePath('/tiles/styles/dark/sprite@2x.json')).toBeNull()
-    expect(matchTilePath('/tiles/styles/dark/sprite@2x.png')).toBeNull()
-  })
-
-  it('style.json 返回 null', () => {
-    expect(matchTilePath('/tiles/styles/dark/style.json')).toBeNull()
-  })
-
-  it('根路径无前缀的瓦片也能匹配', () => {
-    const m = matchTilePath('/data/suzhou/5/10/20.pbf')
-    expect(m!.sourceId).toBe('/data/suzhou')
-    expect(m!.coord).toEqual({ z: 5, x: 10, y: 20 })
-  })
-})
-
-// ===================== normalizeUrlToPath：URL 归一化 =====================
-
-describe('normalizeUrlToPath', () => {
-  it('gcs-cache:// 协议头剥离为同源路径', () => {
-    expect(normalizeUrlToPath('gcs-cache:///tiles/data/v3/12/3/4.pbf')).toBe(
-      '/tiles/data/v3/12/3/4.pbf',
-    )
-  })
-
-  it('已是同源相对路径则不变', () => {
-    expect(normalizeUrlToPath('/tiles/data/v3/12/3/4.pbf')).toBe(
-      '/tiles/data/v3/12/3/4.pbf',
-    )
-  })
-
-  it('http(s):// 协议头被剥离', () => {
-    const result = normalizeUrlToPath('https://example.com/tiles/data/v3/12/3/4.pbf')
-    expect(result).toBe('/example.com/tiles/data/v3/12/3/4.pbf')
-    expect(result.endsWith('/tiles/data/v3/12/3/4.pbf')).toBe(true)
-  })
-
-  it('归一化后的路径能被 matchTilePath 正确解析', () => {
-    // 端到端：协议 URL → 归一化 → 瓦片匹配，保证键空间一致
-    const path = normalizeUrlToPath('gcs-cache:///tiles/data/suzhou/10/855/418.pbf')
-    const m = matchTilePath(path)
-    expect(m).not.toBeNull()
-    expect(m!.coord).toEqual({ z: 10, x: 855, y: 418 })
-  })
-})
-
-// ===================== 协议处理器：严格离线（缓存命中 / 灰显） =====================
-
-/** 协议处理器闭包签名（简化版，便于在测试中直接调用） */
-type ProtocolHandler = (
-  params: { url: string },
-  abort: AbortController,
-) => Promise<{ data: ArrayBuffer }>
-
-/**
- * 桩一个可用的 OffscreenCanvas，使 getGrayPngTile 在 jsdom 中能生成灰色占位。
- * jsdom 原生不支持 Canvas（需 canvas npm 包），故手动桩 convertToBlob。
- */
-function stubOffscreenCanvas(): void {
-  class MockCtx {
-    fillStyle = ''
-    fillRect(): void {}
-  }
-  class MockCanvas {
-    width = 1
-    height = 1
-    getContext(): MockCtx {
-      return new MockCtx()
-    }
-    async convertToBlob(): Promise<Blob> {
-      return new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], {
-        type: 'image/png',
-      })
-    }
-  }
-  vi.stubGlobal('OffscreenCanvas', MockCanvas)
-}
-
-describe('registerTileCacheProtocol: 协议处理器（严格离线）', () => {
-  let handler: ProtocolHandler
-
-  beforeAll(() => {
-    registerTileCacheProtocol()
-    const calls = vi.mocked(addProtocol).mock.calls
-    handler = calls[0][1] as unknown as ProtocolHandler
-  })
-
+describe('handleGcsPkgRequest（严格离线核心：无在线兜底）', () => {
   beforeEach(() => {
-    vi.mocked(getTile).mockReset()
-    vi.unstubAllGlobals()
+    mockedGetTile.mockReset()
   })
 
-  it('注册的协议名为 gcs-cache', () => {
-    expect(vi.mocked(addProtocol)).toHaveBeenCalledWith(
-      CACHE_PROTOCOL,
-      expect.any(Function),
-    )
-  })
+  it('命中 IndexedDB → 返回瓦片数据（零网络）', async () => {
+    const buf = new ArrayBuffer(16)
+    mockedGetTile.mockResolvedValue({ data: buf } as never)
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
 
-  it('缓存命中（卫星栅格瓦片）→ 直接返回本地 ArrayBuffer，零网络', async () => {
-    vi.mocked(getTile).mockResolvedValue({
-      blob: new Blob([new Uint8Array([1, 2, 3])]),
-    } as never)
-    const result = await handler(
-      { url: 'gcs-cache:///tiles/data/satellite/12/3420/1684.png' },
-      new AbortController(),
-    )
-    expect(result.data.byteLength).toBe(3)
-  })
+    const result = await handleGcsPkgRequest({ url: 'gcs-pkg://suzhou/12/3456/7890' })
 
-  it('缓存命中（矢量瓦片）→ 直接返回本地 ArrayBuffer', async () => {
-    vi.mocked(getTile).mockResolvedValue({
-      blob: new Blob([new Uint8Array([1, 2, 3, 4])]),
-    } as never)
-    const result = await handler(
-      { url: 'gcs-cache:///tiles/data/suzhou/12/1/2.pbf' },
-      new AbortController(),
-    )
-    expect(result.data.byteLength).toBe(4)
-  })
-
-  it('栅格瓦片未命中 → 返回灰色 PNG 占位，绝不回源 tileserver（严格离线）', async () => {
-    vi.mocked(getTile).mockResolvedValue(undefined)
-    stubOffscreenCanvas()
-    const fetchSpy = vi.fn()
-    vi.stubGlobal('fetch', fetchSpy)
-    const result = await handler(
-      { url: 'gcs-cache:///tiles/data/satellite/12/3420/1684.png' },
-      new AbortController(),
-    )
-    // 核心断言：严格离线，未命中时绝不回源任何 tileserver
+    expect(result.data).toBe(buf)
     expect(fetchSpy).not.toHaveBeenCalled()
-    // 灰色占位 PNG（Canvas 生成）
-    expect(result.data.byteLength).toBeGreaterThan(0)
+    fetchSpy.mockRestore()
   })
 
-  it('矢量瓦片未命中 → 抛错，绝不回源 tileserver（严格离线）', async () => {
-    vi.mocked(getTile).mockResolvedValue(undefined)
-    const fetchSpy = vi.fn()
-    vi.stubGlobal('fetch', fetchSpy)
+  it('未命中 → reject（MapLibre 渲染灰块），绝不回源网络', async () => {
+    mockedGetTile.mockResolvedValue(undefined)
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+
     await expect(
-      handler(
-        { url: 'gcs-cache:///tiles/data/suzhou/12/1/2.pbf' },
-        new AbortController(),
-      ),
-    ).rejects.toThrow('offline: tile not cached')
+      handleGcsPkgRequest({ url: 'gcs-pkg://suzhou/12/3456/7890' }),
+    ).rejects.toThrow(/严格离线不回源/)
+
     expect(fetchSpy).not.toHaveBeenCalled()
+    fetchSpy.mockRestore()
   })
 
-  it('严格离线核心不变式：navigator.onLine === true 时未命中也不回源', async () => {
-    // 旧版懒加载逻辑依赖 navigator.onLine；严格离线移除此依赖——
-    // 无论在线/离线，未命中一律不回源，保证渲染完全离线。
-    vi.mocked(getTile).mockResolvedValue(undefined)
-    vi.stubGlobal('navigator', { onLine: true })
-    const fetchSpy = vi.fn()
-    vi.stubGlobal('fetch', fetchSpy)
+  it('navigator.onLine === true 时未命中也不回源（无 Esri / 在线兜底）', async () => {
+    // 严格离线：不论联网与否，缓存未命中一律灰显，绝不在线抓取。
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+    mockedGetTile.mockResolvedValue(undefined)
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+
     await expect(
-      handler(
-        { url: 'gcs-cache:///tiles/data/suzhou/12/1/2.pbf' },
-        new AbortController(),
-      ),
-    ).rejects.toThrow('offline: tile not cached')
+      handleGcsPkgRequest({ url: 'gcs-pkg://suzhou/8/3/4' }),
+    ).rejects.toThrow()
+
     expect(fetchSpy).not.toHaveBeenCalled()
+    // 还原：删除实例遮蔽属性，恢复 jsdom 的原型 getter
+    delete (navigator as { onLine?: boolean }).onLine
+    fetchSpy.mockRestore()
   })
 })

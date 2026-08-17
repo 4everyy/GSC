@@ -1,144 +1,95 @@
 /**
- * MapLibre 自定义协议注册 —— 运行时瓦片缓存拦截层（严格离线）。
+ * gcs-pkg:// 自定义协议 —— 严格离线瓦片渲染核心。
  *
- * 设计依据：docs/离线地图下载方案.md §5.4、§6.1。
+ * 职责：注册 maplibregl.addProtocol('gcs-pkg', ...)，当 MapLibre raster source
+ * 请求 `gcs-pkg://{pkgId}/{z}/{x}/{y}` 时，仅从 IndexedDB 读取对应瓦片二进制返回。
  *
- * 背景：MapLibre 的 transformRequest 是同步的，只能返回 `{ url }`，无法
- * 直接返回 Blob。因此采用官方 addProtocol API 注册自定义协议 `gcs-cache://`：
- *  1. transformRequest 将 tileserver **瓦片** URL（匹配 /{z}/{x}/{y}.{ext}）重写为 gcs-cache://<path>；
- *     非瓦片资源（source TileJSON .json / glyphs / sprite）走同源代理由本地 tileserver-gl 提供；
- *  2. 协议处理器按 path 查 IndexedDB 缓存 → 命中返回本地 ArrayBuffer；
- *  3. 未命中 → 严格离线，绝不回源任何 tileserver / 在线服务：
- *     栅格瓦片（含栅格影像）返回灰色 PNG 占位（§6.1 方案 A）；
- *     矢量瓦片抛错（露出底图暗色背景，达到"灰显"视觉效果）。
+ * 核心不变式（严格离线，无任何在线兜底）：
+ * - 命中 IndexedDB → 返回 { data: ArrayBuffer }；
+ * - 未命中 → 抛错（MapLibre raster source 收到错误后渲染灰块，绝不回源网络）；
+ * - 全程不读取 navigator.onLine，不存在「在线/离线」分支。
  *
- * 矢量瓦片与栅格影像瓦片均来自本地 tileserver-gl，但运行时不做懒加载回源——
- * 所有瓦片必须由预下载引擎（tileDownload.ts + OfflineMapContext）提前入库，
- * 否则按灰显处理。这保证地图渲染完全离线，无任何网络依赖。
- *
- * 缓存主键 = 归一化同源代理路径（如 `/tiles/data/v3/12/3456/7890.pbf`），
- * 与预下载引擎（tileDownload.ts）键空间一致。
+ * 注意：栅格瓦片由 MapLibre 在主线程获取（worker bundle 不含 raster tile source），
+ * 故此 addProtocol 运行在主线程，可直接访问 IndexedDB。
  */
+import { addProtocol } from 'maplibre-gl'
+import { getTile } from './indexedDb'
 
-import { addProtocol, type AddProtocolAction } from 'maplibre-gl'
-import { getTile } from './tileCache'
-import type { TileCoord } from './types'
+/** 自定义协议名（gcs-pkg://） */
+export const GCS_PKG_PROTOCOL = 'gcs-pkg'
 
-/** 自定义协议名：transformRequest 会将 tileserver 资源 URL 重写为以此协议开头 */
-export const CACHE_PROTOCOL = 'gcs-cache'
-
-/** 灰色占位瓦片颜色（与暗色底图背景协调的冷灰） */
-const GRAY_PLACEHOLDER_COLOR = '#2a2f3a'
-
-let grayPngBuffer: ArrayBuffer | null = null
+/** 协议 URL 前缀 */
+const PROTOCOL_PREFIX = `${GCS_PKG_PROTOCOL}://`
 
 /**
- * 惰性生成 1×1 灰色 PNG 占位瓦片（ArrayBuffer）。
+ * 从 gcs-pkg:// 请求 URL 中解析 {pkgId, z, x, y}。
  *
- * 使用 Canvas 绘制 1×1 像素（栅格渲染时会拉伸到瓦片大小，纯色无失真），
- * 缓存为模块级常量，避免重复编码开销。Canvas 不可用时返回 null（调用方
- * 回退为抛错）。
+ * URL 形如 `gcs-pkg://suzhou/12/3456/7890`（无扩展名——栅格瓦片按字节内容解码格式）。
+ * 导出供单元测试使用。
+ * @throws URL 格式不合法时抛错
  */
-async function getGrayPngTile(): Promise<ArrayBuffer | null> {
-  if (grayPngBuffer) return grayPngBuffer
-  try {
-    let blob: Blob | null = null
-    if (typeof OffscreenCanvas !== 'undefined') {
-      const canvas = new OffscreenCanvas(1, 1)
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return null
-      ctx.fillStyle = GRAY_PLACEHOLDER_COLOR
-      ctx.fillRect(0, 0, 1, 1)
-      blob = await canvas.convertToBlob({ type: 'image/png' })
-    } else if (typeof document !== 'undefined') {
-      const canvas = document.createElement('canvas')
-      canvas.width = 1
-      canvas.height = 1
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return null
-      ctx.fillStyle = GRAY_PLACEHOLDER_COLOR
-      ctx.fillRect(0, 0, 1, 1)
-      blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, 'image/png'),
-      )
-    }
-    if (!blob) return null
-    grayPngBuffer = await blob.arrayBuffer()
-    return grayPngBuffer
-  } catch {
-    return null
+export function parseTileUrl(url: string): { pkgId: string; z: number; x: number; y: number } {
+  const path = url.startsWith(PROTOCOL_PREFIX) ? url.slice(PROTOCOL_PREFIX.length) : url
+  // 去除可能的查询串 / hash（防御性）
+  const clean = path.split('?')[0].split('#')[0]
+  const parts = clean.split('/')
+  if (parts.length < 4) {
+    throw new Error(`gcs-pkg 协议 URL 格式非法：${url}`)
   }
-}
-
-/** matchTilePath 解析结果 */
-export interface TilePathMatch {
-  /** sourceId（路径前缀） */
-  sourceId: string
-  /** 瓦片坐标 */
-  coord: TileCoord
-  /** 扩展名（小写，不含点） */
-  ext: string
-}
-
-/**
- * 匹配瓦片路径，提取 sourceId / z / x / y。
- *
- * 输入为归一化同源路径（如 `/tiles/data/v3/12/3456/7890.pbf`）。
- * 支持 vector (.pbf) 与 raster (.png/.jpg/.jpeg/.webp)。
- * 非瓦片资源（glyphs .pbf、sprite、style.json）返回 null（仍可被缓存，
- * 但不参与 sourceId 分组统计）。
- */
-export function matchTilePath(path: string): TilePathMatch | null {
-  const m = path.match(/^(.+?)\/(\d+)\/(\d+)\/(\d+)\.(pbf|png|jpe?g|webp)$/i)
-  if (!m) return null
-  return {
-    sourceId: m[1],
-    coord: { z: Number(m[2]), x: Number(m[3]), y: Number(m[4]) },
-    ext: m[5].toLowerCase(),
+  const [pkgId, zStr, xStr, yStr] = parts
+  const z = Number(zStr)
+  const x = Number(xStr)
+  const y = Number(yStr)
+  if (!pkgId || Number.isNaN(z) || Number.isNaN(x) || Number.isNaN(y)) {
+    throw new Error(`gcs-pkg 协议 URL 参数非法：${url}`)
   }
+  return { pkgId, z, x, y }
 }
 
-/**
- * 将任意 URL（含自定义协议）归一化为同源代理路径。
- *
- * 例如 `gcs-cache:///tiles/data/v3/12/3/4.pbf` → `/tiles/data/v3/12/3/4.pbf`，
- * `http://localhost:8081/data/v3/12/3/4.pbf` → `/data/v3/12/3/4.pbf`。
- */
-export function normalizeUrlToPath(url: string): string {
-  return url.replace(/^[^:]+:\/*/, '/')
+/** maplibre-gl 自定义协议请求参数（最小结构子集，仅用 url） */
+interface ProtocolRequest {
+  url: string
 }
 
+/** 协议返回结果（MapLibre raster source 接收 { data: ArrayBuffer }） */
+interface ProtocolResult {
+  data: ArrayBuffer
+}
+
+/** 协议是否已注册（防重复注册） */
 let registered = false
 
 /**
- * 注册 `gcs-cache` 自定义协议（幂等，全应用仅注册一次）。
+ * gcs-pkg:// 协议请求处理器（严格离线核心）。
  *
- * 必须在创建 MapLibre 实例之前调用。MapLibre 在主线程调用该协议处理器
- * 处理所有以 `gcs-cache:` 开头的资源请求。
+ * 导出以便单元测试锁定「无在线兜底」不变式：
+ * - 命中 IndexedDB → 返回 { data }；
+ * - 未命中 → reject（MapLibre 渲染灰块），绝不回源网络、绝不 fetch 在线瓦片源
+ *   （Esri / tileserver / OSM 等一律不可达）；
+ * - 不读取 navigator.onLine（严格离线下无「在线/离线」概念）。
  */
-export function registerTileCacheProtocol(): void {
+export async function handleGcsPkgRequest(
+  request: ProtocolRequest,
+): Promise<ProtocolResult> {
+  const { pkgId, z, x, y } = parseTileUrl(request.url)
+  const record = await getTile(pkgId, z, x, y)
+  if (!record) {
+    // 严格离线：未命中一律 reject（灰显），绝不回源网络。
+    throw new Error(
+      `gcs-pkg 瓦片未命中（离线包 ${pkgId} 无 z=${z}/x=${x}/y=${y}），严格离线不回源`,
+    )
+  }
+  // 返回 ArrayBuffer；MapLibre raster source 按字节内容自动解码 png/jpg/webp。
+  return { data: record.data }
+}
+
+/**
+ * 注册 gcs-pkg:// 协议（幂等）。
+ *
+ * 应在应用初始化时调用一次（useOfflineMap 在 mount 时调用）。
+ */
+export function registerTileProtocol(): void {
   if (registered) return
   registered = true
-  addProtocol(
-    CACHE_PROTOCOL,
-    (async (params): Promise<{ data: ArrayBuffer }> => {
-      const path = normalizeUrlToPath(params.url)
-
-      // 1. 命中缓存 → 返回本地 ArrayBuffer（严格离线：唯一数据来源，零网络）
-      const cached = await getTile(path)
-      if (cached) {
-        return { data: await cached.blob.arrayBuffer() }
-      }
-
-      // 2. 未命中 → 严格离线，绝不回源任何 tileserver / 在线服务。
-      //    栅格瓦片（含栅格影像）→ 灰色 PNG 占位（与已下载块形成对比）；
-      //    矢量瓦片 → 抛错，MapLibre 显示透明（露出暗色背景）。
-      const m = matchTilePath(path)
-      if (m && m.ext !== 'pbf') {
-        const gray = await getGrayPngTile()
-        if (gray) return { data: gray }
-      }
-      throw new Error('offline: tile not cached')
-    }) as AddProtocolAction,
-  )
+  addProtocol(GCS_PKG_PROTOCOL, handleGcsPkgRequest)
 }

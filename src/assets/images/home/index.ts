@@ -24,6 +24,20 @@ import signalIcon from './signal-icon.png'
 import statusOnlineIcon from './status-online-icon.png'
 import statusTakeoffIcon from './status-takeoff-icon.png'
 import userAvatar from './user-avatar.png'
+// 底部水平居中按钮条背景：13 段拼接切图，bottomBarSegN 按显示顺序（从左到右）编号
+import bottomBarSeg1 from './bottom-bar-seg-01.png'
+import bottomBarSeg2 from './bottom-bar-seg-02.png'
+import bottomBarSeg3 from './bottom-bar-seg-03.png'
+import bottomBarSeg4 from './bottom-bar-seg-04.png'
+import bottomBarSeg5 from './bottom-bar-seg-05.png'
+import bottomBarSeg6 from './bottom-bar-seg-06.png'
+import bottomBarSeg7 from './bottom-bar-seg-07.png'
+import bottomBarSeg8 from './bottom-bar-seg-08.png'
+import bottomBarSeg9 from './bottom-bar-seg-09.png'
+import bottomBarSeg10 from './bottom-bar-seg-10.png'
+import bottomBarSeg11 from './bottom-bar-seg-11.png'
+import bottomBarSeg12 from './bottom-bar-seg-12.png'
+import bottomBarSeg13 from './bottom-bar-seg-13.png'
 
 export const homeImages = {
   aircraftBlue,
@@ -52,4 +66,17 @@ export const homeImages = {
   statusOnlineIcon,
   statusTakeoffIcon,
   userAvatar,
+  bottomBarSeg1,
+  bottomBarSeg2,
+  bottomBarSeg3,
+  bottomBarSeg4,
+  bottomBarSeg5,
+  bottomBarSeg6,
+  bottomBarSeg7,
+  bottomBarSeg8,
+  bottomBarSeg9,
+  bottomBarSeg10,
+  bottomBarSeg11,
+  bottomBarSeg12,
+  bottomBarSeg13,
 }
