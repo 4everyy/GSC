@@ -9,7 +9,7 @@
  * - HomePage 不直接 import 适配器实现类，仅通过 MapEngineInstance.adapter 操作地图；
  * - 业务组件通过 useEffect 依赖 adapter 变化自动重建覆盖物。
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { StatusHeader } from '../../components/StatusHeader/StatusHeader'
 import { MapToolbar } from '../../components/MapToolbar/MapToolbar'
 import { MissionPanel } from '../../components/MissionPanel/MissionPanel'
@@ -17,6 +17,17 @@ import { AlarmInfoPanel } from '../../components/AlarmInfoPanel/AlarmInfoPanel'
 import { MapControls } from '../../components/MapControls/MapControls'
 import { MapLibreContainer } from '../../components/MapLibreContainer/MapLibreContainer'
 import { MapScale } from '../../components/MapScale/MapScale'
+import { TakeoffPanel } from '../../components/TakeoffPanel/TakeoffPanel'
+import { LandingPanel } from '../../components/LandingPanel/LandingPanel'
+import { ReturnHomePanel } from '../../components/ReturnHomePanel/ReturnHomePanel'
+import { TapReturnPanel } from '../../components/TapReturnPanel/TapReturnPanel'
+import { AreaLandingPanel } from '../../components/AreaLandingPanel/AreaLandingPanel'
+import { HoverPanel } from '../../components/HoverPanel/HoverPanel'
+import { WaypointFlightPanel } from '../../components/WaypointFlightPanel/WaypointFlightPanel'
+import { RouteFlightPanel } from '../../components/RouteFlightPanel/RouteFlightPanel'
+import { OrbitFlightPanel } from '../../components/OrbitFlightPanel/OrbitFlightPanel'
+import { RallyPointPanel } from '../../components/RallyPointPanel/RallyPointPanel'
+import { FormationFlightPanel } from '../../components/FormationFlightPanel/FormationFlightPanel'
 import { useMapEngine } from '../../hooks/useMapEngine'
 import { ALARM_TYPES } from '../../config/alarms'
 import { aircraft } from '../../config/aircraft'
@@ -30,6 +41,7 @@ import './HomePage.css'
 import './HoverPanelPlacement.css'
 import { useOfflineMap } from '../../features/offline-map/useOfflineMap'
 import { OfflineMapPanel } from '../../features/offline-map/components/OfflineMapPanel'
+import { useOfflineMapStore } from '../../features/offline-map/offlineMapStore'
 
 // 飞机初始位置（百分比），与 HomePage.css 中 .aircraft--xxx 的 left/top 保持一致。
 // 拖拽后通过内联 style 覆盖 CSS 定位，实现自由拖动。
@@ -44,22 +56,114 @@ const AIRCRAFT_INITIAL_POSITIONS: DragPosition[] = [
 // 巡检区域初始位置（百分比），与 HomePage.css 中 .inspection-zone 的 left/top 保持一致
 const INSPECTION_ZONE_INITIAL_POSITION: DragPosition = { x: 38.75, y: 25.5 }
 
+// 待接入功能的临时显示开关（false = 隐藏）：
+// MissionPanel / AlarmInfoPanel / 橙色禁飞区——功能就绪后置 true 或删除相关代码
+const SHOW_PENDING_PANELS = false
+
 // 底部水平居中按钮条：13 段背景切图按显示顺序（从左到右）编号拼接（高度统一 60px）。
 // width 为各切图原始宽度，经 aspect-ratio 与高度联动保持每段比例，整体随视口等比缩放。
-// 各段切缝的水平间距补偿见 HomePage.css 中 .bottom-bar__btn:nth-child 逐缝 margin 规则。
-const BOTTOM_BAR_ITEMS: { background: string; width: number }[] = [
+// 各段切缝的水平间距补偿见 HomePage.css 中 .bottom-bar__item:nth-child 逐缝 margin 规则。
+// 第 2~12 段为功能按钮：icon 为叠加在背景框体中心的功能图标（64×64 切图），
+// tooltip 为悬停时显示于按钮上方的中文名称。
+// 底部功能面板类型：起飞（TakeoffPanel）/ 降落（LandingPanel）/ 返航（ReturnHomePanel）/ 指点返航（TapReturnPanel）/ 区域降落（AreaLandingPanel）/ 悬停（HoverPanel）/ 航点飞行（WaypointFlightPanel）/ 航线飞行（RouteFlightPanel）/ 环绕飞行（OrbitFlightPanel）/ 集结点（RallyPointPanel）/ 编队飞行（FormationFlightPanel）
+type BottomBarPanel =
+  | 'takeoff'
+  | 'landing'
+  | 'return-home'
+  | 'tap-return'
+  | 'area-landing'
+  | 'hover'
+  | 'waypoint-flight'
+  | 'route-flight'
+  | 'orbit-flight'
+  | 'rally-point'
+  | 'formation-flight'
+
+const BOTTOM_BAR_ITEMS: {
+  background: string
+  width: number
+  icon?: string
+  tooltip?: string
+  panel?: BottomBarPanel
+}[] = [
   { background: homeImages.bottomBarSeg1, width: 119 },
-  { background: homeImages.bottomBarSeg2, width: 129 },
-  { background: homeImages.bottomBarSeg3, width: 110 },
-  { background: homeImages.bottomBarSeg4, width: 100 },
-  { background: homeImages.bottomBarSeg5, width: 101 },
-  { background: homeImages.bottomBarSeg6, width: 92 },
-  { background: homeImages.bottomBarSeg7, width: 92 },
-  { background: homeImages.bottomBarSeg8, width: 92 },
-  { background: homeImages.bottomBarSeg9, width: 101 },
-  { background: homeImages.bottomBarSeg10, width: 100 },
-  { background: homeImages.bottomBarSeg11, width: 110 },
-  { background: homeImages.bottomBarSeg12, width: 129 },
+  {
+    background: homeImages.bottomBarSeg2,
+    width: 129,
+    icon: homeImages.iconTakeoff,
+    tooltip: '起飞',
+    panel: 'takeoff',
+  },
+  {
+    background: homeImages.bottomBarSeg3,
+    width: 110,
+    icon: homeImages.iconLand,
+    tooltip: '降落',
+    panel: 'landing',
+  },
+  {
+    background: homeImages.bottomBarSeg4,
+    width: 100,
+    icon: homeImages.iconReturnToHome,
+    tooltip: '返航',
+    panel: 'return-home',
+  },
+  {
+    background: homeImages.bottomBarSeg5,
+    width: 101,
+    icon: homeImages.iconTapToReturn,
+    tooltip: '指点返航',
+    panel: 'tap-return',
+  },
+  {
+    background: homeImages.bottomBarSeg6,
+    width: 92,
+    icon: homeImages.iconAreaLanding,
+    tooltip: '区域降落',
+    panel: 'area-landing',
+  },
+  {
+    background: homeImages.bottomBarSeg7,
+    width: 92,
+    icon: homeImages.iconHover,
+    tooltip: '悬停',
+    panel: 'hover',
+  },
+  {
+    background: homeImages.bottomBarSeg8,
+    width: 92,
+    icon: homeImages.iconWaypointFlight,
+    tooltip: '航点飞行',
+    panel: 'waypoint-flight',
+  },
+  {
+    background: homeImages.bottomBarSeg9,
+    width: 101,
+    icon: homeImages.iconRouteFlight,
+    tooltip: '航线飞行',
+    panel: 'route-flight',
+  },
+  {
+    background: homeImages.bottomBarSeg10,
+    width: 100,
+    icon: homeImages.iconOrbit,
+    tooltip: '环绕飞行',
+    panel: 'orbit-flight',
+  },
+  {
+    background: homeImages.bottomBarSeg11,
+    width: 110,
+    icon: homeImages.iconRallyPoint,
+    tooltip: '集结点',
+    panel: 'rally-point',
+  },
+  {
+    background: homeImages.bottomBarSeg12,
+    width: 129,
+    icon: homeImages.iconFormationFlight,
+    tooltip: '编队飞行',
+    panel: 'formation-flight',
+  },
   { background: homeImages.bottomBarSeg13, width: 119 },
 ]
 
@@ -68,6 +172,163 @@ export function HomePage() {
 
   // 聚焦视图：双击无人机图标后显示设备详情面板（存储聚焦的飞机索引）
   const [focusedAircraft, setFocusedAircraft] = useState<number | null>(null)
+
+  // 功能面板（起飞/降落/返航/指点返航/区域降落/悬停/航点飞行）：点击底部按钮后按钮保持弹出状态，面板展开于右上角；
+  // 各面板互斥——打开一个会关闭其他（底部按钮条同一时刻只有一个功能处于激活态）
+  const [takeoffOpen, setTakeoffOpen] = useState(false)
+  const [landingOpen, setLandingOpen] = useState(false)
+  const [returnHomeOpen, setReturnHomeOpen] = useState(false)
+  const [tapReturnOpen, setTapReturnOpen] = useState(false)
+  const [areaLandingOpen, setAreaLandingOpen] = useState(false)
+  const [hoverOpen, setHoverOpen] = useState(false)
+  const [waypointFlightOpen, setWaypointFlightOpen] = useState(false)
+  const [routeFlightOpen, setRouteFlightOpen] = useState(false)
+  const [orbitFlightOpen, setOrbitFlightOpen] = useState(false)
+  const [rallyPointOpen, setRallyPointOpen] = useState(false)
+  const [formationFlightOpen, setFormationFlightOpen] = useState(false)
+  const openTakeoffPanel = () => {
+    setRouteFlightOpen(false)
+    setOrbitFlightOpen(false)
+    setHoverOpen(false)
+    setWaypointFlightOpen(false)
+    setLandingOpen(false)
+    setReturnHomeOpen(false)
+    setTapReturnOpen(false)
+    setAreaLandingOpen(false)
+    setRallyPointOpen(false)
+    setFormationFlightOpen(false)
+    setTakeoffOpen((v) => !v)
+  }
+  const openLandingPanel = () => {
+    setRouteFlightOpen(false)
+    setOrbitFlightOpen(false)
+    setHoverOpen(false)
+    setWaypointFlightOpen(false)
+    setTakeoffOpen(false)
+    setReturnHomeOpen(false)
+    setTapReturnOpen(false)
+    setAreaLandingOpen(false)
+    setRallyPointOpen(false)
+    setFormationFlightOpen(false)
+    setLandingOpen((v) => !v)
+  }
+  const openReturnHomePanel = () => {
+    setRouteFlightOpen(false)
+    setOrbitFlightOpen(false)
+    setHoverOpen(false)
+    setWaypointFlightOpen(false)
+    setTakeoffOpen(false)
+    setLandingOpen(false)
+    setTapReturnOpen(false)
+    setAreaLandingOpen(false)
+    setRallyPointOpen(false)
+    setFormationFlightOpen(false)
+    setReturnHomeOpen((v) => !v)
+  }
+  const openTapReturnPanel = () => {
+    setRouteFlightOpen(false)
+    setOrbitFlightOpen(false)
+    setHoverOpen(false)
+    setWaypointFlightOpen(false)
+    setTakeoffOpen(false)
+    setLandingOpen(false)
+    setReturnHomeOpen(false)
+    setAreaLandingOpen(false)
+    setRallyPointOpen(false)
+    setFormationFlightOpen(false)
+    setTapReturnOpen((v) => !v)
+  }
+  const openAreaLandingPanel = () => {
+    setRouteFlightOpen(false)
+    setOrbitFlightOpen(false)
+    setHoverOpen(false)
+    setWaypointFlightOpen(false)
+    setTakeoffOpen(false)
+    setLandingOpen(false)
+    setReturnHomeOpen(false)
+    setTapReturnOpen(false)
+    setRallyPointOpen(false)
+    setFormationFlightOpen(false)
+    setAreaLandingOpen((v) => !v)
+  }
+  const openHoverPanel = () => {
+    setRouteFlightOpen(false)
+    setOrbitFlightOpen(false)
+    setWaypointFlightOpen(false)
+    setTakeoffOpen(false)
+    setLandingOpen(false)
+    setReturnHomeOpen(false)
+    setTapReturnOpen(false)
+    setAreaLandingOpen(false)
+    setRallyPointOpen(false)
+    setFormationFlightOpen(false)
+    setHoverOpen((v) => !v)
+  }
+  const openWaypointFlightPanel = () => {
+    setRouteFlightOpen(false)
+    setOrbitFlightOpen(false)
+    setTakeoffOpen(false)
+    setLandingOpen(false)
+    setReturnHomeOpen(false)
+    setTapReturnOpen(false)
+    setAreaLandingOpen(false)
+    setHoverOpen(false)
+    setRallyPointOpen(false)
+    setFormationFlightOpen(false)
+    setWaypointFlightOpen((v) => !v)
+  }
+  const openRouteFlightPanel = () => {
+    setOrbitFlightOpen(false)
+    setTakeoffOpen(false)
+    setLandingOpen(false)
+    setReturnHomeOpen(false)
+    setTapReturnOpen(false)
+    setAreaLandingOpen(false)
+    setHoverOpen(false)
+    setWaypointFlightOpen(false)
+    setRallyPointOpen(false)
+    setFormationFlightOpen(false)
+    setRouteFlightOpen((v) => !v)
+  }
+  const openOrbitFlightPanel = () => {
+    setTakeoffOpen(false)
+    setLandingOpen(false)
+    setReturnHomeOpen(false)
+    setTapReturnOpen(false)
+    setAreaLandingOpen(false)
+    setHoverOpen(false)
+    setWaypointFlightOpen(false)
+    setRouteFlightOpen(false)
+    setRallyPointOpen(false)
+    setFormationFlightOpen(false)
+    setOrbitFlightOpen((v) => !v)
+  }
+  const openRallyPointPanel = () => {
+    setTakeoffOpen(false)
+    setLandingOpen(false)
+    setReturnHomeOpen(false)
+    setTapReturnOpen(false)
+    setAreaLandingOpen(false)
+    setHoverOpen(false)
+    setWaypointFlightOpen(false)
+    setRouteFlightOpen(false)
+    setOrbitFlightOpen(false)
+    setFormationFlightOpen(false)
+    setRallyPointOpen((v) => !v)
+  }
+  const openFormationFlightPanel = () => {
+    setTakeoffOpen(false)
+    setLandingOpen(false)
+    setReturnHomeOpen(false)
+    setTapReturnOpen(false)
+    setAreaLandingOpen(false)
+    setHoverOpen(false)
+    setWaypointFlightOpen(false)
+    setRouteFlightOpen(false)
+    setOrbitFlightOpen(false)
+    setRallyPointOpen(false)
+    setFormationFlightOpen((v) => !v)
+  }
   const handleAircraftDoubleClick = (index: number) => {
     // 双击同一架飞机时切换关闭，双击不同飞机时切换目标
     setFocusedAircraft((prev) => (prev === index ? null : index))
@@ -84,6 +345,20 @@ export function HomePage() {
   // 导入后由 gcs-pkg:// 协议从 IndexedDB 渲染。
   const { activeStyle, activePackage } = useOfflineMap()
 
+  // 默认城市：首次加载完成且无激活包时，自动启用「苏州」离线包
+  // （已导入则直接激活；未导入则从同源 public/maps/suzhou.mbtiles 拉取导入后激活）。
+  // ensuredRef 保证仅执行一次，用户后续手动取消激活不会被强制切回。
+  const ensureCityPackage = useOfflineMapStore((s) => s.ensureCityPackage)
+  const offlineStatus = useOfflineMapStore((s) => s.status)
+  const activePackageId = useOfflineMapStore((s) => s.activePackageId)
+  const defaultCityEnsuredRef = useRef(false)
+  useEffect(() => {
+    if (defaultCityEnsuredRef.current || offlineStatus !== 'ready') return
+    defaultCityEnsuredRef.current = true
+    if (activePackageId) return
+    void ensureCityPackage('suzhou')
+  }, [offlineStatus, activePackageId, ensureCityPackage])
+
   // 激活包变化时（导入新包 / 切换城市）平滑飞到包中心。
   useEffect(() => {
     if (!adapter || !activePackage) return
@@ -93,12 +368,11 @@ export function HomePage() {
   const currentAlarmColor = activeAlarm !== null ? ALARM_TYPES[activeAlarm]?.color : undefined
 
   // 飞机图标拖拽：鼠标左键按住拖动图标+名称至首页任意位置
-  const { positions: aircraftPositions, onDragStart: onAircraftDragStart } =
-    useDraggable({
-      count: aircraft.length,
-      initialPositions: AIRCRAFT_INITIAL_POSITIONS,
-      storageKey: 'gcs:aircraft-positions',
-    })
+  const { positions: aircraftPositions, onDragStart: onAircraftDragStart } = useDraggable({
+    count: aircraft.length,
+    initialPositions: AIRCRAFT_INITIAL_POSITIONS,
+    storageKey: 'gcs:aircraft-positions',
+  })
 
   // 巡检区域拖拽：鼠标左键按住拖动整个巡检区域（含轨迹线）至首页任意位置
   const { positions: inspectionZonePositions, onDragStart: onInspectionZoneDragStart } =
@@ -149,8 +423,8 @@ export function HomePage() {
           {/* 严格离线：瓦片缓存命中即渲染；未命中灰显（绝不在线回源）。
               尚未导入地图包时渲染纯色占位底图。导入/切换入口由离线地图管理模块提供（P1+）。 */}
           {/* MissionPanel 与 AlarmInfoPanel 暂时隐藏，待后续功能接入时恢复 */}
-          {false && <MissionPanel />}
-          {false && <AlarmInfoPanel alarmColor={currentAlarmColor} />}
+          {SHOW_PENDING_PANELS && <MissionPanel />}
+          {SHOW_PENDING_PANELS && <AlarmInfoPanel alarmColor={currentAlarmColor} />}
           {/* 红色禁飞区：左下角倾斜四边形，SVG 绘制边框 + 四角节点 */}
           <div className="restricted-zone restricted-zone--red" aria-label="禁飞区域">
             <svg
@@ -208,7 +482,7 @@ export function HomePage() {
             <span className="corner-marker corner-marker--br" /> {/* 右下 (100%, 100%) */}
             <span className="corner-marker corner-marker--bl" /> {/* 左下 (0%, 92%) */}
           </div>
-          {false && <div className="restricted-zone restricted-zone--orange" />}
+          {SHOW_PENDING_PANELS && <div className="restricted-zone restricted-zone--orange" />}
 
           {/* 巡检区域：包含1条蛇形巡检轨迹线，支持拖拽移动 */}
           <div
@@ -410,21 +684,203 @@ export function HomePage() {
 
           <MapControls adapter={adapter} />
 
-          {/* 底部水平居中按钮条：13 段背景图拼接，具体功能待接入 */}
+          {/* 起飞参数面板：点击底部「起飞」按钮后在右上角展开，按钮保持弹出状态；
+              确认/取消均收起面板（确认暂记录参数，待接入真实指令链路） */}
+          {takeoffOpen && (
+            <TakeoffPanel
+              onConfirm={(height) => {
+                console.info(`[takeoff] 确认起飞，高度 ${height}m`)
+                setTakeoffOpen(false)
+              }}
+              onCancel={() => setTakeoffOpen(false)}
+            />
+          )}
+
+          {/* 降落面板：点击底部「降落」按钮后在右上角展开（与起飞面板互斥），按钮保持弹出状态；
+              确认/取消均收起面板（确认暂记录日志，待接入真实指令链路） */}
+          {landingOpen && (
+            <LandingPanel
+              onConfirm={() => {
+                console.info('[landing] 确认降落')
+                setLandingOpen(false)
+              }}
+              onCancel={() => setLandingOpen(false)}
+            />
+          )}
+
+          {/* 返航面板：点击底部「返航」按钮后在右上角展开（与其他功能面板互斥），按钮保持弹出状态；
+              参数设置/飞机列表 tab + 返航高度步进，确认/取消均收起面板（确认暂记录日志，待接入真实指令链路） */}
+          {returnHomeOpen && (
+            <ReturnHomePanel
+              onConfirm={(height) => {
+                console.info(`[return-home] 确认返航，高度 ${height}m`)
+                setReturnHomeOpen(false)
+              }}
+              onCancel={() => setReturnHomeOpen(false)}
+            />
+          )}
+
+          {/* 指点返航面板（与起飞/降落/返航面板互斥），按钮保持弹出状态；
+              参数设置区块头 + 返航高度步进 + 航点信息坐标 + 确认/航线生成/取消三按钮，
+              确认/取消均收起面板（确认暂记录日志，待接入真实指令链路） */}
+          {tapReturnOpen && (
+            <TapReturnPanel
+              onConfirm={(height) => {
+                console.info(`[tap-return] 确认指点返航，高度 ${height}m`)
+                setTapReturnOpen(false)
+              }}
+              onGenerateRoute={() => console.info('[tap-return] 航线生成（待接入）')}
+              onCancel={() => setTapReturnOpen(false)}
+            />
+          )}
+
+          {/* 区域降落面板（与其他功能面板互斥）：参数设置 tab（降落速度步进 m/s + 降落编队选择）/ 飞机列表 tab，确认（置灰）/ 航线生成/ 取消三按钮，确认/ 取消均收起面板（确认暂记录日志，待接入指令链路） */}
+          {areaLandingOpen && (
+            <AreaLandingPanel
+              onConfirm={(speed, formation) => {
+                console.info(
+                  '[area-landing] 确认区域降落，速度 ' + speed + 'm/s，编队 ' + formation,
+                )
+                setAreaLandingOpen(false)
+              }}
+              onGenerateRoute={() => console.info('[area-landing] 航线生成（待接入）')}
+              onCancel={() => setAreaLandingOpen(false)}
+            />
+          )}
+
+          {/* 悬停面板（与其他功能面板互斥）：标题 + 飞机列表 + 确认/取消，
+              确认/取消均收起面板（确认暂记录日志，待接入真实指令链路） */}
+          {hoverOpen && (
+            <HoverPanel
+              onConfirm={() => {
+                console.info('[hover] 确认悬停')
+                setHoverOpen(false)
+              }}
+              onCancel={() => setHoverOpen(false)}
+            />
+          )}
+
+          {/* 航点飞行面板（与其他功能面板互斥）：参数设置区块头 + 飞行高度步进 + 航点信息坐标 + 确认（置灰）/航线生成/取消三按钮，
+              确认/取消均收起面板（确认暂记录日志，待接入真实指令链路） */}
+          {waypointFlightOpen && (
+            <WaypointFlightPanel
+              onConfirm={(height) => {
+                console.info(`[waypoint-flight] 确认航点飞行，高度 ${height}m`)
+                setWaypointFlightOpen(false)
+              }}
+              onGenerateRoute={() => console.info('[waypoint-flight] 航线生成（待接入）')}
+              onCancel={() => setWaypointFlightOpen(false)}
+            />
+          )}
+
+          {/* 航线飞行面板（与其他功能面板互斥）：参数设置区块头 + 飞行高度步进 + 确认（置灰）/航线生成（置灰）/取消三按钮，无航点信息行，
+              确认/取消均收起面板（确认暂记录日志，待接入真实指令链路） */}
+          {routeFlightOpen && (
+            <RouteFlightPanel
+              onConfirm={(height) => {
+                console.info(`[route-flight] 确认航线飞行，高度 ${height}m`)
+                setRouteFlightOpen(false)
+              }}
+              onGenerateRoute={() => console.info('[route-flight] 航线生成（待接入）')}
+              onCancel={() => setRouteFlightOpen(false)}
+            />
+          )}
+
+          {/* 环绕飞行面板（与其他功能面板互斥）：参数设置区块头 + 盘旋高度步进 + 盘旋半径步进 + 航点信息坐标 + 确认/航线生成/取消三按钮，
+              确认/取消均收起面板（确认暂记录日志，待接入真实指令链路） */}
+          {orbitFlightOpen && (
+            <OrbitFlightPanel
+              onConfirm={(height) => {
+                console.info(`[orbit-flight] 确认环绕飞行，高度 ${height}m`)
+                setOrbitFlightOpen(false)
+              }}
+              onGenerateRoute={() => console.info('[orbit-flight] 航线生成（待接入）')}
+              onCancel={() => setOrbitFlightOpen(false)}
+            />
+          )}
+
+          {/* 集结点面板（与其他功能面板互斥）：参数设置 tab（起飞高度/集结速度步进 + 集结队形下拉）/ 飞机列表 tab，
+              确认（置灰）/航线生成/取消三按钮，确认/取消均收起面板（确认暂记录日志，待接入指令链路） */}
+          {rallyPointOpen && (
+            <RallyPointPanel
+              onConfirm={(height, speed, formation) => {
+                console.info(
+                  `[rally-point] 确认集结，高度 ${height}m，速度 ${speed}m/s，队形 ${formation}`,
+                )
+                setRallyPointOpen(false)
+              }}
+              onGenerateRoute={() => console.info('[rally-point] 航线生成（待接入）')}
+              onCancel={() => setRallyPointOpen(false)}
+            />
+          )}
+
+          {/* 编队飞行面板（与其他功能面板互斥）：参数设置区块头 + 飞行高度步进 + 编队队形下拉 + 航点信息坐标，
+              确认（置灰）/航线生成/取消三按钮，确认/取消均收起面板（确认暂记录日志，待接入指令链路） */}
+          {formationFlightOpen && (
+            <FormationFlightPanel
+              onConfirm={(height, formation) => {
+                console.info(`[formation-flight] 确认编队飞行，高度 ${height}m，队形 ${formation}`)
+                setFormationFlightOpen(false)
+              }}
+              onGenerateRoute={() => console.info('[formation-flight] 航线生成（待接入）')}
+              onCancel={() => setFormationFlightOpen(false)}
+            />
+          )}
+
+          {/* 底部水平居中按钮条：13 段背景图拼接，第 2~12 段叠加功能图标，具体功能待接入。
+              三层结构：.bottom-bar__item（负 margin + tooltip，pointer-events:none）>
+              .bottom-bar__btn（72px 命中层：clip-path 并集轮廓，静止不动）>
+              .bottom-bar__visual（60px 视觉层：底部对齐，hover 弹性向上顶出）。
+              命中层不动 + 视觉层上移，鼠标不会因按钮顶出而脱离 hover（避免抖动循环） */}
           <nav className="bottom-bar" aria-label="底部功能按钮条">
             {BOTTOM_BAR_ITEMS.map((item, index) => (
-              <button
-                key={item.background}
-                type="button"
-                className="bottom-bar__btn"
-                aria-label={`功能按钮${index + 1}`}
-                style={{
-                  // 切图文件名（bottom-bar-seg-01.png 等）含连字符，url() 统一加引号
-                  // 以避免 unquoted URL 的解析歧义
-                  backgroundImage: `url("${item.background}")`,
-                  aspectRatio: `${item.width} / 60`,
-                }}
-              />
+              <span className="bottom-bar__item" key={item.background}>
+                <button
+                  type="button"
+                  className={`bottom-bar__btn${item.icon ? '' : ' bottom-bar__btn--static'}${(item.panel === 'takeoff' && takeoffOpen) || (item.panel === 'landing' && landingOpen) || (item.panel === 'return-home' && returnHomeOpen) || (item.panel === 'tap-return' && tapReturnOpen) || (item.panel === 'area-landing' && areaLandingOpen) || (item.panel === 'hover' && hoverOpen) || (item.panel === 'waypoint-flight' && waypointFlightOpen) || (item.panel === 'route-flight' && routeFlightOpen) || (item.panel === 'orbit-flight' && orbitFlightOpen) || (item.panel === 'rally-point' && rallyPointOpen) || (item.panel === 'formation-flight' && formationFlightOpen) ? ' bottom-bar__btn--active' : ''}`}
+                  aria-label={item.tooltip ?? `功能按钮${index + 1}`}
+                  style={{ aspectRatio: `${item.width} / 72` }}
+                  onClick={
+                    item.panel === 'takeoff'
+                      ? openTakeoffPanel
+                      : item.panel === 'landing'
+                        ? openLandingPanel
+                        : item.panel === 'return-home'
+                          ? openReturnHomePanel
+                          : item.panel === 'tap-return'
+                            ? openTapReturnPanel
+                            : item.panel === 'area-landing'
+                              ? openAreaLandingPanel
+                              : item.panel === 'hover'
+                                ? openHoverPanel
+                                : item.panel === 'waypoint-flight'
+                                  ? openWaypointFlightPanel
+                                  : item.panel === 'route-flight'
+                                    ? openRouteFlightPanel
+                                    : item.panel === 'orbit-flight'
+                                      ? openOrbitFlightPanel
+                                        : item.panel === 'rally-point'
+                                          ? openRallyPointPanel
+                                          : item.panel === 'formation-flight'
+                                            ? openFormationFlightPanel
+                                            : undefined
+                  }
+                >
+                  <span
+                    className="bottom-bar__visual"
+                    style={{
+                      // 切图文件名（bottom-bar-seg-01.png 等）含连字符，url() 统一加引号
+                      // 以避免 unquoted URL 的解析歧义
+                      backgroundImage: `url("${item.background}")`,
+                    }}
+                  >
+                    {item.icon && (
+                      <img className="bottom-bar__icon" src={item.icon} alt="" draggable={false} />
+                    )}
+                  </span>
+                </button>
+                {item.tooltip && <span className="bottom-bar__tip">{item.tooltip}</span>}
+              </span>
             ))}
           </nav>
 
@@ -439,7 +895,6 @@ export function HomePage() {
             <MapScale adapter={adapter} />
           </footer>
         </section>
-
       </div>
     </main>
   )

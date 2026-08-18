@@ -1,0 +1,43 @@
+/**
+ * PanelTabs 样式 —— 「参数设置 / 飞机列表」tab 栏（从 TakeoffPanel.css 抽取）。
+ * 设计稿参照：group_11（260×36 轨道，rgba(255,255,255,0.2)）+
+ * text-wrapper_1（126×32 蓝色渐变选中块，距左/上各 2px）。
+ */
+
+/* tab 轨道 */
+.panel-tabs {
+  display: flex;
+  height: 36px;
+  margin-top: 8px;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 未选中 tab */
+.panel-tabs__tab {
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans-Regular', sans-serif;
+  line-height: 36px;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 选中 tab：126×32 蓝色块 */
+.panel-tabs__tab--active {
+  flex: none;
+  width: 126px;
+  height: 32px;
+  margin: 2px 0 0 2px;
+  line-height: 32px;
+  background: linear-gradient(180deg, rgba(14, 167, 249, 1) 0%, rgba(9, 122, 209, 1) 100%);
+}
+
+/* 选中项在右侧（飞机列表）时镜像边距 */
+.panel-tabs__tab--active-last {
+  margin: 2px 2px 0 0;
+}

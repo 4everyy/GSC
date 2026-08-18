@@ -1,25 +1,29 @@
 /**
  * 离线地图管理面板样式。
  *
- * 浮动面板：右上角触发按钮 + 可折叠内容（导入 / 城市切换 / 包列表）。
+ * 浮动面板：左下角「一键RTL」正上方触发按钮 + 可折叠内容（向上展开）。
  * 配色与 HomePage 深色科技风一致。
  */
 
 .offline-map-panel {
+  /* 位于左下角「一键RTL」按钮正上方：底距 = footer 底距 + 紧急按钮高 + 8px 间隙，
+     与 .map-footer / .emergency-actions button 的 clamp 曲线逐项对齐（1920 基准）。 */
   position: absolute;
-  top: 16px;
-  right: 16px;
+  left: clamp(8px, 0.83vw, 16px);
+  bottom: calc(clamp(8px, 0.89vw, 17px) + clamp(16px, 1.67vw, 32px) + 8px);
   z-index: 20;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse; /* 按钮在下，展开面板位于按钮上方 */
   gap: 0;
+  /* .map-stage 的 pointer-events: none 在此恢复，按钮/下拉/列表才可交互 */
+  pointer-events: auto;
   min-width: 280px;
   max-width: 340px;
   font-size: 13px;
 }
 
 .offline-map-panel__toggle {
-  align-self: flex-end;
+  align-self: flex-start;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -45,7 +49,7 @@
 }
 
 .offline-map-panel__body {
-  margin-top: 8px;
+  margin-bottom: 8px;
   background: rgba(16, 28, 44, 0.96);
   border: 1px solid rgba(64, 159, 255, 0.3);
   border-radius: 8px;

@@ -1,0 +1,10 @@
+/**
+ * FormationFlightPanel 样式 —— 编队飞行面板（薄包装组件，无面板私有样式）。
+ *
+ * 面板结构复用 TapReturnPanel（参数设置区块头 + 飞行高度步进 + 编队队形下拉 + 航点信息 + 三按钮）：
+ * - 外壳样式见 PanelShell.css；
+ * - 高度步进行样式见 HeightStepper.css；
+ * - 编队队形下拉选择行复用公共 FormationSelect 组件（样式见 FormationSelect.css）；
+ * - 航点信息行样式复用 TapReturnPanel.css；
+ * 「.formation-flight-panel」仅作页面级定位钩子（HomePage.css）。
+ */

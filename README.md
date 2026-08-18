@@ -22,4 +22,4 @@
 | `npm run build` | 生产构建。 |
 | `npm run preview` | 预览构建产物。 |
 
-提交前自检：`npm run lint`、`npm run format:check`、`npm run test`、`npm run build`。
+提交前自检：`npm run build`。

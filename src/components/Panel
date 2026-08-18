@@ -1,0 +1,142 @@
+/**
+ * PanelShell 样式 —— 公共功能面板外壳（按蓝澜设计稿 260×469 复刻）。
+ *
+ * 从 TakeoffPanel 抽取的公共视觉：深色玻璃底 + 右上 45° 切角 + 装饰三角 + 标题 + 底部确认/取消按钮。
+ * 定位（absolute top/right）由页面级钩子类（.takeoff-panel / .landing-panel，声明于 HomePage.css）提供；
+ * 此处不声明 position，避免覆盖。
+ */
+
+/* clip-path 不能放在根元素上——否则会裁掉框外的 ::after 装饰三角，
+   因此背景/描边/切角全部下沉到 ::before 背景层。
+   阴影用 filter: drop-shadow 替代 box-shadow：drop-shadow 按 ::before 裁剪后的
+   实际形状（含右上切角）投影，切角处不会出现矩形阴影残留。 */
+.panel-shell {
+  width: 260px;
+  height: 469px;
+  box-sizing: border-box;
+  filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.3));
+  display: flex;
+  flex-direction: column;
+  font-family: 'MiSans-Regular', sans-serif;
+  color: #fff;
+}
+
+/* 背景层：铺满面板并按设计稿切去右上 45° 角（(242,0)→(260,18)）；
+   多重背景第一层仅在右上 18×18 区域绘制切角斜边的 1px 亮线描边 */
+.panel-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* z-index:-1 置于非定位内容（tab 栏/标题）之下，避免半透明背景盖住内容 */
+  z-index: -1;
+  border: 1px solid;
+  border-image: radial-gradient(circle, rgba(85, 206, 222, 1), rgba(85, 206, 222, 0)) 1 1;
+  /* 第一层：18×18 定位在右上角，沿主对角线 (242,0)→(260,18) 画 1px 亮线
+     （注意 to bottom left 的等色线才平行于主对角线，to top left 会错画成反对角线） */
+  background-image:
+    linear-gradient(to bottom left, transparent calc(50% - 1px), rgba(85, 206, 222, 1) 50%, transparent calc(50% + 1px)),
+    linear-gradient(rgba(75, 194, 249, 0.4), rgba(75, 194, 249, 0.4));
+  background-size: 18px 18px, 100% 100%;
+  background-position: top right, 0 0;
+  background-repeat: no-repeat;
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+  pointer-events: none;
+}
+
+/* 右上角装饰三角：位于切角挖空的区域内（元素框内），顶点 (246,0)→(260,0)→(260,14)，
+   斜边与切角边平行且保持 4px 透明缝隙；渐变取自设计稿实测色 #5095B9→#61ADB7 */
+.panel-shell::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 14px;
+  background: linear-gradient(to right, #5095b9 0%, #61adb7 100%);
+  clip-path: polygon(4px 0, 100% 0, 100% 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 标题（如「起飞」「降落」）：16px Demibold，m 8/0/0/16 */
+.panel-shell__title {
+  display: block;
+  height: 21px;
+  font-size: 16px;
+  font-family: 'MiSans-Demibold', 'MiSans-Regular', sans-serif;
+  line-height: 16px;
+  margin: 8px 0 0 16px;
+}
+
+/* 内容区：占满标题与底部按钮之间的剩余空间，子面板内部自行布局 */
+.panel-shell__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 底部按钮行（244×32，m-bottom 8，两端对齐） */
+.panel-shell__actions {
+  display: flex;
+  justify-content: space-between;
+  width: 244px;
+  height: 32px;
+  margin: 0 0 8px 8px;
+}
+
+/* 确认/取消按钮：118×32，radius 2 */
+.panel-shell__btn {
+  width: 118px;
+  height: 32px;
+  padding: 0;
+  border-radius: 2px;
+  font-size: 14px;
+  font-family: 'MiSans-Regular', sans-serif;
+  line-height: 32px;
+  color: rgba(255, 255, 255, 1);
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.panel-shell__btn:hover {
+  filter: brightness(1.1);
+}
+
+.panel-shell__btn--confirm {
+  border: 0;
+  background-color: rgba(14, 167, 249, 1);
+}
+
+.panel-shell__btn--cancel,
+.panel-shell__btn--middle {
+  border: 1px solid rgba(14, 167, 249, 1);
+  background-color: rgba(75, 188, 249, 0.1);
+  box-sizing: border-box;
+}
+
+/* 三按钮布局（如指点返航面板「确认/航线生成/取消」）：
+   按钮收窄为 76px，按钮间 8px 间距（76×3 + 8×2 = 244） */
+.panel-shell__actions--triple .panel-shell__btn {
+  width: 76px;
+}
+
+.panel-shell__actions--triple .panel-shell__btn--confirm,
+.panel-shell__actions--triple .panel-shell__btn--middle {
+  margin-right: 8px;
+}
+
+/* Muted confirm button (rally panel design text-wrapper_7): gray bg + 40pct white text */
+.panel-shell__btn--muted {
+  border: 0;
+  background-color: rgba(153, 153, 153, 0.8);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Muted middle button (route-flight design text-wrapper_3): gray outline + 10pct gray bg + 40pct white text */
+.panel-shell__btn--middle-muted {
+  border: 1px solid rgba(153, 153, 153, 0.8);
+  background-color: rgba(153, 153, 153, 0.1);
+  color: rgba(255, 255, 255, 0.4);
+  box-sizing: border-box;
+}

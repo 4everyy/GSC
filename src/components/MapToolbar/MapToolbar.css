@@ -30,6 +30,15 @@
   cursor: pointer;
   place-items: center;
   flex-shrink: 0;
+  /* 半透明效果：默认约 85% 不透明度，地图底图隐约透出；
+     悬停/激活时恢复完全不透明（见下方规则），带平滑过渡 */
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+.map-toolbar button:hover,
+.map-toolbar button.is-active {
+  opacity: 1;
 }
 
 .toolbar-icon {

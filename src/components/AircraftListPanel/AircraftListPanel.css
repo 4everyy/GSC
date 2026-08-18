@@ -1,0 +1,141 @@
+/**
+ * AircraftListPanel 样式 —— 复刻设计稿 box_5 内部结构（外壳由 PanelShell 提供）。
+ * 设计稿行卡片背景为切图（group_6/7/8），此处以渐变 + 描边近似复刻，
+ * 后续如需像素级一致可替换为切图 URL。
+ */
+
+/* ============ 区块头「飞机列表」（group_3 / group_4） ============ */
+.aircraft-list-panel__section {
+  flex: none;
+  height: 36px;
+  margin-top: 8px;
+  background-image: linear-gradient(
+    90deg,
+    rgba(85, 206, 222, 0.4) 0,
+    rgba(255, 255, 255, 0.2) 100%
+  );
+}
+
+.aircraft-list-panel__section-title {
+  display: block;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans-Regular', sans-serif;
+  line-height: 14px;
+  white-space: nowrap;
+  padding: 8px 0 0 16px;
+}
+
+.aircraft-list-panel__section-divider {
+  height: 1px;
+  margin-top: 8px;
+  background-image: linear-gradient(
+    90deg,
+    rgba(85, 206, 222, 1) 0,
+    rgba(85, 206, 222, 0) 100%
+  );
+}
+
+/* ============ 列表区（group_5） ============ */
+.aircraft-list-panel__list {
+  flex: 1;
+  min-height: 0;
+  margin: 8px 0 0 8px;
+}
+
+.aircraft-list-panel__scrollwrap {
+  max-height: 100%;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(85, 206, 222, 0.6) transparent;
+}
+
+.aircraft-list-panel__rows {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============ 飞机行（group_6 / group_7 / group_8） ============ */
+.aircraft-list-panel__row {
+  display: flex;
+  align-items: center;
+  flex: none;
+  width: 244px;
+  height: 48px;
+  margin-top: 8px;
+  box-sizing: border-box;
+  border: 1px solid rgba(85, 206, 222, 0.25);
+  background: linear-gradient(
+    90deg,
+    rgba(75, 194, 249, 0.16),
+    rgba(255, 255, 255, 0.05)
+  );
+  color: rgba(255, 255, 255, 1);
+  font-family: 'MiSans-Regular', sans-serif;
+}
+
+.aircraft-list-panel__row:first-child {
+  margin-top: 0;
+}
+
+/* 名称（text_3/6/9）：宽度固定，超出省略 */
+.aircraft-list-panel__name {
+  flex: none;
+  width: 62px;
+  margin-left: 18px;
+  font-size: 12px;
+  line-height: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============ 指标（高度/电量） ============ */
+.aircraft-list-panel__metric {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+.aircraft-list-panel__name + .aircraft-list-panel__metric {
+  margin-left: 15px;
+}
+
+.aircraft-list-panel__metric + .aircraft-list-panel__metric {
+  margin-left: 12px;
+}
+
+.aircraft-list-panel__metric svg {
+  flex: none;
+  display: block;
+}
+
+/* 高度图标（thumbnail_1/4/7）：14×14 */
+.aircraft-list-panel__metric-icon {
+  flex: none;
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.aircraft-list-panel__metric-value {
+  margin-left: 2px;
+  font-size: 12px;
+  line-height: 12px;
+  white-space: nowrap;
+}
+
+/* ============ 信号图标（thumbnail_3/6/9）：18×18 ============ */
+.aircraft-list-panel__signal {
+  flex: none;
+  margin-left: 12px;
+  margin-right: auto;
+}
+
+.aircraft-list-panel__signal-img {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+

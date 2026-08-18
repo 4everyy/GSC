@@ -57,7 +57,7 @@
 ## 6. 工程与交付
 
 - Vite 使用手动分包，依赖体积变化时复核 chunk 策略；生产构建保留 source map 以支持排障。
-- 提交前运行 `npm run lint`、`npm run format:check`、`npm run test`、`npm run build`。
+- 提交前运行 `npm run build`（由 Husky pre-commit 钩子自动执行）。
 - CI 必须执行安装、静态检查、格式检查、单测和构建；部署以构建产物及版本号为唯一来源。
 - Git 仓库初始化后执行 `npx husky init`，并将 `.husky/pre-commit` 配置为 `npx lint-staged`。
 

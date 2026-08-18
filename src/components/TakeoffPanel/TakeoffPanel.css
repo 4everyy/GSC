@@ -1,0 +1,27 @@
+/**
+ * TakeoffPanel 样式 —— 面板内容部分（参数区容器 / 飞机列表占位）。
+ * tab 栏样式已抽取至 PanelTabs.css，高度步进行样式已抽取至 HeightStepper.css，
+ * 外壳样式复用 PanelShell.css；「.takeoff-panel」仅作页面级定位钩子（HomePage.css）。
+ */
+
+/* 参数区容器：宽度与 HeightStepper 行对齐（244px），纵向排布各行、行间距统一 16；
+ * 下方留白由 flex 布局自动填充至底部按钮 */
+.takeoff-panel__params {
+  width: 244px;
+  margin: 16px 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 飞机列表 tab：填充参数行与底部按钮之间区域（设计稿为空白，虚线占位） */
+.takeoff-panel__aircraft-list {
+  flex: 1;
+  margin: 16px 8px 0;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 14px;
+}

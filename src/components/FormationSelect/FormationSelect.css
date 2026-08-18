@@ -1,0 +1,93 @@
+/**
+ * FormationSelect 样式 —— 队形下拉选择行公共组件。
+ *
+ * 下拉框左缘与上方步进行的步进按钮列左对齐（label 56 + m-left 16 = 72px 起点），
+ * 宽度 160px 与上方步进控件组整组等宽（−24 + 1 + 值94 + 1 + +24 + 边距16 = 160），
+ * 右缘与 + 按钮右缘对齐，视觉上与上一行输入框宽度一致。
+ */
+
+.formation-select {
+  display: flex;
+  align-items: center;
+}
+
+/* 标签：56px 宽 + 14px 白色（与 HeightStepper 标签一致） */
+.formation-select__label {
+  width: 56px;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: MiSans-Regular, sans-serif;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* 下拉选择器：白 20% 底 + 60% 白描边，宽 160×28（同上方步进控件组整宽），左缘对齐步进按钮列 */
+.formation-select__box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 16px;
+  width: 160px;
+  height: 28px;
+  padding: 0 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 2px;
+  box-sizing: border-box;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 选中值：14px 白色，占据除图标外剩余宽度 */
+.formation-select__value {
+  flex: 1;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: MiSans-Regular, sans-serif;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.formation-select__box img {
+  width: 11px;
+  height: 11px;
+  pointer-events: none;
+  transition: transform 0.2s ease;
+}
+
+/* 展开态：箭头旋转 180° */
+.formation-select__box--open img {
+  transform: rotate(180deg);
+}
+
+/* 下拉菜单：绝对定位于选择器下方，深色底 + 白色描边（与选择框同风格） */
+.formation-select__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: rgba(10, 25, 47, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* 选项行：hover 高亮；当前选中项青色文字 */
+.formation-select__dropdown-item {
+  padding: 6px 8px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  font-family: MiSans-Regular, sans-serif;
+  line-height: 12px;
+  cursor: pointer;
+}
+
+.formation-select__dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.formation-select__dropdown-item--active {
+  color: rgba(83, 255, 233, 1);
+}

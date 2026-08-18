@@ -1,0 +1,99 @@
+/**
+ * HeightStepper 样式 —— 高度设置行（从 TakeoffPanel.css 抽取）。
+ * 设计稿参照（返航 section_2）：标签（56px 宽）+ 24×28 步进按钮 + 94×28 数值框 + 单位 m。
+ */
+
+/* 行内排布容器：让 label 的 width 生效、数值框不换行；行内元素垂直居中 */
+.height-stepper__field {
+  display: flex;
+  align-items: center;
+  width: 244px;
+  height: 28px;
+}
+
+/* 标签（如「起飞高度」「返航高度」）：56px 宽，随行垂直居中；固定宽不参与收缩 */
+.height-stepper__label {
+  flex: none;
+  width: 56px;
+  font-size: 14px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* −/+ 步进按钮：24×28，白 40% 底 + 1px 白描边；固定尺寸不收缩 */
+.height-stepper__btn {
+  position: relative;
+  flex: none;
+  width: 24px;
+  height: 28px;
+  margin-left: 16px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 1);
+  background-color: rgba(255, 255, 255, 0.4);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+/* + 按钮紧随数值框：m-left 1 */
+.height-stepper__value-box + .height-stepper__btn {
+  margin-left: 1px;
+}
+
+/* 16×16 图标区域：CSS 绘制白线 − / + */
+.height-stepper__btn::before,
+.height-stepper__btn::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: #fff;
+}
+
+.height-stepper__btn::before {
+  width: 12px;
+  height: 2px;
+  transform: translate(-50%, -50%);
+}
+
+.height-stepper__btn--plus::after {
+  width: 2px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+}
+
+.height-stepper__btn:hover {
+  background-color: rgba(255, 255, 255, 0.55);
+}
+
+/* 数值框：94×28，白 20% 底 + 60% 白描边，文字左对齐、垂直居中；固定宽不收缩（保证各面板一致） */
+.height-stepper__value-box {
+  display: flex;
+  align-items: center;
+  flex: none;
+  width: 94px;
+  height: 28px;
+  margin-left: 1px;
+  padding: 0 0 0 4px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background-color: rgba(255, 255, 255, 0.2);
+  box-sizing: border-box;
+}
+
+.height-stepper__value {
+  font-size: 14px;
+  line-height: 14px;
+}
+
+/* 单位 m：随行垂直居中，不参与收缩 */
+.height-stepper__unit {
+  flex: none;
+  font-size: 14px;
+  line-height: 14px;
+  margin: 0 0 0 15px;
+}
+
+/* 宽单位行（如 m/s，集结速度/降落速度）：收紧单位左间距（15→4），
+ * 使固定尺寸控件组 + 宽单位整行不超出面板右缘，数值框保持 94px 不被压缩 */
+.height-stepper__field--wide-unit .height-stepper__unit {
+  margin-left: 4px;
+}
