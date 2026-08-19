@@ -27,13 +27,14 @@
   width: 56px;
   color: rgba(255, 255, 255, 1);
   font-size: 14px;
-  font-family: MiSans-Regular, sans-serif;
+  font-family: MiSans, sans-serif;
+  font-weight: 400;
   line-height: 14px;
   white-space: nowrap;
 }
 
-/* 下拉选择器（设计稿 block_7）：宽 160×28，与上方速度行步进控件组整组等宽对齐
- * （−24 + 1 + 值94 + 1 + +24 + 边距16 = 160，右缘与 + 按钮右缘对齐）；
+/* 下拉选择器（设计稿 block_7）：宽 144×28，与上方速度行步进控件组整组等宽对齐
+ * （−24 + 1 + 值94 + 1 + +24 = 144，右缘与 + 按钮右缘对齐）；
  * 视觉同风格（白 20% 底 + 60% 白描边） */
 .area-landing-panel__select {
   position: relative;
@@ -41,7 +42,7 @@
   align-items: center;
   gap: 6px;
   margin-left: 16px;
-  width: 160px;
+  width: 144px;
   height: 28px;
   padding: 0 4px;
   background: rgba(255, 255, 255, 0.2);
@@ -57,7 +58,8 @@
   flex: 1;
   color: rgba(255, 255, 255, 1);
   font-size: 14px;
-  font-family: MiSans-Regular, sans-serif;
+  font-family: MiSans, sans-serif;
+  font-weight: 400;
   line-height: 14px;
   white-space: nowrap;
 }
@@ -90,10 +92,11 @@
 /* 选项行：hover 高亮；当前选中项青色文字 */
 .area-landing-panel__dropdown-item {
   padding: 6px 8px;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 12px;
-  font-family: MiSans-Regular, sans-serif;
-  line-height: 12px;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: MiSans, sans-serif;
+  font-weight: 400;
+  line-height: 14px;
   cursor: pointer;
 }
 

@@ -1,4 +1,5 @@
 import { useState, useRef, useLayoutEffect, useCallback } from 'react'
+import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
 import {
   deviceList,
   getBatteryIcon,
@@ -47,8 +48,12 @@ const TELEMETRY_COL_RIGHT_2: { label: string; key: keyof DeviceTelemetry }[] = [
 ]
 
 export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagementPanelProps) {
-  const [selectedDevices, setSelectedDevices] = useState<Set<number>>(new Set([0, 1]))
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  // 选中/hover 状态迁移至全局 store，与首页飞机图标联动
+  const selectedDevices = useDeviceLinkStore((s) => s.selectedDevices)
+  const hoveredIndex = useDeviceLinkStore((s) => s.hoveredDevice)
+  const setHoveredIndex = useDeviceLinkStore((s) => s.setHoveredDevice)
+  const toggleDevice = useDeviceLinkStore((s) => s.toggleDevice)
+  const replaceSelectedDevices = useDeviceLinkStore((s) => s.setSelectedDevices)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [openDropdown, setOpenDropdown] = useState<'status' | 'type' | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('请选择')
@@ -131,15 +136,7 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
   }, [expandedIndex, measure])
 
   const toggleSelect = (index: number) => {
-    setSelectedDevices((prev) => {
-      const next = new Set(prev)
-      if (next.has(index)) {
-        next.delete(index)
-      } else {
-        next.add(index)
-      }
-      return next
-    })
+    toggleDevice(index)
   }
 
   const toggleExpand = (index: number) => {
@@ -167,16 +164,14 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
     visibleSelectedCount > 0 && visibleSelectedCount < filteredDevices.length
 
   const toggleSelectAll = () => {
-    setSelectedDevices((prev) => {
-      const next = new Set(prev)
-      // 当前可见项已全部选中 → 取消这些项；否则全部选中
-      if (filteredDevices.length > 0 && visibleSelectedCount === filteredDevices.length) {
-        filteredDevices.forEach(({ index }) => next.delete(index))
-      } else {
-        filteredDevices.forEach(({ index }) => next.add(index))
-      }
-      return next
-    })
+    const next = new Set(selectedDevices)
+    // 当前可见项已全部选中 → 取消这些项；否则全部选中
+    if (filteredDevices.length > 0 && visibleSelectedCount === filteredDevices.length) {
+      filteredDevices.forEach(({ index }) => next.delete(index))
+    } else {
+      filteredDevices.forEach(({ index }) => next.add(index))
+    }
+    replaceSelectedDevices(next)
   }
 
   const toggleDropdown = (which: 'status' | 'type') => {

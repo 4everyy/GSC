@@ -51,6 +51,40 @@ import bottomBarSeg10 from './bottom-bar-seg-10.png'
 import bottomBarSeg11 from './bottom-bar-seg-11.png'
 import bottomBarSeg12 from './bottom-bar-seg-12.png'
 import bottomBarSeg13 from './bottom-bar-seg-13.png'
+// 功能按钮（第 2~12 段）激活态背景切图：bottom-bar-seg-XX-active.png
+// （XX = 段号，与默认段 bottom-bar-seg-XX.png 一一对应；
+//   第 2 段起飞 / 第 3 段降落 / 第 4 段返航 / 第 5 段指点返航 / 第 6 段区域降落 /
+//   第 7 段悬停 / 第 8 段航点飞行 / 第 9 段航线飞行 / 第 10 段环绕飞行 /
+//   第 11 段集结点 / 第 12 段编队飞行）。
+// 规格统一：画布 76px 高，实体区 60px 高（y 6~66）、左右各 8px 发光边缘、宽与默认段一致
+import bottomBarSeg2Active from './bottom-bar-seg-02-active.png'
+import bottomBarSeg3Active from './bottom-bar-seg-03-active.png'
+import bottomBarSeg4Active from './bottom-bar-seg-04-active.png'
+import bottomBarSeg5Active from './bottom-bar-seg-05-active.png'
+import bottomBarSeg6Active from './bottom-bar-seg-06-active.png'
+import bottomBarSeg7Active from './bottom-bar-seg-07-active.png'
+import bottomBarSeg8Active from './bottom-bar-seg-08-active.png'
+import bottomBarSeg9Active from './bottom-bar-seg-09-active.png'
+import bottomBarSeg10Active from './bottom-bar-seg-10-active.png'
+import bottomBarSeg11Active from './bottom-bar-seg-11-active.png'
+import bottomBarSeg12Active from './bottom-bar-seg-12-active.png'
+// 功能按钮（第 2~12 段）禁用态背景切图：bottom-bar-seg-XX-disabled.png
+// （XX = 段号，与默认段 / 激活态一一对应，共 11 张，从左到右对应
+//   起飞 / 降落 / 返航 / 指点返航 / 区域降落 / 悬停 / 航点飞行 /
+//   航线飞行 / 环绕飞行 / 集结点 / 编队飞行）。
+// 规格与默认段完全一致：60px 高、宽与默认段相同、无发光边缘——
+// 可直接作为视觉层背景替换使用，几何像素级兼容
+import bottomBarSeg2Disabled from './bottom-bar-seg-02-disabled.png'
+import bottomBarSeg3Disabled from './bottom-bar-seg-03-disabled.png'
+import bottomBarSeg4Disabled from './bottom-bar-seg-04-disabled.png'
+import bottomBarSeg5Disabled from './bottom-bar-seg-05-disabled.png'
+import bottomBarSeg6Disabled from './bottom-bar-seg-06-disabled.png'
+import bottomBarSeg7Disabled from './bottom-bar-seg-07-disabled.png'
+import bottomBarSeg8Disabled from './bottom-bar-seg-08-disabled.png'
+import bottomBarSeg9Disabled from './bottom-bar-seg-09-disabled.png'
+import bottomBarSeg10Disabled from './bottom-bar-seg-10-disabled.png'
+import bottomBarSeg11Disabled from './bottom-bar-seg-11-disabled.png'
+import bottomBarSeg12Disabled from './bottom-bar-seg-12-disabled.png'
 
 export const homeImages = {
   aircraftBlue,
@@ -105,4 +139,26 @@ export const homeImages = {
   bottomBarSeg11,
   bottomBarSeg12,
   bottomBarSeg13,
+  bottomBarSeg2Active,
+  bottomBarSeg3Active,
+  bottomBarSeg4Active,
+  bottomBarSeg5Active,
+  bottomBarSeg6Active,
+  bottomBarSeg7Active,
+  bottomBarSeg8Active,
+  bottomBarSeg9Active,
+  bottomBarSeg10Active,
+  bottomBarSeg11Active,
+  bottomBarSeg12Active,
+  bottomBarSeg2Disabled,
+  bottomBarSeg3Disabled,
+  bottomBarSeg4Disabled,
+  bottomBarSeg5Disabled,
+  bottomBarSeg6Disabled,
+  bottomBarSeg7Disabled,
+  bottomBarSeg8Disabled,
+  bottomBarSeg9Disabled,
+  bottomBarSeg10Disabled,
+  bottomBarSeg11Disabled,
+  bottomBarSeg12Disabled,
 }

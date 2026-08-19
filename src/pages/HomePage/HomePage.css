@@ -273,6 +273,20 @@
   cursor: grabbing;
 }
 
+/* ====== 设备联动高亮（与设备管理面板双向同步） ====== */
+/* hover 高亮：面板行 hover 或首页图标 hover 时，图标青色发光 */
+.aircraft.aircraft--hovered img {
+  filter: drop-shadow(0 0 8px rgba(135, 235, 255, 0.95));
+}
+
+/* 选中高亮：面板复选框勾选或首页图标单击选中时，图标常亮光圈 + 标签变青色 */
+.aircraft.aircraft--selected img {
+  filter: drop-shadow(0 0 6px rgba(135, 235, 255, 0.75));
+}
+.aircraft.aircraft--selected .aircraft-label {
+  color: #87ebff;
+}
+
 /* 所有飞行器内部的 img 统一填满容器并保持比例，
    避免图片原始尺寸溢出导致视觉大小不一致 */
 .aircraft img {
@@ -892,7 +906,7 @@
 .bottom-bar {
   position: absolute;
   left: 50%;
-  bottom: clamp(8px, 0.89vw, 17px);
+  bottom: 0;
   transform: translateX(-50%);
   z-index: 5;
   display: flex;
@@ -968,7 +982,7 @@
   will-change: transform;
 }
 
-.bottom-bar__btn:not(.bottom-bar__btn--static):hover .bottom-bar__visual {
+.bottom-bar__btn:not(.bottom-bar__btn--static):not(.bottom-bar__btn--disabled):hover .bottom-bar__visual {
   /* 12px @1920 → 6px @960，与命中层 clamp 同曲线缩放 */
   transform: translateY(clamp(-12px, -0.625vw, -6px));
   opacity: 1;
@@ -1021,6 +1035,32 @@
 
 .bottom-bar__btn--static:hover .bottom-bar__visual::after,
 .bottom-bar__btn--static:active .bottom-bar__visual::after {
+  opacity: 0;
+}
+
+/* 禁用态按钮（第 2~12 段功能按钮不可用时）：背景已由 TSX 切换为禁用态切图
+   （规格与默认段一致，几何像素级兼容）。禁用不阻断 hover——悬停仍顶出反馈
+   （原生 disabled 属性会抑制 :hover 匹配，故 TSX 改用 aria-disabled + 点击拦截），
+   仅保持置灰观感（不恢复不透明）、无按压回落、无内发光；
+   tooltip 由 TSX 条件渲染同步抑制。光标为「禁止」符号明确传达不可用 */
+.bottom-bar__btn--disabled {
+  cursor: not-allowed;
+}
+
+/* 双类名提升特异性（0,4,0）与通用 hover 规则同值，但定义在其后：
+   transform 沿用通用顶出量，仅覆盖 opacity 保持置灰半透明观感 */
+.bottom-bar__btn.bottom-bar__btn--disabled:hover .bottom-bar__visual {
+  transform: none;
+  opacity: 0.85;
+}
+
+/* 按压禁用按钮无「可点击」回落反馈：保持 hover 顶出位置不回落 */
+.bottom-bar__btn.bottom-bar__btn--disabled:active .bottom-bar__visual {
+  transform: none;
+  filter: none;
+}
+
+.bottom-bar__btn--disabled:hover .bottom-bar__visual::after {
   opacity: 0;
 }
 
@@ -1117,4 +1157,56 @@
 
 .bottom-bar__btn--active .bottom-bar__visual::after {
   opacity: 1;
+}
+
+/* ====== 功能按钮激活态高亮背景层（第 2~12 段通用）====== */
+/* 独立于 button 之外（wrapper 内）：button 的 clip-path 会裁剪切图四周的发光/投影
+   边缘，且元素背景无法绘制到自身盒外，视觉层内无法完整呈现该切图。
+   激活切图规格统一（bottom-bar-seg-02-active.png ~ bottom-bar-seg-12-active.png）：
+   画布 76px 高、实体区 60px 高（y 6~66）、左右各 8px 发光边缘、画布宽 = 段宽 + 16。
+   本层按百分比外扩定位，使切图实体区与默认段像素级重合，四周发光边缘完整外溢显示：
+   - left / width 由 TSX 按段宽内联注入（left = -8/段宽，width = (段宽+16)/段宽）
+   - height  105.56% =  76/72（画布高 / 命中层高，实体 60px 恰为命中层的 5/6）
+   - bottom -13.89% = -10/72（画布底缘在实体底缘＝视觉层底下方 10px）
+   百分比均相对命中层 button（×72 @1920 基准，随 clamp 同曲线缩放），
+   任意视口宽度下均保持实体区重合。淡入淡出 + 与视觉层同步顶出/按压回落 */
+.bottom-bar__active-glow {
+  position: absolute;
+  bottom: -13.89%;
+  height: 105.56%;
+  z-index: 5; /* 盖过相邻段负 margin 重叠的透明区 */
+  background-color: transparent;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  pointer-events: none; /* wrapper 已禁命中，双保险：绝不拦截相邻段鼠标事件 */
+  opacity: 0;
+  transform: translateY(0);
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.2s ease;
+  will-change: transform;
+}
+
+/* 激活（起飞面板展开）时淡入，并保持与视觉层一致的顶出量（12px 弹性曲线）。
+   hover 时视觉层同样顶出 12px，无需单独规则；按压回落见下方 :active */
+.bottom-bar__item--active-bg .bottom-bar__active-glow {
+  opacity: 1;
+  transform: translateY(clamp(-12px, -0.625vw, -6px));
+}
+
+/* 按压回落一半 + 轻微压暗：与视觉层 :active 反馈同步（wrapper pointer-events:none
+   不影响 :active 沿祖先链生效，与 :hover 同理） */
+.bottom-bar__item--active-bg:active .bottom-bar__active-glow {
+  transform: translateY(clamp(-5px, -0.26vw, -2.5px));
+  filter: brightness(0.9);
+  transition:
+    transform 0.1s ease-out,
+    filter 0.1s ease-out;
+}
+
+/* 图标副本：居中于外扩层的实体区而非层几何中心——
+   画布实体 y 6~66 → 中心 36/76 = 47.37%（50% 会随外扩整体偏下约 2px）。
+   clamp 尺寸与 .bottom-bar__icon 完全一致，与视觉层图标像素级重合，淡入无跳动感 */
+.bottom-bar__icon--active-glow {
+  top: 47.37%;
 }

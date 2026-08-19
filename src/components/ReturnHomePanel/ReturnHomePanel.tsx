@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ReturnHomePanel —— 返航面板（底部条第 4 段按钮「返航」）。
  *
  * 结构与起飞面板相同：
@@ -11,16 +11,24 @@ import { useState } from 'react'
 import { PanelShell } from '../PanelShell/PanelShell'
 import { PanelTabs, type PanelTab } from '../PanelTabs/PanelTabs'
 import { HeightStepper } from '../HeightStepper/HeightStepper'
+import {
+  AircraftListSection,
+  type AircraftListItem,
+} from '../AircraftListPanel/AircraftListSection'
 import './ReturnHomePanel.css'
 
 export interface ReturnHomePanelProps {
+  /** 飞机列表（当前选中飞机），缺省空列表 */
+  aircraft?: AircraftListItem[]
+  /** 行删除回调（取消选中该机）；传入后行尾图标变为删除按钮 */
+  onRemove?: (id: string) => void
   /** 确认返航：携带当前设置的返航高度（米） */
   onConfirm: (height: number) => void
   /** 取消并关闭面板 */
   onCancel: () => void
 }
 
-export function ReturnHomePanel({ onConfirm, onCancel }: ReturnHomePanelProps) {
+export function ReturnHomePanel({ aircraft, onRemove, onConfirm, onCancel }: ReturnHomePanelProps) {
   const [tab, setTab] = useState<PanelTab>('params')
   const [height, setHeight] = useState(10)
 
@@ -46,9 +54,13 @@ export function ReturnHomePanel({ onConfirm, onCancel }: ReturnHomePanelProps) {
           />
         </div>
       ) : (
-        /* 飞机列表 tab：占位内容，待机队列表数据接入 */
+        /* Aircraft list tab: shared list section fed by HomePage selected aircraft */
         <div className="return-home-panel__aircraft-list">
-          <span>待接入</span>
+          <AircraftListSection
+            aircraft={aircraft ?? []}
+            showSectionTitle={false}
+            onRemove={onRemove}
+          />
         </div>
       )}
     </PanelShell>

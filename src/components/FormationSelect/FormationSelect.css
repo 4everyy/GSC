@@ -2,7 +2,7 @@
  * FormationSelect 样式 —— 队形下拉选择行公共组件。
  *
  * 下拉框左缘与上方步进行的步进按钮列左对齐（label 56 + m-left 16 = 72px 起点），
- * 宽度 160px 与上方步进控件组整组等宽（−24 + 1 + 值94 + 1 + +24 + 边距16 = 160），
+ * 宽度 144px 与上方步进控件组整组等宽（−24 + 1 + 值94 + 1 + +24 = 144），
  * 右缘与 + 按钮右缘对齐，视觉上与上一行输入框宽度一致。
  */
 
@@ -16,19 +16,20 @@
   width: 56px;
   color: rgba(255, 255, 255, 1);
   font-size: 14px;
-  font-family: MiSans-Regular, sans-serif;
+  font-family: MiSans, sans-serif;
+  font-weight: 400;
   line-height: 14px;
   white-space: nowrap;
 }
 
-/* 下拉选择器：白 20% 底 + 60% 白描边，宽 160×28（同上方步进控件组整宽），左缘对齐步进按钮列 */
+/* 下拉选择器：白 20% 底 + 60% 白描边，宽 144×28（同上方步进控件组整宽），左缘对齐步进按钮列 */
 .formation-select__box {
   position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
   margin-left: 16px;
-  width: 160px;
+  width: 144px;
   height: 28px;
   padding: 0 4px;
   background: rgba(255, 255, 255, 0.2);
@@ -44,7 +45,8 @@
   flex: 1;
   color: rgba(255, 255, 255, 1);
   font-size: 14px;
-  font-family: MiSans-Regular, sans-serif;
+  font-family: MiSans, sans-serif;
+  font-weight: 400;
   line-height: 14px;
   white-space: nowrap;
 }
@@ -77,10 +79,11 @@
 /* 选项行：hover 高亮；当前选中项青色文字 */
 .formation-select__dropdown-item {
   padding: 6px 8px;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 12px;
-  font-family: MiSans-Regular, sans-serif;
-  line-height: 12px;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: MiSans, sans-serif;
+  font-weight: 400;
+  line-height: 14px;
   cursor: pointer;
 }
 

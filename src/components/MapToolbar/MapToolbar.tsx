@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { toolbarItems } from '../../config/toolbar'
+import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
 import { DeviceManagementPanel } from '../DeviceManagementPanel/DeviceManagementPanel'
 import './MapToolbar.css'
 
@@ -8,6 +9,14 @@ const FADE_MS = 500
 export function MapToolbar() {
   const [active, setActive] = useState(-1)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+
+  // Open device panel when aircraft icon on home page is clicked (counter signal)
+  const devicePanelOpenRequests = useDeviceLinkStore((s) => s.devicePanelOpenRequests)
+  useEffect(() => {
+    if (devicePanelOpenRequests > 0) {
+      setActive(0)
+    }
+  }, [devicePanelOpenRequests])
 
   // 预加载 hover / active 背景图：首次 hover/click 时浏览器才开始下载这些图片，
   // 下载完成前会闪现空白，产生"背景图片替换"的闪烁感。

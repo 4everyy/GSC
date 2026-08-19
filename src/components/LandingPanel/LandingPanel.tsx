@@ -14,18 +14,21 @@ export type LandingAircraft = AircraftListItem
 export interface LandingPanelProps {
   /** 飞机列表，缺省使用设计稿示例数据 */
   aircraft?: LandingAircraft[]
+  /** 行删除回调（取消选中该机）；传入后行尾显示删除图标 */
+  onRemove?: (id: string) => void
   /** 确认降落 */
   onConfirm: () => void
   /** 取消并关闭面板 */
   onCancel: () => void
 }
 
-export function LandingPanel({ aircraft, onConfirm, onCancel }: LandingPanelProps) {
+export function LandingPanel({ aircraft, onRemove, onConfirm, onCancel }: LandingPanelProps) {
   return (
     <AircraftListPanel
       title="降落"
       className="landing-panel"
       aircraft={aircraft}
+      onRemove={onRemove}
       onConfirm={onConfirm}
       onCancel={onCancel}
     />

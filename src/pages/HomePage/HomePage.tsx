@@ -9,7 +9,7 @@
  * - HomePage 不直接 import 适配器实现类，仅通过 MapEngineInstance.adapter 操作地图；
  * - 业务组件通过 useEffect 依赖 adapter 变化自动重建覆盖物。
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { StatusHeader } from '../../components/StatusHeader/StatusHeader'
 import { MapToolbar } from '../../components/MapToolbar/MapToolbar'
 import { MissionPanel } from '../../components/MissionPanel/MissionPanel'
@@ -42,15 +42,18 @@ import './HoverPanelPlacement.css'
 import { useOfflineMap } from '../../features/offline-map/useOfflineMap'
 import { OfflineMapPanel } from '../../features/offline-map/components/OfflineMapPanel'
 import { useOfflineMapStore } from '../../features/offline-map/offlineMapStore'
+import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
+import { deviceList } from '../../config/devices'
+import type { AircraftListItem } from '../../components/AircraftListPanel/AircraftListSection'
 
 // 飞机初始位置（百分比），与 HomePage.css 中 .aircraft--xxx 的 left/top 保持一致。
 // 拖拽后通过内联 style 覆盖 CSS 定位，实现自由拖动。
 const AIRCRAFT_INITIAL_POSITIONS: DragPosition[] = [
   { x: 10.6, y: 6.8 }, // red (01设备)
   { x: 68.8, y: 22 }, // orange (03设备)
-  { x: 44.6, y: 35.4 }, // blue (02设备)
-  { x: 56, y: 59 }, // gray (离线设备)
-  { x: 33.7, y: 71.5 }, // blue2 (02设备)
+  { x: 44.6, y: 35.4 }, // blue (04设备)
+  { x: 56, y: 59 }, // gray (02设备·离线)
+  { x: 33.7, y: 71.5 }, // blue2 (05设备)
 ]
 
 // 巡检区域初始位置（百分比），与 HomePage.css 中 .inspection-zone 的 left/top 保持一致
@@ -81,6 +84,13 @@ type BottomBarPanel =
 
 const BOTTOM_BAR_ITEMS: {
   background: string
+  /** 激活态背景切图：功能面板展开期间由独立发光层显示（第 2~12 段功能按钮均提供） */
+  activeBackground?: string
+  /** 禁用态背景切图：按钮不可用期间直接替换默认背景（第 2~12 段功能按钮均提供） */
+  disabledBackground?: string
+  /** 选中设备数量要求：single = 恰好 1 台（单机功能）；multi = 至少 1 台（多机功能）。
+   *  不满足时按钮进入禁用态（禁用态切图 + 拦截点击 + 抑制反馈） */
+  mode?: 'single' | 'multi'
   width: number
   icon?: string
   tooltip?: string
@@ -89,79 +99,112 @@ const BOTTOM_BAR_ITEMS: {
   { background: homeImages.bottomBarSeg1, width: 119 },
   {
     background: homeImages.bottomBarSeg2,
+    activeBackground: homeImages.bottomBarSeg2Active,
+    disabledBackground: homeImages.bottomBarSeg2Disabled,
     width: 129,
     icon: homeImages.iconTakeoff,
     tooltip: '起飞',
+    mode: 'multi',
     panel: 'takeoff',
   },
   {
     background: homeImages.bottomBarSeg3,
+    activeBackground: homeImages.bottomBarSeg3Active,
+    disabledBackground: homeImages.bottomBarSeg3Disabled,
     width: 110,
     icon: homeImages.iconLand,
     tooltip: '降落',
+    mode: 'multi',
     panel: 'landing',
   },
   {
     background: homeImages.bottomBarSeg4,
+    activeBackground: homeImages.bottomBarSeg4Active,
+    disabledBackground: homeImages.bottomBarSeg4Disabled,
     width: 100,
     icon: homeImages.iconReturnToHome,
     tooltip: '返航',
+    mode: 'multi',
     panel: 'return-home',
   },
   {
     background: homeImages.bottomBarSeg5,
+    activeBackground: homeImages.bottomBarSeg5Active,
+    disabledBackground: homeImages.bottomBarSeg5Disabled,
     width: 101,
     icon: homeImages.iconTapToReturn,
     tooltip: '指点返航',
+    mode: 'single',
     panel: 'tap-return',
   },
   {
     background: homeImages.bottomBarSeg6,
+    activeBackground: homeImages.bottomBarSeg6Active,
+    disabledBackground: homeImages.bottomBarSeg6Disabled,
     width: 92,
     icon: homeImages.iconAreaLanding,
     tooltip: '区域降落',
+    mode: 'multi',
     panel: 'area-landing',
   },
   {
     background: homeImages.bottomBarSeg7,
+    activeBackground: homeImages.bottomBarSeg7Active,
+    disabledBackground: homeImages.bottomBarSeg7Disabled,
     width: 92,
     icon: homeImages.iconHover,
     tooltip: '悬停',
+    mode: 'multi',
     panel: 'hover',
   },
   {
     background: homeImages.bottomBarSeg8,
+    activeBackground: homeImages.bottomBarSeg8Active,
+    disabledBackground: homeImages.bottomBarSeg8Disabled,
     width: 92,
     icon: homeImages.iconWaypointFlight,
     tooltip: '航点飞行',
+    mode: 'single',
     panel: 'waypoint-flight',
   },
   {
     background: homeImages.bottomBarSeg9,
+    activeBackground: homeImages.bottomBarSeg9Active,
+    disabledBackground: homeImages.bottomBarSeg9Disabled,
     width: 101,
     icon: homeImages.iconRouteFlight,
     tooltip: '航线飞行',
+    mode: 'single',
     panel: 'route-flight',
   },
   {
     background: homeImages.bottomBarSeg10,
+    activeBackground: homeImages.bottomBarSeg10Active,
+    disabledBackground: homeImages.bottomBarSeg10Disabled,
     width: 100,
     icon: homeImages.iconOrbit,
     tooltip: '环绕飞行',
+    mode: 'single',
     panel: 'orbit-flight',
   },
   {
     background: homeImages.bottomBarSeg11,
+    activeBackground: homeImages.bottomBarSeg11Active,
+    disabledBackground: homeImages.bottomBarSeg11Disabled,
     width: 110,
     icon: homeImages.iconRallyPoint,
     tooltip: '集结点',
+    mode: 'multi',
     panel: 'rally-point',
   },
   {
     background: homeImages.bottomBarSeg12,
+    activeBackground: homeImages.bottomBarSeg12Active,
+    disabledBackground: homeImages.bottomBarSeg12Disabled,
     width: 129,
     icon: homeImages.iconFormationFlight,
     tooltip: '编队飞行',
+    mode: 'multi',
     panel: 'formation-flight',
   },
   { background: homeImages.bottomBarSeg13, width: 119 },
@@ -329,6 +372,38 @@ export function HomePage() {
     setRallyPointOpen(false)
     setFormationFlightOpen((v) => !v)
   }
+  // 各功能面板展开状态查询表：底部按钮「弹出 + 激活背景」统一由此判断，
+  // 替代逐面板的 && 长链（第 2~12 段功能按钮均提供激活态背景切图）
+  const panelOpenState: Record<BottomBarPanel, boolean> = {
+    takeoff: takeoffOpen,
+    landing: landingOpen,
+    'return-home': returnHomeOpen,
+    'tap-return': tapReturnOpen,
+    'area-landing': areaLandingOpen,
+    hover: hoverOpen,
+    'waypoint-flight': waypointFlightOpen,
+    'route-flight': routeFlightOpen,
+    'orbit-flight': orbitFlightOpen,
+    'rally-point': rallyPointOpen,
+    'formation-flight': formationFlightOpen,
+  }
+
+  // 各功能按钮点击处理函数查询表：与 panelOpenState 平行的互斥切换入口，
+  // 渲染处据此绑定 onClick（替代逐面板嵌套三元链）
+  const panelHandlers: Record<BottomBarPanel, () => void> = {
+    takeoff: openTakeoffPanel,
+    landing: openLandingPanel,
+    'return-home': openReturnHomePanel,
+    'tap-return': openTapReturnPanel,
+    'area-landing': openAreaLandingPanel,
+    hover: openHoverPanel,
+    'waypoint-flight': openWaypointFlightPanel,
+    'route-flight': openRouteFlightPanel,
+    'orbit-flight': openOrbitFlightPanel,
+    'rally-point': openRallyPointPanel,
+    'formation-flight': openFormationFlightPanel,
+  }
+
   const handleAircraftDoubleClick = (index: number) => {
     // 双击同一架飞机时切换关闭，双击不同飞机时切换目标
     setFocusedAircraft((prev) => (prev === index ? null : index))
@@ -366,6 +441,40 @@ export function HomePage() {
   }, [adapter, activePackage])
 
   const currentAlarmColor = activeAlarm !== null ? ALARM_TYPES[activeAlarm]?.color : undefined
+
+  // 设备联动：hover/选中状态与设备管理面板双向同步（全局 store 承载，
+  // deviceIndex 对应 config/devices.ts deviceList 下标）
+  const hoveredDevice = useDeviceLinkStore((s) => s.hoveredDevice)
+  const selectedDevices = useDeviceLinkStore((s) => s.selectedDevices)
+  const setHoveredDevice = useDeviceLinkStore((s) => s.setHoveredDevice)
+  const toggleDevice = useDeviceLinkStore((s) => s.toggleDevice)
+  const requestOpenDevicePanel = useDeviceLinkStore((s) => s.requestOpenDevicePanel)
+
+  // 选中飞机列表：取「设备管理」选中集合对应的真实设备（名称对齐 devices.ts，
+  // 高度/电量先取配置遥测值作为 mock，后续接入实时遥测后替换数据源即可）
+  const selectedAircraft: AircraftListItem[] = useMemo(() => {
+    const indices = [...selectedDevices].sort((a, b) => a - b)
+    return indices
+      .map((index) => {
+        const device = deviceList[index]
+        if (!device) return null
+        return {
+          id: String(index),
+          name: device.name,
+          altitude: Number(device.altitudeValue?.replace(/[^\d.]/g, '')) || 0,
+          battery: Number(device.batteryValue?.replace(/[^\d.]/g, '')) || 0,
+        }
+      })
+      .filter((item): item is AircraftListItem => item !== null)
+  }, [selectedDevices])
+  // Aircraft row delete: deselect the device (id = device index string). Store update
+  // syncs device panel checkboxes, home icons, and bottom bar button states.
+  const handleRemoveAircraft = (id: string) => {
+    toggleDevice(Number(id))
+  }
+
+  // 区分「点击选中」与「拖拽」：mousedown 记录起点，click 时位移小于阈值才触发选中
+  const aircraftMouseDownPos = useRef<{ x: number; y: number } | null>(null)
 
   // 飞机图标拖拽：鼠标左键按住拖动图标+名称至首页任意位置
   const { positions: aircraftPositions, onDragStart: onAircraftDragStart } = useDraggable({
@@ -578,13 +687,26 @@ export function HomePage() {
             const aircraftPanelClasses = placementToClasses(aircraftPlacement)
             return (
               <span
-                className={`${item.className} aircraft--draggable ${aircraftPanelClasses.join(' ')}`}
+                className={`${item.className} aircraft--draggable ${aircraftPanelClasses.join(' ')}${selectedDevices.has(item.deviceIndex) ? ' aircraft--selected' : ''}${hoveredDevice === item.deviceIndex ? ' aircraft--hovered' : ''}`}
                 key={item.label}
                 style={{
                   left: `${aircraftPositions[index].x}%`,
                   top: `${aircraftPositions[index].y}%`,
                 }}
-                onMouseDown={(e) => onAircraftDragStart(index, e)}
+                onMouseEnter={() => setHoveredDevice(item.deviceIndex)}
+                onMouseLeave={() => setHoveredDevice(null)}
+                onMouseDown={(e) => {
+                  aircraftMouseDownPos.current = { x: e.clientX, y: e.clientY }
+                  onAircraftDragStart(index, e)
+                }}
+                onClick={(e) => {
+                  // 拖拽结束后的 click 不视为选中（位移超过 4px 忽略）
+                  const start = aircraftMouseDownPos.current
+                  if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 4) {
+                    toggleDevice(item.deviceIndex)
+                    requestOpenDevicePanel()
+                  }
+                }}
                 onDoubleClick={() => handleAircraftDoubleClick(index)}
               >
                 <img src={item.src} alt={item.label} draggable={false} />
@@ -594,7 +716,7 @@ export function HomePage() {
                   <div className="aircraft-hover-panel" data-hover-panel>
                     <div className="aircraft-hover-panel__top">
                       <div className="aircraft-hover-panel__header">
-                        <span className="aircraft-hover-panel__name">08号无人机</span>
+                        <span className="aircraft-hover-panel__name">02设备</span>
                         <span className="aircraft-hover-panel__status">离线</span>
                       </div>
                       <div className="aircraft-hover-panel__divider" />
@@ -688,6 +810,8 @@ export function HomePage() {
               确认/取消均收起面板（确认暂记录参数，待接入真实指令链路） */}
           {takeoffOpen && (
             <TakeoffPanel
+              aircraft={selectedAircraft}
+              onRemove={handleRemoveAircraft}
               onConfirm={(height) => {
                 console.info(`[takeoff] 确认起飞，高度 ${height}m`)
                 setTakeoffOpen(false)
@@ -700,6 +824,8 @@ export function HomePage() {
               确认/取消均收起面板（确认暂记录日志，待接入真实指令链路） */}
           {landingOpen && (
             <LandingPanel
+              aircraft={selectedAircraft}
+              onRemove={handleRemoveAircraft}
               onConfirm={() => {
                 console.info('[landing] 确认降落')
                 setLandingOpen(false)
@@ -712,6 +838,8 @@ export function HomePage() {
               参数设置/飞机列表 tab + 返航高度步进，确认/取消均收起面板（确认暂记录日志，待接入真实指令链路） */}
           {returnHomeOpen && (
             <ReturnHomePanel
+              aircraft={selectedAircraft}
+              onRemove={handleRemoveAircraft}
               onConfirm={(height) => {
                 console.info(`[return-home] 确认返航，高度 ${height}m`)
                 setReturnHomeOpen(false)
@@ -737,6 +865,8 @@ export function HomePage() {
           {/* 区域降落面板（与其他功能面板互斥）：参数设置 tab（降落速度步进 m/s + 降落编队选择）/ 飞机列表 tab，确认（置灰）/ 航线生成/ 取消三按钮，确认/ 取消均收起面板（确认暂记录日志，待接入指令链路） */}
           {areaLandingOpen && (
             <AreaLandingPanel
+              aircraft={selectedAircraft}
+              onRemove={handleRemoveAircraft}
               onConfirm={(speed, formation) => {
                 console.info(
                   '[area-landing] 确认区域降落，速度 ' + speed + 'm/s，编队 ' + formation,
@@ -752,6 +882,8 @@ export function HomePage() {
               确认/取消均收起面板（确认暂记录日志，待接入真实指令链路） */}
           {hoverOpen && (
             <HoverPanel
+              aircraft={selectedAircraft}
+              onRemove={handleRemoveAircraft}
               onConfirm={() => {
                 console.info('[hover] 确认悬停')
                 setHoverOpen(false)
@@ -803,6 +935,8 @@ export function HomePage() {
               确认（置灰）/航线生成/取消三按钮，确认/取消均收起面板（确认暂记录日志，待接入指令链路） */}
           {rallyPointOpen && (
             <RallyPointPanel
+              aircraft={selectedAircraft}
+              onRemove={handleRemoveAircraft}
               onConfirm={(height, speed, formation) => {
                 console.info(
                   `[rally-point] 确认集结，高度 ${height}m，速度 ${speed}m/s，队形 ${formation}`,
@@ -833,55 +967,85 @@ export function HomePage() {
               .bottom-bar__visual（60px 视觉层：底部对齐，hover 弹性向上顶出）。
               命中层不动 + 视觉层上移，鼠标不会因按钮顶出而脱离 hover（避免抖动循环） */}
           <nav className="bottom-bar" aria-label="底部功能按钮条">
-            {BOTTOM_BAR_ITEMS.map((item, index) => (
-              <span className="bottom-bar__item" key={item.background}>
-                <button
-                  type="button"
-                  className={`bottom-bar__btn${item.icon ? '' : ' bottom-bar__btn--static'}${(item.panel === 'takeoff' && takeoffOpen) || (item.panel === 'landing' && landingOpen) || (item.panel === 'return-home' && returnHomeOpen) || (item.panel === 'tap-return' && tapReturnOpen) || (item.panel === 'area-landing' && areaLandingOpen) || (item.panel === 'hover' && hoverOpen) || (item.panel === 'waypoint-flight' && waypointFlightOpen) || (item.panel === 'route-flight' && routeFlightOpen) || (item.panel === 'orbit-flight' && orbitFlightOpen) || (item.panel === 'rally-point' && rallyPointOpen) || (item.panel === 'formation-flight' && formationFlightOpen) ? ' bottom-bar__btn--active' : ''}`}
-                  aria-label={item.tooltip ?? `功能按钮${index + 1}`}
-                  style={{ aspectRatio: `${item.width} / 72` }}
-                  onClick={
-                    item.panel === 'takeoff'
-                      ? openTakeoffPanel
-                      : item.panel === 'landing'
-                        ? openLandingPanel
-                        : item.panel === 'return-home'
-                          ? openReturnHomePanel
-                          : item.panel === 'tap-return'
-                            ? openTapReturnPanel
-                            : item.panel === 'area-landing'
-                              ? openAreaLandingPanel
-                              : item.panel === 'hover'
-                                ? openHoverPanel
-                                : item.panel === 'waypoint-flight'
-                                  ? openWaypointFlightPanel
-                                  : item.panel === 'route-flight'
-                                    ? openRouteFlightPanel
-                                    : item.panel === 'orbit-flight'
-                                      ? openOrbitFlightPanel
-                                        : item.panel === 'rally-point'
-                                          ? openRallyPointPanel
-                                          : item.panel === 'formation-flight'
-                                            ? openFormationFlightPanel
-                                            : undefined
-                  }
+            {BOTTOM_BAR_ITEMS.map((item, index) => {
+              // 禁用态（按选中设备数量）：单机功能需恰好选中 1 台，多机功能需至少选中 1 台；
+              // 不满足时按钮进入禁用态（禁用态切图替换默认背景，激活态视觉与 tooltip
+              // 一并抑制）。不用原生 disabled 属性——它会抑制浏览器 :hover 匹配，
+              // 导致置灰按钮 hover 不顶出；改用 aria-disabled 语义标记 + 点击拦截，
+              // 悬停反馈（置灰态顶出）仍可用
+              const disabled =
+                !!item.disabledBackground &&
+                (item.mode === 'single' ? selectedDevices.size !== 1 : selectedDevices.size < 1)
+              return (
+                <span
+                  className={`bottom-bar__item${
+                    item.panel && panelOpenState[item.panel] && item.activeBackground && !disabled
+                      ? ' bottom-bar__item--active-bg'
+                      : ''
+                  }`}
+                  key={item.background}
                 >
-                  <span
-                    className="bottom-bar__visual"
-                    style={{
-                      // 切图文件名（bottom-bar-seg-01.png 等）含连字符，url() 统一加引号
-                      // 以避免 unquoted URL 的解析歧义
-                      backgroundImage: `url("${item.background}")`,
-                    }}
+                  <button
+                    type="button"
+                    aria-disabled={disabled || undefined}
+                    className={`bottom-bar__btn${item.icon ? '' : ' bottom-bar__btn--static'}${disabled ? ' bottom-bar__btn--disabled' : ''}${item.panel && panelOpenState[item.panel] && !disabled ? ' bottom-bar__btn--active' : ''}`}
+                    aria-label={item.tooltip ?? `功能按钮${index + 1}`}
+                    style={{ aspectRatio: `${item.width} / 72` }}
+                    onClick={disabled || !item.panel ? undefined : panelHandlers[item.panel]}
                   >
-                    {item.icon && (
-                      <img className="bottom-bar__icon" src={item.icon} alt="" draggable={false} />
-                    )}
-                  </span>
-                </button>
-                {item.tooltip && <span className="bottom-bar__tip">{item.tooltip}</span>}
-              </span>
-            ))}
+                    <span
+                      className="bottom-bar__visual"
+                      style={{
+                        // 切图文件名（bottom-bar-seg-01.png 等）含连字符，url() 统一加引号
+                        // 以避免 unquoted URL 的解析歧义；激活态高亮背景由下方独立层
+                        // .bottom-bar__active-glow 承载（button 的 clip-path 会裁剪发光边缘，
+                        // 且元素背景无法绘制到自身盒外，视觉层内无法完整呈现激活态切图）
+                        // 禁用态直接替换默认背景（两套切图规格一致，几何像素级兼容）
+                        backgroundImage: `url("${disabled ? (item.disabledBackground ?? item.background) : item.background}")`,
+                      }}
+                    >
+                      {item.icon && (
+                        <img
+                          className="bottom-bar__icon"
+                          src={item.icon}
+                          alt=""
+                          draggable={false}
+                        />
+                      )}
+                    </span>
+                  </button>
+                  {/* 激活态背景独立层（第 2~12 段功能按钮均提供 activeBackground）：
+                    切图画布统一 76px 高，实体区 60px 高、宽与默认段一致，四周为发光/投影边缘。
+                    置于 button 之外避免被其 clip-path 裁剪；内含图标副本与视觉层图标重合，
+                    激活时淡入覆盖默认段，关闭时淡出，与默认背景形成交叉过渡 */}
+                  {item.activeBackground && !disabled && (
+                    <span
+                      className="bottom-bar__active-glow"
+                      style={{
+                        backgroundImage: `url("${item.activeBackground}")`,
+                        // 画布宽 = 段宽 + 16（左右各 8px 发光边缘）：left/width 按段宽换算百分比
+                        // （left = -8/段宽、width = (段宽+16)/段宽），实体区与默认段像素级重合
+                        left: `${Math.round((-8 / item.width) * 100 * 100) / 100}%`,
+                        width: `${Math.round(((item.width + 16) / item.width) * 100 * 100) / 100}%`,
+                      }}
+                      aria-hidden="true"
+                    >
+                      {item.icon && (
+                        <img
+                          className="bottom-bar__icon bottom-bar__icon--active-glow"
+                          src={item.icon}
+                          alt=""
+                          draggable={false}
+                        />
+                      )}
+                    </span>
+                  )}
+                  {item.tooltip && !disabled && (
+                    <span className="bottom-bar__tip">{item.tooltip}</span>
+                  )}
+                </span>
+              )
+            })}
           </nav>
 
           <footer className="map-footer">

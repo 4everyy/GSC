@@ -14,7 +14,10 @@ import { useState } from 'react'
 import { PanelShell } from '../PanelShell/PanelShell'
 import { PanelTabs, type PanelTab } from '../PanelTabs/PanelTabs'
 import { HeightStepper } from '../HeightStepper/HeightStepper'
-import { AircraftListSection } from '../AircraftListPanel/AircraftListSection'
+import {
+  AircraftListSection,
+  type AircraftListItem,
+} from '../AircraftListPanel/AircraftListSection'
 import { FormationSelect } from '../FormationSelect/FormationSelect'
 import './RallyPointPanel.css'
 
@@ -24,6 +27,8 @@ export type RallyPointFormation = (typeof FORMATIONS)[number]
 
 export interface RallyPointPanelProps {
   /** 确认集结：携带当前设置的起飞高度（m）、集结速度（m/s）与所选队形 */
+  aircraft?: AircraftListItem[]
+  onRemove?: (id: string) => void
   onConfirm: (height: number, speed: number, formation: RallyPointFormation) => void
   /** 航线生成（暂记录日志，待接入真实指令链路） */
   onGenerateRoute: () => void
@@ -32,6 +37,8 @@ export interface RallyPointPanelProps {
 }
 
 export function RallyPointPanel({
+  aircraft,
+  onRemove,
   onConfirm,
   onGenerateRoute,
   onCancel,
@@ -85,7 +92,11 @@ export function RallyPointPanel({
         </div>
       ) : (
         /* 飞机列表 tab：复用飞机列表区块 */
-        <AircraftListSection />
+        <AircraftListSection
+          aircraft={aircraft ?? []}
+          showSectionTitle={false}
+          onRemove={onRemove}
+        />
       )}
     </PanelShell>
   )

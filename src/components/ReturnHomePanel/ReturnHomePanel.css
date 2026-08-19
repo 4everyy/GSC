@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ReturnHomePanel 样式 —— 返航面板内容部分（参数区容器 / 飞机列表占位）。
  * tab 栏样式见 PanelTabs.css，高度步进行样式见 HeightStepper.css，
  * 外壳样式复用 PanelShell.css；「.return-home-panel」仅作页面级定位钩子（HomePage.css）。
@@ -14,14 +14,17 @@
   gap: 16px;
 }
 
-/* 飞机列表 tab：填充参数行与底部按钮之间区域（设计稿为空白，虚线占位） */
+/* Aircraft list tab container: fills space between tab bar and bottom buttons,
+   same layout as takeoff panel list tab */
 .return-home-panel__aircraft-list {
   flex: 1;
-  margin: 16px 8px 0;
-  border: 1px dashed rgba(255, 255, 255, 0.35);
+  min-height: 0;
+  margin: 8px 0 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 14px;
+  flex-direction: column;
+}
+
+/* No section header (showSectionTitle=false): reset inner list top margin */
+.return-home-panel__aircraft-list .aircraft-list-panel__list {
+  margin-top: 0;
 }

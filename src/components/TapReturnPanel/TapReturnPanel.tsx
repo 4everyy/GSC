@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TapReturnPanel —— 指点返航面板（底部条第 5 段按钮「指点返航」）。
  *
  * 结构：
@@ -69,10 +69,9 @@ export function TapReturnPanel({
       onMiddle={onGenerateRoute}
       onCancel={onCancel}
     >
-      {/* 区块头「参数设置」：渐变底 + 下缘青色渐隐线 */}
+      {/* 区块头「参数设置」：渐变底 */}
       <div className="tap-return-panel__section">
         <span className="tap-return-panel__section-title">参数设置</span>
-        <div className="tap-return-panel__section-divider" />
       </div>
 
       <div className="tap-return-panel__params">
@@ -101,25 +100,25 @@ export function TapReturnPanel({
 
         {/* 航点信息：纬度/经度两个坐标框 + N°/E° 单位（航线飞行面板无此行） */}
         {showWaypoint && (
-        <div className="tap-return-panel__waypoint">
-          <span className="tap-return-panel__waypoint-label">航点信息</span>
-          <input
-            className="tap-return-panel__waypoint-input"
-            value={lat}
-            onChange={(e) => setLat(e.target.value)}
-            aria-label="纬度"
-            inputMode="decimal"
-          />
-          <span className="tap-return-panel__waypoint-unit">N°</span>
-          <input
-            className="tap-return-panel__waypoint-input"
-            value={lng}
-            onChange={(e) => setLng(e.target.value)}
-            aria-label="经度"
-            inputMode="decimal"
-          />
-          <span className="tap-return-panel__waypoint-unit">E°</span>
-        </div>
+          <div className="tap-return-panel__waypoint">
+            <span className="tap-return-panel__waypoint-label">航点信息</span>
+            <input
+              className="tap-return-panel__waypoint-input"
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+              aria-label="纬度"
+              inputMode="decimal"
+            />
+            <span className="tap-return-panel__waypoint-unit">N°</span>
+            <input
+              className="tap-return-panel__waypoint-input"
+              value={lng}
+              onChange={(e) => setLng(e.target.value)}
+              aria-label="经度"
+              inputMode="decimal"
+            />
+            <span className="tap-return-panel__waypoint-unit">E°</span>
+          </div>
         )}
       </div>
     </PanelShell>

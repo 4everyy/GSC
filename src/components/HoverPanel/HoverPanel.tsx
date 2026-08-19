@@ -14,18 +14,20 @@ export type HoverAircraft = AircraftListItem
 export interface HoverPanelProps {
   /** 飞机列表，缺省使用设计稿示例数据 */
   aircraft?: HoverAircraft[]
+  onRemove?: (id: string) => void
   /** 确认悬停 */
   onConfirm: () => void
   /** 取消并关闭面板 */
   onCancel: () => void
 }
 
-export function HoverPanel({ aircraft, onConfirm, onCancel }: HoverPanelProps) {
+export function HoverPanel({ aircraft, onRemove, onConfirm, onCancel }: HoverPanelProps) {
   return (
     <AircraftListPanel
       title="悬停"
       className="hover-panel"
       aircraft={aircraft}
+      onRemove={onRemove}
       onConfirm={onConfirm}
       onCancel={onCancel}
     />

@@ -13,7 +13,10 @@ import { useState } from 'react'
 import { PanelShell } from '../PanelShell/PanelShell'
 import { PanelTabs, type PanelTab } from '../PanelTabs/PanelTabs'
 import { HeightStepper } from '../HeightStepper/HeightStepper'
-import { AircraftListSection } from '../AircraftListPanel/AircraftListSection'
+import {
+  AircraftListSection,
+  type AircraftListItem,
+} from '../AircraftListPanel/AircraftListSection'
 import { deviceImages } from '../../assets/images/device'
 import './AreaLandingPanel.css'
 
@@ -23,6 +26,8 @@ export type AreaLandingFormation = (typeof FORMATIONS)[number]
 
 export interface AreaLandingPanelProps {
   /** 确认区域降落：携带当前设置的降落速度（m/s）与所选编队 */
+  aircraft?: AircraftListItem[]
+  onRemove?: (id: string) => void
   onConfirm: (speed: number, formation: AreaLandingFormation) => void
   /** 航线生成（暂记录日志，待接入真实指令链路） */
   onGenerateRoute: () => void
@@ -31,6 +36,8 @@ export interface AreaLandingPanelProps {
 }
 
 export function AreaLandingPanel({
+  aircraft,
+  onRemove,
   onConfirm,
   onGenerateRoute,
   onCancel,
@@ -101,7 +108,11 @@ export function AreaLandingPanel({
         </div>
       ) : (
         /* 飞机列表 tab：复用降落面板的飞机列表区块 */
-        <AircraftListSection />
+        <AircraftListSection
+          aircraft={aircraft ?? []}
+          showSectionTitle={false}
+          onRemove={onRemove}
+        />
       )}
     </PanelShell>
   )

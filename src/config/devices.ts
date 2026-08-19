@@ -68,7 +68,7 @@ export const deviceList: Device[] = [
     deviceType: 'gray',
   },
   {
-    name: '01中科晶...',
+    name: '02中科晶...',
     deviceIcon: deviceImages.iconBlue,
     icons: [deviceImages.actionIcon1, deviceImages.actionIcon2],
     status: 'offline',
@@ -79,7 +79,7 @@ export const deviceList: Device[] = [
     deviceType: 'gray',
   },
   {
-    name: '01中科晶锐',
+    name: '03中科晶锐',
     deviceIcon: deviceImages.iconBlue,
     icons: [deviceImages.actionIcon3, deviceImages.actionIcon4],
     status: 'standby',
@@ -90,7 +90,7 @@ export const deviceList: Device[] = [
     deviceType: 'blue',
   },
   {
-    name: '01中科晶锐',
+    name: '04中科晶锐',
     deviceIcon: deviceImages.iconBlue,
     icons: [deviceImages.actionIcon3, deviceImages.actionIcon4],
     status: 'tasking',
@@ -101,7 +101,7 @@ export const deviceList: Device[] = [
     deviceType: 'gray',
   },
   {
-    name: '01中科晶锐',
+    name: '05中科晶锐',
     deviceIcon: deviceImages.iconBlue,
     icons: [deviceImages.actionIcon3, deviceImages.actionIcon4],
     status: 'tasking',
@@ -111,28 +111,6 @@ export const deviceList: Device[] = [
     batteryValue: '40%',
     deviceType: 'gray',
     isCharging: true,
-  },
-  {
-    name: '01中科晶...',
-    deviceIcon: deviceImages.iconBlue,
-    icons: [deviceImages.actionIcon5, deviceImages.actionIcon6],
-    status: 'offline',
-    statusText: '离线',
-    altitudeValue: '40m',
-    batteryLevel: 'low',
-    batteryValue: '12%',
-    deviceType: 'gray',
-  },
-  {
-    name: '01中科晶...',
-    deviceIcon: deviceImages.iconBlue,
-    icons: [deviceImages.actionIcon5, deviceImages.actionIcon6],
-    status: 'offline',
-    statusText: '离线',
-    altitudeValue: '40m',
-    batteryLevel: 'low',
-    batteryValue: '12%',
-    deviceType: 'gray',
   },
 ]
 

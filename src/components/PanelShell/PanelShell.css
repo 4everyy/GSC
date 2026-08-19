@@ -17,7 +17,7 @@
   filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.3));
   display: flex;
   flex-direction: column;
-  font-family: 'MiSans-Regular', sans-serif;
+  font-family: 'MiSans', sans-serif;
   color: #fff;
 }
 
@@ -34,10 +34,19 @@
   /* 第一层：18×18 定位在右上角，沿主对角线 (242,0)→(260,18) 画 1px 亮线
      （注意 to bottom left 的等色线才平行于主对角线，to top left 会错画成反对角线） */
   background-image:
-    linear-gradient(to bottom left, transparent calc(50% - 1px), rgba(85, 206, 222, 1) 50%, transparent calc(50% + 1px)),
+    linear-gradient(
+      to bottom left,
+      transparent calc(50% - 1px),
+      rgba(85, 206, 222, 1) 50%,
+      transparent calc(50% + 1px)
+    ),
     linear-gradient(rgba(75, 194, 249, 0.4), rgba(75, 194, 249, 0.4));
-  background-size: 18px 18px, 100% 100%;
-  background-position: top right, 0 0;
+  background-size:
+    18px 18px,
+    100% 100%;
+  background-position:
+    top right,
+    0 0;
   background-repeat: no-repeat;
   clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
   pointer-events: none;
@@ -58,13 +67,15 @@
   pointer-events: none;
 }
 
-/* 标题（如「起飞」「降落」）：16px Demibold，m 8/0/0/16 */
+/* 标题（如「起飞」「降落」）：MiSans 600/16px 白，行高 21 于标题区内垂直居中 */
 .panel-shell__title {
   display: block;
   height: 21px;
   font-size: 16px;
-  font-family: 'MiSans-Demibold', 'MiSans-Regular', sans-serif;
-  line-height: 16px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 600;
+  font-synthesis: weight;
+  line-height: 21px;
   margin: 8px 0 0 16px;
 }
 
@@ -92,7 +103,7 @@
   padding: 0;
   border-radius: 2px;
   font-size: 14px;
-  font-family: 'MiSans-Regular', sans-serif;
+  font-family: 'MiSans', sans-serif;
   line-height: 32px;
   color: rgba(255, 255, 255, 1);
   cursor: pointer;

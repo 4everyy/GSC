@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TapReturnPanel 样式 —— 指点返航面板内容区。
  *
  * 外壳样式复用 PanelShell.css（背景/切角/标题/底部三按钮），
@@ -6,9 +6,11 @@
  * 「.tap-return-panel」仅作页面级定位钩子（HomePage.css）。
  */
 
-/* 区块头「参数设置」：渐变底 + 下缘青色渐隐线，与起飞/降落面板 tab 头同规格 */
+/* 区块头「参数设置」：渐变底，标题垂直居中（与起飞/降落面板 tab 头同规格） */
 .tap-return-panel__section {
   flex: none;
+  display: flex;
+  align-items: center;
   height: 36px;
   margin-top: 8px;
   background-image: linear-gradient(
@@ -22,20 +24,11 @@
   display: block;
   color: rgba(255, 255, 255, 1);
   font-size: 14px;
-  font-family: 'MiSans-Regular', sans-serif;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
   line-height: 14px;
   white-space: nowrap;
-  padding: 8px 0 0 16px;
-}
-
-.tap-return-panel__section-divider {
-  height: 1px;
-  margin-top: 8px;
-  background-image: linear-gradient(
-    90deg,
-    rgba(85, 206, 222, 1) 0,
-    rgba(85, 206, 222, 0) 100%
-  );
+  padding: 0 0 0 16px;
 }
 
 /* 参数区容器：宽度与 HeightStepper 行对齐（244px），纵向排布各行、行间距统一 16 */
@@ -73,14 +66,17 @@
   border: none;
   color: rgba(255, 255, 255, 1);
   font-size: 14px;
-  font-family: 'MiSans-Regular', sans-serif;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
   line-height: 28px;
   background: url('../../assets/images/home/waypoint-input-bg.png') 100% no-repeat;
   background-size: 100% 100%;
 }
 
 /* 第二个输入框（经度）：m-left 11 */
-.tap-return-panel__waypoint-input + .tap-return-panel__waypoint-unit + .tap-return-panel__waypoint-input {
+.tap-return-panel__waypoint-input
+  + .tap-return-panel__waypoint-unit
+  + .tap-return-panel__waypoint-input {
   margin-left: 11px;
 }
 
