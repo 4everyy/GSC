@@ -33,6 +33,18 @@ export interface AreaLandingPanelProps {
   onGenerateRoute: () => void
   /** 取消并关闭面板 */
   onCancel: () => void
+  /* ---- 受控状态（可选）：父层持有可在面板收起/重开间保留已设置信息 ---- */
+  /** 当前 tab（params=参数设置 / list=飞机列表） */
+  tab?: PanelTab
+  onTabChange?: (tab: PanelTab) => void
+  /** 降落速度（m/s） */
+  speed?: number
+  onSpeedChange?: (speed: number) => void
+  /** 降落编队 */
+  formation?: AreaLandingFormation
+  onFormationChange?: (formation: AreaLandingFormation) => void
+  /** 选区四角经纬度（WGS84，框选确认后由父层计算）：参数 tab「区域信息」实时显示 */
+  corners?: { lat: number; lng: number }[] | null
 }
 
 export function AreaLandingPanel({
@@ -41,11 +53,25 @@ export function AreaLandingPanel({
   onConfirm,
   onGenerateRoute,
   onCancel,
+  tab: tabProp,
+  onTabChange,
+  speed: speedProp,
+  onSpeedChange,
+  formation: formationProp,
+  onFormationChange,
+  corners,
 }: AreaLandingPanelProps) {
-  const [tab, setTab] = useState<PanelTab>('params')
-  const [speed, setSpeed] = useState(10)
-  const [formation, setFormation] = useState<AreaLandingFormation>('一字型')
+  // 内部兜底状态：父层未传受控 props 时使用；传了则以 props 为准
+  const [innerTab, setInnerTab] = useState<PanelTab>('params')
+  const [innerSpeed, setInnerSpeed] = useState(10)
+  const [innerFormation, setInnerFormation] = useState<AreaLandingFormation>('一字型')
   const [formationOpen, setFormationOpen] = useState(false)
+  const tab = tabProp ?? innerTab
+  const setTab = onTabChange ?? setInnerTab
+  const speed = speedProp ?? innerSpeed
+  const setSpeed = onSpeedChange ?? setInnerSpeed
+  const formation = formationProp ?? innerFormation
+  const setFormation = onFormationChange ?? setInnerFormation
 
   return (
     <PanelShell
@@ -105,6 +131,23 @@ export function AreaLandingPanel({
               )}
             </div>
           </div>
+          {/* 区域信息：框选确认后实时显示选区四角经纬度（蓝色分割线分隔降落编队行） */}
+          {corners && corners.length > 0 && (
+            <>
+              <div className="area-landing-panel__area-divider" />
+              <div className="area-landing-panel__area-info">
+                <span className="area-landing-panel__area-info-title">区域信息</span>
+                {corners.map((corner, idx) => (
+                  <div className="area-landing-panel__area-info-row" key={idx}>
+                    <span className="area-landing-panel__area-info-index">{idx + 1}</span>
+                    <span className="area-landing-panel__area-info-coord">
+                      Lat:{corner.lat.toFixed(4)},&nbsp;Lon:{corner.lng.toFixed(4)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       ) : (
         /* 飞机列表 tab：复用降落面板的飞机列表区块 */

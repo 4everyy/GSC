@@ -8,6 +8,10 @@
 import { TapReturnPanel } from '../TapReturnPanel/TapReturnPanel'
 
 export interface WaypointFlightPanelProps {
+  /** 航点坐标回填（跟随/定格后的 WGS84 经纬度，展示在航点信息输入框） */
+  waypoint?: { lat: number; lng: number } | null
+  /** 确认按钮置灰态：取点完成（waypoint 定格）前置灰，定格后取消置灰，默认 false */
+  confirmMuted?: boolean
   /** 确认：携带当前设置的飞行高度（米） */
   onConfirm: (height: number) => void
   /** 航线生成（暂记录日志，待接入真实链路） */
@@ -16,13 +20,20 @@ export interface WaypointFlightPanelProps {
   onCancel: () => void
 }
 
-export function WaypointFlightPanel({ onConfirm, onGenerateRoute, onCancel }: WaypointFlightPanelProps) {
+export function WaypointFlightPanel({
+  waypoint,
+  confirmMuted = false,
+  onConfirm,
+  onGenerateRoute,
+  onCancel,
+}: WaypointFlightPanelProps) {
   return (
     <TapReturnPanel
       title="航点飞行"
       heightLabel="飞行高度"
       className="waypoint-flight-panel"
-      confirmMuted
+      confirmMuted={confirmMuted}
+      waypoint={waypoint}
       onConfirm={onConfirm}
       onGenerateRoute={onGenerateRoute}
       onCancel={onCancel}

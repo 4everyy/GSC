@@ -20,6 +20,7 @@ import iconMeasure from './icon-measure.png'
 import iconOrbit from './icon-orbit.png'
 import iconRallyPoint from './icon-rally-point.png'
 import iconReturnToHome from './icon-return-to-home.png'
+import iconAreaLandingCenter from './icon-area-landing-center.png'
 import iconRouteFlight from './icon-route-flight.png'
 import iconTakeoff from './icon-takeoff.png'
 import iconTapToReturn from './icon-tap-to-return.png'
@@ -37,6 +38,10 @@ import waypointInputBg from './waypoint-input-bg.png'
 import statusOnlineIcon from './status-online-icon.png'
 import statusTakeoffIcon from './status-takeoff-icon.png'
 import userAvatar from './user-avatar.png'
+import areaLandingCursor from './area-landing-cursor.png'
+import tapReturnMarker from './tap-return-marker.png'
+import routeFlightPin from './route-flight-pin.png'
+import tapReturnZoneIcon from './tap-return-zone-icon.png'
 // 底部水平居中按钮条背景：13 段拼接切图，bottomBarSegN 按显示顺序（从左到右）编号
 import bottomBarSeg1 from './bottom-bar-seg-01.png'
 import bottomBarSeg2 from './bottom-bar-seg-02.png'
@@ -109,6 +114,7 @@ export const homeImages = {
   iconOrbit,
   iconRallyPoint,
   iconReturnToHome,
+  iconAreaLandingCenter,
   iconRouteFlight,
   iconTakeoff,
   iconTapToReturn,
@@ -126,6 +132,10 @@ export const homeImages = {
   statusOnlineIcon,
   statusTakeoffIcon,
   userAvatar,
+  areaLandingCursor,
+  tapReturnMarker,
+  routeFlightPin,
+  tapReturnZoneIcon,
   bottomBarSeg1,
   bottomBarSeg2,
   bottomBarSeg3,

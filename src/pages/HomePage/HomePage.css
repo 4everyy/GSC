@@ -1,4 +1,4 @@
-/* ====== 页面容器 ====== */
+/* ====== 椤甸潰瀹瑰櫒 ====== */
 #root {
   margin: 0;
   padding: 0;
@@ -24,18 +24,18 @@
   flex-direction: column;
 }
 
-/* ====== 地图舞台 ====== */
+/* ====== 鍦板浘鑸炲彴 ====== */
 .map-stage {
   position: relative;
   width: 100%;
   flex: 1;
   overflow: hidden;
   box-sizing: border-box;
-  /* 放行鼠标事件，让滚轮/拖拽直达底层地图；仅可交互的子元素单独恢复 pointer-events */
+  /* 鏀捐榧犳爣浜嬩欢锛岃婊氳疆/鎷栨嫿鐩磋揪搴曞眰鍦板浘锛涗粎鍙氦浜掔殑瀛愬厓绱犲崟鐙仮澶?pointer-events */
   pointer-events: none;
 }
 
-/* 地图舞台内需要交互的 UI 元素：单独开启鼠标事件接收 */
+/* 鍦板浘鑸炲彴鍐呴渶瑕佷氦浜掔殑 UI 鍏冪礌锛氬崟鐙紑鍚紶鏍囦簨浠舵帴鏀?*/
 .map-stage .map-toolbar-wrapper,
 .map-stage .view-controls,
 .map-stage .zoom-controls,
@@ -53,21 +53,21 @@
   pointer-events: auto;
 }
 
-/* 地图底图层：绝对定位铺满整个画布（含状态栏凹槽区域）并置于最底层，
-   其余 UI 元素通过各自的 z-index 浮于其上 */
+/* 鍦板浘搴曞浘灞傦細缁濆瀹氫綅閾烘弧鏁翠釜鐢诲竷锛堝惈鐘舵€佹爮鍑规Ы鍖哄煙锛夊苟缃簬鏈€搴曞眰锛?
+   鍏朵綑 UI 鍏冪礌閫氳繃鍚勮嚜鐨?z-index 娴簬鍏朵笂 */
 .map-base {
   position: absolute;
   inset: 0;
   z-index: 0;
 }
 
-/* ====== 限制区域 ====== */
+/* ====== 闄愬埗鍖哄煙 ====== */
 .restricted-zone {
   position: absolute;
   z-index: 2;
 }
 
-/* 禁飞区：左下角倾斜四边形，SVG 绘制边框和填充 */
+/* 绂侀鍖猴細宸︿笅瑙掑€炬枩鍥涜竟褰紝SVG 缁樺埗杈规鍜屽～鍏?*/
 .restricted-zone--red {
   left: 8%;
   bottom: 12%;
@@ -75,7 +75,7 @@
   height: 22%;
 }
 
-/* SVG 边框容器：铺满父元素 */
+/* SVG 杈规瀹瑰櫒锛氶摵婊＄埗鍏冪礌 */
 .restricted-zone__border {
   position: absolute;
   inset: 0;
@@ -83,7 +83,7 @@
   height: 100%;
 }
 
-/* 四角正方形节点标记：公共样式 */
+/* 鍥涜姝ｆ柟褰㈣妭鐐规爣璁帮細鍏叡鏍峰紡 */
 .corner-marker {
   position: absolute;
   width: 10px;
@@ -94,28 +94,28 @@
   pointer-events: none;
 }
 
-/* 左上角 (22%, 0%) */
+/* 宸︿笂瑙?(22%, 0%) */
 .corner-marker--tl {
   left: calc(22% - 5px);
   top: -5px;
 }
-/* 右上角 (78%, 8%) */
+/* 鍙充笂瑙?(78%, 8%) */
 .corner-marker--tr {
   left: calc(78% - 5px);
   top: calc(8% - 5px);
 }
-/* 右下角 (100%, 100%) */
+/* 鍙充笅瑙?(100%, 100%) */
 .corner-marker--br {
   right: -5px;
   bottom: -5px;
 }
-/* 左下角 (0%, 92%)：y=92%从顶部 = 8%从底部 */
+/* 宸︿笅瑙?(0%, 92%)锛歽=92%浠庨《閮?= 8%浠庡簳閮?*/
 .corner-marker--bl {
   left: -5px;
   bottom: calc(8% - 5px);
 }
 
-/* ====== 禁飞区 Hover 信息面板（设计稿精确还原）===== */
+/* ====== 绂侀鍖?Hover 淇℃伅闈㈡澘锛堣璁＄绮剧‘杩樺師锛?==== */
 .block_7 {
   box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.3);
   background-color: rgba(255, 95, 95, 0.4);
@@ -125,36 +125,36 @@
   height: 117px;
   border: 1px solid rgba(172, 14, 14, 1);
   z-index: 10;
-  /* 默认隐藏，hover 禁飞区时显示 */
+  /* 榛樿闅愯棌锛宧over 绂侀鍖烘椂鏄剧ず */
   opacity: 0;
   visibility: hidden;
   transition:
     opacity 0.2s ease,
     visibility 0.2s ease;
-  /* 定位在区域右上方（面板底部对齐区域顶部偏上） */
+  /* 瀹氫綅鍦ㄥ尯鍩熷彸涓婃柟锛堥潰鏉垮簳閮ㄥ榻愬尯鍩熼《閮ㄥ亸涓婏級 */
   left: 50%;
   bottom: 100%;
   transform: translateX(-30%);
   margin-bottom: 8px;
   pointer-events: none;
-  /* 整体 flex 纵向布局：顶部固定，底部三行自动填充并垂直居中 */
+  /* 鏁翠綋 flex 绾靛悜甯冨眬锛氶《閮ㄥ浐瀹氾紝搴曢儴涓夎鑷姩濉厖骞跺瀭鐩村眳涓?*/
   display: flex;
   flex-direction: column;
 }
 
-/* 顶部：标题 + 分隔线（固定高度，不参与居中） */
+/* 椤堕儴锛氭爣棰?+ 鍒嗛殧绾匡紙鍥哄畾楂樺害锛屼笉鍙備笌灞呬腑锛?*/
 .block_7__top {
   flex-shrink: 0;
 }
 
-/* 底部：来源/面积/模式三行容器，占据剩余空间并垂直居中 */
+/* 搴曢儴锛氭潵婧?闈㈢Н/妯″紡涓夎瀹瑰櫒锛屽崰鎹墿浣欑┖闂村苟鍨傜洿灞呬腑 */
 .block_7__bottom {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 8px; /* 三行之间的垂直间距 */
-  /* 不设 padding-bottom，让三行在整个剩余空间（分隔线→面板底边）内精确垂直居中 */
+  gap: 8px; /* 涓夎涔嬮棿鐨勫瀭鐩撮棿璺?*/
+  /* 涓嶈 padding-bottom锛岃涓夎鍦ㄦ暣涓墿浣欑┖闂达紙鍒嗛殧绾库啋闈㈡澘搴曡竟锛夊唴绮剧‘鍨傜洿灞呬腑 */
 }
 
 .restricted-zone--red:hover .block_7 {
@@ -190,7 +190,7 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  margin: 0 0 0 16px; /* 顶部间距改由 .block_7__bottom 的 gap 统一控制 */
+  margin: 0 0 0 16px; /* 椤堕儴闂磋窛鏀圭敱 .block_7__bottom 鐨?gap 缁熶竴鎺у埗 */
 }
 
 .box_13,
@@ -232,8 +232,8 @@
   margin-left: 8px;
 }
 
-/* 最后一行不再单独设置底部间距；
-   三行整体由 .block_7__bottom 的 justify-content:center 在剩余空间内垂直居中 */
+/* 鏈€鍚庝竴琛屼笉鍐嶅崟鐙缃簳閮ㄩ棿璺濓紱
+   涓夎鏁翠綋鐢?.block_7__bottom 鐨?justify-content:center 鍦ㄥ墿浣欑┖闂村唴鍨傜洿灞呬腑 */
 
 .restricted-zone--red img {
   width: 100%;
@@ -251,35 +251,35 @@
   transform: rotate(35deg);
 }
 
-/* ====== 飞行器 ====== */
+/* ====== 椋炶鍣?====== */
 .aircraft {
   position: absolute;
   z-index: 4;
-  display: flex; /* 改为 flex 以支持图标+标签垂直排列 */
+  display: flex; /* 鏀逛负 flex 浠ユ敮鎸佸浘鏍?鏍囩鍨傜洿鎺掑垪 */
   flex-direction: column;
   align-items: center;
-  width: auto; /* 宽度自适应内容 */
+  width: auto; /* 瀹藉害鑷€傚簲鍐呭 */
 }
 
-/* 可拖拽飞行器：鼠标手势 + 禁止选中文本，防止拖拽时高亮文字 */
+/* 鍙嫋鎷介琛屽櫒锛氶紶鏍囨墜鍔?+ 绂佹閫変腑鏂囨湰锛岄槻姝㈡嫋鎷芥椂楂樹寒鏂囧瓧 */
 .aircraft--draggable {
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
 }
 
-/* 拖拽进行中：改用 grabbing 光标 */
+/* 鎷栨嫿杩涜涓細鏀圭敤 grabbing 鍏夋爣 */
 .aircraft--draggable:active {
   cursor: grabbing;
 }
 
-/* ====== 设备联动高亮（与设备管理面板双向同步） ====== */
-/* hover 高亮：面板行 hover 或首页图标 hover 时，图标青色发光 */
+/* ====== 璁惧鑱斿姩楂樹寒锛堜笌璁惧绠＄悊闈㈡澘鍙屽悜鍚屾锛?====== */
+/* hover 楂樹寒锛氶潰鏉胯 hover 鎴栭椤靛浘鏍?hover 鏃讹紝鍥炬爣闈掕壊鍙戝厜 */
 .aircraft.aircraft--hovered img {
   filter: drop-shadow(0 0 8px rgba(135, 235, 255, 0.95));
 }
 
-/* 选中高亮：面板复选框勾选或首页图标单击选中时，图标常亮光圈 + 标签变青色 */
+/* 閫変腑楂樹寒锛氶潰鏉垮閫夋鍕鹃€夋垨棣栭〉鍥炬爣鍗曞嚮閫変腑鏃讹紝鍥炬爣甯镐寒鍏夊湀 + 鏍囩鍙橀潚鑹?*/
 .aircraft.aircraft--selected img {
   filter: drop-shadow(0 0 6px rgba(135, 235, 255, 0.75));
 }
@@ -287,15 +287,15 @@
   color: #87ebff;
 }
 
-/* 所有飞行器内部的 img 统一填满容器并保持比例，
-   避免图片原始尺寸溢出导致视觉大小不一致 */
+/* 鎵€鏈夐琛屽櫒鍐呴儴鐨?img 缁熶竴濉弧瀹瑰櫒骞朵繚鎸佹瘮渚嬶紝
+   閬垮厤鍥剧墖鍘熷灏哄婧㈠嚭瀵艰嚧瑙嗚澶у皬涓嶄竴鑷?*/
 .aircraft img {
-  width: 48px; /* 统一图标尺寸 */
+  width: 48px; /* 缁熶竴鍥炬爣灏哄 */
   height: 48px;
   object-fit: contain;
 }
 
-/* 飞行器名称标签 */
+/* 椋炶鍣ㄥ悕绉版爣绛?*/
 .aircraft-label {
   display: block;
   margin-top: 4px;
@@ -307,13 +307,55 @@
   line-height: 1.2;
 }
 
-/* 离线设备：hover 面板定位上下文 */
+/* ===== 杩旇埅鎸囩ず锛堝湴闈㈠渾褰㈡爣蹇?+ 缁胯壊鍨傜嚎锛岃嚜椋炴満鍥炬爣鍚戜笂锛?===== */
+/* 杩旇埅闈㈡澘鎵撳紑鏈熼棿锛岄€変腑椋炴満姝ｄ笂鏂规覆鏌擄細鍦伴潰鍦嗘爣锛?8px 鐧芥弿杈瑰崐閫忔槑鍦?+ 绔栫洿 H 鍥炬爣锛夛紝
+   缁胯壊鍨傜嚎鑷渾鏍囧簳閮ㄥ悜涓嬫寚鍚戦鏈哄浘鏍囬《閮ㄣ€傚鍣ㄩ敋瀹氫簬椋炴満鍥炬爣椤堕儴銆佹按骞冲眳涓€佸悜涓婂欢浼革紱
+   涓嶆嫤鎴紶鏍囦簨浠讹紝涓嶅奖鍝嶆嫋鎷?hover */
+.aircraft-return-indicator {
+  position: absolute;
+  bottom: 56px; /* 鍥炬爣 48px + 8px 闂撮殭锛氬鍣ㄥ簳杈逛綅浜庡浘鏍囬《缂?*/
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+/* 鍦伴潰鏍囧織锛?8px 鐧芥弿杈瑰崐閫忔槑鍦嗭紙璁捐绋胯鏍硷級 */
+.aircraft-return-indicator__ground {
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 鍦嗗唴绔栫洿 H 鍥炬爣锛圫VG 鑷粯锛?0脳24锛夛細flex 灞呬腑浜庡渾鍐?*/
+.aircraft-return-indicator__h {
+  width: 20px;
+  height: 24px;
+}
+
+/* 缁胯壊鍨傜洿绾匡細0 瀹?+ 1px 鍏ㄨ竟妗?= 2px 瀹藉疄蹇冪嚎锛堝師 8px 缁?3/4锛?*/
+.aircraft-return-indicator__line {
+  width: 0;
+  height: 288px;
+  border: 1px solid #00ff95;
+  box-sizing: content-box;
+}
+
+/* 绂荤嚎璁惧锛歨over 闈㈡澘瀹氫綅涓婁笅鏂?*/
 .aircraft--gray {
   left: 56%;
   top: 59%;
 }
 
-/* 旋转只作用于图标，不影响标签 */
+/* 鏃嬭浆鍙綔鐢ㄤ簬鍥炬爣锛屼笉褰卞搷鏍囩 */
 .aircraft--red img {
   transform: rotate(-45deg);
 }
@@ -330,11 +372,11 @@
   transform: rotate(95deg);
 }
 
-/* ====== 离线设备 Hover 信息面板（设计稿精确还原）===== */
+/* ====== 绂荤嚎璁惧 Hover 淇℃伅闈㈡澘锛堣璁＄绮剧‘杩樺師锛?==== */
 .aircraft-hover-panel {
   position: absolute;
   left: calc(100% + 12px);
-  /* 面板底部对齐飞机图标的垂直中心线（图标 48px 高，中心在 24px 处） */
+  /* 闈㈡澘搴曢儴瀵归綈椋炴満鍥炬爣鐨勫瀭鐩翠腑蹇冪嚎锛堝浘鏍?48px 楂橈紝涓績鍦?24px 澶勶級 */
   top: 24px;
   transform: translateY(-100%);
   width: 203px;
@@ -355,37 +397,37 @@
   font-family: 'MiSans-Regular';
 }
 
-/* hover 时显示面板 */
+/* hover 鏃舵樉绀洪潰鏉?*/
 .aircraft--gray:hover .aircraft-hover-panel {
   opacity: 1;
   visibility: visible;
 }
 
-/* 面板整体：flex 纵向布局，让下方内容区自动填充并垂直居中 */
+/* 闈㈡澘鏁翠綋锛歠lex 绾靛悜甯冨眬锛岃涓嬫柟鍐呭鍖鸿嚜鍔ㄥ～鍏呭苟鍨傜洿灞呬腑 */
 .aircraft-hover-panel {
   display: flex;
   flex-direction: column;
 }
 
-/* 上半部分：头部 + 分隔线（固定高度） */
+/* 涓婂崐閮ㄥ垎锛氬ご閮?+ 鍒嗛殧绾匡紙鍥哄畾楂樺害锛?*/
 .aircraft-hover-panel__top {
   flex-shrink: 0;
 }
 
-/* 下半部分：信息行区域（自动填充剩余空间，仅垂直居中，保持左对齐） */
+/* 涓嬪崐閮ㄥ垎锛氫俊鎭鍖哄煙锛堣嚜鍔ㄥ～鍏呭墿浣欑┖闂达紝浠呭瀭鐩村眳涓紝淇濇寔宸﹀榻愶級 */
 .aircraft-hover-panel__bottom {
   flex: 1;
   display: flex;
-  align-items: center; /* 垂直居中 */
+  align-items: center; /* 鍨傜洿灞呬腑 */
 }
 
-/* 面板头部：名称 + 状态（与下方信息行左右对齐） */
+/* 闈㈡澘澶撮儴锛氬悕绉?+ 鐘舵€侊紙涓庝笅鏂逛俊鎭宸﹀彸瀵归綈锛?*/
 .aircraft-hover-panel__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* 不设 padding-left：让"08号无人机"与下方竖线左端对齐（均在内容区最左侧），
-     "离线"仍贴右侧不变 */
+  /* 涓嶈 padding-left锛氳"08鍙锋棤浜烘満"涓庝笅鏂圭珫绾垮乏绔榻愶紙鍧囧湪鍐呭鍖烘渶宸︿晶锛夛紝
+     "绂荤嚎"浠嶈创鍙充晶涓嶅彉 */
 }
 
 .aircraft-hover-panel__name {
@@ -410,24 +452,24 @@
   white-space: nowrap;
 }
 
-/* 分隔线：贯穿面板全宽，无前后间距 */
+/* 鍒嗛殧绾匡細璐┛闈㈡澘鍏ㄥ锛屾棤鍓嶅悗闂磋窛 */
 .aircraft-hover-panel__divider {
   height: 1px;
   background: rgba(198, 198, 198, 0.5);
   border-radius: 0;
-  margin: 6px -12px; /* 抵消面板左右 padding，实现闭环 */
+  margin: 6px -12px; /* 鎶垫秷闈㈡澘宸﹀彸 padding锛屽疄鐜伴棴鐜?*/
 }
 
-/* 信息行 */
+/* 淇℃伅琛?*/
 .aircraft-hover-panel__info {
   display: flex;
   align-items: center;
-  width: 100%; /* 占满内容区，配合下方 time 的 margin-left:auto，
-                            将时间值推到最右端，与上方"离线"右端对齐 */
+  width: 100%; /* 鍗犳弧鍐呭鍖猴紝閰嶅悎涓嬫柟 time 鐨?margin-left:auto锛?
+                            灏嗘椂闂村€兼帹鍒版渶鍙崇锛屼笌涓婃柟"绂荤嚎"鍙崇瀵归綈 */
   white-space: nowrap;
 }
 
-/* 竖线装饰：与上方"08号无人机"文字左端对齐，与右侧"离线时间："间隔 4px */
+/* 绔栫嚎瑁呴グ锛氫笌涓婃柟"08鍙锋棤浜烘満"鏂囧瓧宸︾瀵归綈锛屼笌鍙充晶"绂荤嚎鏃堕棿锛?闂撮殧 4px */
 .aircraft-hover-panel__bar {
   width: 2px;
   height: 8px;
@@ -437,7 +479,7 @@
   margin-right: 4px;
 }
 
-/* "离线时间："标签 */
+/* "绂荤嚎鏃堕棿锛?鏍囩 */
 .aircraft-hover-panel__label {
   font-family: 'MiSans-Regular';
   font-weight: 400;
@@ -449,7 +491,7 @@
   flex-shrink: 0;
 }
 
-/* 日期时间值 */
+/* 鏃ユ湡鏃堕棿鍊?*/
 .aircraft-hover-panel__time {
   font-family: 'MiSans-Regular';
   font-weight: 400;
@@ -458,17 +500,17 @@
   text-align: left;
   font-style: normal;
   text-transform: none;
-  /* 将时间值推至行尾，与上方头部的"离线"状态右端对齐；
-     左侧"竖线 + 离线时间："则与"08号无人机"左端对齐，
-     从而实现两行文案左右两端对齐 */
+  /* 灏嗘椂闂村€兼帹鑷宠灏撅紝涓庝笂鏂瑰ご閮ㄧ殑"绂荤嚎"鐘舵€佸彸绔榻愶紱
+     宸︿晶"绔栫嚎 + 绂荤嚎鏃堕棿锛?鍒欎笌"08鍙锋棤浜烘満"宸︾瀵归綈锛?
+     浠庤€屽疄鐜颁袱琛屾枃妗堝乏鍙充袱绔榻?*/
   margin-left: auto;
 }
 
-/* ====== 在线设备 Hover 信息面板（蓝色，设计稿精确还原） ====== */
+/* ====== 鍦ㄧ嚎璁惧 Hover 淇℃伅闈㈡澘锛堣摑鑹诧紝璁捐绋跨簿纭繕鍘燂級 ====== */
 .aircraft-info-panel {
   position: absolute;
   left: calc(100% + 12px);
-  /* 面板底部对齐飞机图标的垂直中心线（图标 48px 高，中心在 24px 处） */
+  /* 闈㈡澘搴曢儴瀵归綈椋炴満鍥炬爣鐨勫瀭鐩翠腑蹇冪嚎锛堝浘鏍?48px 楂橈紝涓績鍦?24px 澶勶級 */
   top: 24px;
   transform: translateY(-100%);
   width: 229px;
@@ -486,28 +528,28 @@
   pointer-events: none;
   color: #fff;
   font-family: 'MiSans-Regular';
-  /* 整体 flex 纵向布局：顶部固定，底部三行自动填充并垂直居中 */
+  /* 鏁翠綋 flex 绾靛悜甯冨眬锛氶《閮ㄥ浐瀹氾紝搴曢儴涓夎鑷姩濉厖骞跺瀭鐩村眳涓?*/
   display: flex;
   flex-direction: column;
 }
 
-/* hover 时显示：所有非 gray 的在线飞行器 */
+/* hover 鏃舵樉绀猴細鎵€鏈夐潪 gray 鐨勫湪绾块琛屽櫒 */
 .aircraft--draggable:not(.aircraft--gray):hover .aircraft-info-panel {
   opacity: 1;
   visibility: visible;
 }
 
-/* 顶部：标题行 + 分隔线（固定高度） */
+/* 椤堕儴锛氭爣棰樿 + 鍒嗛殧绾匡紙鍥哄畾楂樺害锛?*/
 .aircraft-info-panel__top {
   flex-shrink: 0;
 }
 
-/* 标题行：名称在左，电量/信号指示器在右。
-   - 保持固定 height:18px（紧凑视觉），放大的电池图标通过 overflow:visible 对称溢出，
-     不通过增加高度来"撑开"对齐空间；
-   - align-items:center 让所有元素按容器中心对齐；
-   - 信号偏下问题由 .aircraft-info-panel__signal-icon 的 display:block 单独修复
-     （消除 SVG 默认 inline baseline 的 descender 偏移），而非靠增加 header 高度。 */
+/* 鏍囬琛岋細鍚嶇О鍦ㄥ乏锛岀數閲?淇″彿鎸囩ず鍣ㄥ湪鍙炽€?
+   - 淇濇寔鍥哄畾 height:18px锛堢揣鍑戣瑙夛級锛屾斁澶х殑鐢垫睜鍥炬爣閫氳繃 overflow:visible 瀵圭О婧㈠嚭锛?
+     涓嶉€氳繃澧炲姞楂樺害鏉?鎾戝紑"瀵归綈绌洪棿锛?
+   - align-items:center 璁╂墍鏈夊厓绱犳寜瀹瑰櫒涓績瀵归綈锛?
+   - 淇″彿鍋忎笅闂鐢?.aircraft-info-panel__signal-icon 鐨?display:block 鍗曠嫭淇
+     锛堟秷闄?SVG 榛樿 inline baseline 鐨?descender 鍋忕Щ锛夛紝鑰岄潪闈犲鍔?header 楂樺害銆?*/
 .aircraft-info-panel__header {
   display: flex;
   align-items: center;
@@ -521,7 +563,7 @@
   color: #fff;
   white-space: nowrap;
   line-height: 16px;
-  /* 将指示器推至右侧 */
+  /* 灏嗘寚绀哄櫒鎺ㄨ嚦鍙充晶 */
   margin-right: auto;
 }
 
@@ -532,13 +574,13 @@
   margin-left: 8px;
 }
 
-/* 提升特异性以覆盖 .aircraft img (0,1,1) 和 .aircraft--{color} img (0,2,1) 规则。
-   选择器 .aircraft-info-panel img.aircraft-info-panel__battery-icon = (0,2,1)，
-   与 .aircraft--red img 同特异性，但本规则定义在其后，故优先级更高。
-    battery-mid.png 原图为 24×24，内部电池图形本就竖向绘制（边界框 10×18）：
-    - 使用竖向盒模型 20×33，电池自然竖向显示（与设计稿一致，不再放大）；
-    - 必须显式 transform:none，覆盖父级 .aircraft--{color} img 的旋转规则
-      (rotate -45/45/100/95/135deg)，否则电池图标会被父级旋转成倾斜/横向。 */
+/* 鎻愬崌鐗瑰紓鎬т互瑕嗙洊 .aircraft img (0,1,1) 鍜?.aircraft--{color} img (0,2,1) 瑙勫垯銆?
+   閫夋嫨鍣?.aircraft-info-panel img.aircraft-info-panel__battery-icon = (0,2,1)锛?
+   涓?.aircraft--red img 鍚岀壒寮傛€э紝浣嗘湰瑙勫垯瀹氫箟鍦ㄥ叾鍚庯紝鏁呬紭鍏堢骇鏇撮珮銆?
+    battery-mid.png 鍘熷浘涓?24脳24锛屽唴閮ㄧ數姹犲浘褰㈡湰灏辩珫鍚戠粯鍒讹紙杈圭晫妗?10脳18锛夛細
+    - 浣跨敤绔栧悜鐩掓ā鍨?20脳33锛岀數姹犺嚜鐒剁珫鍚戞樉绀猴紙涓庤璁＄涓€鑷达紝涓嶅啀鏀惧ぇ锛夛紱
+    - 蹇呴』鏄惧紡 transform:none锛岃鐩栫埗绾?.aircraft--{color} img 鐨勬棆杞鍒?
+      (rotate -45/45/100/95/135deg)锛屽惁鍒欑數姹犲浘鏍囦細琚埗绾ф棆杞垚鍊炬枩/妯悜銆?*/
 .aircraft-info-panel img.aircraft-info-panel__battery-icon {
   flex-shrink: 0;
   width: 20px;
@@ -557,25 +599,25 @@
 .aircraft-info-panel__signal-icon {
   flex-shrink: 0;
   margin-left: 4px;
-  /* 修复"信号偏下"：
-   - display:block 消除 SVG 作为 inline 元素在 flex 中的 baseline 残留；
-   - align-self:center 显式垂直居中；
-   - translateY(-2px) 视觉补偿——SVG 内 4 根信号条底部对齐到 viewBox 底部，
-     实心集中在下半部，视觉重心偏下，上移 2px 让其与电池图标/46%文字视觉对齐；
-   - 全程不增加 header/indicators 容器高度。 */
+  /* 淇"淇″彿鍋忎笅"锛?
+   - display:block 娑堥櫎 SVG 浣滀负 inline 鍏冪礌鍦?flex 涓殑 baseline 娈嬬暀锛?
+   - align-self:center 鏄惧紡鍨傜洿灞呬腑锛?
+   - translateY(-2px) 瑙嗚琛ュ伩鈥斺€擲VG 鍐?4 鏍逛俊鍙锋潯搴曢儴瀵归綈鍒?viewBox 搴曢儴锛?
+     瀹炲績闆嗕腑鍦ㄤ笅鍗婇儴锛岃瑙夐噸蹇冨亸涓嬶紝涓婄Щ 2px 璁╁叾涓庣數姹犲浘鏍?46%鏂囧瓧瑙嗚瀵归綈锛?
+   - 鍏ㄧ▼涓嶅鍔?header/indicators 瀹瑰櫒楂樺害銆?*/
   display: block;
   align-self: center;
   transform: translateY(-2px);
 }
 
-/* 分隔线：贯穿面板全宽 */
+/* 鍒嗛殧绾匡細璐┛闈㈡澘鍏ㄥ */
 .aircraft-info-panel__divider {
   height: 1px;
   background: rgba(75, 188, 249, 0.5);
   margin: 6px 1px 0;
 }
 
-/* 底部：位置/速度/模式+状态 三行，垂直居中填充剩余空间 */
+/* 搴曢儴锛氫綅缃?閫熷害/妯″紡+鐘舵€?涓夎锛屽瀭鐩村眳涓～鍏呭墿浣欑┖闂?*/
 .aircraft-info-panel__bottom {
   flex: 1;
   display: flex;
@@ -584,7 +626,7 @@
   gap: 8px;
 }
 
-/* 信息行 */
+/* 淇℃伅琛?*/
 .aircraft-info-panel__row {
   display: flex;
   align-items: center;
@@ -592,7 +634,7 @@
   white-space: nowrap;
 }
 
-/* 竖线装饰条（青色） */
+/* 绔栫嚎瑁呴グ鏉★紙闈掕壊锛?*/
 .aircraft-info-panel__bar {
   width: 2px;
   height: 8px;
@@ -615,7 +657,7 @@
   margin-left: 8px;
 }
 
-/* 双列行（模式 + 状态）：第二组竖线与前一组保持 73px 间隔 */
+/* 鍙屽垪琛岋紙妯″紡 + 鐘舵€侊級锛氱浜岀粍绔栫嚎涓庡墠涓€缁勪繚鎸?73px 闂撮殧 */
 .aircraft-info-panel__row--dual .aircraft-info-panel__bar--gap {
   margin-left: 73px;
 }
@@ -640,11 +682,11 @@
   top: 71.5%;
 }
 
-/* ====== 巡检区域（高精度还原）===== */
+/* ====== 宸℃鍖哄煙锛堥珮绮惧害杩樺師锛?==== */
 .inspection-zone {
   position: absolute;
   z-index: 1;
-  /* 精确还原：占据首页中心的小块区域（再次缩小至3/4） */
+  /* 绮剧‘杩樺師锛氬崰鎹椤典腑蹇冪殑灏忓潡鍖哄煙锛堝啀娆＄缉灏忚嚦3/4锛?*/
   left: 38.75%;
   top: 25.5%;
   width: 22.5%;
@@ -655,12 +697,12 @@
   -webkit-user-select: none;
 }
 
-/* 拖拽进行中：改用 grabbing 光标 */
+/* 鎷栨嫿杩涜涓細鏀圭敤 grabbing 鍏夋爣 */
 .inspection-zone:active {
   cursor: grabbing;
 }
 
-/* 巡检区域背景：半透明蓝色，精确匹配参考图 */
+/* 宸℃鍖哄煙鑳屾櫙锛氬崐閫忔槑钃濊壊锛岀簿纭尮閰嶅弬鑰冨浘 */
 .inspection-zone__bg {
   position: absolute;
   inset: 0;
@@ -677,7 +719,7 @@
     border-color 0.2s ease;
 }
 
-/* Hover：巡检区域背景高亮 + 内发光 */
+/* Hover锛氬贰妫€鍖哄煙鑳屾櫙楂樹寒 + 鍐呭彂鍏?*/
 .inspection-zone:hover .inspection-zone__bg {
   background: rgba(32, 132, 186, 0.3);
   border-color: rgba(135, 235, 255, 0.6);
@@ -685,7 +727,7 @@
   box-shadow: inset 0px 0px 12px 0px #87ebff;
 }
 
-/* 轨迹线 hover：加粗 + 加亮 */
+/* 杞ㄨ抗绾?hover锛氬姞绮?+ 鍔犱寒 */
 .inspection-zone__path {
   transition:
     stroke 0.2s ease,
@@ -706,11 +748,11 @@
   stroke: #6eff9a;
 }
 
-/* ====== 巡检区域 Hover 信息面板（蓝色，定位在区域右上角外上方）====== */
+/* ====== 宸℃鍖哄煙 Hover 淇℃伅闈㈡澘锛堣摑鑹诧紝瀹氫綅鍦ㄥ尯鍩熷彸涓婅澶栦笂鏂癸級====== */
 .inspection-zone__panel {
   position: absolute;
-  bottom: 100%; /* 面板底部对齐巡检区域顶部（悬浮在区域上方） */
-  right: -100px; /* 面板右边缘相对巡检区域右边缘向右偏移 100px */
+  bottom: 100%; /* 闈㈡澘搴曢儴瀵归綈宸℃鍖哄煙椤堕儴锛堟偓娴湪鍖哄煙涓婃柟锛?*/
+  right: -100px; /* 闈㈡澘鍙宠竟缂樼浉瀵瑰贰妫€鍖哄煙鍙宠竟缂樺悜鍙冲亸绉?100px */
   margin-bottom: 8px;
   z-index: 20;
   box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.3);
@@ -721,32 +763,32 @@
   border: 1px solid rgba(75, 188, 249, 1);
   color: #fff;
   font-family: 'MiSans-Regular';
-  /* 默认隐藏，hover 巡检区域时显示 */
+  /* 榛樿闅愯棌锛宧over 宸℃鍖哄煙鏃舵樉绀?*/
   opacity: 0;
   visibility: hidden;
   transition:
     opacity 0.2s ease,
     visibility 0.2s ease;
   pointer-events: none;
-  /* 整体 flex 纵向布局：标题+分隔线固定高度，body 自动填充剩余空间并垂直居中 */
+  /* 鏁翠綋 flex 绾靛悜甯冨眬锛氭爣棰?鍒嗛殧绾垮浐瀹氶珮搴︼紝body 鑷姩濉厖鍓╀綑绌洪棿骞跺瀭鐩村眳涓?*/
   display: flex;
   flex-direction: column;
 }
 
-/* hover 时显示面板 */
+/* hover 鏃舵樉绀洪潰鏉?*/
 .inspection-zone:hover .inspection-zone__panel {
   opacity: 1;
   visibility: visible;
 }
 
-/* 顶部容器：标题+分隔线，固定高度，不参与 body 的垂直居中分配
-   （完全复刻禁飞区 .block_7__top 的模式） */
+/* 椤堕儴瀹瑰櫒锛氭爣棰?鍒嗛殧绾匡紝鍥哄畾楂樺害锛屼笉鍙備笌 body 鐨勫瀭鐩村眳涓垎閰?
+   锛堝畬鍏ㄥ鍒荤椋炲尯 .block_7__top 鐨勬ā寮忥級 */
 .inspection-zone__panel-top {
   flex-shrink: 0;
 }
 
-/* 标题：01号巡检区 —— 完全复刻禁飞区 .text_8 的设计稿原始定位
-   （block 布局 + margin 定位，不使用 flex 撑高，保持设计稿原始视觉位置） */
+/* 鏍囬锛?1鍙峰贰妫€鍖?鈥斺€?瀹屽叏澶嶅埢绂侀鍖?.text_8 鐨勮璁＄鍘熷瀹氫綅
+   锛坆lock 甯冨眬 + margin 瀹氫綅锛屼笉浣跨敤 flex 鎾戦珮锛屼繚鎸佽璁＄鍘熷瑙嗚浣嶇疆锛?*/
 .inspection-zone__panel-title {
   display: block;
   width: 71px;
@@ -761,7 +803,7 @@
   margin: 9px 0 0 16px;
 }
 
-/* 分隔线：完全复刻禁飞区 .section_3 的 margin 模式 */
+/* 鍒嗛殧绾匡細瀹屽叏澶嶅埢绂侀鍖?.section_3 鐨?margin 妯″紡 */
 .inspection-zone__panel-divider {
   background-color: rgba(75, 188, 249, 0.5);
   width: 140px;
@@ -769,8 +811,8 @@
   margin: 8px 0 0 1px;
 }
 
-/* Body：两行的容器，占满分隔线下方的剩余空间，整体垂直居中
-   （完全复刻禁飞区 .block_7__bottom 的模式） */
+/* Body锛氫袱琛岀殑瀹瑰櫒锛屽崰婊″垎闅旂嚎涓嬫柟鐨勫墿浣欑┖闂达紝鏁翠綋鍨傜洿灞呬腑
+   锛堝畬鍏ㄥ鍒荤椋炲尯 .block_7__bottom 鐨勬ā寮忥級 */
 .inspection-zone__panel-body {
   flex: 1;
   display: flex;
@@ -779,25 +821,25 @@
   gap: 8px;
 }
 
-/* 信息行：完全复刻禁飞区 .section_4/5/6 的模式
-   （flex + align-items:center，不设固定 height，让内容自然撑开） */
+/* 淇℃伅琛岋細瀹屽叏澶嶅埢绂侀鍖?.section_4/5/6 鐨勬ā寮?
+   锛坒lex + align-items:center锛屼笉璁惧浐瀹?height锛岃鍐呭鑷劧鎾戝紑锛?*/
 .inspection-zone__panel-row {
   display: flex;
   align-items: center;
   white-space: nowrap;
 }
 
-/* 面积行 */
+/* 闈㈢Н琛?*/
 .inspection-zone__panel-row--area {
   margin-left: 16px;
 }
 
-/* 关联任务行 */
+/* 鍏宠仈浠诲姟琛?*/
 .inspection-zone__panel-row--task {
   margin-left: 16px;
 }
 
-/* 竖线装饰条（青色）—— 完全复刻禁飞区 .box_13 */
+/* 绔栫嚎瑁呴グ鏉★紙闈掕壊锛夆€斺€?瀹屽叏澶嶅埢绂侀鍖?.box_13 */
 .inspection-zone__panel-bar {
   background-color: rgba(138, 248, 234, 1);
   width: 2px;
@@ -805,8 +847,8 @@
   flex-shrink: 0;
 }
 
-/* 标签（面积 / 关联任务）—— 不设固定 width，
-   让文字自适应宽度，避免"关联任务"4字溢出与后面的值重叠 */
+/* 鏍囩锛堥潰绉?/ 鍏宠仈浠诲姟锛夆€斺€?涓嶈鍥哄畾 width锛?
+   璁╂枃瀛楄嚜閫傚簲瀹藉害锛岄伩鍏?鍏宠仈浠诲姟"4瀛楁孩鍑轰笌鍚庨潰鐨勫€奸噸鍙?*/
 .inspection-zone__panel-label {
   overflow-wrap: break-word;
   color: rgba(255, 255, 255, 1);
@@ -819,7 +861,7 @@
   flex-shrink: 0;
 }
 
-/* 值（109m / 情报侦察）—— 完全复刻禁飞区 .text_10 */
+/* 鍊硷紙109m / 鎯呮姤渚﹀療锛夆€斺€?瀹屽叏澶嶅埢绂侀鍖?.text_10 */
 .inspection-zone__panel-value {
   overflow-wrap: break-word;
   color: rgba(255, 255, 255, 1);
@@ -831,7 +873,7 @@
   margin-left: 8px;
 }
 
-/* 面积单位上标（²） */
+/* 闈㈢Н鍗曚綅涓婃爣锛埪诧級 */
 .inspection-zone__panel-sup {
   color: rgba(255, 255, 255, 1);
   font-size: 6px;
@@ -842,7 +884,7 @@
   align-self: flex-start;
 }
 
-/* 轨迹线 SVG 容器：铺满巡检区域 */
+/* 杞ㄨ抗绾?SVG 瀹瑰櫒锛氶摵婊″贰妫€鍖哄煙 */
 .inspection-zone__trajectories {
   position: absolute;
   inset: 0;
@@ -850,10 +892,10 @@
   height: 100%;
 }
 
-/* ====== 底部操作栏 ====== */
+/* ====== 搴曢儴鎿嶄綔鏍?====== */
 .map-footer {
-  /* 容器不接收鼠标事件：透明盒横向铺满底部，会遮挡水平居中按钮条的 hover 命中；
-     仅子元素（应急按钮/比例尺）恢复接收 */
+  /* 瀹瑰櫒涓嶆帴鏀堕紶鏍囦簨浠讹細閫忔槑鐩掓í鍚戦摵婊″簳閮紝浼氶伄鎸℃按骞冲眳涓寜閽潯鐨?hover 鍛戒腑锛?
+     浠呭瓙鍏冪礌锛堝簲鎬ユ寜閽?姣斾緥灏猴級鎭㈠鎺ユ敹 */
   pointer-events: none;
   position: absolute;
   right: clamp(80px, 5.2vw, 100px);
@@ -888,7 +930,7 @@
   justify-items: center;
   color: #ffffff66;
   font-size: clamp(7px, 0.73vw, 14px);
-  /* 比例尺宽度现由 MapScale 组件根据缩放级别动态计算并内联设置 */
+  /* 姣斾緥灏哄搴︾幇鐢?MapScale 缁勪欢鏍规嵁缂╂斁绾у埆鍔ㄦ€佽绠楀苟鍐呰仈璁剧疆 */
 }
 
 .scale span {
@@ -900,9 +942,9 @@
 }
 
 
-/* ====== 底部水平居中按钮条 ====== */
-/* 13 段弧形背景切图拼接：容器绝对定位于底部水平居中，与 .map-footer 同一底部基线；
-   各切缝为斜边，按切缝角逐缝补偿水平间距使垂直缝宽视觉相等（见下方 nth-child 规则） */
+/* ====== 搴曢儴姘村钩灞呬腑鎸夐挳鏉?====== */
+/* 13 娈靛姬褰㈣儗鏅垏鍥炬嫾鎺ワ細瀹瑰櫒缁濆瀹氫綅浜庡簳閮ㄦ按骞冲眳涓紝涓?.map-footer 鍚屼竴搴曢儴鍩虹嚎锛?
+   鍚勫垏缂濅负鏂滆竟锛屾寜鍒囩紳瑙掗€愮紳琛ュ伩姘村钩闂磋窛浣垮瀭鐩寸紳瀹借瑙夌浉绛夛紙瑙佷笅鏂?nth-child 瑙勫垯锛?*/
 .bottom-bar {
   position: absolute;
   left: 50%;
@@ -910,45 +952,45 @@
   transform: translateX(-50%);
   z-index: 5;
   display: flex;
-  /* 不使用统一 gap：各段切图自带不相等的透明内边距，且切缝为倾角不同的斜边
-     （端部约 45°、中部近垂直），统一水平间距无法得到相等的视觉缝宽，
-     改为下方 .bottom-bar__item:nth-child 逐缝 margin-right 精确补偿 */
+  /* 涓嶄娇鐢ㄧ粺涓€ gap锛氬悇娈靛垏鍥捐嚜甯︿笉鐩哥瓑鐨勯€忔槑鍐呰竟璺濓紝涓斿垏缂濅负鍊捐涓嶅悓鐨勬枩杈?
+     锛堢閮ㄧ害 45掳銆佷腑閮ㄨ繎鍨傜洿锛夛紝缁熶竴姘村钩闂磋窛鏃犳硶寰楀埌鐩哥瓑鐨勮瑙夌紳瀹斤紝
+     鏀逛负涓嬫柟 .bottom-bar__item:nth-child 閫愮紳 margin-right 绮剧‘琛ュ伩 */
 }
 
-/* 各段外层 wrapper：承担逐缝负 margin 并承载中文 tooltip。整体 pointer-events:none
-   （自身不参与命中测试），命中完全由内部 button 的 clip-path 多边形决定，
-   避免 wrapper 矩形在负 margin 重叠区拦截相邻段的鼠标事件 */
+/* 鍚勬澶栧眰 wrapper锛氭壙鎷呴€愮紳璐?margin 骞舵壙杞戒腑鏂?tooltip銆傛暣浣?pointer-events:none
+   锛堣嚜韬笉鍙備笌鍛戒腑娴嬭瘯锛夛紝鍛戒腑瀹屽叏鐢卞唴閮?button 鐨?clip-path 澶氳竟褰㈠喅瀹氾紝
+   閬垮厤 wrapper 鐭╁舰鍦ㄨ礋 margin 閲嶅彔鍖烘嫤鎴浉閭绘鐨勯紶鏍囦簨浠?*/
 .bottom-bar__item {
   position: relative;
   display: block;
   pointer-events: none;
 }
 
-/* 逐缝水平间距：以"垂直于斜缝方向的视觉缝宽统一为 12px"为目标。
-   margin = 12 / cos(切缝角 θ) − 零间距拼接水平缝宽 h0；h0 与 θ 由
-   scripts/equalize_bottom_bar_gaps.py 对各切图不透明边缘做最小二乘拟合求得。
-   切图自带大量不相等的透明内边距（端部缝 h0 达 61px、中部仅 9px），故多数
-   margin 为负值——仅重叠相邻切图的透明区域，不遮挡实体像素。
-   clamp 缩放曲线与按钮高度 clamp(36px, 3.75vw, 72px) 一致：
-   1920px 视口取设计值（绝对值大的一端），960px 最小视口取其一半 */
-.bottom-bar__item:nth-child(1) { margin-right: clamp(-44.43px, -2.3141vw, -22.21px); } /* 缝角约45.4° */
-.bottom-bar__item:nth-child(2) { margin-right: clamp(-22.57px, -1.1755vw, -11.29px); } /* 约33.7° */
-.bottom-bar__item:nth-child(3) { margin-right: clamp(-14.58px, -0.7594vw, -7.29px); } /* 约26.6° */
-.bottom-bar__item:nth-child(4) { margin-right: clamp(-14.58px, -0.7594vw, -7.29px); } /* 约26.6° */
-.bottom-bar__item:nth-child(5) { margin-right: clamp(-6.02px, -0.3135vw, -3.01px); } /* 约18.4° */
-.bottom-bar__item:nth-child(6) { margin-right: clamp(1.33px, 0.1391vw, 2.67px); } /* 约9.4° */
-.bottom-bar__item:nth-child(7) { margin-right: clamp(1.42px, 0.1474vw, 2.83px); } /* 约9.5° */
-.bottom-bar__item:nth-child(8) { margin-right: clamp(-6.07px, -0.3161vw, -3.04px); } /* 约18.6° */
-.bottom-bar__item:nth-child(9) { margin-right: clamp(-14.08px, -0.7333vw, -7.04px); } /* 约26.6° */
-.bottom-bar__item:nth-child(10) { margin-right: clamp(-14.59px, -0.7599vw, -7.29px); } /* 约26.5° */
-.bottom-bar__item:nth-child(11) { margin-right: clamp(-22.58px, -1.176vw, -11.29px); } /* 约33.7° */
-.bottom-bar__item:nth-child(12) { margin-right: clamp(-44.45px, -2.3151vw, -22.23px); } /* 约45.4° */
+/* 閫愮紳姘村钩闂磋窛锛氫互"鍨傜洿浜庢枩缂濇柟鍚戠殑瑙嗚缂濆缁熶竴涓?12px"涓虹洰鏍囥€?
+   margin = 12 / cos(鍒囩紳瑙?胃) 鈭?闆堕棿璺濇嫾鎺ユ按骞崇紳瀹?h0锛沨0 涓?胃 鐢?
+   scripts/equalize_bottom_bar_gaps.py 瀵瑰悇鍒囧浘涓嶉€忔槑杈圭紭鍋氭渶灏忎簩涔樻嫙鍚堟眰寰椼€?
+   鍒囧浘鑷甫澶ч噺涓嶇浉绛夌殑閫忔槑鍐呰竟璺濓紙绔儴缂?h0 杈?61px銆佷腑閮ㄤ粎 9px锛夛紝鏁呭鏁?
+   margin 涓鸿礋鍊尖€斺€斾粎閲嶅彔鐩搁偦鍒囧浘鐨勯€忔槑鍖哄煙锛屼笉閬尅瀹炰綋鍍忕礌銆?
+   clamp 缂╂斁鏇茬嚎涓庢寜閽珮搴?clamp(36px, 3.75vw, 72px) 涓€鑷达細
+   1920px 瑙嗗彛鍙栬璁″€硷紙缁濆鍊煎ぇ鐨勪竴绔級锛?60px 鏈€灏忚鍙ｅ彇鍏朵竴鍗?*/
+.bottom-bar__item:nth-child(1) { margin-right: clamp(-44.43px, -2.3141vw, -22.21px); } /* 缂濊绾?5.4掳 */
+.bottom-bar__item:nth-child(2) { margin-right: clamp(-22.57px, -1.1755vw, -11.29px); } /* 绾?3.7掳 */
+.bottom-bar__item:nth-child(3) { margin-right: clamp(-14.58px, -0.7594vw, -7.29px); } /* 绾?6.6掳 */
+.bottom-bar__item:nth-child(4) { margin-right: clamp(-14.58px, -0.7594vw, -7.29px); } /* 绾?6.6掳 */
+.bottom-bar__item:nth-child(5) { margin-right: clamp(-6.02px, -0.3135vw, -3.01px); } /* 绾?8.4掳 */
+.bottom-bar__item:nth-child(6) { margin-right: clamp(1.33px, 0.1391vw, 2.67px); } /* 绾?.4掳 */
+.bottom-bar__item:nth-child(7) { margin-right: clamp(1.42px, 0.1474vw, 2.83px); } /* 绾?.5掳 */
+.bottom-bar__item:nth-child(8) { margin-right: clamp(-6.07px, -0.3161vw, -3.04px); } /* 绾?8.6掳 */
+.bottom-bar__item:nth-child(9) { margin-right: clamp(-14.08px, -0.7333vw, -7.04px); } /* 绾?6.6掳 */
+.bottom-bar__item:nth-child(10) { margin-right: clamp(-14.59px, -0.7599vw, -7.29px); } /* 绾?6.5掳 */
+.bottom-bar__item:nth-child(11) { margin-right: clamp(-22.58px, -1.176vw, -11.29px); } /* 绾?3.7掳 */
+.bottom-bar__item:nth-child(12) { margin-right: clamp(-44.45px, -2.3151vw, -22.23px); } /* 绾?5.4掳 */
 
-/* 命中层 button：高 72px（= 60px 可视 + 12px 顶出预留），宽度由内联
-   aspect-ratio（切图原始宽 / 72）联动保持与 60px 方案完全一致。
-   自身静止不动——无论内部视觉层顶出与否，命中区（clip-path 并集轮廓）
-   保持不变，鼠标不会因按钮上移而脱离 hover（避免抖动循环）；
-   pointer-events:auto 恢复命中（wrapper 整体禁用） */
+/* 鍛戒腑灞?button锛氶珮 72px锛? 60px 鍙 + 12px 椤跺嚭棰勭暀锛夛紝瀹藉害鐢卞唴鑱?
+   aspect-ratio锛堝垏鍥惧師濮嬪 / 72锛夎仈鍔ㄤ繚鎸佷笌 60px 鏂规瀹屽叏涓€鑷淬€?
+   鑷韩闈欐涓嶅姩鈥斺€旀棤璁哄唴閮ㄨ瑙夊眰椤跺嚭涓庡惁锛屽懡涓尯锛坈lip-path 骞堕泦杞粨锛?
+   淇濇寔涓嶅彉锛岄紶鏍囦笉浼氬洜鎸夐挳涓婄Щ鑰岃劚绂?hover锛堥伩鍏嶆姈鍔ㄥ惊鐜級锛?
+   pointer-events:auto 鎭㈠鍛戒腑锛坵rapper 鏁翠綋绂佺敤锛?*/
 .bottom-bar__btn {
   position: relative;
   display: block;
@@ -960,19 +1002,19 @@
   pointer-events: auto;
 }
 
-/* 视觉层：承载切图背景 + 功能图标，底部对齐命中层（静止时与原 60px 方案
-   像素级一致）。hover 时以回弹曲线向上顶出 12px（1920 基准，随 clamp 缩放）；
-   :active 按压时回落一半并压暗，模拟"按下"手感 */
+/* 瑙嗚灞傦細鎵胯浇鍒囧浘鑳屾櫙 + 鍔熻兘鍥炬爣锛屽簳閮ㄥ榻愬懡涓眰锛堥潤姝㈡椂涓庡師 60px 鏂规
+   鍍忕礌绾т竴鑷达級銆俬over 鏃朵互鍥炲脊鏇茬嚎鍚戜笂椤跺嚭 12px锛?920 鍩哄噯锛岄殢 clamp 缂╂斁锛夛紱
+   :active 鎸夊帇鏃跺洖钀戒竴鍗婂苟鍘嬫殫锛屾ā鎷?鎸変笅"鎵嬫劅 */
 .bottom-bar__visual {
   position: absolute;
   left: 0;
   bottom: 0;
   width: 100%;
-  height: calc(100% * 60 / 72); /* 60px 设计基准 / 72px 命中层 */
+  height: calc(100% * 60 / 72); /* 60px 璁捐鍩哄噯 / 72px 鍛戒腑灞?*/
   background-color: transparent;
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  /* 半透明效果：所有段（含首尾固定装饰段）默认约 85% 不透明度；中间功能按钮悬停恢复不透明，首尾静态段恒定半透明 */
+  /* 鍗婇€忔槑鏁堟灉锛氭墍鏈夋锛堝惈棣栧熬鍥哄畾瑁呴グ娈碉級榛樿绾?85% 涓嶉€忔槑搴︼紱涓棿鍔熻兘鎸夐挳鎮仠鎭㈠涓嶉€忔槑锛岄灏鹃潤鎬佹鎭掑畾鍗婇€忔槑 */
   opacity: 0.85;
   transform: translateY(0);
   transition:
@@ -983,13 +1025,13 @@
 }
 
 .bottom-bar__btn:not(.bottom-bar__btn--static):not(.bottom-bar__btn--disabled):hover .bottom-bar__visual {
-  /* 12px @1920 → 6px @960，与命中层 clamp 同曲线缩放 */
+  /* 12px @1920 鈫?6px @960锛屼笌鍛戒腑灞?clamp 鍚屾洸绾跨缉鏀?*/
   transform: translateY(clamp(-12px, -0.625vw, -6px));
   opacity: 1;
 }
 
 .bottom-bar__btn:active .bottom-bar__visual {
-  /* 按压回落一半 + 轻微压暗：先顶出再点击时可见"按下"效果 */
+  /* 鎸夊帇鍥炶惤涓€鍗?+ 杞诲井鍘嬫殫锛氬厛椤跺嚭鍐嶇偣鍑绘椂鍙"鎸変笅"鏁堟灉 */
   transform: translateY(clamp(-5px, -0.26vw, -2.5px));
   filter: brightness(0.9);
   transition:
@@ -997,9 +1039,9 @@
     filter 0.1s ease-out;
 }
 
-/* Hover 内发光：叠在视觉层上，随其一同被 button clip-path 裁剪到
-   并集轮廓内，不外溢按钮边框。各段切图透明度/亮度不一，单纯 brightness
-   在深色段几乎不可见，内发光方案 13 个按钮反馈完全一致 */
+/* Hover 鍐呭彂鍏夛細鍙犲湪瑙嗚灞備笂锛岄殢鍏朵竴鍚岃 button clip-path 瑁佸壀鍒?
+   骞堕泦杞粨鍐咃紝涓嶅婧㈡寜閽竟妗嗐€傚悇娈靛垏鍥鹃€忔槑搴?浜害涓嶄竴锛屽崟绾?brightness
+   鍦ㄦ繁鑹叉鍑犱箮涓嶅彲瑙侊紝鍐呭彂鍏夋柟妗?13 涓寜閽弽棣堝畬鍏ㄤ竴鑷?*/
 .bottom-bar__visual::after {
   content: '';
   position: absolute;
@@ -1014,8 +1056,8 @@
   opacity: 1;
 }
 
-/* 首尾固定装饰段（bottom-bar__btn--static，无功能图标）：纯装饰，悬停/按压无任何反馈——
-   不顶出、不压暗、无内发光、无过渡动画，光标恢复默认箭头 */
+/* 棣栧熬鍥哄畾瑁呴グ娈碉紙bottom-bar__btn--static锛屾棤鍔熻兘鍥炬爣锛夛細绾楗帮紝鎮仠/鎸夊帇鏃犱换浣曞弽棣堚€斺€?
+   涓嶉《鍑恒€佷笉鍘嬫殫銆佹棤鍐呭彂鍏夈€佹棤杩囨浮鍔ㄧ敾锛屽厜鏍囨仮澶嶉粯璁ょ澶?*/
 .bottom-bar__btn--static {
   cursor: default;
 }
@@ -1038,23 +1080,23 @@
   opacity: 0;
 }
 
-/* 禁用态按钮（第 2~12 段功能按钮不可用时）：背景已由 TSX 切换为禁用态切图
-   （规格与默认段一致，几何像素级兼容）。禁用不阻断 hover——悬停仍顶出反馈
-   （原生 disabled 属性会抑制 :hover 匹配，故 TSX 改用 aria-disabled + 点击拦截），
-   仅保持置灰观感（不恢复不透明）、无按压回落、无内发光；
-   tooltip 由 TSX 条件渲染同步抑制。光标为「禁止」符号明确传达不可用 */
+/* 绂佺敤鎬佹寜閽紙绗?2~12 娈靛姛鑳芥寜閽笉鍙敤鏃讹級锛氳儗鏅凡鐢?TSX 鍒囨崲涓虹鐢ㄦ€佸垏鍥?
+   锛堣鏍间笌榛樿娈典竴鑷达紝鍑犱綍鍍忕礌绾у吋瀹癸級銆傜鐢ㄤ笉闃绘柇 hover鈥斺€旀偓鍋滀粛椤跺嚭鍙嶉
+   锛堝師鐢?disabled 灞炴€т細鎶戝埗 :hover 鍖归厤锛屾晠 TSX 鏀圭敤 aria-disabled + 鐐瑰嚮鎷︽埅锛夛紝
+   浠呬繚鎸佺疆鐏拌鎰燂紙涓嶆仮澶嶄笉閫忔槑锛夈€佹棤鎸夊帇鍥炶惤銆佹棤鍐呭彂鍏夛紱
+   tooltip 鐢?TSX 鏉′欢娓叉煋鍚屾鎶戝埗銆傚厜鏍囦负銆岀姝€嶇鍙锋槑纭紶杈句笉鍙敤 */
 .bottom-bar__btn--disabled {
   cursor: not-allowed;
 }
 
-/* 双类名提升特异性（0,4,0）与通用 hover 规则同值，但定义在其后：
-   transform 沿用通用顶出量，仅覆盖 opacity 保持置灰半透明观感 */
+/* 鍙岀被鍚嶆彁鍗囩壒寮傛€э紙0,4,0锛変笌閫氱敤 hover 瑙勫垯鍚屽€硷紝浣嗗畾涔夊湪鍏跺悗锛?
+   transform 娌跨敤閫氱敤椤跺嚭閲忥紝浠呰鐩?opacity 淇濇寔缃伆鍗婇€忔槑瑙傛劅 */
 .bottom-bar__btn.bottom-bar__btn--disabled:hover .bottom-bar__visual {
   transform: none;
   opacity: 0.85;
 }
 
-/* 按压禁用按钮无「可点击」回落反馈：保持 hover 顶出位置不回落 */
+/* 鎸夊帇绂佺敤鎸夐挳鏃犮€屽彲鐐瑰嚮銆嶅洖钀藉弽棣堬細淇濇寔 hover 椤跺嚭浣嶇疆涓嶅洖钀?*/
 .bottom-bar__btn.bottom-bar__btn--disabled:active .bottom-bar__visual {
   transform: none;
   filter: none;
@@ -1064,8 +1106,8 @@
   opacity: 0;
 }
 
-/* 功能图标：绝对居中于视觉层，尺寸为 60px 设计高的 75%（1920 下 45px），
-   与按钮高度同 clamp 曲线缩放；pointer-events:none 使点击穿透到 button */
+/* 鍔熻兘鍥炬爣锛氱粷瀵瑰眳涓簬瑙嗚灞傦紝灏哄涓?60px 璁捐楂樼殑 75%锛?920 涓?45px锛夛紝
+   涓庢寜閽珮搴﹀悓 clamp 鏇茬嚎缂╂斁锛沺ointer-events:none 浣跨偣鍑荤┛閫忓埌 button */
 .bottom-bar__icon {
   position: absolute;
   left: 50%;
@@ -1077,10 +1119,10 @@
   pointer-events: none;
 }
 
-/* 中文 tooltip：悬停时显示于按钮上方。为 button 的兄弟节点（wrapper 内），
-   不受 button clip-path 裁剪；wrapper 已 pointer-events:none，显示/隐藏
-   依赖悬停 button 时 :hover 沿祖先链生效（.bottom-bar__item:hover）。
-   bottom 相对 72px wrapper 顶缘 = 顶出后按钮顶部，恰好跟随顶出位置 */
+/* 涓枃 tooltip锛氭偓鍋滄椂鏄剧ず浜庢寜閽笂鏂广€備负 button 鐨勫厔寮熻妭鐐癸紙wrapper 鍐咃級锛?
+   涓嶅彈 button clip-path 瑁佸壀锛泈rapper 宸?pointer-events:none锛屾樉绀?闅愯棌
+   渚濊禆鎮仠 button 鏃?:hover 娌跨鍏堥摼鐢熸晥锛?bottom-bar__item:hover锛夈€?
+   bottom 鐩稿 72px wrapper 椤剁紭 = 椤跺嚭鍚庢寜閽《閮紝鎭板ソ璺熼殢椤跺嚭浣嶇疆 */
 .bottom-bar__tip {
   position: absolute;
   left: 50%;
@@ -1109,7 +1151,7 @@
   visibility: visible;
 }
 
-/* .map-footer 容器已设 pointer-events:none，子元素恢复鼠标事件接收 */
+/* .map-footer 瀹瑰櫒宸茶 pointer-events:none锛屽瓙鍏冪礌鎭㈠榧犳爣浜嬩欢鎺ユ敹 */
 .map-footer .emergency-actions button,
 .map-footer .scale {
   pointer-events: auto;
@@ -1128,8 +1170,8 @@
 .bottom-bar__item:nth-child(12) .bottom-bar__btn { clip-path: polygon(1.55% 0.00%, 0.00% 2.78%, 0.00% 6.94%, 1.55% 9.72%, 1.55% 11.11%, 3.10% 13.89%, 3.10% 15.28%, 0.00% 19.44%, 0.00% 23.61%, 1.55% 26.39%, 1.55% 27.78%, 3.10% 30.56%, 3.10% 31.94%, 4.65% 34.72%, 4.65% 36.11%, 6.20% 38.89%, 6.20% 40.28%, 7.75% 43.06%, 7.75% 44.44%, 9.30% 47.22%, 9.30% 48.61%, 10.85% 51.39%, 10.85% 52.78%, 12.40% 55.56%, 12.40% 56.94%, 13.95% 59.72%, 13.95% 61.11%, 15.50% 63.89%, 15.50% 65.28%, 17.05% 68.06%, 17.05% 69.44%, 18.60% 72.22%, 18.60% 73.61%, 20.16% 76.39%, 20.16% 77.78%, 21.71% 80.56%, 21.71% 81.94%, 23.26% 84.72%, 23.26% 86.11%, 24.81% 88.89%, 24.81% 90.28%, 26.36% 93.06%, 26.36% 94.44%, 27.91% 97.22%, 27.91% 98.61%, 98.45% 98.61%, 89.92% 83.33%, 98.45% 81.94%, 54.26% 2.78%, 51.16% 0.00%); }
 .bottom-bar__item:nth-child(13) .bottom-bar__btn { clip-path: polygon(0.84% 0.00%, 10.08% 15.28%, 0.84% 16.67%, 49.58% 95.83%, 52.10% 98.61%, 96.64% 98.61%, 65.55% 88.89%, 58.82% 86.11%, 54.62% 83.33%, 96.64% 81.94%, 58.82% 69.44%, 52.10% 65.28%, 42.02% 56.94%, 33.61% 47.22%, 29.41% 40.28%, 27.73% 38.89%, 11.76% 13.89%, 10.08% 12.50%, 2.52% 0.00%); }
 
-/* ====== 起飞参数面板（右上角）====== */
-/* 降落/返航/指点返航面板与起飞面板同位（右上角），由互斥状态保证同一时刻只显示其一 */
+/* ====== 璧烽鍙傛暟闈㈡澘锛堝彸涓婅锛?===== */
+/* 闄嶈惤/杩旇埅/鎸囩偣杩旇埅闈㈡澘涓庤捣椋為潰鏉垮悓浣嶏紙鍙充笂瑙掞級锛岀敱浜掓枼鐘舵€佷繚璇佸悓涓€鏃跺埢鍙樉绀哄叾涓€ */
 .takeoff-panel,
 .hover-panel,
 .landing-panel,
@@ -1145,11 +1187,11 @@
   top: clamp(8px, 1.5vw, 24px);
   right: clamp(8px, 0.83vw, 16px);
   z-index: 20;
-  /* .map-stage 的 pointer-events: none 在此恢复，面板内控件才可交互 */
+  /* .map-stage 鐨?pointer-events: none 鍦ㄦ鎭㈠锛岄潰鏉垮唴鎺т欢鎵嶅彲浜や簰 */
   pointer-events: auto;
 }
 
-/* 底部按钮「激活」态：点击起飞按钮后保持弹出 + 内发光（与 hover 视觉一致但持续，直至面板关闭） */
+/* 搴曢儴鎸夐挳銆屾縺娲汇€嶆€侊細鐐瑰嚮璧烽鎸夐挳鍚庝繚鎸佸脊鍑?+ 鍐呭彂鍏夛紙涓?hover 瑙嗚涓€鑷翠絾鎸佺画锛岀洿鑷抽潰鏉垮叧闂級 */
 .bottom-bar__btn--active .bottom-bar__visual {
   transform: translateY(clamp(-12px, -0.625vw, -6px));
   opacity: 1;
@@ -1159,26 +1201,26 @@
   opacity: 1;
 }
 
-/* ====== 功能按钮激活态高亮背景层（第 2~12 段通用）====== */
-/* 独立于 button 之外（wrapper 内）：button 的 clip-path 会裁剪切图四周的发光/投影
-   边缘，且元素背景无法绘制到自身盒外，视觉层内无法完整呈现该切图。
-   激活切图规格统一（bottom-bar-seg-02-active.png ~ bottom-bar-seg-12-active.png）：
-   画布 76px 高、实体区 60px 高（y 6~66）、左右各 8px 发光边缘、画布宽 = 段宽 + 16。
-   本层按百分比外扩定位，使切图实体区与默认段像素级重合，四周发光边缘完整外溢显示：
-   - left / width 由 TSX 按段宽内联注入（left = -8/段宽，width = (段宽+16)/段宽）
-   - height  105.56% =  76/72（画布高 / 命中层高，实体 60px 恰为命中层的 5/6）
-   - bottom -13.89% = -10/72（画布底缘在实体底缘＝视觉层底下方 10px）
-   百分比均相对命中层 button（×72 @1920 基准，随 clamp 同曲线缩放），
-   任意视口宽度下均保持实体区重合。淡入淡出 + 与视觉层同步顶出/按压回落 */
+/* ====== 鍔熻兘鎸夐挳婵€娲绘€侀珮浜儗鏅眰锛堢 2~12 娈甸€氱敤锛?===== */
+/* 鐙珛浜?button 涔嬪锛坵rapper 鍐咃級锛歜utton 鐨?clip-path 浼氳鍓垏鍥惧洓鍛ㄧ殑鍙戝厜/鎶曞奖
+   杈圭紭锛屼笖鍏冪礌鑳屾櫙鏃犳硶缁樺埗鍒拌嚜韬洅澶栵紝瑙嗚灞傚唴鏃犳硶瀹屾暣鍛堢幇璇ュ垏鍥俱€?
+   婵€娲诲垏鍥捐鏍肩粺涓€锛坆ottom-bar-seg-02-active.png ~ bottom-bar-seg-12-active.png锛夛細
+   鐢诲竷 76px 楂樸€佸疄浣撳尯 60px 楂橈紙y 6~66锛夈€佸乏鍙冲悇 8px 鍙戝厜杈圭紭銆佺敾甯冨 = 娈靛 + 16銆?
+   鏈眰鎸夌櫨鍒嗘瘮澶栨墿瀹氫綅锛屼娇鍒囧浘瀹炰綋鍖轰笌榛樿娈靛儚绱犵骇閲嶅悎锛屽洓鍛ㄥ彂鍏夎竟缂樺畬鏁村婧㈡樉绀猴細
+   - left / width 鐢?TSX 鎸夋瀹藉唴鑱旀敞鍏ワ紙left = -8/娈靛锛寃idth = (娈靛+16)/娈靛锛?
+   - height  105.56% =  76/72锛堢敾甯冮珮 / 鍛戒腑灞傞珮锛屽疄浣?60px 鎭颁负鍛戒腑灞傜殑 5/6锛?
+   - bottom -13.89% = -10/72锛堢敾甯冨簳缂樺湪瀹炰綋搴曠紭锛濊瑙夊眰搴曚笅鏂?10px锛?
+   鐧惧垎姣斿潎鐩稿鍛戒腑灞?button锛埫?2 @1920 鍩哄噯锛岄殢 clamp 鍚屾洸绾跨缉鏀撅級锛?
+   浠绘剰瑙嗗彛瀹藉害涓嬪潎淇濇寔瀹炰綋鍖洪噸鍚堛€傛贰鍏ユ贰鍑?+ 涓庤瑙夊眰鍚屾椤跺嚭/鎸夊帇鍥炶惤 */
 .bottom-bar__active-glow {
   position: absolute;
   bottom: -13.89%;
   height: 105.56%;
-  z-index: 5; /* 盖过相邻段负 margin 重叠的透明区 */
+  z-index: 5; /* 鐩栬繃鐩搁偦娈佃礋 margin 閲嶅彔鐨勯€忔槑鍖?*/
   background-color: transparent;
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  pointer-events: none; /* wrapper 已禁命中，双保险：绝不拦截相邻段鼠标事件 */
+  pointer-events: none; /* wrapper 宸茬鍛戒腑锛屽弻淇濋櫓锛氱粷涓嶆嫤鎴浉閭绘榧犳爣浜嬩欢 */
   opacity: 0;
   transform: translateY(0);
   transition:
@@ -1187,15 +1229,15 @@
   will-change: transform;
 }
 
-/* 激活（起飞面板展开）时淡入，并保持与视觉层一致的顶出量（12px 弹性曲线）。
-   hover 时视觉层同样顶出 12px，无需单独规则；按压回落见下方 :active */
+/* 婵€娲伙紙璧烽闈㈡澘灞曞紑锛夋椂娣″叆锛屽苟淇濇寔涓庤瑙夊眰涓€鑷寸殑椤跺嚭閲忥紙12px 寮规€ф洸绾匡級銆?
+   hover 鏃惰瑙夊眰鍚屾牱椤跺嚭 12px锛屾棤闇€鍗曠嫭瑙勫垯锛涙寜鍘嬪洖钀借涓嬫柟 :active */
 .bottom-bar__item--active-bg .bottom-bar__active-glow {
   opacity: 1;
   transform: translateY(clamp(-12px, -0.625vw, -6px));
 }
 
-/* 按压回落一半 + 轻微压暗：与视觉层 :active 反馈同步（wrapper pointer-events:none
-   不影响 :active 沿祖先链生效，与 :hover 同理） */
+/* 鎸夊帇鍥炶惤涓€鍗?+ 杞诲井鍘嬫殫锛氫笌瑙嗚灞?:active 鍙嶉鍚屾锛坵rapper pointer-events:none
+   涓嶅奖鍝?:active 娌跨鍏堥摼鐢熸晥锛屼笌 :hover 鍚岀悊锛?*/
 .bottom-bar__item--active-bg:active .bottom-bar__active-glow {
   transform: translateY(clamp(-5px, -0.26vw, -2.5px));
   filter: brightness(0.9);
@@ -1204,9 +1246,366 @@
     filter 0.1s ease-out;
 }
 
-/* 图标副本：居中于外扩层的实体区而非层几何中心——
-   画布实体 y 6~66 → 中心 36/76 = 47.37%（50% 会随外扩整体偏下约 2px）。
-   clamp 尺寸与 .bottom-bar__icon 完全一致，与视觉层图标像素级重合，淡入无跳动感 */
+/* 鍥炬爣鍓湰锛氬眳涓簬澶栨墿灞傜殑瀹炰綋鍖鸿€岄潪灞傚嚑浣曚腑蹇冣€斺€?
+   鐢诲竷瀹炰綋 y 6~66 鈫?涓績 36/76 = 47.37%锛?0% 浼氶殢澶栨墿鏁翠綋鍋忎笅绾?2px锛夈€?
+   clamp 灏哄涓?.bottom-bar__icon 瀹屽叏涓€鑷达紝涓庤瑙夊眰鍥炬爣鍍忕礌绾ч噸鍚堬紝娣″叆鏃犺烦鍔ㄦ劅 */
 .bottom-bar__icon--active-glow {
   top: 47.37%;
+}
+
+/* ===== 鍖哄煙闄嶈惤妗嗛€夋ā寮忥紙鑸嚎鐢熸垚锛?===== */
+/* 鍏ㄥ睆鎹曡幏灞傦細fixed 瀹氫綅鐩存帴浣跨敤瑙嗗彛鍧愭爣锛坈lientX/clientY锛夛紝楂?z-index 鐩栦綇鍏ㄩ儴鐣岄潰锛?
+   鍏夋爣涓哄仠鏈哄潽鍥炬爣锛坔otspot 璁惧湪鍥惧儚涓績 27,27锛夈€?
+   鎴浘寮忓彉鏆楃敱铏氱嚎妗嗙殑瓒呭ぇ澶栨墿 box-shadow 瀹炵幇锛氭鍐呬繚鎸佹竻鏅帮紝妗嗗鍧囧寑鍙樻殫 */
+/* ===== 宸茬‘璁ょ殑鍖哄煙闄嶈惤鑼冨洿 ===== */
+/* 鍗婇€忔槑绱壊濉厖锛堣璁＄ background: rgba(113,96,242,0.3)锛夈€乥order-radius 0锛堢洿瑙掞級锛?   fixed 瀹氫綅浣跨敤瑙嗗彛鍧愭爣锛坙eft/top/width/height 鍐呰仈娉ㄥ叆锛夛紝
+   z-index 1500 浣庝簬妗嗛€夋崟鑾峰眰锛?000锛夛細鍐嶆妗嗛€夐噸缁樻椂鏂伴伄缃╄鐩栧叾涓婏紱
+   pointer-events none 涓嶉樆鎸″湴鍥句笌鐣岄潰浜や簰 */
+.area-landing-confirmed {
+  position: fixed;
+  z-index: 1500;
+  background: rgba(113, 96, 242, 0.3);
+  border-radius: 0;
+  pointer-events: none;
+}
+
+/* 鍖哄煙姝ｄ腑蹇冨渾褰㈠窘绔狅紙璁捐绋?image-wrapper_4锛夛細100脳100銆佸渾褰€?   rgba(113,96,242,0.1) 濉厖銆?px 鐧?0.2 鎻忚竟锛涘唴鍚檷钀藉潽鍥炬爣锛岀粷瀵瑰眳涓?*/
+.area-landing-confirmed__badge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  background-color: rgba(113, 96, 242, 0.1);
+  border: 8px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* 寰界珷鍐呴檷钀藉潽鍥炬爣锛堣璁＄ image_3锛夛細44脳52锛宖lex 灞呬腑 */
+.area-landing-confirmed__icon {
+  width: 44px;
+  height: 52px;
+  flex: none;
+  pointer-events: none;
+}
+
+/* 瀹氬瀷鍖哄煙宸︿笂瑙掋€屽垹闄ら噸缁樸€嶆寜閽紙璁捐绋?text-wrapper_2 / text_2锛夛細
+   78脳32銆佸崐閫忔槑钃濆簳 rgba(75,188,249,0.4) + 1px 钃濇弿杈?+ 4px 鍦嗚 + 闃村奖銆?4px 鐧藉瓧锛?   鐐瑰嚮鍚庢竻闄ゅ畾鍨嬪尯鍩熷苟閲嶆柊杩涘叆妗嗛€夋ā寮?*/
+.area-landing-confirmed__delete-btn {
+  position: absolute;
+  /* 绉诲嚭缁樺埗鍖哄煙锛氫綅浜庡尯鍩熷乏涓婅澶栦晶锛屽彸缂樹笌鍖哄煙宸︾紭鐣?8px 闂磋窛 */
+  right: calc(100% + 8px);
+  top: 0;
+  width: 78px;
+  height: 32px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(75, 188, 249, 0.4);
+  border: 1px solid rgba(75, 188, 249, 1);
+  border-radius: 4px;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans-Regular', sans-serif;
+  line-height: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.area-select-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background-color: transparent;
+}
+
+/* 妗嗛€夎櫄绾挎锛?px 绱壊铏氱嚎锛?7160F2锛夈€佹棤鍦嗚锛沴eft/top/width/height 鐢卞唴鑱旀牱寮?
+   鎸夋嫋鎷借捣缁堢偣褰掍竴鍖栨敞鍏ワ紙鑷畾涔夊ぇ灏忥級锛沚ox-shadow 澶栨墿 9999px 閬殫妗嗗鍏ㄩ儴鍖哄煙 */
+.area-select-frame {
+  position: absolute;
+  border: 2px dashed #7160f2;
+  border-radius: 0;
+  box-sizing: border-box;
+  background-color: transparent;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+/* 纭/鍙栨秷鎸夐挳鏉★細121x32銆?px 鍦嗚銆佸崐閫忔槑钃濆簳 + 1px 钃濇弿杈?+ 闃村奖锛堣璁＄ box_29锛夛紱
+   left/top 鐢卞唴鑱旀牱寮忔敞鍏ワ紙鍙冲榻愰€夊尯鍙崇紭銆侀€夊尯涓嬫柟 8px锛夛紱
+   pointer-events:auto鈥斺€旈€夋鏈韩 none锛屾寜閽潯闇€鎭㈠鍙偣鍑?*/
+.area-select-confirm-bar {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  width: 121px;
+  height: 32px;
+  box-sizing: border-box;
+  background-color: rgba(75, 188, 249, 0.4);
+  border: 1px solid rgba(75, 188, 249, 1);
+  border-radius: 4px;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  user-select: none;
+}
+
+/* 鏂囨湰鏍囩锛坱ext_7/text_8锛夛細14px MiSans銆佷笂杈硅窛 7px 瀵归綈鍩虹嚎 */
+.area-select-confirm-bar__label {
+  flex: none;
+  margin: 7px 0 0 16px;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans-Regular', sans-serif;
+  line-height: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 鍙栨秷鏍囩锛氬彸渚у悓鏍蜂繚鐣?16px 闂磋窛 */
+.area-select-confirm-bar__label--cancel {
+  margin-right: 16px;
+}
+
+/* 涓棿 1px 绔栧垎闅旂嚎锛坓roup_10锛?*/
+.area-select-confirm-bar__divider {
+  flex: none;
+  width: 1px;
+  height: 31px;
+  margin-left: 16px;
+  background-color: rgba(75, 188, 249, 1);
+}
+
+/* ============ 鎸囩偣杩旇埅鍙栫偣妯″紡 ============ */
+/* 闈㈡澘鎵撳紑鏈熼棿鍦板浘鍖哄煙鏄剧ず鑷畾涔夊彇鐐瑰厜鏍囷紙澶嶇敤鍖哄煙闄嶈惤鍙栫偣鍏夋爣鍒囧浘锛岀儹鐐?27 27 灞呬腑锛夛紱
+   MapLibre 浜や簰鐢诲竷榛樿 grab 鍏夋爣锛岄渶涓€骞惰鐩?*/
+.tap-return-mode .map-base,
+.tap-return-mode .map-base canvas {
+  cursor: none;
+}
+
+/* 环绕飞行取点模式：面板打开期间地图区域隐藏原生光标，复用指点返航跟随图钉
+   （tap-return-marker）方案——由 orbit-flight-mode 类驱动图钉钉尖对准鼠标 */
+.orbit-flight-mode .map-base,
+.orbit-flight-mode .map-base canvas {
+  cursor: none;
+}
+
+/* 编队飞行取点模式：面板打开期间地图区域隐藏原生光标，复用指点返航跟随图钉
+   （tap-return-marker）方案——由 formation-flight-mode 类驱动图钉钉尖对准鼠标 */
+.formation-flight-mode .map-base,
+.formation-flight-mode .map-base canvas {
+  cursor: none;
+}
+
+/* 鎸囩偣杩旇埅钀界偣鍥鹃拤鏍囪锛?2脳56 鍒囧浘锛夛細鍥哄畾瀹氫綅锛岄拤灏栧鍑嗗彇鐐逛綅缃?*/
+.tap-return-marker {
+  position: fixed;
+  z-index: 1500;
+  width: 32px;
+  height: 56px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+/* 鎸囩偣杩旇埅钀界偣姝ｄ笅鏂硅繑鑸尯鍩熷渾鍦堬紙璁捐绋?image-wrapper_4锛夛細
+   48脳48銆乺gba(255,255,255,0.2) 濉厖銆?px 鐧芥弿杈瑰渾褰紝flex 灞呬腑 20脳24 鍋滄満鍧浘鏍囷紱
+   鍦嗗湀椤堕儴璺濊惤鐐?60px锛堝浘閽夐珮 56px + 4px 闂撮殭锛夛紝涓庡浘閽夊瀭鐩存帓鍒?*/
+.tap-return-zone {
+  position: fixed;
+  z-index: 1499;
+  width: 48px;
+  height: 48px;
+  box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 1);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.tap-return-zone img {
+  width: 20px;
+  height: 24px;
+}
+
+/* 指点返航连线（SVG 视口屏幕空间）：fixed 全屏画布铺满视口（100vw×100vh），
+   无 viewBox 时 SVG 用户坐标即视口像素，line 的 x/y 直接使用 clientX/clientY；
+   z-index 低于落点圆圈(1499)/图钉(1500)，连线自图标与图钉下方穿过；
+   pointer-events:none 不拦截地图取点与面板交互 */
+.tap-return-route {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1498;
+  pointer-events: none;
+}
+
+/* 环绕飞行盘旋圆 + 最近点连线：与指点返航连线同方案的视口 SVG——
+   circle/line 坐标为视口像素（圆心 = 定格取点，半径 = 盘旋半径米 ÷ 每像素米数），
+   半径步进/缩放/重新取点时联动刷新；不拦截交互 */
+.orbit-flight-graphics {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1498;
+  pointer-events: none;
+}
+/* 模拟飞行无人机（确认指点返航后）：fixed 视口定位，left/top 由内联样式按
+   连线插值坐标驱动，translate(-50%,-50%) 让机身中心贴合坐标点，rotate 航向角；
+   z-index 高于图钉(1500)使飞行图标完整可见；pointer-events:none 不拦截交互；
+   循环飞行，手动点击「取消」后随状态清除消失 */
+.tap-return-drone {
+  position: fixed;
+  z-index: 1501;
+  width: 48px;
+  height: 48px;
+  pointer-events: none;
+}
+/* 航点飞行取点阶段（waypoint-picking：面板开启且未定格航点）：光标为航点标记图钉（32×56 切图，钉尖热点 16 55 对准鼠标）；
+   左键定格航点后类移除，光标恢复默认样式 */
+.waypoint-picking .map-base,
+.waypoint-picking .map-base canvas {
+  cursor: none;
+}
+
+/* route-flight-picking: hide native cursor, DOM pin follows mouse */
+.route-flight-picking .map-base,
+.route-flight-picking .map-base canvas {
+  cursor: none;
+}
+
+/* 航点飞行航点图钉（32×56 切图，仅图钉无 H 停机坪圈）：钉尖对准鼠标/定格点，
+   未点击时跟随鼠标移动，左键点击后定格 */
+.waypoint-flight-marker {
+  position: fixed;
+  z-index: 1500;
+  width: 32px;
+  height: 56px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+/* 航点飞行连线（SVG 视口屏幕空间）：选中飞机中心 → 鼠标/航点图钉，
+   1.5px #00FF95；未点击时 stroke-dasharray 虚线实时跟随，
+   左键点击定格后实线；pointer-events:none 不拦截地图取点 */
+.waypoint-flight-route {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1498;
+  pointer-events: none;
+}
+/* 航线飞行航线（SVG 视口屏幕空间）：飞机中心 → 航点1 → 航点2…（1.5px #00FF95），
+   取点中尾段连至鼠标为虚线，右键/Esc 结束后全部定格为实线；
+   pointer-events:none 不拦截地图取点 */
+.route-flight-route {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1498;
+  pointer-events: none;
+}
+
+/* 航线飞行编号航点图钉：设计稿橙色切图 32×56 + 白色序号叠加。
+   钉尖对准取点位置；pointer-events:none 不拦截取点 */
+.route-flight-marker {
+  position: fixed;
+  z-index: 1500;
+  width: 32px;
+  height: 56px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+/* 切图铺满容器，消除 inline 空隙 */
+.route-flight-marker img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 序号：居中于图钉头部圆心（32×56 切图头部圆形 bbox y=0~32，圆心约 (16,16)） */
+.route-flight-marker__num {
+  position: absolute;
+  left: 50%;
+  top: 16px;
+  transform: translate(-50%, -50%);
+  font-family: MiSans-Semibold, MiSans-Regular, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1;
+}
+
+/* 取点结束后图钉可交互：接收鼠标事件（悬浮/双击弹「删除航点」），光标变手型 */
+.route-flight-marker--interactive {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* 删除航点按钮（设计稿 text-wrapper_2）：78×32 蓝色半透明底 + 1px 蓝描边 + 圆角 4 +
+   投影，白色 14px 文案居中；悬浮/双击图钉后出现在图钉右侧（间距 8px，对齐图钉头部） */
+.route-flight-marker__delete {
+  position: absolute;
+  left: 40px;
+  top: 0;
+  width: 78px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  background-color: rgba(75, 188, 249, 0.4);
+  border: 1px solid rgba(75, 188, 249, 1);
+  border-radius: 4px;
+  color: #fff;
+  font-family: MiSans-Regular, sans-serif;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* 隐形桥接：向左延伸 8px 覆盖图钉（32px）与按钮（left 40px）之间的间隙——
+   伪元素属于按钮命中区（图钉子树内），鼠标从图钉移向按钮穿过间隙时
+   不触发图钉的 mouseleave，按钮不会提前消失，可顺畅点击 */
+.route-flight-marker__delete::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 0;
+  width: 8px;
+  height: 100%;
+}
+
+/* route-flight-cursor-pin：航线飞行取点跟随图钉（设计稿橙色切图 32×56）——
+   钉尖对准鼠标，取点结束（右键/Esc）后随 hover 清除消失 */
+.route-flight-cursor-pin {
+  position: fixed;
+  z-index: 1502;
+  width: 32px;
+  height: 56px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
 }

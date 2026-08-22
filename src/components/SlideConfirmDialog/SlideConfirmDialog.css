@@ -1,0 +1,201 @@
+/* SlideConfirmDialog —— 滑动二次确认弹窗样式（参照设计稿 400×220 弹窗） */
+
+/* 全屏遮罩：点击空白处取消。显式 pointer-events: auto —— 即使被嵌入
+   pointer-events:none 容器（如地图舞台）也能正常接收鼠标事件 */
+.slide-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* 弹窗主体：400×220、深蓝渐变底、8px 圆角、外阴影 */
+.slide-confirm {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 400px;
+  height: 220px;
+  background-image: linear-gradient(
+    180deg,
+    rgba(35, 90, 120, 0.96) 0,
+    rgba(19, 54, 96, 0.97) 100%
+  );
+  border-radius: 8px;
+  box-shadow: 0 16px 48px 0 rgba(0, 0, 0, 0.4);
+  user-select: none;
+}
+
+/* 顶部 2px 高亮条：青色渐变 */
+.slide-confirm__accent {
+  width: 100%;
+  height: 2px;
+  background-image: linear-gradient(90deg, rgba(85, 206, 222, 0.1), rgba(85, 206, 222, 0.9));
+  border-radius: 8px 8px 0 0;
+}
+
+/* 标题行：标题水平居中，行最右侧关闭按钮（位于顶条下方 14px） */
+.slide-confirm__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 27px;
+  margin: 14px 24px 0;
+}
+
+/* 标题组：相对弹窗水平居中，不受右侧关闭按钮影响 */
+.slide-confirm__header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slide-confirm__title {
+  color: rgba(255, 255, 255, 1);
+  font-size: 20px;
+  font-family: MiSans-Medium, MiSans-Regular, sans-serif;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+/* 右上角关闭按钮：24×24 点击热区 */
+.slide-confirm__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.slide-confirm__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.slide-confirm__close:hover svg path {
+  stroke: rgba(255, 255, 255, 0.95);
+}
+
+/* 指令信息行：居中「白色感叹号图标（18px 与文字一致）+ 文案」，标题行下方约 40px */
+.slide-confirm__message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 24px;
+  margin: 40px 0 0;
+}
+
+.slide-confirm__message-icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.slide-confirm__message-text {
+  color: rgba(255, 255, 255, 1);
+  font-size: 18px;
+  font-family: MiSans-Regular, sans-serif;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+/* 滑轨：320×40 胶囊、内阴影半透明黑底；done 后整轨变青 */
+.slide-confirm__track {
+  position: relative;
+  width: 320px;
+  height: 40px;
+  margin: 40px 40px 33px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 67px;
+  box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  transition: background-color 0.35s ease;
+}
+
+.slide-confirm__track--done {
+  background-color: rgba(85, 206, 222, 1);
+}
+
+/* 青色进度层：拖动中实时增长（width 由 JS 逐帧直改），左端胶囊圆角贴合滑轨；
+   与滑块相同的回弹过渡：松手未到位时平滑回缩 */
+.slide-confirm__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgba(85, 206, 222, 0.45);
+  border-radius: 67px 0 0 67px;
+  pointer-events: none;
+  will-change: width;
+  transition: width 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* 拖动中禁用过渡，保证逐帧跟手；松手后恢复过渡实现回弹动画 */
+.slide-confirm__track--dragging .slide-confirm__fill {
+  transition: none;
+}
+
+/* 提示文案：滑轨内水平垂直居中，拖动中淡化、完成态隐藏 */
+.slide-confirm__hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-family: MiSans-Regular, sans-serif;
+  line-height: 12px;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.slide-confirm__track--dragging .slide-confirm__hint {
+  opacity: 0.3;
+}
+
+/* 滑块：65×36 白色胶囊、外阴影；translateX 由内联样式驱动 */
+.slide-confirm__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 65px;
+  height: 36px;
+  background-color: rgba(255, 255, 255, 1);
+  border-radius: 33px;
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.5);
+  cursor: grab;
+  touch-action: none;
+  /* GPU 合成提示 + 回弹缓动（先快后缓，模拟物理回弹） */
+  will-change: transform;
+  transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.slide-confirm__thumb--dragging {
+  cursor: grabbing;
+  /* 拖动中禁用过渡，保证逐帧跟手；松手后恢复过渡实现回弹动画 */
+  transition: none;
+}
+
+.slide-confirm__thumb-icon {
+  width: 30px;
+  height: 24px;
+  pointer-events: none;
+}

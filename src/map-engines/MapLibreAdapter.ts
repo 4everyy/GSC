@@ -215,6 +215,11 @@ export class MapLibreAdapter implements MapAdapter {
     return this.map.getContainer()
   }
 
+  unproject(point: { x: number; y: number }): LngLat {
+    const ll = this.map.unproject([point.x, point.y])
+    return { lng: ll.lng, lat: ll.lat }
+  }
+
   // ============ 覆盖物：标注 ============
 
   addMarker(id: string, lngLat: LngLat, opts?: MarkerOptions): MarkerHandle {

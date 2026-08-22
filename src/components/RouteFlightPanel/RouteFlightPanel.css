@@ -1,0 +1,130 @@
+/**
+ * RouteFlightPanel 样式 —— 航线飞行面板「航线信息」区。
+ *
+ * 外壳/区块头/高度步进/按钮均复用（PanelShell.css、HeightStepper.css、TapReturnPanel.css），
+ * 本文件仅定义飞行高度下方的蓝色分割线 + 「航线信息」标题行 + 逐航点行。
+ * 航点行采用紧凑布局（统一 4px 间距 + 缩小序号圆/坐标框），确保全部元素
+ * 一行放下且不出现横向滚动条（列表 overflow-x 兜底隐藏）。
+ */
+
+/* 航线信息区容器：纵向排布（分割线 / 标题 / 逐航点行） */
+.route-flight-panel__routes {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* 航点列表：面板外壳固定 260×469 不可滚，航点行多时列表内出现竖向滚动条，
+   overflow-x hidden 防止行内容超宽时出现横向滚动条 */
+.route-flight-panel__waypoint-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(85, 206, 222, 0.6) transparent;
+}
+
+/* 竖向滚动条（Chromium/WebKit）：4px 宽青色半透明细条，轨道透明 */
+.route-flight-panel__waypoint-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.route-flight-panel__waypoint-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.route-flight-panel__waypoint-list::-webkit-scrollbar-thumb {
+  border-radius: 2px;
+  background: rgba(85, 206, 222, 0.6);
+}
+
+/* 蓝色分割线：飞行高度步进行与航线信息区之间 */
+.route-flight-panel__divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(85, 206, 222, 1) 0%, rgba(85, 206, 222, 0) 100%);
+}
+
+/* 标题行「航线信息」 */
+.route-flight-panel__routes-title {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* 航点行：内容垂直居中，元素间统一 6px 间距（gap 替代逐元素 margin），
+   总宽不超面板内容区 245px，overflow hidden 兜底防溢出 */
+.route-flight-panel__waypoint-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  width: 100%;
+  max-width: 245px;
+  height: 28px;
+  margin-top: 14px;
+  overflow: hidden;
+}
+
+/* 标签「航点」：自适应宽（两个 14px 中文字符），不收缩 */
+.route-flight-panel__waypoint-label {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* 序号圆：20×20 白描边半透明圆，序号 12px 居中 */
+.route-flight-panel__waypoint-index {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 1);
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 1);
+  font-size: 12px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 12px;
+}
+
+/* 坐标框：56×26 切图底（同航点信息坐标框），文字 13px 垂直居中（只读展示） */
+.route-flight-panel__waypoint-coord {
+  flex-shrink: 0;
+  width: 56px;
+  height: 26px;
+  box-sizing: border-box;
+  padding-left: 3px;
+  color: rgba(255, 255, 255, 1);
+  font-size: 13px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 26px;
+  white-space: nowrap;
+  background: url('../../assets/images/home/waypoint-input-bg.png') 100% no-repeat;
+  background-size: 100% 100%;
+}
+
+/* 单位 N°/E°：白色 13px（紧凑版），不收缩 */
+.route-flight-panel__waypoint-unit {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 1);
+  font-size: 13px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 13px;
+  white-space: nowrap;
+}

@@ -144,6 +144,8 @@ export interface MapAdapter {
    * 用于上层在容器边界内做覆盖物的避让/翻转计算（如测距完成面板避免被边缘裁切）。
    */
   getContainer(): HTMLElement
+  /** 容器像素坐标 → 经纬度（WGS84），用于屏幕选区换算地理坐标 */
+  unproject(point: { x: number; y: number }): LngLat
 
   // ============ 覆盖物：标注 ============
   addMarker(id: string, lngLat: LngLat, opts?: MarkerOptions): MarkerHandle

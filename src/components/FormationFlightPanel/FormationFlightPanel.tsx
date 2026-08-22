@@ -17,6 +17,8 @@ const FORMATIONS = ['人字形', '一字型', '三角型'] as const
 export type FormationFlightFormation = (typeof FORMATIONS)[number]
 
 export interface FormationFlightPanelProps {
+  /** 地图取点回填的航点坐标（编队飞行取点模式），变化时同步进坐标输入框 */
+  waypoint?: { lat: number; lng: number } | null
   /** 确认编队飞行：携带当前设置的飞行高度（m）与所选队形 */
   onConfirm: (height: number, formation: FormationFlightFormation) => void
   /** 航线生成（暂记录日志，待接入真实指令链路） */
@@ -26,6 +28,7 @@ export interface FormationFlightPanelProps {
 }
 
 export function FormationFlightPanel({
+  waypoint,
   onConfirm,
   onGenerateRoute,
   onCancel,
@@ -38,6 +41,7 @@ export function FormationFlightPanel({
       heightLabel="飞行高度"
       className="formation-flight-panel"
       confirmMuted
+      waypoint={waypoint}
       onConfirm={(height) => onConfirm(height, formation)}
       onGenerateRoute={onGenerateRoute}
       onCancel={onCancel}

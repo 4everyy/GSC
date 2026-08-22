@@ -1,15 +1,16 @@
-/**
+﻿/**
  * TapReturnPanel —— 指点返航面板（底部条第 5 段按钮「指点返航」）。
  *
  * 结构：
  * - 外壳（背景/切角/标题/底部按钮）复用 PanelShell；
  * - 「参数设置」区块头 + 返航高度 −/+ 步进行（HeightStepper，默认 10m）；
  * - 环绕飞行面板复用时可通过 radiusLabel 追加第二行步进（盘旋半径，默认 50m）；
+ * - editable 开启后两行数值框支持手动键入数字（环绕飞行）；
  * - 编队飞行面板复用时可通过 children 在步进行与航点信息行之间插入队形选择行；
  * - 航点信息行：纬度 000.00 N° / 经度 000.00 E° 两个坐标输入框；
  * - 底部三按钮「确认 / 航线生成 / 取消」（PanelShell middleText）。
  */
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { PanelShell } from '../PanelShell/PanelShell'
 import { HeightStepper } from '../HeightStepper/HeightStepper'
 import './TapReturnPanel.css'
@@ -21,6 +22,8 @@ export interface TapReturnPanelProps {
   heightLabel?: string
   /** 半径步进行标签：传入即在高度行下方追加第二行步进（环绕飞行传「盘旋半径」），默认不显示 */
   radiusLabel?: string
+  /** 数值框可手动输入数字（环绕飞行盘旋高度/盘旋半径），默认 false 仅 −/+ 步进 */
+  editable?: boolean
   /** 页面级定位钩子类名，默认「tap-return-panel」 */
   className?: string
   /** 确认按钮置灰态（航点飞行设计稿确认钮为灰色），默认 false */
@@ -29,10 +32,14 @@ export interface TapReturnPanelProps {
   middleMuted?: boolean
   /** 是否显示航点信息行（航线飞行面板无此行），默认 true */
   showWaypoint?: boolean
+  /** 地图取点回填的航点坐标（指点返航取点模式），变化时同步进坐标输入框 */
+  waypoint?: { lat: number; lng: number } | null
   /** 额外参数行（如编队飞行的队形选择行），渲染在步进行与航点信息行之间 */
   children?: ReactNode
-  /** 确认：携带当前设置的高度（米） */
-  onConfirm: (height: number) => void
+  /** 确认：携带当前设置的高度（米）；带半径步进行的面板（环绕飞行）追加盘旋半径（米） */
+  onConfirm: (height: number, radius?: number) => void
+  /** 半径步进值变化回调（环绕飞行面板用于联动地图盘旋圆），默认不触发 */
+  onRadiusChange?: (radius: number) => void
   /** 航线生成（暂记录日志，待接入真实链路） */
   onGenerateRoute?: () => void
   /** 取消并关闭面板 */
@@ -43,12 +50,15 @@ export function TapReturnPanel({
   title = '指点返航',
   heightLabel = '返航高度',
   radiusLabel,
+  editable = false,
   className = 'tap-return-panel',
   confirmMuted = false,
   middleMuted = false,
   showWaypoint = true,
+  waypoint,
   children,
   onConfirm,
+  onRadiusChange,
   onGenerateRoute,
   onCancel,
 }: TapReturnPanelProps) {
@@ -56,6 +66,18 @@ export function TapReturnPanel({
   const [radius, setRadius] = useState(50)
   const [lat, setLat] = useState('000.00')
   const [lng, setLng] = useState('000.00')
+
+  // 地图取点回填：格式化为 6 位（xxx.xx，不足前补 0；N°/E° 单位语义下取绝对值）
+  useEffect(() => {
+    if (!waypoint) return
+    setLat(Math.abs(waypoint.lat).toFixed(2).padStart(6, '0'))
+    setLng(Math.abs(waypoint.lng).toFixed(2).padStart(6, '0'))
+  }, [waypoint])
+
+  // 半径变化（−/+ 步进或手动输入）时通知页面联动地图盘旋圆
+  useEffect(() => {
+    onRadiusChange?.(radius)
+  }, [radius, onRadiusChange])
 
   return (
     <PanelShell
@@ -65,7 +87,7 @@ export function TapReturnPanel({
       middleText="航线生成"
       confirmMuted={confirmMuted}
       middleMuted={middleMuted}
-      onConfirm={() => onConfirm(height)}
+      onConfirm={() => onConfirm(height, radiusLabel ? radius : undefined)}
       onMiddle={onGenerateRoute}
       onCancel={onCancel}
     >
@@ -75,21 +97,23 @@ export function TapReturnPanel({
       </div>
 
       <div className="tap-return-panel__params">
-        {/* 高度：−/+ 步进，默认 10m */}
+        {/* 高度：−/+ 步进，默认 10m；editable 时支持手动键入 */}
         <HeightStepper
           label={heightLabel}
           height={height}
           onChange={setHeight}
+          editable={editable}
           minusAriaLabel={`减小${heightLabel}`}
           plusAriaLabel={`增大${heightLabel}`}
         />
 
-        {/* 半径：−/+ 步进，默认 50m（环绕飞行面板「盘旋半径」行） */}
+        {/* 半径：−/+ 步进，默认 50m（环绕飞行面板「盘旋半径」行）；editable 时支持手动键入 */}
         {radiusLabel && (
           <HeightStepper
             label={radiusLabel}
             height={radius}
             onChange={setRadius}
+            editable={editable}
             minusAriaLabel={`减小${radiusLabel}`}
             plusAriaLabel={`增大${radiusLabel}`}
           />

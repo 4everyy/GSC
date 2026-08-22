@@ -97,3 +97,23 @@
 .height-stepper__field--wide-unit .height-stepper__unit {
   margin-left: 4px;
 }
+
+/* 可编辑数值框（editable）：input 自身即数值框（不再嵌套内层 input）——
+ * 复用 .height-stepper__value-box 的框体尺寸/边框/底色（上文类名同挂于 input），
+ * 此处覆盖 flex 排布并补充输入态修正：去原生轮廓、继承字体、文本选择光标 */
+.height-stepper__value-box--editable {
+  display: block;
+  padding: 0 0 0 4px;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  line-height: 14px;
+  outline: none;
+  cursor: text;
+}
+
+/* 聚焦高亮：白色描边 + 提亮底色（与旧 focus-within 视觉一致） */
+.height-stepper__value-box--editable:focus {
+  border-color: rgba(255, 255, 255, 1);
+  background-color: rgba(255, 255, 255, 0.3);
+}
