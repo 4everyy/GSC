@@ -39,6 +39,7 @@ import statusOnlineIcon from './status-online-icon.png'
 import statusTakeoffIcon from './status-takeoff-icon.png'
 import userAvatar from './user-avatar.png'
 import areaLandingCursor from './area-landing-cursor.png'
+import areaLandingSpot from './area-landing-spot.png'
 import tapReturnMarker from './tap-return-marker.png'
 import routeFlightPin from './route-flight-pin.png'
 import tapReturnZoneIcon from './tap-return-zone-icon.png'
@@ -133,6 +134,7 @@ export const homeImages = {
   statusTakeoffIcon,
   userAvatar,
   areaLandingCursor,
+  areaLandingSpot,
   tapReturnMarker,
   routeFlightPin,
   tapReturnZoneIcon,

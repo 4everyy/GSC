@@ -45,6 +45,10 @@ export interface AreaLandingPanelProps {
   onFormationChange?: (formation: AreaLandingFormation) => void
   /** 选区四角经纬度（WGS84，框选确认后由父层计算）：参数 tab「区域信息」实时显示 */
   corners?: { lat: number; lng: number }[] | null
+  /** 「航线生成」置灰态：未确定降落区域前置灰，区域框选「确定」后解禁可点击 */
+  routeMuted?: boolean
+  /** 「确认」置灰态：默认置灰，航线生成成功后由父层解除（传 false） */
+  confirmMuted?: boolean
 }
 
 export function AreaLandingPanel({
@@ -60,6 +64,8 @@ export function AreaLandingPanel({
   formation: formationProp,
   onFormationChange,
   corners,
+  routeMuted,
+  confirmMuted = true,
 }: AreaLandingPanelProps) {
   // 内部兜底状态：父层未传受控 props 时使用；传了则以 props 为准
   const [innerTab, setInnerTab] = useState<PanelTab>('params')
@@ -78,8 +84,9 @@ export function AreaLandingPanel({
       title="区域降落"
       className="area-landing-panel"
       ariaLabel="区域降落参数面板"
-      confirmMuted
+      confirmMuted={confirmMuted}
       middleText="航线生成"
+      middleMuted={routeMuted}
       onConfirm={() => onConfirm(speed, formation)}
       onMiddle={onGenerateRoute}
       onCancel={onCancel}

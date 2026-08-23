@@ -34,6 +34,8 @@ export interface RallyPointPanelProps {
   onGenerateRoute: () => void
   /** 取消并关闭面板 */
   onCancel: () => void
+  /** 「航线生成」置灰态：未确定集结区域前置灰，区域框选「确定」后解禁可点击 */
+  routeMuted?: boolean
 }
 
 export function RallyPointPanel({
@@ -42,6 +44,7 @@ export function RallyPointPanel({
   onConfirm,
   onGenerateRoute,
   onCancel,
+  routeMuted,
 }: RallyPointPanelProps) {
   const [tab, setTab] = useState<PanelTab>('params')
   const [height, setHeight] = useState(10)
@@ -55,6 +58,7 @@ export function RallyPointPanel({
       ariaLabel="集结点参数面板"
       confirmMuted
       middleText="航线生成"
+      middleMuted={routeMuted}
       onConfirm={() => onConfirm(height, speed, formation)}
       onMiddle={onGenerateRoute}
       onCancel={onCancel}

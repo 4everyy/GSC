@@ -4,7 +4,9 @@
  * 结构与起飞面板相同：
  * - 外壳（背景/切角/标题/底部按钮）复用 PanelShell；
  * - 「参数设置 / 飞机列表」tab 栏复用 PanelTabs；
- * - 返航高度：−/+ 步进器复用 HeightStepper（默认 10m）；
+ * - 返航高度：−/+ 步进器复用 HeightStepper（默认 10m，支持手动键入 editable）；
+ * - 交互状态流：初始「航线生成/确认」均置灰——输入高度后「航线生成」解除置灰，
+ *   点击「航线生成」画出航线后「确认」解除置灰（confirmMuted 由 HomePage 联动）；
  * - 「确认」回调 onConfirm(height)，「取消」回调 onCancel() 关闭面板。
  */
 import { useState } from 'react'
@@ -24,20 +26,47 @@ export interface ReturnHomePanelProps {
   onRemove?: (id: string) => void
   /** 确认返航：携带当前设置的返航高度（米） */
   onConfirm: (height: number) => void
+  /** 确认按钮置灰态：未生成返航航线（HomePage returnHomeLine 为空）前置灰，生成后解除 */
+  confirmMuted?: boolean
+  /** 航线生成：选中飞机 → 上方返航点连线（中间按钮）；输入高度后解除置灰 */
+  onGenerateRoute?: () => void
   /** 取消并关闭面板 */
   onCancel: () => void
 }
 
-export function ReturnHomePanel({ aircraft, onRemove, onConfirm, onCancel }: ReturnHomePanelProps) {
+export function ReturnHomePanel({
+  aircraft,
+  onRemove,
+  onConfirm,
+  confirmMuted = false,
+  onGenerateRoute,
+  onCancel,
+}: ReturnHomePanelProps) {
   const [tab, setTab] = useState<PanelTab>('params')
   const [height, setHeight] = useState(10)
+  // 高度已输入/调整标记：面板初次打开时「航线生成」「确认」均置灰，
+  // 输入高度（−/+ 步进或手动键入任意一次）后「航线生成」解除置灰；
+  // 「确认」由 HomePage 依据航线连线是否已生成（confirmMuted）解除
+  const [heightTouched, setHeightTouched] = useState(false)
+  const handleHeightChange = (v: number) => {
+    setHeight(v)
+    setHeightTouched(true)
+  }
 
   return (
     <PanelShell
       title="返航"
       className="return-home-panel"
       ariaLabel="返航参数面板"
+      middleText="航线生成"
+      middleMuted={!heightTouched}
+      confirmMuted={confirmMuted}
       onConfirm={() => onConfirm(height)}
+      // 置灰态拦截：未输入高度时点击「航线生成」不触发航线绘制
+      onMiddle={() => {
+        if (!heightTouched) return
+        onGenerateRoute?.()
+      }}
       onCancel={onCancel}
     >
       {/* tab 栏：参数设置（默认选中）/ 飞机列表 */}
@@ -48,7 +77,8 @@ export function ReturnHomePanel({ aircraft, onRemove, onConfirm, onCancel }: Ret
           <HeightStepper
             label="返航高度"
             height={height}
-            onChange={setHeight}
+            onChange={handleHeightChange}
+            editable
             minusAriaLabel="减小返航高度"
             plusAriaLabel="增大返航高度"
           />

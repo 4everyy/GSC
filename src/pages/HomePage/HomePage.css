@@ -1190,6 +1190,13 @@
   /* .map-stage 鐨?pointer-events: none 鍦ㄦ鎭㈠锛岄潰鏉垮唴鎺т欢鎵嶅彲浜や簰 */
   pointer-events: auto;
 }
+/* 区域降落/集结点面板：与全屏框选遮罩（z-index 2000）共存时浮于其上，
+   否则按钮首次点击进入框选态时面板被遮罩盖住（看似未弹出）；
+   面板 pointer-events:auto，浮于遮罩上方时其按钮仍可正常点击 */
+.area-landing-panel,
+.rally-point-panel {
+  z-index: 2100;
+}
 
 /* 搴曢儴鎸夐挳銆屾縺娲汇€嶆€侊細鐐瑰嚮璧烽鎸夐挳鍚庝繚鎸佸脊鍑?+ 鍐呭彂鍏夛紙涓?hover 瑙嗚涓€鑷翠絾鎸佺画锛岀洿鑷抽潰鏉垮叧闂級 */
 .bottom-bar__btn--active .bottom-bar__visual {
@@ -1329,6 +1336,18 @@
   background-color: transparent;
 }
 
+/* Frame-selection follow cursor (area-landing-cursor helipad icon 54x54): replaces native cursor -
+   cursor:none, same solution as tap-return point-picking; image center (27,27) aligned to mouse,
+   pointer-events:none does not block frame-selection dragging */
+.area-select-cursor {
+  position: fixed;
+  width: 54px;
+  height: 54px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* 妗嗛€夎櫄绾挎锛?px 绱壊铏氱嚎锛?7160F2锛夈€佹棤鍦嗚锛沴eft/top/width/height 鐢卞唴鑱旀牱寮?
    鎸夋嫋鎷借捣缁堢偣褰掍竴鍖栨敞鍏ワ紙鑷畾涔夊ぇ灏忥級锛沚ox-shadow 澶栨墿 9999px 閬殫妗嗗鍏ㄩ儴鍖哄煙 */
 .area-select-frame {
@@ -1384,6 +1403,9 @@
   background-color: rgba(75, 188, 249, 1);
 }
 
+/* 框选模式全程隐藏原生光标（选区定格后也保持标记光标跟随）：
+   遮罩内的「确认/取消」标签覆盖为 cursor:none，避免悬停时露出系统箭头；
+
 /* ============ 鎸囩偣杩旇埅鍙栫偣妯″紡 ============ */
 /* 闈㈡澘鎵撳紑鏈熼棿鍦板浘鍖哄煙鏄剧ず鑷畾涔夊彇鐐瑰厜鏍囷紙澶嶇敤鍖哄煙闄嶈惤鍙栫偣鍏夋爣鍒囧浘锛岀儹鐐?27 27 灞呬腑锛夛紱
    MapLibre 浜や簰鐢诲竷榛樿 grab 鍏夋爣锛岄渶涓€骞惰鐩?*/
@@ -1416,6 +1438,18 @@
   pointer-events: none;
 }
 
+/* 环绕飞行已标记态：定格图钉可交互（hover/点击显示「取消重绘」），鼠标恢复原生样式 */
+.tap-return-marker--pin {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.tap-return-marker--pin img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 /* 鎸囩偣杩旇埅钀界偣姝ｄ笅鏂硅繑鑸尯鍩熷渾鍦堬紙璁捐绋?image-wrapper_4锛夛細
    48脳48銆乺gba(255,255,255,0.2) 濉厖銆?px 鐧芥弿杈瑰渾褰紝flex 灞呬腑 20脳24 鍋滄満鍧浘鏍囷紱
    鍦嗗湀椤堕儴璺濊惤鐐?60px锛堝浘閽夐珮 56px + 4px 闂撮殭锛夛紝涓庡浘閽夊瀭鐩存帓鍒?*/
@@ -1439,6 +1473,28 @@
 .tap-return-zone img {
   width: 20px;
   height: 24px;
+}
+
+/* 指点返航落点「确定 | 取消」按钮条：视口 fixed 定位（与落点图钉同一坐标空间），
+   视觉复用区域降落确认条（121×32、4px 圆角、半透明蓝底 + 1px 蓝描边 + 阴影，
+   内部标签/分隔线直接复用 area-select-confirm-bar__* 类）；
+   left/top 由内联样式注入（水平居中于落点、位于落点圆圈下方 8px），
+   transform 仅做水平居中偏移；pointer-events:auto 支持点击（图钉/圆圈均为 none） */
+.tap-return-confirm-bar {
+  position: fixed;
+  z-index: 1501;
+  display: flex;
+  align-items: flex-start;
+  width: 121px;
+  height: 32px;
+  box-sizing: border-box;
+  background-color: rgba(75, 188, 249, 0.4);
+  border: 1px solid rgba(75, 188, 249, 1);
+  border-radius: 4px;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  transform: translateX(-50%);
+  pointer-events: auto;
+  user-select: none;
 }
 
 /* 指点返航连线（SVG 视口屏幕空间）：fixed 全屏画布铺满视口（100vw×100vh），
@@ -1609,3 +1665,28 @@
   transform: translate(-50%, -100%);
   pointer-events: none;
 }
+
+/* 区域降落降落坪编队（点击「航线生成」后）：选中飞机中心 → 对应降落坪图标中心的
+   1px #00FF95 绿色实线（SVG 视口屏幕空间）；pointer-events:none 不拦截地图交互，
+   z-index 高于已确认区域填充(1500)避免连线被紫色半透明层压暗 */
+.area-landing-route {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1501;
+  pointer-events: none;
+}
+
+/* 区域降落降落坪图标：44×44 居中锚定在各排列点位上（translate(-50%,-50%)），
+   pointer-events:none 不遮挡已确认区域的「删除重绘」按钮 */
+.area-landing-spot {
+  position: fixed;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1502;
+}
+
