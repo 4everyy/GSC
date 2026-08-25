@@ -1,4 +1,4 @@
-export type AlarmColor = 'orange' | 'blue' | 'green' | 'red'
+export type AlarmColor = 'orange' | 'blue' | 'red'
 
 export interface AlarmType {
   badge: string

@@ -269,7 +269,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background-image: url('../../assets/images/home/map-button-1.png');
+  background-image: url('../../assets/images/home/map-button-normal.png');
   background-repeat: no-repeat;
   background-size: 100% 100%;
   opacity: 0.8;
@@ -277,12 +277,12 @@
 }
 
 .view-controls button:hover::before {
-  background-image: url('../../assets/images/home/map-button-2.png');
+  background-image: url('../../assets/images/home/map-button-hover.png');
 }
 
 .view-controls button:active::before,
 .view-controls button.active::before {
-  background-image: url('../../assets/images/home/map-button-3.png');
+  background-image: url('../../assets/images/home/map-button-active.png');
 }
 
 .view-controls img,
@@ -314,7 +314,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background-image: url('../../assets/images/home/map-button-1.png');
+  background-image: url('../../assets/images/home/map-button-normal.png');
   background-repeat: no-repeat;
   background-size: 100% 100%;
   opacity: 0.8;
@@ -332,11 +332,11 @@
 }
 
 .zoom-controls:has(button:hover)::before {
-  background-image: url('../../assets/images/home/map-button-2.png');
+  background-image: url('../../assets/images/home/map-button-hover.png');
 }
 
 .zoom-controls:has(button:active)::before {
-  background-image: url('../../assets/images/home/map-button-3.png');
+  background-image: url('../../assets/images/home/map-button-active.png');
 }
 
 .zoom-controls button img {

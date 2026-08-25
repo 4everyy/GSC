@@ -23,8 +23,6 @@ export type BatteryLevel = 'full' | 'mid' | 'low'
 
 export interface Device {
   name: string
-  deviceIcon: string
-  icons: string[]
   telemetry?: DeviceTelemetry
   // 新设计稿字段
   status: DeviceStatus
@@ -57,8 +55,6 @@ const firstTelemetry: DeviceTelemetry = {
 export const deviceList: Device[] = [
   {
     name: '01晶锐',
-    deviceIcon: deviceImages.iconBlue,
-    icons: [deviceImages.actionIcon1, deviceImages.actionIcon2],
     telemetry: firstTelemetry,
     status: 'tasking',
     statusText: '任务中',
@@ -69,8 +65,6 @@ export const deviceList: Device[] = [
   },
   {
     name: '02中科晶...',
-    deviceIcon: deviceImages.iconBlue,
-    icons: [deviceImages.actionIcon1, deviceImages.actionIcon2],
     status: 'offline',
     statusText: '离线',
     altitudeValue: '40m',
@@ -80,8 +74,6 @@ export const deviceList: Device[] = [
   },
   {
     name: '03中科晶锐',
-    deviceIcon: deviceImages.iconBlue,
-    icons: [deviceImages.actionIcon3, deviceImages.actionIcon4],
     status: 'standby',
     statusText: '待命',
     altitudeValue: '400m',
@@ -91,8 +83,6 @@ export const deviceList: Device[] = [
   },
   {
     name: '04中科晶锐',
-    deviceIcon: deviceImages.iconBlue,
-    icons: [deviceImages.actionIcon3, deviceImages.actionIcon4],
     status: 'tasking',
     statusText: '任务中',
     altitudeValue: '40m',
@@ -102,8 +92,6 @@ export const deviceList: Device[] = [
   },
   {
     name: '05中科晶锐',
-    deviceIcon: deviceImages.iconBlue,
-    icons: [deviceImages.actionIcon3, deviceImages.actionIcon4],
     status: 'tasking',
     statusText: '任务中',
     altitudeValue: '40m',

@@ -2,9 +2,43 @@ import { useEffect, useRef, useState } from 'react'
 import { toolbarItems } from '../../config/toolbar'
 import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
 import { DeviceManagementPanel } from '../DeviceManagementPanel/DeviceManagementPanel'
+import { TargetListPanel } from '../TargetListPanel/TargetListPanel'
 import './MapToolbar.css'
 
 const FADE_MS = 500
+
+/** 面板淡入/淡出：mounted 控制 DOM 是否存在；visible 控制淡入/淡出 class */
+function useFadeMount(isOpen: boolean): [boolean, boolean] {
+  const [mounted, setMounted] = useState(false)
+  const [visible, setVisible] = useState(false)
+  const unmountTimer = useRef<number | null>(null)
+
+  const clearTimer = () => {
+    if (unmountTimer.current) {
+      window.clearTimeout(unmountTimer.current)
+      unmountTimer.current = null
+    }
+  }
+
+  useEffect(() => {
+    clearTimer()
+    if (isOpen) {
+      // 打开：先挂载，下一帧再加 visible 触发淡入
+      setMounted(true)
+      const raf = window.requestAnimationFrame(() => {
+        // 双 rAF 确保浏览器先把 opacity:0 渲染出来
+        window.requestAnimationFrame(() => setVisible(true))
+      })
+      return () => window.cancelAnimationFrame(raf)
+    }
+    // 关闭：移除 visible 触发淡出，延迟卸载
+    setVisible(false)
+    unmountTimer.current = window.setTimeout(() => setMounted(false), FADE_MS)
+    return clearTimer
+  }, [isOpen])
+
+  return [mounted, visible]
+}
 
 export function MapToolbar() {
   const [active, setActive] = useState(-1)
@@ -38,36 +72,9 @@ export function MapToolbar() {
     }
   }, [])
 
-  // 设备面板：mounted 控制 DOM 是否存在；visible 控制淡入/淡出 class
-  const [deviceMounted, setDeviceMounted] = useState(false)
-  const [deviceVisible, setDeviceVisible] = useState(false)
-  const unmountTimer = useRef<number | null>(null)
-
-  const clearUnmountTimer = () => {
-    if (unmountTimer.current) {
-      window.clearTimeout(unmountTimer.current)
-      unmountTimer.current = null
-    }
-  }
-
-  // active 切换 → 驱动挂载/卸载 + 淡入/淡出
-  useEffect(() => {
-    clearUnmountTimer()
-    if (active === 0) {
-      // 打开：先挂载，下一帧再加 visible 触发淡入
-      setDeviceMounted(true)
-      const raf = window.requestAnimationFrame(() => {
-        // 双 rAF 确保浏览器先把 opacity:0 渲染出来
-        window.requestAnimationFrame(() => setDeviceVisible(true))
-      })
-      return () => window.cancelAnimationFrame(raf)
-    } else {
-      // 关闭：移除 visible 触发淡出，延迟卸载
-      setDeviceVisible(false)
-      unmountTimer.current = window.setTimeout(() => setDeviceMounted(false), FADE_MS)
-      return clearUnmountTimer
-    }
-  }, [active])
+  // 第 1 个按钮：设备管理面板；第 5 个按钮：目标列表面板
+  const [deviceMounted, deviceVisible] = useFadeMount(active === 0)
+  const [targetMounted, targetVisible] = useFadeMount(active === 4)
 
   return (
     <div className="map-toolbar-wrapper">
@@ -98,6 +105,9 @@ export function MapToolbar() {
       </aside>
       {deviceMounted && (
         <DeviceManagementPanel visible={deviceVisible} onClose={() => setActive(-1)} />
+      )}
+      {targetMounted && (
+        <TargetListPanel visible={targetVisible} onClose={() => setActive(-1)} />
       )}
     </div>
   )

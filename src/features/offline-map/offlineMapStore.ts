@@ -42,6 +42,33 @@ export function buildCityPackageUrl(cityKey: string): string {
   return `${MAPS_PUBLIC_DIR}/${cityKey}.mbtiles`
 }
 
+/**
+ * 检测已导入的城市包是否落后于 public/maps/ 中的静态文件（版本检测）。
+ *
+ * 用轻量 HEAD 请求读取静态文件的 Last-Modified，与包的 importedAt 比较：
+ * - 静态文件更新时间 > 导入时间 → 旧包过期，应自动升级（refreshCityPackage）；
+ * - 请求失败 / 文件缺失 / 无 Last-Modified 头 → 视为未过期（保守策略，
+ *   保持现状激活旧包，用户仍可在离线地图面板手动「强制更新」）。
+ *
+ * 仅取响应头、不下载文件体，对数百 MB 的 mbtiles 开销可忽略。
+ */
+async function isCityPackageStale(cityKey: string, importedAt: number): Promise<boolean> {
+  try {
+    const resp = await fetch(buildCityPackageUrl(cityKey), {
+      method: 'HEAD',
+      cache: 'no-cache',
+    })
+    if (!resp.ok) return false
+    const lastModified = resp.headers.get('Last-Modified')
+    if (!lastModified) return false
+    const modifiedAt = Date.parse(lastModified)
+    return Number.isFinite(modifiedAt) && modifiedAt > importedAt
+  } catch {
+    // 同源静态资源不可达（如纯本地 file:// 场景）：保持现状
+    return false
+  }
+}
+
 /** 离线地图整体状态 */
 export type OfflineMapStatus = 'idle' | 'loading' | 'importing' | 'ready' | 'error'
 
@@ -76,12 +103,21 @@ interface OfflineMapState {
   setActivePackage: (id: string | null) => void
   /**
    * 确保指定城市的离线包可用并激活：
-   * - 已导入 → 直接激活；
+   * - 已导入 → 版本检测：静态文件有更新则自动升级（refreshCityPackage），
+   *   否则直接激活（opts.force 时跳过检测，强制重新拉取）；
    * - 未导入 → 从 public/maps/{key}.mbtiles（同源）拉取并导入后激活；
    * - 静态文件缺失 → error 态 + 可操作提示。
    * @returns 激活的包 id；失败返回 null
    */
-  ensureCityPackage: (cityKey: string) => Promise<string | null>
+  ensureCityPackage: (cityKey: string, opts?: { force?: boolean }) => Promise<string | null>
+  /**
+   * 强制更新指定城市的离线包：
+   * 删除 IndexedDB 中的旧包（含全部瓦片），再从 public/maps/{key}.mbtiles
+   * 重新拉取导入并激活（带 cache-busting，避免浏览器 HTTP 缓存返回旧文件）。
+   * 用于静态目录中的 mbtiles 更新后，让已导入的客户端升级到新版数据。
+   * @returns 激活的包 id；失败返回 null
+   */
+  refreshCityPackage: (cityKey: string) => Promise<string | null>
 }
 
 export const useOfflineMapStore = create<OfflineMapState>((set, get) => ({
@@ -150,11 +186,15 @@ export const useOfflineMapStore = create<OfflineMapState>((set, get) => ({
 
   setActivePackage: (id) => set({ activePackageId: id }),
 
-  ensureCityPackage: async (cityKey) => {
+  ensureCityPackage: async (cityKey, opts) => {
     if (!cityKey) return null
-    // 1. 已导入该城市 → 直接激活，无需重复拉取
+    // 1. 已导入该城市 → 版本检测后激活（force 时跳过以支持强制更新）
     const existing = get().packages.find((p) => p.sourceKey === cityKey || p.id === cityKey)
-    if (existing) {
+    if (existing && !opts?.force) {
+      // 静态文件已更新（如替换了新版 mbtiles）→ 自动删旧导新升级
+      if (await isCityPackageStale(cityKey, existing.importedAt)) {
+        return get().refreshCityPackage(cityKey)
+      }
       set({ activePackageId: existing.id })
       return existing.id
     }
@@ -164,7 +204,9 @@ export const useOfflineMapStore = create<OfflineMapState>((set, get) => ({
     try {
       // 严格离线：仅从同源静态目录 public/maps/{key}.mbtiles 拉取，
       // buildCityPackageUrl 校验 key 仅含 a-z0-9- 并构造同源 URL，杜绝在线回源。
-      const resp = await fetch(buildCityPackageUrl(cityKey))
+      // force 更新时附加时间戳 + no-cache，绕开浏览器 HTTP 缓存里可能存在的旧文件。
+      const url = buildCityPackageUrl(cityKey) + (opts?.force ? `?t=${Date.now()}` : '')
+      const resp = await fetch(url, opts?.force ? { cache: 'no-cache' } : undefined)
       if (!resp.ok) {
         throw new Error(
           `「${findCityName(cityKey) ?? cityKey}」尚未准备离线数据：请将 ${cityKey}.mbtiles 放入 public/maps/ 后重试（可用 prepare-data.ps1 生成）`,
@@ -188,6 +230,23 @@ export const useOfflineMapStore = create<OfflineMapState>((set, get) => ({
       })
       return null
     }
+  },
+
+  refreshCityPackage: async (cityKey) => {
+    if (!cityKey) return null
+    set({ status: 'importing', error: null, importProgress: null })
+    // 1. 删除旧包（元数据 + 全部旧瓦片），避免新旧瓦片混存
+    const existing = get().packages.find((p) => p.sourceKey === cityKey || p.id === cityKey)
+    if (existing) {
+      await removeMbtilesPackage(existing.id)
+      const packages = await getAllPackages()
+      set({
+        packages,
+        activePackageId: get().activePackageId === existing.id ? null : get().activePackageId,
+      })
+    }
+    // 2. 强制重新拉取（cache-busting）并导入激活
+    return get().ensureCityPackage(cityKey, { force: true })
   },
 }))
 

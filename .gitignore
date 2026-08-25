@@ -32,3 +32,7 @@ dist-ssr
 mbtiles/
 # 前端同源静态目录下的城市瓦片包（按需投放，不纳入版本管理；README.md 仍跟踪）
 public/maps/*.mbtiles
+
+# SQLite 运行时临时文件（mbtiles WAL 模式副产物）
+public/maps/*-shm
+public/maps/*-wal

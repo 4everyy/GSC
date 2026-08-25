@@ -14,7 +14,6 @@ import { createPortal } from 'react-dom'
 import { StatusHeader } from '../../components/StatusHeader/StatusHeader'
 import { MapToolbar } from '../../components/MapToolbar/MapToolbar'
 import { MissionPanel } from '../../components/MissionPanel/MissionPanel'
-import { AlarmInfoPanel } from '../../components/AlarmInfoPanel/AlarmInfoPanel'
 import { MapControls } from '../../components/MapControls/MapControls'
 import { MapLibreContainer } from '../../components/MapLibreContainer/MapLibreContainer'
 import { MapScale } from '../../components/MapScale/MapScale'
@@ -41,7 +40,6 @@ import {
   type FormationFlightFormation,
 } from '../../components/FormationFlightPanel/FormationFlightPanel'
 import { useMapEngine } from '../../hooks/useMapEngine'
-import { ALARM_TYPES } from '../../config/alarms'
 import { aircraft } from '../../config/aircraft'
 import batteryMidIcon from '../../assets/images/device/battery-mid.png'
 import { homeImages } from '../../assets/images/home'
@@ -72,7 +70,7 @@ const AIRCRAFT_INITIAL_POSITIONS: DragPosition[] = [
 const INSPECTION_ZONE_INITIAL_POSITION: DragPosition = { x: 38.75, y: 25.5 }
 
 // 待接入功能的临时显示开关（false = 隐藏）：
-// MissionPanel / AlarmInfoPanel / 橙色禁飞区——功能就绪后置 true 或删除相关代码
+// MissionPanel / 橙色禁飞区——功能就绪后置 true 或删除相关代码
 const SHOW_PENDING_PANELS = false
 
 // 底部水平居中按钮条：13 段背景切图按显示顺序（从左到右）编号拼接（高度统一 60px）。
@@ -1256,7 +1254,7 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
     adapter.flyTo(activePackage.center, { zoom: 14, duration: 1500 })
   }, [adapter, activePackage])
 
-  const currentAlarmColor = activeAlarm !== null ? ALARM_TYPES[activeAlarm]?.color : undefined
+
 
   // 设备联动：hover/选中状态与设备管理面板双向同步（全局 store 承载，
   // deviceIndex 对应 config/devices.ts deviceList 下标）
@@ -1393,9 +1391,8 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
 
           {/* 严格离线：瓦片缓存命中即渲染；未命中灰显（绝不在线回源）。
               尚未导入地图包时渲染纯色占位底图。导入/切换入口由离线地图管理模块提供（P1+）。 */}
-          {/* MissionPanel 与 AlarmInfoPanel 暂时隐藏，待后续功能接入时恢复 */}
+          {/* MissionPanel 暂时隐藏，待后续功能接入时恢复 */}
           {SHOW_PENDING_PANELS && <MissionPanel />}
-          {SHOW_PENDING_PANELS && <AlarmInfoPanel alarmColor={currentAlarmColor} />}
           {/* 红色禁飞区：左下角倾斜四边形，SVG 绘制边框 + 四角节点 */}
           <div className="restricted-zone restricted-zone--red" aria-label="禁飞区域">
             <svg

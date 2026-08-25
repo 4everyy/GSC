@@ -88,7 +88,7 @@ export function AircraftListSection({
                     <span className="aircraft-list-panel__metric-value">{item.battery}%</span>
                   </span>
 
-                  {/* Delete (last icon in row): clickable remove button when onRemove passed */}
+                  {/* 删除（行尾图标）：传入 onRemove 时渲染为可点击删除按钮 */}
                   {onRemove ? (
                     <button
                       type="button"
@@ -102,13 +102,13 @@ export function AircraftListSection({
                     >
                     <img
                       className="aircraft-list-panel__signal-img"
-                      src={homeImages.signalAircraft}
+                      src={homeImages.iconDelete}
                       alt=""
                       draggable={false}
                     />
                     </button>
                   ) : (
-                    <img className="aircraft-list-panel__signal aircraft-list-panel__signal-img" src={homeImages.signalAircraft} alt="" draggable={false} />
+                    <img className="aircraft-list-panel__signal aircraft-list-panel__signal-img" src={homeImages.iconDelete} alt="" draggable={false} />
                   )}
                 </div>
               )

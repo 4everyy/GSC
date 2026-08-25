@@ -2,11 +2,9 @@ import aircraftBlue from './aircraft-blue.png'
 import aircraftGray from './aircraft-gray.png'
 import aircraftOrange from './aircraft-orange.png'
 import aircraftRed from './aircraft-red.png'
-import alarmBadge1 from './alarm-badge-1.png'
-import alarmBadge2 from './alarm-badge-2.png'
-import alarmBadge3 from './alarm-badge-3.png'
-import alarmBadge4 from './alarm-badge-4.png'
-import alarmInfoIcon from './alarm-info-icon.png'
+import alarmBadgeBlue from './alarm-badge-blue.png'
+import alarmBadgeOrange from './alarm-badge-orange.png'
+import alarmBadgeRed from './alarm-badge-red.png'
 import alarmSymbol from './alarm-symbol.png'
 import iconAreaLanding from './icon-area-landing.png'
 import iconAreaPlanning from './icon-area-planning.png'
@@ -26,15 +24,11 @@ import iconTakeoff from './icon-takeoff.png'
 import iconTapToReturn from './icon-tap-to-return.png'
 import iconWaypointFlight from './icon-waypoint-flight.png'
 import layerToggleOn from './layer-toggle-on.png'
-import mapButton1 from './map-button-1.png'
-import mapButton2 from './map-button-2.png'
-import mapButton3 from './map-button-3.png'
 import iconTask from './icon-task.png'
 import iconZoomIn from './icon-zoom-in.png'
 import iconZoomOut from './icon-zoom-out.png'
 import signalIcon from './signal-icon.png'
-import signalAircraft from './signal-aircraft.png'
-import waypointInputBg from './waypoint-input-bg.png'
+import iconDelete from './icon-delete.png'
 import statusOnlineIcon from './status-online-icon.png'
 import statusTakeoffIcon from './status-takeoff-icon.png'
 import userAvatar from './user-avatar.png'
@@ -97,11 +91,9 @@ export const homeImages = {
   aircraftGray,
   aircraftOrange,
   aircraftRed,
-  alarmBadge1,
-  alarmBadge2,
-  alarmBadge3,
-  alarmBadge4,
-  alarmInfoIcon,
+  alarmBadgeBlue,
+  alarmBadgeOrange,
+  alarmBadgeRed,
   alarmSymbol,
   iconAreaLanding,
   iconAreaPlanning,
@@ -121,15 +113,11 @@ export const homeImages = {
   iconTapToReturn,
   iconWaypointFlight,
   layerToggleOn,
-  mapButton1,
-  mapButton2,
-  mapButton3,
   iconTask,
   iconZoomIn,
   iconZoomOut,
   signalIcon,
-  signalAircraft,
-  waypointInputBg,
+  iconDelete,
   statusOnlineIcon,
   statusTakeoffIcon,
   userAvatar,

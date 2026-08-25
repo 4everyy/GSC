@@ -39,4 +39,9 @@ export const toolbarItems: ToolbarItem[] = [
     icon: homeImages.iconTask,
     background: BTN_BG,
   },
+  {
+    label: '目标列表',
+    icon: deviceImages.target,
+    background: BTN_BG,
+  },
 ]

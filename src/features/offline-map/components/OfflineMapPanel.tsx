@@ -4,7 +4,7 @@
  * 功能：
  * - 导入 .mbtiles 文件（自动从文件名识别城市 key，关联 sourceKey）；
  * - 按城市切换激活的离线包（城市下拉 → 匹配已导入包）；
- * - 包列表（激活 / 删除）。
+ * - 包列表（激活 / 更新 / 删除）。
  *
  * 严格离线：所有操作仅读写本地 IndexedDB。
  */
@@ -35,6 +35,7 @@ export function OfflineMapPanel() {
   const removePackage = useOfflineMapStore((s) => s.removePackage)
   const setActivePackage = useOfflineMapStore((s) => s.setActivePackage)
   const ensureCityPackage = useOfflineMapStore((s) => s.ensureCityPackage)
+  const refreshCityPackage = useOfflineMapStore((s) => s.refreshCityPackage)
 
   const isImporting = status === 'importing'
   const activePkg = packages.find((p) => p.id === activePackageId)
@@ -177,6 +178,17 @@ export function OfflineMapPanel() {
                             onClick={() => setActivePackage(pkg.id)}
                           >
                             启用
+                          </button>
+                        )}
+                        {pkg.sourceKey && (
+                          <button
+                            type="button"
+                            className="offline-map-panel__pkg-btn"
+                            onClick={() => refreshCityPackage(pkg.sourceKey!)}
+                            disabled={isImporting}
+                            title="删除旧版并从 public/maps/ 重新拉取最新离线数据"
+                          >
+                            更新
                           </button>
                         )}
                         <button

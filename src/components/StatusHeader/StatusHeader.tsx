@@ -1,4 +1,4 @@
-import { ALARM_TYPES } from '../../config/alarms'
+import { ALARM_BADGES } from '../../config/alarms'
 import { homeImages } from '../../assets/images/home'
 import './StatusHeader.css'
 
@@ -34,14 +34,14 @@ export function StatusHeader({ activeAlarm, onAlarmClick }: StatusHeaderProps) {
         </div>
       </div>
       <div className="status-header__right">
-        {ALARM_TYPES.map((alarm, index) => (
+        {ALARM_BADGES.map((badge, index) => (
           <span
             className={`alarm ${activeAlarm === index ? 'is-active' : ''}`}
-            key={alarm.badge}
+            key={badge}
             onClick={() => onAlarmClick(index)}
             style={{ cursor: 'pointer' }}
           >
-            <img src={alarm.badge} alt="告警" />
+            <img src={badge} alt="告警" />
             <img className="alarm__symbol" src={homeImages.alarmSymbol} alt="" />
             <em>99</em>
           </span>
