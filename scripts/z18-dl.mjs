@@ -14,11 +14,18 @@ import { DatabaseSync } from 'node:sqlite'
 import fs from 'node:fs'
 
 const KEYS = [
+  // 第一批（2026-08-26 额度已尽，每日 0 点自动恢复）
   '9bc473f63d2446e309cc53778b768879',
   '31c69ae96cf7ed8006dc2600dd4df705',
   'bf1f1f0046174dc50311f842462b4103',
   '46254faf5b0c216bae13c9669f3d50c7',
   'a4d8f20952fcfc4cc318dadadac028a8',
+  // 第二批（2026-08-26 下午新增）
+  'ab93e010120673ba97ed03a9ce02138b',
+  'fb5ae171d1f34429fa9e316d3c3afd05',
+  '7cd22ede14210d66b060ee2c7efa42b2',
+  '61c17e143b905a3d136b0f0e323bb7cd',
+  '6095ee908179a443a6e1aed07519e974',
 ]
 
 const Z = 18
