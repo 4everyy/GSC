@@ -1,0 +1,42 @@
+{
+  "pid": 6532,
+  "startedAt": "2026-08-26T02:24:25.212Z",
+  "updatedAt": "2026-08-26T03:35:58.009Z",
+  "zoom": 18,
+  "totalAll": 1044480,
+  "existingBefore": 75044,
+  "todo": 969436,
+  "done": 43474,
+  "failed": 170,
+  "skipped404": 0,
+  "remain": 925792,
+  "ratePerSec": 0,
+  "etaHours": null,
+  "keys": [
+    {
+      "key": "9bc473f6…",
+      "ok": 9998,
+      "fail": 141
+    },
+    {
+      "key": "31c69ae9…",
+      "ok": 3482,
+      "fail": 220
+    },
+    {
+      "key": "bf1f1f00…",
+      "ok": 9998,
+      "fail": 106
+    },
+    {
+      "key": "46254faf…",
+      "ok": 9998,
+      "fail": 144
+    },
+    {
+      "key": "a4d8f209…",
+      "ok": 9998,
+      "fail": 93
+    }
+  ]
+}

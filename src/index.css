@@ -10,6 +10,22 @@
   font-style: normal;
   font-display: swap;
 }
+
+/* Medium / Semibold：设计稿告警信息面板标题与正文使用 */
+@font-face {
+  font-family: 'MiSans-Medium';
+  src: url('/fonts/MiSans-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MiSans-Semibold';
+  src: url('/fonts/MiSans-Semibold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
 @font-face {
   font-family: 'MiSans-Regular';
   src: url('/fonts/MiSans-Regular.ttf') format('truetype');

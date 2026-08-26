@@ -470,6 +470,8 @@
 
 .target-row__detail {
   position: relative;
+  /* 时间行字号变量：分隔线光学补偿需随字号等比缩放（中段视口布局按 vw 缩放，固定像素补偿会失配） */
+  --detail-time-fs: clamp(10px, 0.73vw, 13px);
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -534,7 +536,7 @@
 /* 标签：宽度=轨道宽（56px 基准），text-align-last justify 使「发现源」3 字
    拉伸至与 4 字标签同宽（设计稿 text-wrapper_1 手动拆 span 的效果） */
 .target-row__detail-label {
-  font-size: clamp(10px, 0.73vw, 13px);
+  font-size: var(--detail-time-fs);
   white-space: nowrap;
   line-height: 1.35;
   color: #fff;
@@ -707,10 +709,17 @@
   background: rgba(255, 255, 255, 0.2);
   margin-top: clamp(12px, 0.94vw, 18px);
   flex-shrink: 0;
+  /* 光学垂直居中（多视口像素实测）：MiSans 数字/CJK 墨迹在行盒内系统性偏上约 0.104em
+     （13px 时 ≈1.35px），盒级对称时「最后更新时间」离底部的视觉间隙偏大。
+     补偿必须随字号等比——中段视口（约 1400~1780px）整体按 vw 缩放，固定 -1.35px 会过度补偿；
+     Windows Chrome 文字基线整数像素吸附、亚像素移动文字无效，故文字不动，
+     仅将分隔线视觉上移（transform 不影响布局），使底隙相对收窄、两行时间光学居中 */
+  transform: translateY(calc(var(--detail-time-fs) * -0.104));
 }
 
 /* 时间行（text-wrapper_2/3）：整体右对齐，标签与时间值用 gap 留间距，不超出详情区宽度。
-   margin-top 与「末行底→块底」间距（deco margin 1px + deco 高度 ≈ 10px）一致，使两行时间在分隔线与块底之间垂直居中 */
+   margin-top 与「末行底→块底」间距（deco 互补 margin + deco 高度，见 deco 规则 calc）恒等，
+   使两行时间在分隔线与块底之间盒级垂直居中；墨迹级光学补偿见分隔线 transform */
 .target-row__detail-footer {
   display: flex;
   align-items: center;
@@ -740,19 +749,23 @@
 }
 
 .target-row__detail-time {
-  font-size: clamp(10px, 0.73vw, 13px);
+  font-size: var(--detail-time-fs);
   white-space: nowrap;
   color: #fff;
   flex-shrink: 0;
 }
 
-/* 底部装饰图（image_5：434×11，紧贴详情块底部）：margin-top 1px 与首行时间 margin-top 平衡，实现垂直居中 */
+
+/* 底部装饰图（image_5：434×11，紧贴详情块底部）：margin 与首行时间间距互补，实现盒级垂直居中 */
 .target-row__detail-deco {
   display: block;
   width: 100%;
   height: clamp(8px, 0.57vw, 11px);
   object-fit: fill;
-  margin-top: 1px;
+  /* deco 高度 + 本 margin ≡ 首行时间 margin-top clamp(8px, 0.65vw, 12px)，
+     使「分隔线下沿→首行时间盒顶」与「末行时间盒底→详情块底」在任意视口盒级等距
+     （原固定 1px 在非 1920 视口会与首行 clamp 间距失配，产生 0.2~0.3px 漂移） */
+  margin-top: calc(clamp(8px, 0.65vw, 12px) - clamp(8px, 0.57vw, 11px));
   flex-shrink: 0;
   pointer-events: none;
   user-select: none;

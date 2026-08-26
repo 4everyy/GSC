@@ -5,6 +5,17 @@ import aircraftRed from './aircraft-red.png'
 import alarmBadgeBlue from './alarm-badge-blue.png'
 import alarmBadgeOrange from './alarm-badge-orange.png'
 import alarmBadgeRed from './alarm-badge-red.png'
+import alarmBoxBg from './alarm-box-bg.png'
+import alarmDetailScrollbar from './alarm-detail-scrollbar.png'
+import alarmDetailNode from './alarm-detail-node.png'
+import alarmDetailDrone from './alarm-detail-drone.png'
+import alarmDetailStatus from './alarm-detail-status.png'
+import alarmDetailSelectArrow from './alarm-detail-select-arrow.png'
+import alarmDetailIcon from './alarm-detail-icon.png'
+import alarmDetailFilterBar from './alarm-detail-filter-bar.png'
+import alarmDetailBg from './alarm-detail-bg.png'
+import alarmCloseIcon from './alarm-close-icon.png'
+import alarmInfoIcon from './alarm-info-icon.png'
 import alarmSymbol from './alarm-symbol.png'
 import iconAreaLanding from './icon-area-landing.png'
 import iconAreaPlanning from './icon-area-planning.png'
@@ -94,6 +105,17 @@ export const homeImages = {
   alarmBadgeBlue,
   alarmBadgeOrange,
   alarmBadgeRed,
+  alarmBoxBg,
+  alarmDetailScrollbar,
+  alarmDetailNode,
+  alarmDetailDrone,
+  alarmDetailStatus,
+  alarmDetailSelectArrow,
+  alarmDetailIcon,
+  alarmDetailFilterBar,
+  alarmDetailBg,
+  alarmCloseIcon,
+  alarmInfoIcon,
   alarmSymbol,
   iconAreaLanding,
   iconAreaPlanning,

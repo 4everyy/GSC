@@ -15,6 +15,9 @@ import { StatusHeader } from '../../components/StatusHeader/StatusHeader'
 import { MapToolbar } from '../../components/MapToolbar/MapToolbar'
 import { MissionPanel } from '../../components/MissionPanel/MissionPanel'
 import { MapControls } from '../../components/MapControls/MapControls'
+import { AlarmInfoPanel } from '../../components/AlarmInfoPanel/AlarmInfoPanel'
+// 告警详情面板暂隐藏（点击顶栏徽标也不展示），功能就绪后恢复：
+// import { AlarmDetailPanel } from '../../components/AlarmDetailPanel/AlarmDetailPanel'
 import { MapLibreContainer } from '../../components/MapLibreContainer/MapLibreContainer'
 import { MapScale } from '../../components/MapScale/MapScale'
 import { TakeoffPanel } from '../../components/TakeoffPanel/TakeoffPanel'
@@ -55,6 +58,7 @@ import { useOfflineMapStore } from '../../features/offline-map/offlineMapStore'
 import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
 import { deviceList } from '../../config/devices'
 import type { AircraftListItem } from '../../components/AircraftListPanel/AircraftListSection'
+import type { AlarmColor } from '../../types'
 
 // 飞机初始位置（百分比），与 HomePage.css 中 .aircraft--xxx 的 left/top 保持一致。
 // 拖拽后通过内联 style 覆盖 CSS 定位，实现自由拖动。
@@ -72,6 +76,9 @@ const INSPECTION_ZONE_INITIAL_POSITION: DragPosition = { x: 38.75, y: 25.5 }
 // 待接入功能的临时显示开关（false = 隐藏）：
 // MissionPanel / 橙色禁飞区——功能就绪后置 true 或删除相关代码
 const SHOW_PENDING_PANELS = false
+
+// 告警信息面板色调映射：与顶栏告警徽标（红/橙/蓝，config/alarms.ts ALARM_BADGES 顺序）按下标一一对应
+const ALARM_COLORS: AlarmColor[] = ['red', 'orange', 'blue']
 
 // 底部水平居中按钮条：13 段背景切图按显示顺序（从左到右）编号拼接（高度统一 60px）。
 // width 为各切图原始宽度，经 aspect-ratio 与高度联动保持每段比例，整体随视口等比缩放。
@@ -284,6 +291,10 @@ function RoutePinMarker({
 }
 export function HomePage() {
   const [activeAlarm, setActiveAlarm] = useState<number | null>(null)
+
+
+  // 告警信息面板色调：当前激活徽标（红/橙/蓝）映射为面板边框色调
+  const currentAlarmColor = activeAlarm !== null ? ALARM_COLORS[activeAlarm] : undefined
 
   // 聚焦视图：双击无人机图标后显示设备详情面板（存储聚焦的飞机索引）
   const [focusedAircraft, setFocusedAircraft] = useState<number | null>(null)
@@ -1386,6 +1397,18 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
         <section className="map-stage">
           <MapToolbar />
 
+
+          {/* 告警信息面板：右上角常显，色调随顶栏激活的告警徽标切换。
+              告警详情面板（AlarmDetailPanel）暂隐藏——点击顶栏告警徽标也不展示，功能就绪后恢复 */}
+          <div className="alarm-panels">
+            <AlarmInfoPanel alarmColor={currentAlarmColor} />
+            {/* {activeAlarm !== null && (
+              <AlarmDetailPanel
+                alarmColor={currentAlarmColor}
+                onClose={() => setActiveAlarm(null)}
+              />
+            )} */}
+          </div>
           {/* 离线地图管理面板（导入 / 城市切换 / 包列表）—— 严格离线，仅读写本地 IndexedDB */}
           <OfflineMapPanel />
 

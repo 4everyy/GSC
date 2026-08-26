@@ -1,0 +1,146 @@
+﻿/* ====== 告警信息面板（首页右上角） ======
+   设计稿 box_3：414×122（1920×1080 基准），随视口 clamp 等比缩放。
+   背景为 Lanhu 设计切图 alarm-box-bg.png（414×122，对角渐变+描边+底部高光线），像素级还原。
+   右边距与右侧图层按钮（view-controls）一致：clamp(8px,.83vw,16px)。 */
+.alarm-info-panel {
+  position: absolute;
+  top: 0; /* 紧贴顶部菜单栏：面板定位容器起点 = status-header 有效底缘（墨迹底缘），无间距 */
+  right: clamp(8px, 0.83vw, 16px); /* 与 .view-controls（图层按钮）右边距对齐 */
+  z-index: 6;
+  box-sizing: border-box;
+  width: clamp(207px, 21.56vw, 414px);
+  height: clamp(61px, 6.35vw, 122px);
+  display: flex;
+  flex-direction: column;
+  padding: clamp(6px, 0.63vw, 12px) 0 clamp(8px, 0.83vw, 16px);
+  pointer-events: auto;
+}
+
+/* 背景切图铺在独立伪元素层上，单独设透明度（面板整体 opacity 会连带文字变淡） */
+.alarm-info-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('../../assets/images/home/alarm-box-bg.png') center / 100% 100% no-repeat;
+  opacity: 0.8; /* 半透明，透出底层地图 */
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 面板内容统一浮于半透明背景层之上 */
+.alarm-info-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ====== 标题行：图标 + "告警信息" ====== */
+.alarm-info-panel__header {
+  display: flex;
+  align-items: center;
+  height: clamp(10.5px, 1.09vw, 21px); /* 设计稿 text_1 行高 21px，文字于行内垂直居中 */
+  margin-left: clamp(15px, 1.51vw, 29px);
+  gap: clamp(4px, 0.52vw, 10px);
+}
+
+.alarm-info-panel__icon {
+  width: clamp(7px, 0.73vw, 14px);
+  height: clamp(7px, 0.73vw, 14px);
+}
+
+.alarm-info-panel__title {
+  color: #fff;
+  font-size: clamp(8px, 0.83vw, 16px);
+  font-family: 'MiSans-Medium', 'MiSans-Regular', sans-serif; /* 设计稿 MiSans Medium 600 */
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* ====== 消息行 ====== */
+.alarm-info-panel__row {
+  display: flex;
+  align-items: center;
+  /* 122px 高度反算：内容 94 = 标题 21 + 行 16×2 + 间距 20.6×2，
+     仅用 margin-top（无 margin-bottom），否则 1920 视口内容溢出底 padding、header 被压缩 */
+  margin-top: clamp(6px, 1.07vw, 20.5px);
+  margin-bottom: 0;
+  padding-left: clamp(12px, 1.25vw, 24px);
+  padding-right: clamp(12px, 1.41vw, 27px);
+  gap: clamp(3px, 0.31vw, 6px);
+}
+
+/* 红色告警行（含标记）：设计稿 section_4 左 27 / 右 16 */
+.alarm-info-panel__row--red {
+  padding-left: clamp(13.5px, 1.41vw, 27px);
+  padding-right: clamp(12px, 1.41vw, 27px); /* 与普通行一致，行尾图标右缘对齐 */
+}
+
+/* 首行红色告警前的标记：红色横线 + 下方向上的箭头（设计稿 section_3/4/5，CSS 绘制） */
+.alarm-info-panel__mark {
+  position: relative;
+  flex-shrink: 0;
+  width: clamp(8px, 0.78vw, 15px);
+  height: clamp(8px, 0.83vw, 16px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.alarm-info-panel__mark-h {
+  width: clamp(8px, 0.78vw, 15px);
+  height: clamp(1px, 0.1vw, 2px);
+  background: #f32c30;
+}
+
+/* 向上的箭头：竖杆 + 顶端三角头（整体位于横线下方，水平居中） */
+.alarm-info-panel__mark-arrow {
+  position: relative;
+  width: 0;
+  height: clamp(2.5px, 0.26vw, 5px);
+  margin-top: clamp(3px, 0.34vw, 6.5px);
+  margin-left: auto;
+  margin-right: auto;
+  border-left: clamp(1px, 0.1vw, 2px) solid #f32c30;
+}
+
+/* 箭头头部：实心三角（朝上） */
+.alarm-info-panel__mark-arrow::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  border-left: clamp(2.5px, 0.26vw, 5px) solid transparent;
+  border-right: clamp(2.5px, 0.26vw, 5px) solid transparent;
+  border-bottom: clamp(2.5px, 0.26vw, 5px) solid #f32c30;
+}
+
+.alarm-info-panel__text {
+  flex: 1;
+  min-width: 0;
+  font-size: clamp(7px, 0.73vw, 14px);
+  font-family: 'MiSans-Medium', 'MiSans-Regular', sans-serif; /* 设计稿正文 MiSans Medium */
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alarm-info-panel__close {
+  flex-shrink: 0;
+  width: clamp(8px, 0.83vw, 16px);
+  height: clamp(8px, 0.83vw, 16px);
+  margin-left: clamp(6px, 1.35vw, 26px);
+  cursor: pointer;
+}
+
+/* ====== 告警色调（点击顶栏徽标切换） ======
+   类名仅作状态标记（供选择器/JS 使用），不叠加任何视觉层：
+   描边会在切图底部半透明圆角缺口处形成突兀角线，
+   内辉光呈现为整圈红色阴影框，均已移除。 */
+.alarm-info-panel--red,
+.alarm-info-panel--orange,
+.alarm-info-panel--blue {
+  /* 保持背景切图原始外观，无任何 box-shadow */
+}

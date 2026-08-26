@@ -1690,3 +1690,64 @@
   z-index: 1502;
 }
 
+
+/* ====== 告警面板组（常驻告警框 + 详情弹层）======
+   wrapper 承接原 .alarm-info-panel 的绝对定位（top:0 / right 对齐图层按钮），
+   内部纵向 flex 顺接布局：常驻告警框在文档流中撑开 wrapper 高度，
+   详情面板作为后续 flex 项紧贴其下方（4px 间距），不再独立绝对定位 */
+.alarm-panels {
+  position: absolute;
+  top: 0;
+  right: clamp(8px, 0.83vw, 16px);
+  z-index: 6;
+  width: clamp(207px, 21.56vw, 414px);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  pointer-events: none;
+}
+
+/* 常驻告警框在 wrapper 内改为文档流定位（覆盖组件内 absolute + 右偏移），
+   由其固定高度撑开 wrapper，为详情面板提供顺接基线 */
+.alarm-panels .alarm-info-panel {
+  position: relative;
+  top: auto;
+  right: auto;
+}
+
+/* 展开态（详情面板拼入）：常驻框底部改为完整长方向框（整条底边填充，取消中间缺口），
+   与详情面板无缝拼接成连续框体；关闭详情面板时 --expanded 类移除，
+   ::after 随之失效，常驻框自动恢复设计稿的圆角缺口样式 */
+.alarm-panels--expanded .alarm-info-panel::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(5px, 0.52vw, 10px);
+  /* 底边同源渐变（取样自切图底缘 #327da3→#2b6e8f），半透明与 ::before 背景层一致 */
+  background: linear-gradient(
+    180deg,
+    rgba(50, 125, 163, 0.85) 0%,
+    rgba(43, 110, 143, 0.85) 100%
+  );
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 补角块随告警色调叠加内阴影（与常驻框本体 --red/--orange/--blue 同参数；
+   仅左/右/底三边环线，避免顶边在补角块内部画出横向细线） */
+.alarm-panels--expanded .alarm-info-panel--red::after {
+  box-shadow: inset 1px 0 0 rgba(243, 44, 48, 0.55), inset -1px 0 0 rgba(243, 44, 48, 0.55),
+    inset 0 -1px 0 rgba(243, 44, 48, 0.55), inset 0 0 clamp(10px, 1.56vw, 30px) rgba(243, 44, 48, 0.2);
+}
+
+.alarm-panels--expanded .alarm-info-panel--orange::after {
+  box-shadow: inset 1px 0 0 rgba(243, 194, 0, 0.55), inset -1px 0 0 rgba(243, 194, 0, 0.55),
+    inset 0 -1px 0 rgba(243, 194, 0, 0.55), inset 0 0 clamp(10px, 1.56vw, 30px) rgba(243, 194, 0, 0.18);
+}
+
+.alarm-panels--expanded .alarm-info-panel--blue::after {
+  box-shadow: inset 1px 0 0 rgba(64, 158, 255, 0.55), inset -1px 0 0 rgba(64, 158, 255, 0.55),
+    inset 0 -1px 0 rgba(64, 158, 255, 0.55), inset 0 0 clamp(10px, 1.56vw, 30px) rgba(64, 158, 255, 0.18);
+}
