@@ -37,6 +37,4 @@ public/maps/*.mbtiles
 public/maps/*-shm
 public/maps/*-wal
 
-# 閮ㄧ讲鐢熸垚鐨勮嚜绛惧悕璇佧功锛堜湰鍦版晥锛屼笉鍏ュ簱锛?
-deploy/certs/
 
