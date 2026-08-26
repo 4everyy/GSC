@@ -36,3 +36,7 @@ public/maps/*.mbtiles
 # SQLite 运行时临时文件（mbtiles WAL 模式副产物）
 public/maps/*-shm
 public/maps/*-wal
+
+# 閮ㄧ讲鐢熸垚鐨勮嚜绛惧悕璇佧功锛堜湰鍦版晥锛屼笉鍏ュ簱锛?
+deploy/certs/
+
