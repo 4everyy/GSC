@@ -1,0 +1,41 @@
+/* 目标类型筛选「清除」能力补充样式（独立文件） */
+
+/* 下拉当前选中项：青色高亮 */
+.target-panel__dropdown-item--active {
+  color: #46dce7;
+  font-weight: 600;
+}
+
+/* 下拉「请选择」清除项：弱化占位色 + 底部分隔线 */
+.target-panel__dropdown-item--clear {
+  color: rgba(255, 255, 255, 0.45);
+  border-bottom: 1px solid rgba(120, 200, 220, 0.25);
+  margin-bottom: clamp(2px, 0.16vw, 3px);
+}
+
+.target-panel__dropdown-item--clear:hover {
+  color: #fff;
+}
+
+/* 选择框内 × 快速清除按钮 */
+.target-panel__select-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(12px, 0.9vw, 16px);
+  height: clamp(12px, 0.9vw, 16px);
+  margin-right: clamp(2px, 0.16vw, 4px);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  flex: none;
+}
+
+.target-panel__select-clear:hover {
+  background: rgba(120, 240, 255, 0.85);
+  color: #16323f;
+}

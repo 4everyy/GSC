@@ -36,3 +36,7 @@ public/maps/*.mbtiles
 # SQLite 杩愯鏃朵复鏃舵枃浠讹紙mbtiles WAL 妯″紡鍓骇鐗╋級
 public/maps/*-shm
 public/maps/*-wal
+
+# z18 淘宝瓦片下载运行时状态/跳过名单（每15s刷新，不入版本库）
+scripts/z18-dl-status.json
+scripts/z18-dl-skip.json

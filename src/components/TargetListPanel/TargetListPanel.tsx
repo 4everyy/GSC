@@ -4,6 +4,7 @@ import { targetList, targetTypeOptions, type TargetItem } from '../../config/tar
 import { deviceImages } from '../../assets/images/device'
 import { homeImages } from '../../assets/images/home'
 import './TargetListPanel.css'
+import './TargetListPanel.clear.css'
 
 interface TargetListPanelProps {
   onClose: () => void
@@ -134,6 +135,12 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     setExpandedIds(next)
   }
 
+  /** 清除类型筛选：恢复「请选择」占位（显示全部目标） */
+  const clearTypeFilter = () => {
+    setTypeFilter('请选择')
+    setOpenDropdown(false)
+  }
+
   return (
     <div className={`target-panel${visible ? ' target-panel--visible' : ''}`}>
       {/* 标题栏 */}
@@ -187,13 +194,41 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
           <span className={typeFilter === '请选择' ? 'target-panel__select-placeholder' : ''}>
             {typeFilter}
           </span>
+          {/* × 快速清除按钮：已选类型时显示，一键恢复「请选择」（显示全部目标） */}
+          {typeFilter !== '请选择' && (
+            <button
+              type="button"
+              className="target-panel__select-clear"
+              aria-label="清除类型筛选"
+              title="清除类型筛选"
+              onClick={(e) => {
+                e.stopPropagation()
+                clearTypeFilter()
+              }}
+            >
+              <svg viewBox="0 0 12 12" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" />
+                <line x1="9.5" y1="2.5" x2="2.5" y2="9.5" />
+              </svg>
+            </button>
+          )}
           <img src={deviceImages.dropdown} alt="" />
           {openDropdown && (
             <div className="target-panel__dropdown">
+              {/* 「请选择」= 清除筛选项：恢复显示全部目标（与 × 按钮等效） */}
+              <div
+                className={`target-panel__dropdown-item target-panel__dropdown-item--clear${typeFilter === '请选择' ? ' target-panel__dropdown-item--active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  clearTypeFilter()
+                }}
+              >
+                请选择
+              </div>
               {targetTypeOptions.map((opt) => (
                 <div
                   key={opt}
-                  className="target-panel__dropdown-item"
+                  className={`target-panel__dropdown-item${typeFilter === opt ? ' target-panel__dropdown-item--active' : ''}`}
                   onClick={(e) => {
                     e.stopPropagation()
                     setTypeFilter(opt)

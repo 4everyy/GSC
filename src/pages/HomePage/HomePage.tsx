@@ -53,7 +53,9 @@ import { usePanelClamp } from '../../hooks/usePanelClamp'
 import './HomePage.css'
 import './HoverPanelPlacement.css'
 import { useOfflineMap } from '../../features/offline-map/useOfflineMap'
-import { OfflineMapPanel } from '../../features/offline-map/components/OfflineMapPanel'
+// 离线地图管理面板暂隐藏（默认自动加载最新苏州包），需要手动管理时恢复：
+// // 离线地图管理面板暂隐藏（默认自动加载最新苏州包），需要手动管理时恢复：
+// import { OfflineMapPanel } from '../../features/offline-map/components/OfflineMapPanel'
 import { useOfflineMapStore } from '../../features/offline-map/offlineMapStore'
 import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
 import { deviceList } from '../../config/devices'
@@ -1245,19 +1247,19 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
   // 导入后由 gcs-pkg:// 协议从 IndexedDB 渲染。
   const { activeStyle, activePackage } = useOfflineMap()
 
-  // 默认城市：首次加载完成且无激活包时，自动启用「苏州」离线包
-  // （已导入则直接激活；未导入则从同源 public/maps/suzhou.mbtiles 拉取导入后激活）。
-  // ensuredRef 保证仅执行一次，用户后续手动取消激活不会被强制切回。
+  // 默认城市：每次会话首次加载完成后，无条件确保「苏州」离线包可用并激活（最新优先）。
+  // ensureCityPackage 内置版本检测（HEAD Last-Modified 对比 importedAt）：
+  // public/maps/suzhou.mbtiles 有更新 → 自动删旧导新升级为最新数据；
+  // 未导入 → 从同源静态目录拉取导入；已导入且未过期 → 直接激活。
+  // 离线地图面板已隐藏，用户无手动切换入口，故每次启动都回到默认苏州。
   const ensureCityPackage = useOfflineMapStore((s) => s.ensureCityPackage)
   const offlineStatus = useOfflineMapStore((s) => s.status)
-  const activePackageId = useOfflineMapStore((s) => s.activePackageId)
   const defaultCityEnsuredRef = useRef(false)
   useEffect(() => {
     if (defaultCityEnsuredRef.current || offlineStatus !== 'ready') return
     defaultCityEnsuredRef.current = true
-    if (activePackageId) return
     void ensureCityPackage('suzhou')
-  }, [offlineStatus, activePackageId, ensureCityPackage])
+  }, [offlineStatus, ensureCityPackage])
 
   // 激活包变化时（导入新包 / 切换城市）平滑飞到包中心。
   useEffect(() => {
@@ -1409,8 +1411,9 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
               />
             )} */}
           </div>
-          {/* 离线地图管理面板（导入 / 城市切换 / 包列表）—— 严格离线，仅读写本地 IndexedDB */}
-          <OfflineMapPanel />
+          {/* 离线地图管理面板（导入 / 城市切换 / 包列表）暂隐藏——默认自动加载最新苏州包，
+              需要手动管理时恢复下方注释即可（严格离线，仅读写本地 IndexedDB） */}
+          {/* <OfflineMapPanel /> */}
 
           {/* 严格离线：瓦片缓存命中即渲染；未命中灰显（绝不在线回源）。
               尚未导入地图包时渲染纯色占位底图。导入/切换入口由离线地图管理模块提供（P1+）。 */}

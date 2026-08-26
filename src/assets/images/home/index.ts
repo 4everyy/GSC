@@ -5,7 +5,6 @@ import aircraftRed from './aircraft-red.png'
 import alarmBadgeBlue from './alarm-badge-blue.png'
 import alarmBadgeOrange from './alarm-badge-orange.png'
 import alarmBadgeRed from './alarm-badge-red.png'
-import alarmBoxBg from './alarm-box-bg.png'
 import alarmDetailScrollbar from './alarm-detail-scrollbar.png'
 import alarmDetailNode from './alarm-detail-node.png'
 import alarmDetailDrone from './alarm-detail-drone.png'
@@ -105,7 +104,6 @@ export const homeImages = {
   alarmBadgeBlue,
   alarmBadgeOrange,
   alarmBadgeRed,
-  alarmBoxBg,
   alarmDetailScrollbar,
   alarmDetailNode,
   alarmDetailDrone,

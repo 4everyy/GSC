@@ -1,6 +1,6 @@
 ﻿/* ====== 告警信息面板（首页右上角） ======
    设计稿 box_3：414×122（1920×1080 基准），随视口 clamp 等比缩放。
-   背景为 Lanhu 设计切图 alarm-box-bg.png（414×122，对角渐变+描边+底部高光线），像素级还原。
+   背景为纯 CSS 绘制：127° 对角渐变 #4ca2cc→#21607e + 底部两角 45° 切角（约10px），像素级还原。
    右边距与右侧图层按钮（view-controls）一致：clamp(8px,.83vw,16px)。 */
 .alarm-info-panel {
   position: absolute;
@@ -16,12 +16,20 @@
   pointer-events: auto;
 }
 
-/* 背景切图铺在独立伪元素层上，单独设透明度（面板整体 opacity 会连带文字变淡） */
+/* 背景为纯 CSS 绘制（渐变 + clip-path 切角），铺在独立伪元素层上，单独设透明度（面板整体 opacity 会连带文字变淡） */
 .alarm-info-panel::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: url('../../assets/images/home/alarm-box-bg.png') center / 100% 100% no-repeat;
+  background: linear-gradient(127deg, #4ca2cc 0%, #21607e 100%);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - clamp(5px, 0.52vw, 10px)),
+    calc(100% - clamp(5px, 0.52vw, 10px)) 100%,
+    clamp(5px, 0.52vw, 10px) 100%,
+    0 calc(100% - clamp(5px, 0.52vw, 10px))
+  );
   opacity: 0.8; /* 半透明，透出底层地图 */
   pointer-events: none;
   z-index: 0;
@@ -137,7 +145,7 @@
 
 /* ====== 告警色调（点击顶栏徽标切换） ======
    类名仅作状态标记（供选择器/JS 使用），不叠加任何视觉层：
-   描边会在切图底部半透明圆角缺口处形成突兀角线，
+   描边会在背景底部 45° 切角处形成突兀角线，
    内辉光呈现为整圈红色阴影框，均已移除。 */
 .alarm-info-panel--red,
 .alarm-info-panel--orange,
