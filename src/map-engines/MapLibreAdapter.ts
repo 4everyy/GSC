@@ -399,15 +399,20 @@ export class MapLibreAdapter implements MapAdapter {
     const onEnterFn = (e: MLMapMouseEvent) => {
       opts.onEnter?.({ lng: e.lngLat.lng, lat: e.lngLat.lat })
     }
+    const onMoveFn = (e: MLMapMouseEvent) => {
+      opts.onMove?.({ lng: e.lngLat.lng, lat: e.lngLat.lat })
+    }
     const onLeaveFn = () => {
       opts.onLeave?.()
     }
     this.map.on('mouseenter', hitLayerId, onEnterFn)
+    this.map.on('mousemove', hitLayerId, onMoveFn)
     this.map.on('mouseleave', hitLayerId, onLeaveFn)
 
     // 仅解绑事件；命中层交由 removeOverlay 统一删除（删除/卸载流程必经 removeOverlay）
     return () => {
       this.map.off('mouseenter', hitLayerId, onEnterFn)
+      this.map.off('mousemove', hitLayerId, onMoveFn)
       this.map.off('mouseleave', hitLayerId, onLeaveFn)
     }
   }

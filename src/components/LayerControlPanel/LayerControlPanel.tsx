@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { homeImages } from '../../assets/images/home'
+import { useLayerStore } from '../../stores/layerStore'
 import './LayerControlPanel.css'
 
 interface LayerControlPanelProps {
@@ -36,8 +37,6 @@ interface LayerItem {
   key: string
   label: string
   initialStatus: LayerStatus
-  /** 演示标记：从 off 开启时走 loading 流程并固定失败（仅巡检区域演示用） */
-  demoFailLoad?: boolean
 }
 
 const STATUS_LABEL: Record<LayerStatus, string> = {
@@ -50,18 +49,18 @@ const STATUS_LABEL: Record<LayerStatus, string> = {
 /** 青绿色主题色（取自开启态 PNG 采样 #8bf9eb） */
 const ACCENT_COLOR = '#8bf9eb'
 
-/** 模拟异步加载（mock）：默认 70% 成功率、1.5s 延迟；forceFail=true 时固定失败 */
-function mockLoadLayer(forceFail = false): Promise<boolean> {
+/** 模拟异步加载（mock）：默认 70% 成功率、1.5s 延迟 */
+function mockLoadLayer(): Promise<boolean> {
   return new Promise((resolve) => {
-    setTimeout(() => resolve(!forceFail && Math.random() > 0.3), 1500)
+    setTimeout(() => resolve(Math.random() > 0.3), 1500)
   })
 }
 
 const LAYER_ITEMS: LayerItem[] = [
   { key: 'track', label: '航迹', initialStatus: 'off' },
   { key: 'trajectory', label: '轨迹', initialStatus: 'off' },
-  { key: 'inspection', label: '巡检区域', initialStatus: 'off', demoFailLoad: true },
-  { key: 'nofly', label: '禁飞区', initialStatus: 'on' },
+  { key: 'inspection', label: '巡检区域', initialStatus: 'off' },
+  { key: 'nofly', label: '禁飞区', initialStatus: 'off' },
   { key: 'label', label: '设备标签', initialStatus: 'on' },
 ]
 
@@ -180,20 +179,33 @@ export function LayerControlPanel({ visible = true }: LayerControlPanelProps) {
     Object.fromEntries(LAYER_ITEMS.map((item) => [item.key, item.initialStatus])),
   )
 
+  // 图层显隐联动 store：三个功能开关同步控制首页对应元素显隐
+  const setNoflyZoneVisible = useLayerStore((s) => s.setNoflyZoneVisible)
+  const setInspectionZoneVisible = useLayerStore((s) => s.setInspectionZoneVisible)
+  const setDeviceLabelsVisible = useLayerStore((s) => s.setDeviceLabelsVisible)
+
+  /** 开关状态 → 首页元素显隐同步（track/trajectory 暂无对应元素，仅记录开关状态） */
+  const applyVisibility = (key: string, on: boolean) => {
+    if (key === 'nofly') setNoflyZoneVisible(on)
+    else if (key === 'inspection') setInspectionZoneVisible(on)
+    else if (key === 'label') setDeviceLabelsVisible(on)
+  }
+
   // 防止竞态：记录正在加载的图层 key
   const loadingKeys = useRef<Set<string>>(new Set())
 
   /** 触发异步加载流程：→ loading → on(成功) / error(失败) */
-  const loadLayer = async (key: string, forceFail = false) => {
+  const loadLayer = async (key: string) => {
     if (loadingKeys.current.has(key)) return
     loadingKeys.current.add(key)
 
     setStatuses((prev) => ({ ...prev, [key]: 'loading' }))
 
-    const success = await mockLoadLayer(forceFail)
+    const success = await mockLoadLayer()
 
     loadingKeys.current.delete(key)
     setStatuses((prev) => ({ ...prev, [key]: success ? 'on' : 'error' }))
+    applyVisibility(key, success)
   }
 
   /** 点击处理：状态机转换 */
@@ -202,17 +214,14 @@ export function LayerControlPanel({ visible = true }: LayerControlPanelProps) {
 
     switch (status) {
       case 'on':
-        // 开启 → 关闭
+        // 开启 → 关闭：同步隐藏首页对应元素
         setStatuses((prev) => ({ ...prev, [item.key]: 'off' }))
+        applyVisibility(item.key, false)
         return
       case 'off':
-        // 关闭 → 开启
-        if (item.demoFailLoad) {
-          // 巡检区域演示：off → loading → error（固定加载失败）
-          loadLayer(item.key, true)
-        } else {
-          setStatuses((prev) => ({ ...prev, [item.key]: 'on' }))
-        }
+        // 关闭 → 开启：同步显示首页对应元素
+        setStatuses((prev) => ({ ...prev, [item.key]: 'on' }))
+        applyVisibility(item.key, true)
         return
       case 'error':
         // 禁用 → 重试加载（正常 70% 成功率）

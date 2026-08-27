@@ -17,6 +17,10 @@ interface CommittedMeasurement {
   markerIds: string[]
   polylineId: string | null
   segmentLabelIds: string[]
+  /** 提交时的测距点序列（删除悬停段后按剩余点重连重绘） */
+  points: LngLat[]
+  /** 折线句柄（删段后 setPolylinePoints 重连复用） */
+  polylineHandle: PolylineHandle | null
   /** 取消该折线悬停交互绑定（删除该条测距 / 卸载时调用） */
   unbindInteractive?: () => void
 }
@@ -43,6 +47,34 @@ export function haversineDistance(a: LngLat, b: LngLat): number {
 export function formatDistance(meters: number): string {
   if (meters < 1000) return `${meters.toFixed(0)} 米`
   return `${(meters / 1000).toFixed(2)} 公里`
+}
+
+/**
+ * 求悬停位置到折线各段的最近线段索引（返回 i 对应 points[i-1]→points[i] 段）。
+ * 经纬度平面近似 + 点到线段投影距离，用于把光标位置映射到悬停段。
+ */
+function findNearestSegmentIndex(points: LngLat[], pos: LngLat): number {
+  let bestIdx = -1
+  let bestDist = Infinity
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]
+    const b = points[i]
+    const vx = b.lng - a.lng
+    const vy = b.lat - a.lat
+    const lenSq = vx * vx + vy * vy
+    const t =
+      lenSq === 0
+        ? 0
+        : Math.max(0, Math.min(1, ((pos.lng - a.lng) * vx + (pos.lat - a.lat) * vy) / lenSq))
+    const dx = pos.lng - (a.lng + t * vx)
+    const dy = pos.lat - (a.lat + t * vy)
+    const distSq = dx * dx + dy * dy
+    if (distSq < bestDist) {
+      bestDist = distSq
+      bestIdx = i
+    }
+  }
+  return bestIdx
 }
 
 /**
@@ -150,7 +182,7 @@ function createFinishPanelElement(handlers: {
  * 创建「悬浮删除」按钮元素（依附于悬停的已提交折线）。
  *
  * 触发场景：hover 已「确定」的测距折线 → 折线高亮 + 本按钮出现在命中点（≈光标处），
- * 点击删除整条测距（折线 + 图钉 + 分段标签）。
+ * 点击删除悬停的那一段（剩余点自动重连并显示新段距离）。
  *
  * 与图钉/距离标签一致采用「零尺寸容器 + 绝对定位子元素」：容器原点对齐命中坐标，
  * 按钮经 translate(-50%,-50%) 居中于原点（零尺寸容器锚点解析为 'center'）。
@@ -278,6 +310,10 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
   const deleteMarkerIdRef = useRef<string>('measure-delete-btn')
   // 当前悬停的已提交折线 id（点击删除时据此定位记录）
   const activePolylineRef = useRef<string | null>(null)
+  // 最近一次悬停命中的地理坐标（点击删除时据此定位悬停线段）
+  const hoverLngLatRef = useRef<LngLat | null>(null)
+  // 已提交测距分段标签重建序号（保证重建后的标签 id 唯一）
+  const labelSeqRef = useRef(0)
   // 离开命中区后的延时隐藏句柄（150ms，防按钮与折线间移动闪烁）
   const hideTimerRef = useRef<number | null>(null)
 
@@ -550,7 +586,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
   // ============ 已提交测距的悬停高亮 + 悬浮删除 ============
   // 以下辅助函数仅读取 ref（ref 对象跨渲染稳定，.current 始终为最新值），避免闭包陈旧。
   // 悬浮删除按钮为单例 Marker：仅 hover 某条已提交折线时显示并定位到命中点，
-  // 点击删除整条测距（折线 + 图钉 + 分段标签）。隐藏采用 150ms 延时，给光标留出
+  // 点击删除悬停的那一段（剩余点自动重连并显示新段距离）。隐藏采用 150ms 延时，给光标留出
   // 在折线命中层与按钮之间移动的时间，避免闪烁。
 
   /** 取消待执行的延时隐藏 */
@@ -579,10 +615,10 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
           const pid = activePolylineRef.current
           if (pid) scheduleHide(pid)
         },
-        // 点击删除：移除当前悬停的整条测距
+        // 点击删除：仅删除当前悬停的那一段（相邻点自动重连并显示新段距离）
         onDelete: () => {
           const pid = activePolylineRef.current
-          if (pid) removeCommitted(pid)
+          if (pid) deleteHoveredSegment()
         },
       })
       deleteBtnElRef.current = built.host
@@ -637,6 +673,60 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
     activePolylineRef.current = null
   }
 
+  /**
+   * 删除当前悬停的那一段（仅该段，而非整条测距）：
+   * - 定位：以悬停期间记录的光标位置找最近线段，删除该段及其终点图钉；
+   * - 重连：剩余点重设折线路径，缺口两侧最近的两个点自动连接；
+   * - 标签：分段距离标签按剩余段整体重建，新连接段的距离随重绘显示；
+   * - 边界：仅剩一段（2 个点）时删除该段即整条测距消失，退化为整条删除。
+   */
+  function deleteHoveredSegment() {
+    const a = adapterRef.current
+    const pid = activePolylineRef.current
+    if (!a || !pid) return
+    const idx = committedRef.current.findIndex((c) => c.polylineId === pid)
+    if (idx === -1) return
+    const cm = committedRef.current[idx]
+    const pts = cm.points
+    const segIdx = hoverLngLatRef.current
+      ? findNearestSegmentIndex(pts, hoverLngLatRef.current)
+      : -1
+    if (segIdx === -1 || pts.length <= 2) {
+      removeCommitted(pid)
+      return
+    }
+    // 移除该段终点（points[segIdx]）的图钉；markerIds 与 points 按落点顺序一一对应
+    const removedMarkerId = cm.markerIds[segIdx]
+    if (removedMarkerId) a.removeMarker(removedMarkerId)
+    const next = pts.filter((_, i) => i !== segIdx)
+    cm.markerIds = cm.markerIds.filter((id) => id !== removedMarkerId)
+    cm.points = next
+    // 折线按剩余点重连（复用原 source，悬停命中层与高亮状态保持不变）
+    if (cm.polylineHandle) a.setPolylinePoints(cm.polylineHandle, next)
+    // 重建分段距离标签：新连接段的中点标签随重绘出现
+    cm.segmentLabelIds.forEach((id) => a.removeMarker(id))
+    labelSeqRef.current += 1
+    const nextLabelIds: string[] = []
+    for (let i = 1; i < next.length; i++) {
+      const segDist = haversineDistance(next[i - 1], next[i])
+      const mid: LngLat = {
+        lng: (next[i - 1].lng + next[i].lng) / 2,
+        lat: (next[i - 1].lat + next[i].lat) / 2,
+      }
+      const labelEl = createDistanceLabelElement(formatDistance(segDist))
+      const labelId = `${pid}-seg-label-${labelSeqRef.current}-${i}`
+      a.addMarker(labelId, mid, { element: labelEl, anchor: PIN_ANCHOR })
+      nextLabelIds.push(labelId)
+    }
+    cm.segmentLabelIds = nextLabelIds
+    // 复位悬停态：恢复线宽线色、隐藏按钮，等待下一次悬停
+    clearHideTimer()
+    a.setPolylineHighlight(pid, false)
+    hideDeleteButton()
+    hoverLngLatRef.current = null
+    activePolylineRef.current = null
+  }
+
   const finish = useCallback(() => {
     // 提交：把当前进行中覆盖物 id 快照进 committedRef，使其脱离后续清理
     if (adapter) {
@@ -645,6 +735,9 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
         markerIds: markersRef.current.map((m) => m.id),
         polylineId: polyId,
         segmentLabelIds: segmentLabelHandlesRef.current.map((h) => h.id),
+        // 快照几何数据：删除悬停段后按剩余点重连重绘需要
+        points: [...pointsRef.current],
+        polylineHandle: polylineHandle.current,
       }
       // 为已提交折线附加悬停交互：透明命中层 + 进入/离开回调（高亮 + 悬浮删除按钮）
       if (polyId) {
@@ -653,8 +746,14 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
             const a = adapterRef.current
             if (!a) return
             activePolylineRef.current = polyId
+            hoverLngLatRef.current = lngLat
             clearHideTimer()
             a.setPolylineHighlight(polyId, true, { color: '#FF8A1E' })
+            showDeleteButton(lngLat)
+          },
+          onMove: (lngLat) => {
+            // 实时记录悬停位置（点击删除时据此定位悬停线段），删除按钮跟随光标
+            hoverLngLatRef.current = lngLat
             showDeleteButton(lngLat)
           },
           onLeave: () => scheduleHide(polyId),

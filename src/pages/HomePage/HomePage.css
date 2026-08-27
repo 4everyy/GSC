@@ -1,4 +1,4 @@
-/* ====== 椤甸潰瀹瑰櫒 ====== */
+﻿/* ====== 椤甸潰瀹瑰櫒 ====== */
 #root {
   margin: 0;
   padding: 0;
@@ -307,13 +307,15 @@
   line-height: 1.2;
 }
 
-/* ===== 杩旇埅鎸囩ず锛堝湴闈㈠渾褰㈡爣蹇?+ 缁胯壊鍨傜嚎锛岃嚜椋炴満鍥炬爣鍚戜笂锛?===== */
-/* 杩旇埅闈㈡澘鎵撳紑鏈熼棿锛岄€変腑椋炴満姝ｄ笂鏂规覆鏌擄細鍦伴潰鍦嗘爣锛?8px 鐧芥弿杈瑰崐閫忔槑鍦?+ 绔栫洿 H 鍥炬爣锛夛紝
-   缁胯壊鍨傜嚎鑷渾鏍囧簳閮ㄥ悜涓嬫寚鍚戦鏈哄浘鏍囬《閮ㄣ€傚鍣ㄩ敋瀹氫簬椋炴満鍥炬爣椤堕儴銆佹按骞冲眳涓€佸悜涓婂欢浼革紱
-   涓嶆嫤鎴紶鏍囦簨浠讹紝涓嶅奖鍝嶆嫋鎷?hover */
+/* ===== 返航指示（地面圆形标记）：悬于选中飞机图标正上方 ===== */
+/* 返航面板打开期间，选中飞机正上方渲染地面返航点标记（48×48 白色圆形，
+   内含 20×24 竖直 H 图标）——仅图标，不带竖线；
+   点击「航线生成」后由飞机图标中心向标记底部画绿色实线（HomePage.tsx SVG）。
+   标记底缘锚定飞机图标顶部，
+   pointer-events:none 不拦截事件，不影响拖拽与 hover 面板 */
 .aircraft-return-indicator {
   position: absolute;
-  bottom: 56px; /* 鍥炬爣 48px + 8px 闂撮殭锛氬鍣ㄥ簳杈逛綅浜庡浘鏍囬《缂?*/
+  bottom: 185px; /* 容器总高（图标48 + 标签~17）+ 120px 间隙（60px 再拉大一倍）——连线锚点由 HomePage DOM 实测 getBoundingClientRect，不再依赖此常量 */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -322,7 +324,7 @@
   pointer-events: none;
 }
 
-/* 鍦伴潰鏍囧織锛?8px 鐧芥弿杈瑰崐閫忔槑鍦嗭紙璁捐绋胯鏍硷級 */
+/* 地面标记圆圈：48×48 半透明白底 2px 白描边，内置 H 图标 */
 .aircraft-return-indicator__ground {
   box-sizing: border-box;
   width: 48px;
@@ -335,18 +337,10 @@
   justify-content: center;
 }
 
-/* 鍦嗗唴绔栫洿 H 鍥炬爣锛圫VG 鑷粯锛?0脳24锛夛細flex 灞呬腑浜庡渾鍐?*/
+/* 返航点 H 图标：20×24 竖直姿态（SVG 内联，白色填充） */
 .aircraft-return-indicator__h {
   width: 20px;
   height: 24px;
-}
-
-/* 缁胯壊鍨傜洿绾匡細0 瀹?+ 1px 鍏ㄨ竟妗?= 2px 瀹藉疄蹇冪嚎锛堝師 8px 缁?3/4锛?*/
-.aircraft-return-indicator__line {
-  width: 0;
-  height: 288px;
-  border: 1px solid #00ff95;
-  box-sizing: content-box;
 }
 
 /* 绂荤嚎璁惧锛歨over 闈㈡澘瀹氫綅涓婁笅鏂?*/

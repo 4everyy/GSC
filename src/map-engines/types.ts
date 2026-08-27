@@ -68,6 +68,8 @@ export interface PolylineInteractionOptions {
   hitWidth?: number
   /** 鼠标进入命中区（lngLat 为进入点地理坐标，用于定位悬浮删除按钮） */
   onEnter?: (lngLat: LngLat) => void
+  /** 鼠标在命中区内移动（删除按钮跟随光标、实时记录悬停位置以定位悬停线段） */
+  onMove?: (lngLat: LngLat) => void
   /** 鼠标离开命中区 */
   onLeave?: () => void
 }

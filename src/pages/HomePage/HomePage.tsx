@@ -49,6 +49,7 @@ import { homeImages } from '../../assets/images/home'
 import { useDraggable, type DragPosition } from '../../hooks/useDraggable'
 import { AircraftFocusPanel } from '../../components/AircraftFocusPanel/AircraftFocusPanel'
 import { computePanelPlacement, placementToClasses } from '../../utils/panelPlacement'
+import { useLayerStore } from '../../stores/layerStore'
 import { usePanelClamp } from '../../hooks/usePanelClamp'
 import './HomePage.css'
 import './HoverPanelPlacement.css'
@@ -315,6 +316,15 @@ export function HomePage() {
     x2: number
     y2: number
   } | null>(null)
+  // 返航模拟飞行状态：确认返航后，无人机图标沿航线连线循环飞向 H 返航标记
+  // （视口屏幕坐标 + 航向角 + 图标），rAF 驱动，面板关闭（取消/互斥切换）时终止
+  const [returnHomeFlight, setReturnHomeFlight] = useState<{
+    x: number
+    y: number
+    angle: number
+    icon: string
+  } | null>(null)
+  const returnHomeFlightRaf = useRef<number | null>(null)
   const [tapReturnOpen, setTapReturnOpen] = useState(false)
 // 指点返航地图取点：面板打开期间点击地图记录落点（视口坐标 + WGS84 经纬度），
 // 用于渲染图钉标记并回填面板「航点信息」坐标；确认后保留，取消面板时清除
@@ -389,6 +399,13 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
   // 区域降落航线已生成：点击「航线生成」后按所选降落编队在已确认区域内布置降落坪
   // 图标（数量=选中飞机数）并与各飞机画绿色实线；重绘区域/取消时复位
   const [areaLandingRouteGenerated, setAreaLandingRouteGenerated] = useState(false)
+  // 区域降落模拟飞行状态：确认区域降落后，各选中无人机图标沿各自航线（图标中心 →
+  // 对应降落坪）同步循环飞行（视口坐标 + 航向角 + 图标数组），rAF 驱动，
+  // 面板关闭/删除重绘时终止
+  const [areaLandingFlights, setAreaLandingFlights] = useState<
+    { x: number; y: number; angle: number; icon: string }[]
+  >([])
+  const areaLandingFlightRaf = useRef<number | null>(null)
   // 区域降落/集结点框选模式：由区域降落/集结点面板内「航线生成」进入——首页全屏遮罩 + 拖拽自定义大小紫色虚线框；
   // 光标为停机坪图标图片跟随鼠标；按住左键时框实时跟随光标
   // （光标锚定框右下角），松开定格，Esc/右键退出；areaSelectSource 标记选区归属面板
@@ -550,6 +567,15 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
     height: 10,
     radius: 50,
   })
+  // 环绕飞行模拟飞行状态：确认环绕飞行后，无人机先沿直线切入盘旋圆，再绕圆持续盘旋
+  // （视口坐标 + 航向角 + 图标），rAF 驱动，面板关闭/重新取点/取消重绘时终止
+  const [orbitFlight, setOrbitFlight] = useState<{
+    x: number
+    y: number
+    angle: number
+    icon: string
+  } | null>(null)
+  const orbitFlightRaf = useRef<number | null>(null)
   const [rallyPointOpen, setRallyPointOpen] = useState(false)
   const [formationFlightOpen, setFormationFlightOpen] = useState(false)
   // 集结点二次确认：面板「确认」先暂存高度/速度/队形并弹出滑动确认弹窗，滑到最右才真正执行
@@ -937,17 +963,171 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
     }
     setRouteFlightFlight(null)
   }
-  // 返航面板关闭（取消/确认/互斥切换）时清除返航航线连线
+  // 返航模拟飞行：无人机沿「飞机图标中心 → H 返航标记」航线循环飞行（单程约 4s），
+  // 到达 H 标记停留 600ms 后回到起点重飞——无限循环，直至面板关闭（取消）终止；
+  // 仅前端演示，待接入真实指令链路后由实时遥测驱动
+  const startReturnHomeFlight = (
+    line: { x1: number; y1: number; x2: number; y2: number },
+    icon: string,
+  ) => {
+    if (returnHomeFlightRaf.current !== null) cancelAnimationFrame(returnHomeFlightRaf.current)
+    const duration = 4000
+    const holdAtEnd = 600
+    const cycle = duration + holdAtEnd
+    const startTime = performance.now()
+    const angle = (Math.atan2(line.y2 - line.y1, line.x2 - line.x1) * 180) / Math.PI + 90
+    const step = (now: number) => {
+      // 周期取模实现无限循环：0~4s 飞行 → 停留 H 标记 600ms → 回到起点重飞
+      const t = Math.min(1, ((now - startTime) % cycle) / duration)
+      setReturnHomeFlight({
+        x: line.x1 + (line.x2 - line.x1) * t,
+        y: line.y1 + (line.y2 - line.y1) * t,
+        angle,
+        icon,
+      })
+      returnHomeFlightRaf.current = requestAnimationFrame(step)
+    }
+    returnHomeFlightRaf.current = requestAnimationFrame(step)
+  }
+  // 停止返航循环飞行：取消动画帧并清除飞行无人机（面板关闭时调用）
+  const stopReturnHomeFlight = () => {
+    if (returnHomeFlightRaf.current !== null) {
+      cancelAnimationFrame(returnHomeFlightRaf.current)
+      returnHomeFlightRaf.current = null
+    }
+    setReturnHomeFlight(null)
+  }
+  // 区域降落模拟飞行：各选中无人机沿「飞机图标中心 → 对应降落坪」航线同步循环飞行
+  // （单程约 4s，多机并行），到达降落坪停留 600ms 后回到起点重飞——无限循环，
+  // 直至面板关闭/删除重绘终止；仅前端演示，待接入真实指令链路后由实时遥测驱动
+  const startAreaLandingFlights = (
+    routes: { x1: number; y1: number; x2: number; y2: number }[],
+    icons: string[],
+  ) => {
+    if (areaLandingFlightRaf.current !== null) cancelAnimationFrame(areaLandingFlightRaf.current)
+    if (routes.length === 0) return
+    const duration = 4000
+    const holdAtEnd = 600
+    const cycle = duration + holdAtEnd
+    const startTime = performance.now()
+    // 各航线航向角（切图机头默认朝上，rotate = atan2 屏幕角 + 90°）
+    const angles = routes.map(
+      (r) => (Math.atan2(r.y2 - r.y1, r.x2 - r.x1) * 180) / Math.PI + 90,
+    )
+    const step = (now: number) => {
+      // 周期取模实现无限循环：0~4s 飞行 → 停留降落坪 600ms → 回到起点重飞
+      const t = Math.min(1, ((now - startTime) % cycle) / duration)
+      setAreaLandingFlights(
+        routes.map((r, i) => ({
+          x: r.x1 + (r.x2 - r.x1) * t,
+          y: r.y1 + (r.y2 - r.y1) * t,
+          angle: angles[i],
+          icon: icons[i],
+        })),
+      )
+      areaLandingFlightRaf.current = requestAnimationFrame(step)
+    }
+    areaLandingFlightRaf.current = requestAnimationFrame(step)
+  }
+  // 停止区域降落循环飞行：取消动画帧并清除全部飞行无人机
+  const stopAreaLandingFlights = () => {
+    if (areaLandingFlightRaf.current !== null) {
+      cancelAnimationFrame(areaLandingFlightRaf.current)
+      areaLandingFlightRaf.current = null
+    }
+    setAreaLandingFlights([])
+  }
+  // 环绕飞行模拟飞行：无人机先沿「飞机图标中心 → 圆周最近点」直线匀速切入盘旋圆
+  // （约 120px/s），到达圆周后按恒定角速度绕圆无限盘旋（不再返回起点）；
+  // 航向角实时对齐运动方向（切图机头默认朝上，rotate = atan2 屏幕角 + 90°）；
+  // 直至面板关闭/重新取点/取消重绘终止；仅前端演示，待接入真实指令链路后由实时遥测驱动
+  const startOrbitFlight = (
+    plane: { x: number; y: number },
+    center: { x: number; y: number },
+    radius: number,
+    icon: string,
+  ) => {
+    if (orbitFlightRaf.current !== null) cancelAnimationFrame(orbitFlightRaf.current)
+    // 切入段终点：圆周最近点（沿飞机→圆心方向自圆心回退半径）
+    const dx = center.x - plane.x
+    const dy = center.y - plane.y
+    const dist = Math.hypot(dx, dy)
+    const ux = dist > 1e-6 ? dx / dist : 1
+    const uy = dist > 1e-6 ? dy / dist : 0
+    const entry = { x: center.x - ux * radius, y: center.y - uy * radius }
+    const speed = 0.12 // px/ms（约 120px/s，与航线飞行一致）
+    const entryDuration = Math.max(800, dist / speed)
+    // 盘旋段：同线速度换算角速度（整圈时长夹在 3~12s，避免小圆过快/大圆过慢）
+    const orbitPeriod = Math.min(12000, Math.max(3000, (2 * Math.PI * radius) / speed))
+    const omega = (2 * Math.PI) / orbitPeriod // rad/ms
+    const entryAngle = Math.atan2(entry.y - center.y, entry.x - center.x)
+    const startTime = performance.now()
+    const step = (now: number) => {
+      const elapsed = now - startTime
+      if (elapsed < entryDuration) {
+        // 直线切入：飞机中心 → 圆周最近点 匀速飞行（航向固定为切入方向）
+        const t = elapsed / entryDuration
+        setOrbitFlight({
+          x: plane.x + (entry.x - plane.x) * t,
+          y: plane.y + (entry.y - plane.y) * t,
+          angle: (Math.atan2(uy, ux) * 180) / Math.PI + 90,
+          icon,
+        })
+      } else {
+        // 圆周盘旋：自切入点起持续绕行（屏幕坐标下 θ 递增为顺时针），无限循环
+        const theta = entryAngle + omega * (elapsed - entryDuration)
+        setOrbitFlight({
+          x: center.x + radius * Math.cos(theta),
+          y: center.y + radius * Math.sin(theta),
+          // 运动方向 = 位置角 θ 的切向 (-sinθ, cosθ)
+          angle: (Math.atan2(Math.cos(theta), -Math.sin(theta)) * 180) / Math.PI + 90,
+          icon,
+        })
+      }
+      orbitFlightRaf.current = requestAnimationFrame(step)
+    }
+    orbitFlightRaf.current = requestAnimationFrame(step)
+  }
+  // 停止环绕飞行：取消动画帧并清除飞行无人机（面板关闭/重新取点/取消重绘时调用）
+  const stopOrbitFlight = () => {
+    if (orbitFlightRaf.current !== null) {
+      cancelAnimationFrame(orbitFlightRaf.current)
+      orbitFlightRaf.current = null
+    }
+    setOrbitFlight(null)
+  }
+  // 返航面板关闭（取消/互斥切换）时清除返航航线连线并终止循环飞行动画；
+  // 「确认」不再收起面板，因此确认后循环持续播放，仅手动取消可终止
   useEffect(() => {
-    if (!returnHomeOpen) setReturnHomeLine(null)
+    if (!returnHomeOpen) {
+      setReturnHomeLine(null)
+      stopReturnHomeFlight()
+    }
   }, [returnHomeOpen])
+  // 区域降落面板关闭（取消/互斥切换）或航线失效（删除重绘/区域清除）时终止循环飞行；
+  // 「确认」不再收起面板，因此确认后循环持续播放，仅手动取消可终止
+  useEffect(() => {
+    if (!areaLandingOpen || !areaLandingRect || !areaLandingRouteGenerated) {
+      stopAreaLandingFlights()
+    }
+  }, [areaLandingOpen, areaLandingRect, areaLandingRouteGenerated])
+  // 环绕飞行面板关闭（取消/互斥切换）或航线失效（重新取点/取消重绘）时终止盘旋飞行；
+  // 「确认」不再收起面板，因此确认后盘旋持续播放，仅手动取消可终止
+  useEffect(() => {
+    if (!orbitFlightOpen || !orbitPoint || !orbitRouteGenerated) {
+      stopOrbitFlight()
+    }
+  }, [orbitFlightOpen, orbitPoint, orbitRouteGenerated])
   // 组件卸载时终止进行中的模拟飞行动画
   useEffect(() => {
     return () => {
+      if (returnHomeFlightRaf.current !== null) cancelAnimationFrame(returnHomeFlightRaf.current)
+      if (areaLandingFlightRaf.current !== null) cancelAnimationFrame(areaLandingFlightRaf.current)
       if (tapReturnFlightRaf.current !== null) cancelAnimationFrame(tapReturnFlightRaf.current)
       if (waypointFlightRaf.current !== null) cancelAnimationFrame(waypointFlightRaf.current)
       if (routeFlightFlightRaf.current !== null)
         cancelAnimationFrame(routeFlightFlightRaf.current)
+      if (orbitFlightRaf.current !== null) cancelAnimationFrame(orbitFlightRaf.current)
     }
   }, [])
 
@@ -1361,6 +1541,11 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
       storageKey: 'gcs:inspection-zone-position',
     })
 
+  // 图层显隐（图层控制面板开关联动）：禁飞区/巡检区默认关，设备标签默认开
+  const noflyZoneVisible = useLayerStore((s) => s.noflyZoneVisible)
+  const inspectionZoneVisible = useLayerStore((s) => s.inspectionZoneVisible)
+  const deviceLabelsVisible = useLayerStore((s) => s.deviceLabelsVisible)
+
   // hover 面板边缘自适应方向（巡检区域）
   const inspectionZonePlacement = computePanelPlacement(
     inspectionZonePositions[0].x,
@@ -1376,6 +1561,9 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
       ...aircraftPositions.map((p) => `${p.x},${p.y}`),
       `${inspectionZonePositions[0].x},${inspectionZonePositions[0].y}`,
       focusedAircraft,
+      noflyZoneVisible,
+      inspectionZoneVisible,
+      deviceLabelsVisible,
     ],
   })
 
@@ -1419,7 +1607,9 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
               尚未导入地图包时渲染纯色占位底图。导入/切换入口由离线地图管理模块提供（P1+）。 */}
           {/* MissionPanel 暂时隐藏，待后续功能接入时恢复 */}
           {SHOW_PENDING_PANELS && <MissionPanel />}
-          {/* 红色禁飞区：左下角倾斜四边形，SVG 绘制边框 + 四角节点 */}
+          {/* 红色禁飞区：左下角倾斜四边形，SVG 绘制边框 + 四角节点。
+              显隐由图层控制面板「禁飞区」开关联动（layerStore），默认关 */}
+          {noflyZoneVisible && (
           <div className="restricted-zone restricted-zone--red" aria-label="禁飞区域">
             <svg
               className="restricted-zone__border"
@@ -1476,9 +1666,12 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
             <span className="corner-marker corner-marker--br" /> {/* 右下 (100%, 100%) */}
             <span className="corner-marker corner-marker--bl" /> {/* 左下 (0%, 92%) */}
           </div>
+          )}
           {SHOW_PENDING_PANELS && <div className="restricted-zone restricted-zone--orange" />}
 
-          {/* 巡检区域：包含1条蛇形巡检轨迹线，支持拖拽移动 */}
+          {/* 巡检区域：包含1条蛇形巡检轨迹线，支持拖拽移动。
+              显隐由图层控制面板「巡检区域」开关联动（layerStore），默认关 */}
+          {inspectionZoneVisible && (
           <div
             className={`inspection-zone ${inspectionZonePanelClasses.join(' ')}`}
             aria-label="巡检区域"
@@ -1562,8 +1755,11 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
               />
             </svg>
           </div>
+          )}
 
-          {aircraft.map((item, index) => {
+          {/* 无人机图标：显隐由图层控制面板「设备标签」开关联动（layerStore），默认开 */}
+          {deviceLabelsVisible &&
+            aircraft.map((item, index) => {
             // hover 面板边缘自适应方向（飞机）
             const aircraftPlacement = computePanelPlacement(
               aircraftPositions[index].x,
@@ -1596,9 +1792,11 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
               >
                 <img src={item.src} alt={item.label} draggable={false} />
                 <span className="aircraft-label">{item.label}</span>
-                {/* 返航指示：点击「航线生成」画出返航线（returnHomeLine）后才渲染——选中飞机正上方地面圆形标志（内含竖直 H）+ 绿色垂线；
-                    仅打开面板未生成航线时不显示；再次点击「航线生成」清除重画、面板关闭时随 returnHomeLine 一并消失 */}
-                {returnHomeOpen && returnHomeLine && selectedDevices.has(item.deviceIndex) && (
+                {/* Return-home indicator: ground marker (48x48 white circle with
+                    vertical H only, floating above the selected aircraft
+                    while the return panel is open; green solid line (SVG) from icon center to
+                    marker bottom is drawn on route generate. */}
+                {returnHomeOpen && selectedDevices.has(item.deviceIndex) && (
                   <span className="aircraft-return-indicator" aria-hidden="true">
                     <span className="aircraft-return-indicator__ground">
                       <svg
@@ -1612,7 +1810,6 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
                         <rect x="6" y="10.25" width="8" height="3.5" fill="#fff" />
                       </svg>
                     </span>
-                    <span className="aircraft-return-indicator__line" />
                   </span>
                 )}
                 {/* 离线设备 Hover 面板（灰色）—— 聚焦时隐藏，避免与聚焦面板同时出现 */}
@@ -1741,33 +1938,36 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
 
           {/* 返航面板：点击底部「返航」按钮后在右上角展开（与其他功能面板互斥），按钮保持弹出状态；
               参数设置/飞机列表 tab + 返航高度步进（editable 手动键入）；
-              交互状态流：初始「航线生成/确认」均置灰 → 输入高度解禁「航线生成」→
-              点击「航线生成」画出返航线后解禁「确认」（returnHomeLine 联动），
-              确认走滑动二次确认弹窗后收起面板 */}
+              交互状态流：打开面板即可点「航线生成」（高度默认 10m 有效）→
+              点击「航线生成」画出/重画返航线并解禁「确认」（returnHomeLine 联动），
+              确认走滑动二次确认弹窗后启动循环模拟飞行（面板保持展开，取消时终止） */}
           {returnHomeOpen && (
             <ReturnHomePanel
               aircraft={selectedAircraft}
               onRemove={handleRemoveAircraft}
               confirmMuted={!returnHomeLine}
               onGenerateRoute={() => {
-                // 航线生成：从选中飞机图标中心向其正上方返航指示位置画绿色虚线；
+                // 航线生成：从选中飞机图标中心向其正上方返航图钉画绿色实线；
                 // 已有连线则先清除（再次点击重画）；未选中飞机则忽略
                 const idx = aircraft.findIndex((a) => selectedDevices.has(a.deviceIndex))
                 if (idx === -1) return
-                const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
-                if (!stage) return
-                const x1 = stage.left + (aircraftPositions[idx].x / 100) * stage.width + 24
-                const y1 = stage.top + (aircraftPositions[idx].y / 100) * stage.height + 24
-                setReturnHomeLine((prev) =>
-                  prev
-                    ? null
-                    : {
-                        x1,
-                        y1,
-                        x2: x1,
-                        y2: y1 - 180,
-                      },
-                )
+                // DOM measured anchors (viewport coords) instead of hard-coded offsets:
+                // aircraft icon center -> return marker bottom edge. getBoundingClientRect()
+                // matches the fixed full-viewport SVG (.tap-return-route) user space, so the
+                // line always connects the two icons regardless of CSS spacing/drag state.
+                const aircraftEls = document.querySelectorAll<HTMLElement>('.map-stage .aircraft')
+                const aircraftEl = aircraftEls[idx]
+                const iconEl = aircraftEl?.querySelector('img')
+                const markerEl = aircraftEl?.querySelector('.aircraft-return-indicator__ground')
+                if (!aircraftEl || !iconEl || !markerEl) return
+                const iconRect = iconEl.getBoundingClientRect()
+                const markerRect = markerEl.getBoundingClientRect()
+                setReturnHomeLine({
+                  x1: iconRect.left + iconRect.width / 2,
+                  y1: iconRect.top + iconRect.height / 2,
+                  x2: markerRect.left + markerRect.width / 2,
+                  y2: markerRect.bottom,
+                })
               }}
               onConfirm={(height) => {
                 // 置灰守卫：未生成返航航线时不弹确认弹窗（按钮视觉置灰兜底拦截）
@@ -1932,16 +2132,24 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
             onCancel={() => setLandingSlide({ open: false })}
           />
 
-          {/* 返航滑动二次确认弹窗（复用 SlideConfirmDialog）：滑到最右松手执行确认并收起面板，
-              点遮罩取消后返回面板可再次操作 */}
+          {/* 返航滑动二次确认弹窗（复用 SlideConfirmDialog）：滑到最右松手执行确认并启动循环模拟飞行
+              （面板保持展开），点遮罩取消后返回面板可再次操作 */}
           <SlideConfirmDialog
             open={returnHomeSlide.open}
             title="返航"
             message="执行返航指令"
             onConfirm={() => {
               console.info(`[return-home] 确认返航，高度 ${returnHomeSlide.height}m`)
+              // 确认后启动循环模拟飞行：无人机沿已生成航线飞向 H 返航标记并无限循环；
+              // 面板保持展开，「取消」按钮可随时手动终止循环
+              if (returnHomeLine) {
+                const flyIdx = aircraft.findIndex((a) => selectedDevices.has(a.deviceIndex))
+                startReturnHomeFlight(
+                  returnHomeLine,
+                  flyIdx !== -1 ? aircraft[flyIdx].src : homeImages.aircraftRed,
+                )
+              }
               setReturnHomeSlide((s) => ({ ...s, open: false }))
-              setReturnHomeOpen(false)
             }}
             onCancel={() => setReturnHomeSlide((s) => ({ ...s, open: false }))}
           />
@@ -1968,8 +2176,8 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
             onCancel={() => setTapReturnSlide((s) => ({ ...s, open: false }))}
           />
 
-          {/* 区域降落滑动二次确认弹窗（复用 SlideConfirmDialog）：滑到最右松手执行确认并收起面板，
-              点遮罩取消后返回面板可再次操作 */}
+          {/* 区域降落滑动二次确认弹窗（复用 SlideConfirmDialog）：滑到最右松手执行确认并启动循环模拟飞行
+              （面板保持展开），点遮罩取消后返回面板可再次操作 */}
           <SlideConfirmDialog
             open={areaLandingSlide.open}
             title="区域降落"
@@ -1992,8 +2200,35 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
                       ')'
                     : '，未框选区域'),
               )
+              // 确认后启动循环模拟飞行：各选中无人机沿已生成航线飞向对应降落坪并无限循环；
+              // 面板保持展开，「取消」按钮/删除重绘可随时手动终止循环。
+              // 航线端点与降落坪连线渲染同源：飞机图标中心（+24）→ 第 i 个降落坪
+              if (areaLandingRouteGenerated && areaLandingSpots.length > 0) {
+                const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
+                if (stage) {
+                  // 选中飞机按设备序号升序与降落坪一一对应（与航线渲染的 picked 完全一致）
+                  const pickedFlights = aircraft
+                    .map((item, index) => ({ item, index }))
+                    .filter(({ item }) => selectedDevices.has(item.deviceIndex))
+                    .sort((a, b) => a.item.deviceIndex - b.item.deviceIndex)
+                  const routes = pickedFlights
+                    .map(({ index }, i) =>
+                      areaLandingSpots[i]
+                        ? {
+                            x1: stage.left + (aircraftPositions[index].x / 100) * stage.width + 24,
+                            y1: stage.top + (aircraftPositions[index].y / 100) * stage.height + 24,
+                            x2: areaLandingSpots[i].x,
+                            y2: areaLandingSpots[i].y,
+                          }
+                        : null,
+                    )
+                    .filter(
+                      (r): r is { x1: number; y1: number; x2: number; y2: number } => r !== null,
+                    )
+                  startAreaLandingFlights(routes, pickedFlights.map(({ item }) => item.src))
+                }
+              }
               setAreaLandingSlide((s) => ({ ...s, open: false }))
-              setAreaLandingOpen(false)
             }}
             onCancel={() => setAreaLandingSlide((s) => ({ ...s, open: false }))}
           />
@@ -2108,7 +2343,8 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
 
           {/* 环绕飞行面板（与其他功能面板互斥）：参数设置区块头 + 盘旋高度步进 + 盘旋半径步进 + 航点信息坐标 + 确认（置灰）/航线生成/取消三按钮，
               打开后地图光标变指点标记，图钉实时跟随鼠标，左键点击定格环绕中心（盘旋圆+最近点连线保持虚线）；
-              点击「航线生成」后虚线定格为实线并解除确认置灰，确认走滑动二次确认弹窗；确认/取消均收起面板并清除图钉连线 */}
+              点击「航线生成」后虚线定格为实线并解除确认置灰，确认走滑动二次确认弹窗并启动循环模拟飞行
+              （先沿直线切入盘旋圆再绕圆持续盘旋，面板保持展开，取消/重新取点时终止）；取消收起面板并清除图钉连线 */}
           {orbitFlightOpen && (
             <OrbitFlightPanel
               waypoint={orbitPoint ? { lat: orbitPoint.lat, lng: orbitPoint.lng } : null}
@@ -2136,8 +2372,8 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
             />
           )}
 
-          {/* 环绕飞行滑动二次确认弹窗（复用 SlideConfirmDialog）：滑到最右松手执行确认并收起面板，
-              点遮罩取消后返回面板可再次操作 */}
+          {/* 环绕飞行滑动二次确认弹窗（复用 SlideConfirmDialog）：滑到最右松手执行确认并启动循环模拟飞行
+              （先沿直线切入盘旋圆再绕圆持续盘旋，面板保持展开），点遮罩取消后返回面板可再次操作 */}
           <SlideConfirmDialog
             open={orbitSlide.open}
             title="环绕飞行"
@@ -2146,10 +2382,28 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
               console.info(
                 `[orbit-flight] 确认环绕飞行，高度 ${orbitSlide.height}m，半径 ${orbitSlide.radius}m`,
               )
+              // 确认后启动循环模拟飞行：无人机先沿绿色直线（飞机中心 → 圆周最近点）切入，
+              // 再绕绿色盘旋圆无限盘旋；切入段约 120px/s，整圈时长按半径自适应（3~12s）。
+              // 几何与盘旋圆渲染完全同源（orbitRadius/mpp 换算），动画路径与绿色轨迹精确重合；
+              // 面板保持展开，「取消」/重新取点/取消重绘可随时手动终止
+              if (orbitPoint && adapter) {
+                const idx = aircraft.findIndex((a) => selectedDevices.has(a.deviceIndex))
+                const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
+                if (idx !== -1 && stage) {
+                  const mpp = adapter.getMetersPerPixel()
+                  const rPx = Math.max(2, orbitRadius / mpp)
+                  startOrbitFlight(
+                    {
+                      x: stage.left + (aircraftPositions[idx].x / 100) * stage.width + 24,
+                      y: stage.top + (aircraftPositions[idx].y / 100) * stage.height + 24,
+                    },
+                    { x: orbitPoint.x, y: orbitPoint.y },
+                    rPx,
+                    aircraft[idx].src,
+                  )
+                }
+              }
               setOrbitSlide((s) => ({ ...s, open: false }))
-              setOrbitPoint(null)
-              setOrbitRouteGenerated(false)
-              setOrbitFlightOpen(false)
             }}
             onCancel={() => setOrbitSlide((s) => ({ ...s, open: false }))}
           />
@@ -2232,8 +2486,8 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
           {/* 已确认的区域降落范围：半透明紫色填充（rgba(113,96,242,0.3)）、直角，
               正中心圆形徽章（100×100、rgba(113,96,242,0.1) 填充、8px 白 0.2 描边）内含设计稿降落坪图标（iconAreaLandingCenter 44×52）；
               再次进入框选（重绘）、面板取消或点击左上角「删除重绘」按钮时清除 */}
-          {/* 返航航线连线：选中飞机图标中心 → 正上方返航指示位置（1px #00FF95 虚线）；
-              点击「航线生成」绘制/清除，面板关闭时清除 */}
+          {/* 返航航线连线：选中飞机图标中心 → 正上方返航图钉钉尖（3px #00FF95 实线）；
+              点击「航线生成」绘制/清除，面板关闭时清除；「确认」随连线生成解除置灰 */}
           {returnHomeLine && (
             <svg className="tap-return-route" aria-hidden="true">
               <line
@@ -2242,10 +2496,24 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
                 x2={returnHomeLine.x2}
                 y2={returnHomeLine.y2}
                 stroke="#00FF95"
-                strokeWidth={1}
-                strokeDasharray="16 10"
+                strokeWidth={3}
               />
             </svg>
+          )}
+          {/* 返航模拟飞行无人机：确认后沿航线连线循环飞向 H 返航标记
+              （fixed 视口定位 + 航向旋转，无限循环播放，面板取消/切换后消失） */}
+          {returnHomeFlight && (
+            <img
+              className="tap-return-drone"
+              src={returnHomeFlight.icon}
+              alt=""
+              draggable={false}
+              style={{
+                left: returnHomeFlight.x,
+                top: returnHomeFlight.y,
+                transform: `translate(-50%, -50%) rotate(${returnHomeFlight.angle}deg)`,
+              }}
+            />
           )}
 
           {/* 指点返航连线：飞机图标中心 → 落点图钉（SVG 视口屏幕空间，3px #00FF95）；
@@ -2495,6 +2763,22 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
               )
             })()}
 
+          {/* 环绕飞行模拟飞行无人机：确认后先沿直线切入盘旋圆，再绕圆持续盘旋
+              （fixed 视口定位 + 航向旋转，无限循环播放，面板取消/重新取点后消失） */}
+          {orbitFlight && (
+            <img
+              className="tap-return-drone"
+              src={orbitFlight.icon}
+              alt=""
+              draggable={false}
+              style={{
+                left: orbitFlight.x,
+                top: orbitFlight.y,
+                transform: `translate(-50%, -50%) rotate(${orbitFlight.angle}deg)`,
+              }}
+            />
+          )}
+
           {/* 航点飞行模拟飞行无人机：确认后沿已生成航线循环飞向航点图钉
               （fixed 视口定位 + 航向旋转，无限循环播放，面板取消/重新取点后消失） */}
           {waypointFlight && (
@@ -2675,6 +2959,23 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
                 </>
               )
             })()}
+
+          {/* 区域降落模拟飞行无人机：确认后各机沿航线连线循环飞向对应降落坪
+              （fixed 视口定位 + 航向旋转，多机并行无限循环播放，面板取消/删除重绘后消失） */}
+          {areaLandingFlights.map((flight, i) => (
+            <img
+              key={i}
+              className="tap-return-drone"
+              src={flight.icon}
+              alt=""
+              draggable={false}
+              style={{
+                left: flight.x,
+                top: flight.y,
+                transform: `translate(-50%, -50%) rotate(${flight.angle}deg)`,
+              }}
+            />
+          ))}
 
           {/* 集结点已确认区域：与区域降落同款截图式矩形（半透明紫色填充 + 删除重绘），
               但不渲染中心圆形徽章与降落坪地面标记图标；重绘/面板取消/点击删除时清除 */}
