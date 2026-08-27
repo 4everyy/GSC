@@ -19,6 +19,12 @@ export type FormationFlightFormation = (typeof FORMATIONS)[number]
 export interface FormationFlightPanelProps {
   /** 地图取点回填的航点坐标（编队飞行取点模式），变化时同步进坐标输入框 */
   waypoint?: { lat: number; lng: number } | null
+  /** 「确认」置灰态：默认置灰，航线生成成功后由父层解除（传 false） */
+  confirmMuted?: boolean
+  /* ---- 受控状态（可选）：父层持有可在面板收起/重开间保留已设置信息 ---- */
+  /** 编队队形 */
+  formation?: FormationFlightFormation
+  onFormationChange?: (formation: FormationFlightFormation) => void
   /** 确认编队飞行：携带当前设置的飞行高度（m）与所选队形 */
   onConfirm: (height: number, formation: FormationFlightFormation) => void
   /** 航线生成（暂记录日志，待接入真实指令链路） */
@@ -29,18 +35,24 @@ export interface FormationFlightPanelProps {
 
 export function FormationFlightPanel({
   waypoint,
+  confirmMuted = false,
+  formation: formationProp,
+  onFormationChange,
   onConfirm,
   onGenerateRoute,
   onCancel,
 }: FormationFlightPanelProps) {
-  const [formation, setFormation] = useState<FormationFlightFormation>('人字形')
+  // 内部兜底状态：父层未传受控 props 时使用；传了则以 props 为准
+  const [innerFormation, setInnerFormation] = useState<FormationFlightFormation>('人字形')
+  const formation = formationProp ?? innerFormation
+  const setFormation = onFormationChange ?? setInnerFormation
 
   return (
     <TapReturnPanel
       title="编队飞行"
       heightLabel="飞行高度"
       className="formation-flight-panel"
-      confirmMuted
+      confirmMuted={confirmMuted}
       waypoint={waypoint}
       onConfirm={(height) => onConfirm(height, formation)}
       onGenerateRoute={onGenerateRoute}

@@ -36,6 +36,12 @@ export interface RallyPointPanelProps {
   onCancel: () => void
   /** 「航线生成」置灰态：未确定集结区域前置灰，区域框选「确定」后解禁可点击 */
   routeMuted?: boolean
+  /** 「确认」置灰态：默认置灰，航线生成成功后由父层解除（传 false） */
+  confirmMuted?: boolean
+  /* ---- 受控状态（可选）：父层持有可在面板收起/重开间保留已设置信息 ---- */
+  /** 集结队形 */
+  formation?: RallyPointFormation
+  onFormationChange?: (formation: RallyPointFormation) => void
 }
 
 export function RallyPointPanel({
@@ -45,18 +51,24 @@ export function RallyPointPanel({
   onGenerateRoute,
   onCancel,
   routeMuted,
+  confirmMuted = true,
+  formation: formationProp,
+  onFormationChange,
 }: RallyPointPanelProps) {
+  // 内部兜底状态：父层未传受控 props 时使用；传了则以 props 为准
   const [tab, setTab] = useState<PanelTab>('params')
   const [height, setHeight] = useState(10)
   const [speed, setSpeed] = useState(10)
-  const [formation, setFormation] = useState<RallyPointFormation>('人字形')
+  const [innerFormation, setInnerFormation] = useState<RallyPointFormation>('人字形')
+  const formation = formationProp ?? innerFormation
+  const setFormation = onFormationChange ?? setInnerFormation
 
   return (
     <PanelShell
       title="集结点"
       className="rally-point-panel"
       ariaLabel="集结点参数面板"
-      confirmMuted
+      confirmMuted={confirmMuted}
       middleText="航线生成"
       middleMuted={routeMuted}
       onConfirm={() => onConfirm(height, speed, formation)}

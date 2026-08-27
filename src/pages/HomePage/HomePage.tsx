@@ -292,6 +292,118 @@ function RoutePinMarker({
     </span>
   )
 }
+// 集结点集结坪布局纯函数：按集结队形在已确认集结区域内布置 count 个集结坪（视口坐标），
+// 组件内 rallyPointSpots memo 与队形下拉变更即时重排共用同一算法；
+// 布置后整体左对齐——集结坪簇贴近区域左缘（朝向左侧原始无人机图标一侧），不横向铺满全区
+function layoutRallyPointSpots(
+  rect: { left: number; top: number; width: number; height: number } | null,
+  formation: RallyPointFormation,
+  count: number,
+): { x: number; y: number }[] {
+  if (!rect) return []
+  const { left, top, width, height } = rect
+  const n = count
+  if (n <= 0) return []
+  let spots: { x: number; y: number }[]
+  if (formation === '三角型') {
+    // 行容量 1、2、3…：第 k 行放 k 个（末行可不满），纵向等距、行内水平等距
+    const rows: number[] = []
+    let remain = n
+    while (remain > 0) {
+      const size = rows.length + 1
+      rows.push(Math.min(size, remain))
+      remain -= size
+    }
+    const gapY = height / (rows.length + 1)
+    spots = []
+    rows.forEach((countInRow, k) => {
+      const y = top + gapY * (k + 1)
+      // 行内间距优先固定 100px（区域过窄时区内自适应），配合整体左对齐使集结坪聚拢左侧
+      const gapX = Math.min(width / (countInRow + 1), 100)
+      for (let j = 0; j < countInRow; j++) spots.push({ x: left + gapX * (j + 1), y })
+    })
+  } else if (formation === '一字型') {
+    // 水平一行等距分布：间距优先固定 100px（区域过窄时区内自适应），不横向铺满全区
+    const gap = Math.min(width / (n + 1), 100)
+    spots = Array.from({ length: n }, (_, i) => ({ x: left + gap * (i + 1), y: top + height / 2 }))
+  } else {
+    // 人字形（默认）：V 形两翼交替排布——首机居区域上中（人字顶点），之后奇数号位
+    // 左翼、偶数号位右翼，两翼沿斜线逐个向左下/右下外推
+    const cx = left + width / 2
+    const apexY = top + height * 0.25
+    const spanX = (width / 2) * 0.9
+    const spanY = height * 0.7
+    const wingCount = Math.floor((n - 1) / 2) + 1
+    const gapX = Math.min(spanX / wingCount, 100)
+    const gapY = spanY / wingCount
+    spots = Array.from({ length: n }, (_, i) => {
+      if (i === 0) return { x: cx, y: apexY }
+      const wing = Math.ceil(i / 2)
+      const side = i % 2 === 1 ? -1 : 1
+      return { x: cx + side * wing * gapX, y: apexY + wing * gapY }
+    })
+  }
+  // 整体左对齐：让最左集结坪落在区域左缘（距边 40px，朝向左侧原始无人机图标一侧），
+  // 队形形状不变、仅整体平移；单点亦直接落于左缘
+  const minSpotX = Math.min(...spots.map((s) => s.x))
+  const shiftX = left + 40 - minSpotX
+  spots.forEach((s) => {
+    s.x += shiftX
+  })
+  return spots
+}
+
+// 编队飞行降落点布局纯函数：以锚点（最左选中飞机图标正上方一定距离处）为队形顶点，
+// 按编队队形布置 count 个降落点（视口坐标）——人字形：V 形两翼自顶点交替向左下/右下
+// 展开；一字型：水平一行等距；三角型：行容量 1、2、3…（末行可不满）。
+// 航线渲染（绿色实线 + 降落点图标）与模拟飞行共用同一算法
+function layoutFormationFlightSpots(
+  anchor: { x: number; y: number },
+  formation: FormationFlightFormation,
+  count: number,
+): { x: number; y: number }[] {
+  const n = count
+  if (n <= 0) return []
+  if (n === 1) return [{ x: anchor.x, y: anchor.y }]
+  const gapX = 100
+  const gapY = 70
+  if (formation === '三角型') {
+    // 行容量 1、2、3…：第 k 行放 k 个（末行可不满），行内水平等距、纵向等距
+    const rows: number[] = []
+    let remain = n
+    while (remain > 0) {
+      const size = rows.length + 1
+      rows.push(Math.min(size, remain))
+      remain -= size
+    }
+    const spots: { x: number; y: number }[] = []
+    rows.forEach((countInRow, k) => {
+      const y = anchor.y + k * gapY
+      for (let j = 0; j < countInRow; j++) {
+        spots.push({ x: anchor.x + (j - (countInRow - 1) / 2) * gapX, y })
+      }
+    })
+    return spots
+  }
+  if (formation === '一字型') {
+    // 水平一行等距分布
+    return Array.from(
+      { length: n },
+      (_, i): { x: number; y: number } => ({
+        x: anchor.x + (i - (n - 1) / 2) * gapX,
+        y: anchor.y,
+      }),
+    )
+  }
+  // 人字形（默认）：首机居顶点，奇数号位左翼、偶数号位右翼沿斜线逐个外推
+  return Array.from({ length: n }, (_, i) => {
+    if (i === 0) return { x: anchor.x, y: anchor.y }
+    const wing = Math.ceil(i / 2)
+    const side = i % 2 === 1 ? -1 : 1
+    return { x: anchor.x + side * wing * gapX, y: anchor.y + wing * gapY * 0.85 }
+  })
+}
+
 export function HomePage() {
   const [activeAlarm, setActiveAlarm] = useState<number | null>(null)
 
@@ -308,22 +420,16 @@ export function HomePage() {
   const [landingOpen, setLandingOpen] = useState(false)
   const [returnHomeOpen, setReturnHomeOpen] = useState(false)
   // 返航航线连线（视口屏幕坐标，SVG 绘制）：点击返航面板「航线生成」后，
-  // 从选中飞机图标中心向其正上方返航指示位置画 1px #00FF95 虚线；
-  // 再次点击清除重画，面板关闭（取消/确认/互斥切换）时自动清除
-  const [returnHomeLine, setReturnHomeLine] = useState<{
-    x1: number
-    y1: number
-    x2: number
-    y2: number
-  } | null>(null)
+  // 每架选中飞机一条航线（图标中心 → 各自 H 返航标记底部，3px #00FF95 绿色实线）；
+  // 再次点击整体重画，面板关闭（取消/互斥切换）时自动清除；null = 未生成
+  const [returnHomeLines, setReturnHomeLines] = useState<
+    { x1: number; y1: number; x2: number; y2: number }[] | null
+  >(null)
   // 返航模拟飞行状态：确认返航后，无人机图标沿航线连线循环飞向 H 返航标记
   // （视口屏幕坐标 + 航向角 + 图标），rAF 驱动，面板关闭（取消/互斥切换）时终止
-  const [returnHomeFlight, setReturnHomeFlight] = useState<{
-    x: number
-    y: number
-    angle: number
-    icon: string
-  } | null>(null)
+  const [returnHomeFlights, setReturnHomeFlights] = useState<
+    { x: number; y: number; angle: number; icon: string }[]
+  >([])
   const returnHomeFlightRaf = useRef<number | null>(null)
   const [tapReturnOpen, setTapReturnOpen] = useState(false)
 // 指点返航地图取点：面板打开期间点击地图记录落点（视口坐标 + WGS84 经纬度），
@@ -585,6 +691,20 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
     speed?: number
     formation?: RallyPointFormation
   }>({ open: false })
+  // 集结点航线已生成态：「航线生成」后置 true——在已确认集结区域内按当前队形布置
+  // 集结坪（area-landing-spot）图标并绘制飞机中心→集结坪 1px #00FF95 绿色实线，
+  // 同时解除「确认」置灰；重绘区域/取消/删除重绘时清除
+  const [rallyPointRouteGenerated, setRallyPointRouteGenerated] = useState(false)
+  // 集结队形（受控状态，面板下拉与地图集结坪布置联动）：变化时即时重排集结坪布局
+  const [rallyPointFormation, setRallyPointFormation] = useState<RallyPointFormation>('人字形')
+  // 集结点模拟飞行状态：滑窗确认后各机沿绿色航线循环飞向对应集结坪
+  // （视口坐标 + 航向角 + 图标），rAF 驱动，取消/关闭/删除重绘/重新生成时终止
+  const [rallyPointFlights, setRallyPointFlights] = useState<
+    { x: number; y: number; angle: number; icon: string }[]
+  >([])
+  const rallyPointFlightRaf = useRef<number | null>(null)
+  // 集结点模拟飞行进行中标记：队形变更时判断是否需要以新布局重启动画
+  const rallyPointFlyingRef = useRef(false)
   // 编队飞行二次确认：面板「确认」先暂存高度/队形并弹出滑动确认弹窗，滑到最右才真正执行
   const [formationFlightSlide, setFormationFlightSlide] = useState<{
     open: boolean
@@ -606,6 +726,20 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
     lat: number
     lng: number
   } | null>(null)
+  // 编队飞行航线已生成态：「航线生成」后置 true——在最左选中飞机图标上方按当前队形
+  // 布置降落点（area-landing-spot）图标并绘制飞机中心→降落点 1px #00FF95 绿色实线，
+  // 同时解除「确认」置灰；取消/关闭面板时清除
+  const [formationFlightRouteGenerated, setFormationFlightRouteGenerated] = useState(false)
+  // 编队队形（受控状态，面板下拉与地图降落点布置联动）：变化时即时重排降落点布局，
+  // 模拟飞行进行中则以新队形重启动画
+  const [formationFlightFormation, setFormationFlightFormation] =
+    useState<FormationFlightFormation>('人字形')
+  // 编队飞行模拟飞行状态：滑窗确认后各机沿绿色航线同步循环飞向队形中对应降落点
+  // （视口坐标 + 航向角 + 图标），rAF 驱动，取消/关闭/重新生成时终止
+  const [formationFlightFlights, setFormationFlightFlights] = useState<
+    { x: number; y: number; angle: number; icon: string }[]
+  >([])
+  const formationFlightRaf = useRef<number | null>(null)
   const openTakeoffPanel = () => {
     setRouteFlightOpen(false)
     setOrbitFlightOpen(false)
@@ -966,36 +1100,42 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
   // 返航模拟飞行：无人机沿「飞机图标中心 → H 返航标记」航线循环飞行（单程约 4s），
   // 到达 H 标记停留 600ms 后回到起点重飞——无限循环，直至面板关闭（取消）终止；
   // 仅前端演示，待接入真实指令链路后由实时遥测驱动
-  const startReturnHomeFlight = (
-    line: { x1: number; y1: number; x2: number; y2: number },
-    icon: string,
+  const startReturnHomeFlights = (
+    routes: { x1: number; y1: number; x2: number; y2: number }[],
+    icons: string[],
   ) => {
     if (returnHomeFlightRaf.current !== null) cancelAnimationFrame(returnHomeFlightRaf.current)
+    if (routes.length === 0) return
     const duration = 4000
     const holdAtEnd = 600
     const cycle = duration + holdAtEnd
     const startTime = performance.now()
-    const angle = (Math.atan2(line.y2 - line.y1, line.x2 - line.x1) * 180) / Math.PI + 90
+    // 各航线航向角（切图机头默认朝上，rotate = atan2 屏幕角 + 90°）
+    const angles = routes.map(
+      (r) => (Math.atan2(r.y2 - r.y1, r.x2 - r.x1) * 180) / Math.PI + 90,
+    )
     const step = (now: number) => {
-      // 周期取模实现无限循环：0~4s 飞行 → 停留 H 标记 600ms → 回到起点重飞
+      // 周期取模实现无限循环：0~4s 飞行 → 停留 H 标记 600ms → 回到起点重飞（多机同步）
       const t = Math.min(1, ((now - startTime) % cycle) / duration)
-      setReturnHomeFlight({
-        x: line.x1 + (line.x2 - line.x1) * t,
-        y: line.y1 + (line.y2 - line.y1) * t,
-        angle,
-        icon,
-      })
+      setReturnHomeFlights(
+        routes.map((r, i) => ({
+          x: r.x1 + (r.x2 - r.x1) * t,
+          y: r.y1 + (r.y2 - r.y1) * t,
+          angle: angles[i],
+          icon: icons[i],
+        })),
+      )
       returnHomeFlightRaf.current = requestAnimationFrame(step)
     }
     returnHomeFlightRaf.current = requestAnimationFrame(step)
   }
   // 停止返航循环飞行：取消动画帧并清除飞行无人机（面板关闭时调用）
-  const stopReturnHomeFlight = () => {
+  const stopReturnHomeFlights = () => {
     if (returnHomeFlightRaf.current !== null) {
       cancelAnimationFrame(returnHomeFlightRaf.current)
       returnHomeFlightRaf.current = null
     }
-    setReturnHomeFlight(null)
+    setReturnHomeFlights((prev) => (prev.length > 0 ? [] : prev))
   }
   // 区域降落模拟飞行：各选中无人机沿「飞机图标中心 → 对应降落坪」航线同步循环飞行
   // （单程约 4s，多机并行），到达降落坪停留 600ms 后回到起点重飞——无限循环，
@@ -1036,6 +1176,83 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
       areaLandingFlightRaf.current = null
     }
     setAreaLandingFlights([])
+  }
+  // 停止集结点循环飞行：取消动画帧并清除全部飞行无人机（无动画时为无操作）
+  const stopRallyPointFlights = () => {
+    rallyPointFlyingRef.current = false
+    if (rallyPointFlightRaf.current !== null) {
+      cancelAnimationFrame(rallyPointFlightRaf.current)
+      rallyPointFlightRaf.current = null
+    }
+    setRallyPointFlights((prev) => (prev.length > 0 ? [] : prev))
+  }
+  // 集结点模拟飞行：各选中无人机沿「飞机图标中心 → 对应集结坪」航线同步循环飞行
+  // （单程约 4s + 集结坪停留 600ms 为一个周期，多机并行），到达后回到起点重飞——
+  // 无限循环，直至取消面板/删除重绘/重新生成终止；仅前端演示，待接入真实指令链路后由实时遥测驱动
+  const startRallyPointFlights = (
+    flights: { x1: number; y1: number; x2: number; y2: number; icon: string }[],
+  ) => {
+    stopRallyPointFlights()
+    if (flights.length === 0) return
+    const duration = 4000
+    const holdAtEnd = 600
+    const cycle = duration + holdAtEnd
+    const startTime = performance.now()
+    // 各航线航向角（切图机头默认朝上，rotate = atan2 屏幕角 + 90°）
+    const angles = flights.map((f) => (Math.atan2(f.y2 - f.y1, f.x2 - f.x1) * 180) / Math.PI + 90)
+    const step = (now: number) => {
+      // 周期取模实现无限循环：0~4s 飞行 → 集结坪停留 600ms → 回到起点重飞
+      const t = Math.min(1, ((now - startTime) % cycle) / duration)
+      setRallyPointFlights(
+        flights.map((f, i) => ({
+          x: f.x1 + (f.x2 - f.x1) * t,
+          y: f.y1 + (f.y2 - f.y1) * t,
+          angle: angles[i],
+          icon: f.icon,
+        })),
+      )
+      rallyPointFlightRaf.current = requestAnimationFrame(step)
+    }
+    rallyPointFlyingRef.current = true
+    rallyPointFlightRaf.current = requestAnimationFrame(step)
+  }
+  // 停止编队飞行循环动画：取消动画帧并清除全部飞行无人机（无动画时为无操作）
+  const stopFormationFlightFlights = () => {
+    if (formationFlightRaf.current !== null) {
+      cancelAnimationFrame(formationFlightRaf.current)
+      formationFlightRaf.current = null
+    }
+    setFormationFlightFlights((prev) => (prev.length > 0 ? [] : prev))
+  }
+  // 编队飞行模拟飞行：各选中无人机沿「飞机图标中心 → 队形中对应降落点」航线同步循环
+  // 飞行（单程 4s + 降落点停留 600ms 为一个周期，多机并行、同步推进保持队形），
+  // 到达后回到起点重飞——无限循环，直至取消面板/重新生成终止；
+  // 仅前端演示，待接入真实指令链路后由实时遥测驱动
+  const startFormationFlightFlights = (
+    flights: { x1: number; y1: number; x2: number; y2: number; icon: string }[],
+  ) => {
+    stopFormationFlightFlights()
+    if (flights.length === 0) return
+    const duration = 4000
+    const holdAtEnd = 600
+    const cycle = duration + holdAtEnd
+    const startTime = performance.now()
+    // 各航线航向角（切图机头默认朝上，rotate = atan2 屏幕角 + 90°）
+    const angles = flights.map((f) => (Math.atan2(f.y2 - f.y1, f.x2 - f.x1) * 180) / Math.PI + 90)
+    const step = (now: number) => {
+      // 周期取模实现无限循环：0~4s 飞行 → 降落点停留 600ms → 回到起点重飞
+      const t = Math.min(1, ((now - startTime) % cycle) / duration)
+      setFormationFlightFlights(
+        flights.map((f, i) => ({
+          x: f.x1 + (f.x2 - f.x1) * t,
+          y: f.y1 + (f.y2 - f.y1) * t,
+          angle: angles[i],
+          icon: f.icon,
+        })),
+      )
+      formationFlightRaf.current = requestAnimationFrame(step)
+    }
+    formationFlightRaf.current = requestAnimationFrame(step)
   }
   // 环绕飞行模拟飞行：无人机先沿「飞机图标中心 → 圆周最近点」直线匀速切入盘旋圆
   // （约 120px/s），到达圆周后按恒定角速度绕圆无限盘旋（不再返回起点）；
@@ -1100,8 +1317,8 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
   // 「确认」不再收起面板，因此确认后循环持续播放，仅手动取消可终止
   useEffect(() => {
     if (!returnHomeOpen) {
-      setReturnHomeLine(null)
-      stopReturnHomeFlight()
+      setReturnHomeLines(null)
+      stopReturnHomeFlights()
     }
   }, [returnHomeOpen])
   // 区域降落面板关闭（取消/互斥切换）或航线失效（删除重绘/区域清除）时终止循环飞行；
@@ -1111,6 +1328,20 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
       stopAreaLandingFlights()
     }
   }, [areaLandingOpen, areaLandingRect, areaLandingRouteGenerated])
+  // 集结点面板关闭（取消/互斥切换）或航线失效（删除重绘/区域清除/重新生成）时终止循环飞行；
+  // 「确认」不再收起面板，因此确认后循环持续播放，仅手动取消可终止
+  useEffect(() => {
+    if (!rallyPointOpen || !rallyPointRect || !rallyPointRouteGenerated) {
+      stopRallyPointFlights()
+    }
+  }, [rallyPointOpen, rallyPointRect, rallyPointRouteGenerated])
+  // 编队飞行面板关闭（取消/互斥切换）或航线失效时终止循环飞行；「确认」不收起面板，
+  // 因此确认后循环持续播放，仅手动取消面板才终止
+  useEffect(() => {
+    if (!formationFlightOpen || !formationFlightRouteGenerated) {
+      stopFormationFlightFlights()
+    }
+  }, [formationFlightOpen, formationFlightRouteGenerated])
   // 环绕飞行面板关闭（取消/互斥切换）或航线失效（重新取点/取消重绘）时终止盘旋飞行；
   // 「确认」不再收起面板，因此确认后盘旋持续播放，仅手动取消可终止
   useEffect(() => {
@@ -1128,6 +1359,8 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
       if (routeFlightFlightRaf.current !== null)
         cancelAnimationFrame(routeFlightFlightRaf.current)
       if (orbitFlightRaf.current !== null) cancelAnimationFrame(orbitFlightRaf.current)
+      if (rallyPointFlightRaf.current !== null) cancelAnimationFrame(rallyPointFlightRaf.current)
+      if (formationFlightRaf.current !== null) cancelAnimationFrame(formationFlightRaf.current)
     }
   }, [])
 
@@ -1215,13 +1448,17 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
     }
   }, [orbitFlightOpen, adapter])
 
-  // 编队飞行取点：面板打开期间鼠标在地图容器内移动时图钉实时跟随（钉尖对准鼠标，
-  // 替代原生光标），鼠标移到面板/UI 上时隐藏跟随图钉；左键点击地图定格航点
-  // （携带经纬度回填面板坐标输入框，再次点击可重新取点），点击 UI（面板/底栏）不取点
+  // 编队飞行取点：面板打开且尚未定格航点期间，鼠标在地图容器内移动时图钉实时跟随
+  // （钉尖对准鼠标，替代原生光标）；左键点击地图定格航点（携带经纬度回填面板坐标
+  // 输入框）后光标恢复正常样式并停止跟随（再次左键点击可重新取点）；右键点击地图
+  // 取消已定格的标记（面板保持打开、编队飞行按钮仍为点击态），随即恢复标记态
+  // 光标继续取点；点击 UI（面板/底栏）不取点也不取消
   useEffect(() => {
     if (!formationFlightOpen) return
     const handleFormationMouseMove = (e: MouseEvent) => {
       if (!adapter) return
+      // 已定格航点：光标已恢复正常样式，无需跟随图钉（也避免逐帧无谓重渲染）
+      if (formationFlightPoint) return
       const container = adapter.getContainer()
       if (!container || !(e.target instanceof Node) || !container.contains(e.target)) {
         setFormationFlightHover(null)
@@ -1237,20 +1474,31 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
       const ll = adapter.unproject({ x: e.clientX - bounds.left, y: e.clientY - bounds.top })
       setFormationFlightPoint({ x: e.clientX, y: e.clientY, lat: ll.lat, lng: ll.lng })
     }
+    // 右键取消定格标记：清除航点（面板保持打开），光标恢复标记态；仅在地图上生效
+    const handleFormationContextMenu = (e: MouseEvent) => {
+      if (!adapter || !formationFlightPoint) return
+      const container = adapter.getContainer()
+      if (!container || !(e.target instanceof Node) || !container.contains(e.target)) return
+      e.preventDefault()
+      setFormationFlightPoint(null)
+    }
     document.addEventListener('mousemove', handleFormationMouseMove)
     document.addEventListener('click', handleFormationMapClick, true)
+    document.addEventListener('contextmenu', handleFormationContextMenu)
     return () => {
       document.removeEventListener('mousemove', handleFormationMouseMove)
       document.removeEventListener('click', handleFormationMapClick, true)
+      document.removeEventListener('contextmenu', handleFormationContextMenu)
       setFormationFlightHover(null)
     }
-  }, [formationFlightOpen, adapter])
+  }, [formationFlightOpen, formationFlightPoint, adapter])
 
-  // 编队飞行面板关闭（取消/确认/互斥切换）时：清除跟随点与定格航点
+  // 编队飞行面板关闭（取消/互斥切换）时：清除跟随点、定格航点与航线生成态
   useEffect(() => {
     if (!formationFlightOpen) {
       setFormationFlightHover(null)
       setFormationFlightPoint(null)
+      setFormationFlightRouteGenerated(false)
     }
   }, [formationFlightOpen])
 
@@ -1523,6 +1771,13 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
     return Array.from({ length: n }, (_, i) => ({ x: left + gap * (i + 1), y: top + height / 2 }))
   }, [areaLandingRect, areaLandingFormation, selectedAircraft.length])
 
+  // 集结点集结坪布局（与区域降落同款交互）：按集结队形在已确认集结区域内布置
+  // 「数量=选中飞机数」的集结坪；队形/选区/选中飞机数变化时联动重排
+  const rallyPointSpots = useMemo<{ x: number; y: number }[]>(
+    () => layoutRallyPointSpots(rallyPointRect, rallyPointFormation, selectedAircraft.length),
+    [rallyPointRect, rallyPointFormation, selectedAircraft.length],
+  )
+
   // 区分「点击选中」与「拖拽」：mousedown 记录起点，click 时位移小于阈值才触发选中
   const aircraftMouseDownPos = useRef<{ x: number; y: number } | null>(null)
 
@@ -1532,6 +1787,55 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
     initialPositions: AIRCRAFT_INITIAL_POSITIONS,
     storageKey: 'gcs:aircraft-positions',
   })
+
+  // 编队飞行航线几何（视口坐标）：以最左选中飞机图标正上方（水平对齐其中心、上移
+  // 360px 且不越过视口上缘）为锚点，按当前队形布置降落点——目的地尽量贴近左侧
+  // 原始无人机图标，并给出各机图标中心起点；航线渲染（绿色实线 + 降落点图标）与
+  // 模拟飞行（滑窗确认后启动）共用同一算法；可传入队形覆盖当前状态（队形变更重启动画时使用新队形）
+  const getFormationFlightGeometry = (formation?: FormationFlightFormation) => {
+    const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
+    // 选中飞机按设备序号升序与降落点一一对应（与集结点航线渲染的 picked 完全一致）
+    const picked = aircraft
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => selectedDevices.has(item.deviceIndex))
+      .sort((a, b) => a.item.deviceIndex - b.item.deviceIndex)
+    if (!stage || picked.length === 0) return null
+    // 各选中飞机图标中心（视口坐标，48px 图标半宽 +24 与其他航线一致），携带各自切图
+    const planes = picked.map(({ item, index }) => ({
+      x: stage.left + (aircraftPositions[index].x / 100) * stage.width + 24,
+      y: stage.top + (aircraftPositions[index].y / 100) * stage.height + 24,
+      icon: item.src,
+    }))
+    const minX = Math.min(...planes.map((p) => p.x))
+    const minY = Math.min(...planes.map((p) => p.y))
+    // 锚点贴近左侧原始无人机图标：水平对齐最左选中飞机中心、上移 360px（不越过
+    // 视口上缘），目的地整体落在屏幕左侧而非中部
+    const anchor = { x: minX, y: Math.max(minY - 360, stage.top + 48) }
+    const spots = layoutFormationFlightSpots(
+      anchor,
+      formation ?? formationFlightFormation,
+      planes.length,
+    )
+    // 左缘防溢出：锚点贴左后宽队形（一字整行/三角末行/人字左翼）可能超出视口左侧，
+    // 整体右移补偿（队形形状不变），确保最左降落点完整可见
+    const spotsMinX = Math.min(...spots.map((s) => s.x))
+    const leftBound = stage.left + 30
+    if (spotsMinX < leftBound) {
+      const shiftX = leftBound - spotsMinX
+      spots.forEach((s) => {
+        s.x += shiftX
+      })
+    }
+    // 就近配对：飞机与降落点各自按水平位置升序后同序号配对——左边的飞机连靠左的
+    // 降落点、右边的连靠右的，避免航线左右交叉
+    planes.sort((a, b) => a.x - b.x)
+    spots.sort((a, b) => a.x - b.x)
+    return {
+      planes: planes.map(({ x, y }) => ({ x, y })),
+      spots,
+      icons: planes.map((p) => p.icon),
+    }
+  }
 
   // 巡检区域拖拽：鼠标左键按住拖动整个巡检区域（含轨迹线）至首页任意位置
   const { positions: inspectionZonePositions, onDragStart: onInspectionZoneDragStart } =
@@ -1569,7 +1873,7 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
 
   return (
     <main
-      className={`design-viewport${tapReturnOpen && !tapReturnPoint ? ' tap-return-mode' : ''}${waypointFlightOpen ? ' waypoint-flight-mode' : ''}${waypointFlightOpen && waypointPickingActive && !waypointPoint ? ' waypoint-picking' : ''}${routeFlightOpen && routeFlightPicking ? ' route-flight-picking' : ''}${orbitFlightOpen && !orbitPoint ? ' orbit-flight-mode' : ''}${formationFlightOpen ? ' formation-flight-mode' : ''}`}
+      className={`design-viewport${tapReturnOpen && !tapReturnPoint ? ' tap-return-mode' : ''}${waypointFlightOpen ? ' waypoint-flight-mode' : ''}${waypointFlightOpen && waypointPickingActive && !waypointPoint ? ' waypoint-picking' : ''}${routeFlightOpen && routeFlightPicking ? ' route-flight-picking' : ''}${orbitFlightOpen && !orbitPoint ? ' orbit-flight-mode' : ''}${formationFlightOpen && !formationFlightPoint ? ' formation-flight-mode' : ''}`}
       aria-label="无人机集群控制地面站"
     >
       <div className="design-canvas">
@@ -1939,39 +2243,43 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
           {/* 返航面板：点击底部「返航」按钮后在右上角展开（与其他功能面板互斥），按钮保持弹出状态；
               参数设置/飞机列表 tab + 返航高度步进（editable 手动键入）；
               交互状态流：打开面板即可点「航线生成」（高度默认 10m 有效）→
-              点击「航线生成」画出/重画返航线并解禁「确认」（returnHomeLine 联动），
+              点击「航线生成」为每架选中飞机画出/重画返航线并解禁「确认」（returnHomeLines 联动），
               确认走滑动二次确认弹窗后启动循环模拟飞行（面板保持展开，取消时终止） */}
           {returnHomeOpen && (
             <ReturnHomePanel
               aircraft={selectedAircraft}
               onRemove={handleRemoveAircraft}
-              confirmMuted={!returnHomeLine}
+              confirmMuted={!returnHomeLines || returnHomeLines.length === 0}
               onGenerateRoute={() => {
-                // 航线生成：从选中飞机图标中心向其正上方返航图钉画绿色实线；
-                // 已有连线则先清除（再次点击重画）；未选中飞机则忽略
-                const idx = aircraft.findIndex((a) => selectedDevices.has(a.deviceIndex))
-                if (idx === -1) return
+                // 航线生成：每架选中飞机均由其图标中心向正上方各自的返航标记画绿色实线；
+                // 再次点击整体重画；未选中飞机则忽略（保持「确认」置灰）
                 // DOM measured anchors (viewport coords) instead of hard-coded offsets:
-                // aircraft icon center -> return marker bottom edge. getBoundingClientRect()
-                // matches the fixed full-viewport SVG (.tap-return-route) user space, so the
-                // line always connects the two icons regardless of CSS spacing/drag state.
+                // aircraft icon center -> each selected plane's return marker bottom edge.
+                // getBoundingClientRect() matches the fixed full-viewport SVG
+                // (.tap-return-route) user space, so the lines always connect the icons
+                // regardless of CSS spacing/drag state.
                 const aircraftEls = document.querySelectorAll<HTMLElement>('.map-stage .aircraft')
-                const aircraftEl = aircraftEls[idx]
-                const iconEl = aircraftEl?.querySelector('img')
-                const markerEl = aircraftEl?.querySelector('.aircraft-return-indicator__ground')
-                if (!aircraftEl || !iconEl || !markerEl) return
-                const iconRect = iconEl.getBoundingClientRect()
-                const markerRect = markerEl.getBoundingClientRect()
-                setReturnHomeLine({
-                  x1: iconRect.left + iconRect.width / 2,
-                  y1: iconRect.top + iconRect.height / 2,
-                  x2: markerRect.left + markerRect.width / 2,
-                  y2: markerRect.bottom,
+                const lines: { x1: number; y1: number; x2: number; y2: number }[] = []
+                aircraft.forEach((item, idx) => {
+                  if (!selectedDevices.has(item.deviceIndex)) return
+                  const aircraftEl = aircraftEls[idx]
+                  const iconEl = aircraftEl?.querySelector('img')
+                  const markerEl = aircraftEl?.querySelector('.aircraft-return-indicator__ground')
+                  if (!aircraftEl || !iconEl || !markerEl) return
+                  const iconRect = iconEl.getBoundingClientRect()
+                  const markerRect = markerEl.getBoundingClientRect()
+                  lines.push({
+                    x1: iconRect.left + iconRect.width / 2,
+                    y1: iconRect.top + iconRect.height / 2,
+                    x2: markerRect.left + markerRect.width / 2,
+                    y2: markerRect.bottom,
+                  })
                 })
+                setReturnHomeLines(lines.length > 0 ? lines : null)
               }}
               onConfirm={(height) => {
                 // 置灰守卫：未生成返航航线时不弹确认弹窗（按钮视觉置灰兜底拦截）
-                if (!returnHomeLine) return
+                if (!returnHomeLines) return
                 // 先弹出滑动二次确认弹窗，滑到最右松手后才真正执行（见下方 SlideConfirmDialog）
                 setReturnHomeSlide({ open: true, height })
               }}
@@ -2140,14 +2448,14 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
             message="执行返航指令"
             onConfirm={() => {
               console.info(`[return-home] 确认返航，高度 ${returnHomeSlide.height}m`)
-              // 确认后启动循环模拟飞行：无人机沿已生成航线飞向 H 返航标记并无限循环；
-              // 面板保持展开，「取消」按钮可随时手动终止循环
-              if (returnHomeLine) {
-                const flyIdx = aircraft.findIndex((a) => selectedDevices.has(a.deviceIndex))
-                startReturnHomeFlight(
-                  returnHomeLine,
-                  flyIdx !== -1 ? aircraft[flyIdx].src : homeImages.aircraftRed,
-                )
+              // 确认后启动循环模拟飞行：各选中无人机沿已生成航线飞向对应 H 返航标记
+              // 并无限循环（多机并行）；面板保持展开，「取消」按钮可随时手动终止循环。
+              // 航线与飞行图标同源配对：均按 aircraft 数组顺序过滤选中设备
+              if (returnHomeLines && returnHomeLines.length > 0) {
+                const icons = aircraft
+                  .filter((item) => selectedDevices.has(item.deviceIndex))
+                  .map((item) => item.src)
+                startReturnHomeFlights(returnHomeLines, icons)
               }
               setReturnHomeSlide((s) => ({ ...s, open: false }))
             }}
@@ -2422,7 +2730,31 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
                     : '，未框选区域'),
               )
               setRallyPointSlide((s) => ({ ...s, open: false }))
-              setRallyPointOpen(false)
+              // 面板保持展开：启动多机循环模拟飞行——各选中无人机沿已生成航线飞向
+              // 对应集结坪并无限循环，直至取消面板/删除重绘/重新生成终止
+              const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
+              if (rallyPointRouteGenerated && rallyPointSpots.length > 0 && stage) {
+                // 选中飞机按设备序号升序与集结坪一一对应（与航线渲染的 picked 完全一致）
+                const pickedFlights = aircraft
+                  .map((item, index) => ({ item, index }))
+                  .filter(({ item }) => selectedDevices.has(item.deviceIndex))
+                  .sort((a, b) => a.item.deviceIndex - b.item.deviceIndex)
+                startRallyPointFlights(
+                  pickedFlights.flatMap(({ item, index }, i) =>
+                    rallyPointSpots[i]
+                      ? [
+                          {
+                            x1: stage.left + (aircraftPositions[index].x / 100) * stage.width + 24,
+                            y1: stage.top + (aircraftPositions[index].y / 100) * stage.height + 24,
+                            x2: rallyPointSpots[i].x,
+                            y2: rallyPointSpots[i].y,
+                            icon: item.src,
+                          },
+                        ]
+                      : [],
+                  ),
+                )
+              }
             }}
             onCancel={() => setRallyPointSlide((s) => ({ ...s, open: false }))}
           />
@@ -2438,31 +2770,88 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
                 `[formation-flight] 确认编队飞行，高度 ${formationFlightSlide.height}m，队形 ${formationFlightSlide.formation}`,
               )
               setFormationFlightSlide((s) => ({ ...s, open: false }))
-              setFormationFlightOpen(false)
+              // 面板保持展开：启动多机循环模拟飞行——各选中无人机沿已生成航线飞向队形中
+              // 对应降落点并无限循环，直至取消面板/重新生成终止
+              const geo = getFormationFlightGeometry()
+              if (formationFlightRouteGenerated && geo) {
+                startFormationFlightFlights(
+                  geo.planes.flatMap((p, i) =>
+                    geo.spots[i]
+                      ? [
+                          {
+                            x1: p.x,
+                            y1: p.y,
+                            x2: geo.spots[i].x,
+                            y2: geo.spots[i].y,
+                            icon: geo.icons[i],
+                          },
+                        ]
+                      : [],
+                  ),
+                )
+              }
             }}
             onCancel={() => setFormationFlightSlide((s) => ({ ...s, open: false }))}
           />
 
           {/* 集结点面板（与其他功能面板互斥）：参数设置 tab（起飞高度/集结速度步进 + 集结队形下拉）/ 飞机列表 tab，
-              确认（置灰）/航线生成/取消三按钮，确认/取消均收起面板（确认暂记录日志，待接入指令链路） */}
+              确认（生成航线前置灰）/航线生成/取消三按钮；「航线生成」在已确认集结区域内按当前队形布置集结坪
+              并绘制绿色实线航线；「确认」弹滑窗并启动循环模拟飞行（面板保持展开）；「取消」终止动画并收起面板 */}
           {rallyPointOpen && (
             <RallyPointPanel
               aircraft={selectedAircraft}
               onRemove={handleRemoveAircraft}
               routeMuted={!rallyPointRect}
+              confirmMuted={!rallyPointRouteGenerated}
+              formation={rallyPointFormation}
+              onFormationChange={(f) => {
+                setRallyPointFormation(f)
+                // 队形变更即时重排集结坪；若模拟飞行进行中，以新布局重启动画
+                if (!rallyPointFlyingRef.current) return
+                const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
+                if (!stage) return
+                const picked = aircraft
+                  .map((item, index) => ({ item, index }))
+                  .filter(({ item }) => selectedDevices.has(item.deviceIndex))
+                  .sort((a, b) => a.item.deviceIndex - b.item.deviceIndex)
+                const spots = layoutRallyPointSpots(rallyPointRect, f, picked.length)
+                startRallyPointFlights(
+                  picked.flatMap(({ item, index }, i) =>
+                    spots[i]
+                      ? [
+                          {
+                            x1: stage.left + (aircraftPositions[index].x / 100) * stage.width + 24,
+                            y1: stage.top + (aircraftPositions[index].y / 100) * stage.height + 24,
+                            x2: spots[i].x,
+                            y2: spots[i].y,
+                            icon: item.src,
+                          },
+                        ]
+                      : [],
+                  ),
+                )
+              }}
               onConfirm={(height, speed, formation) => {
                 // 先弹出滑动二次确认弹窗，滑到最右松手后才真正执行（见下方 SlideConfirmDialog）
                 setRallyPointSlide({ open: true, height, speed, formation })
               }}
               onGenerateRoute={() => {
-                // 航线生成：收起面板并进入首页框选模式（与区域降落同款截图框选，
-                // 确认区域无中心地面标记徽章）；重绘前清除旧的已确认区域
-                setRallyPointRect(null)
-                setRallyPointOpen(false)
-                setAreaSelectSource('rally-point')
-                setAreaSelectMode(true)
+                // 未确认集结区域：进入截图框选模式（兜底，正常流程打开面板时已自动进入）
+                if (!rallyPointRect) {
+                  setAreaSelectSource('rally-point')
+                  setAreaSelectMode(true)
+                  return
+                }
+                // 已生成时再次点击：保持面板展开与已生成航线不变（与区域降落一致，防误点）
+                if (rallyPointRouteGenerated) return
+                // 区域已确认：按当前集结队形布置集结坪并绘制绿色实线，解除「确认」置灰
+                stopRallyPointFlights()
+                setRallyPointRouteGenerated(true)
               }}
               onCancel={() => {
+                // 取消面板：终止循环动画并清理全部集结点状态（含已确认区域）
+                stopRallyPointFlights()
+                setRallyPointRouteGenerated(false)
                 setRallyPointRect(null)
                 setRallyPointOpen(false)
               }}
@@ -2470,51 +2859,95 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
           )}
 
           {/* 编队飞行面板（与其他功能面板互斥）：参数设置区块头 + 飞行高度步进 + 编队队形下拉 + 航点信息坐标，
-              确认（置灰）/航线生成/取消三按钮，确认/取消均收起面板（确认暂记录日志，待接入指令链路） */}
+              确认（置灰，航线生成后解除）/航线生成/取消三按钮；「航线生成」在最左选中飞机图标上方按当前
+              队形布置降落点并绘制绿色实线航线；「确认」弹滑窗并启动循环模拟飞行（面板保持展开）；
+              「取消」终止动画并收起面板 */}
           {formationFlightOpen && (
             <FormationFlightPanel
               waypoint={formationFlightPoint}
+              confirmMuted={!formationFlightRouteGenerated}
+              formation={formationFlightFormation}
+              onFormationChange={(f) => {
+                setFormationFlightFormation(f)
+                // 队形变更即时重排降落点；若模拟飞行进行中，则以新队形重启动画
+                if (formationFlightRaf.current === null) return
+                const geo = getFormationFlightGeometry(f)
+                if (!geo) return
+                startFormationFlightFlights(
+                  geo.planes.flatMap((p, i) =>
+                    geo.spots[i]
+                      ? [
+                          {
+                            x1: p.x,
+                            y1: p.y,
+                            x2: geo.spots[i].x,
+                            y2: geo.spots[i].y,
+                            icon: geo.icons[i],
+                          },
+                        ]
+                      : [],
+                  ),
+                )
+              }}
               onConfirm={(height, formation) => {
+                // 置灰守卫：未生成航线时不弹确认滑窗（按钮仅视觉置灰，此处兜底拦截）
+                if (!formationFlightRouteGenerated) return
                 // 先弹出滑动二次确认弹窗，滑到最右松手后才真正执行（见下方 SlideConfirmDialog）
                 setFormationFlightSlide({ open: true, height, formation })
               }}
-              onGenerateRoute={() => console.info('[formation-flight] 航线生成（待接入）')}
-              onCancel={() => setFormationFlightOpen(false)}
+              onGenerateRoute={() => {
+                // 已生成时再次点击：保持面板展开与已生成航线不变（与区域降落/集结点一致，防误点）
+                if (formationFlightRouteGenerated) return
+                // 未选中飞机：无可布置降落点，忽略（与返航线生成的守卫一致）
+                if (!getFormationFlightGeometry()) return
+                // 航线生成：在最左选中飞机图标上方按当前队形布置降落点并绘制绿色实线航线，
+                // 解除「确认」置灰
+                stopFormationFlightFlights()
+                setFormationFlightRouteGenerated(true)
+              }}
+              onCancel={() => {
+                // 取消面板：终止循环动画并清理航线生成态（关闭 effect 统一处理）
+                setFormationFlightOpen(false)
+              }}
             />
           )}
 
           {/* 已确认的区域降落范围：半透明紫色填充（rgba(113,96,242,0.3)）、直角，
               正中心圆形徽章（100×100、rgba(113,96,242,0.1) 填充、8px 白 0.2 描边）内含设计稿降落坪图标（iconAreaLandingCenter 44×52）；
               再次进入框选（重绘）、面板取消或点击左上角「删除重绘」按钮时清除 */}
-          {/* 返航航线连线：选中飞机图标中心 → 正上方返航图钉钉尖（3px #00FF95 实线）；
+          {/* 返航航线连线：各选中飞机图标中心 → 各自正上方 H 返航标记底部（3px #00FF95 实线）；
               点击「航线生成」绘制/清除，面板关闭时清除；「确认」随连线生成解除置灰 */}
-          {returnHomeLine && (
+          {returnHomeLines && returnHomeLines.length > 0 && (
             <svg className="tap-return-route" aria-hidden="true">
-              <line
-                x1={returnHomeLine.x1}
-                y1={returnHomeLine.y1}
-                x2={returnHomeLine.x2}
-                y2={returnHomeLine.y2}
-                stroke="#00FF95"
-                strokeWidth={3}
-              />
+              {returnHomeLines.map((line, i) => (
+                <line
+                  key={i}
+                  x1={line.x1}
+                  y1={line.y1}
+                  x2={line.x2}
+                  y2={line.y2}
+                  stroke="#00FF95"
+                  strokeWidth={3}
+                />
+              ))}
             </svg>
           )}
-          {/* 返航模拟飞行无人机：确认后沿航线连线循环飞向 H 返航标记
-              （fixed 视口定位 + 航向旋转，无限循环播放，面板取消/切换后消失） */}
-          {returnHomeFlight && (
+          {/* 返航模拟飞行无人机：确认后各机沿各自航线连线循环飞向对应 H 返航标记
+              （fixed 视口定位 + 航向旋转，多机并行无限循环播放，面板取消/切换后消失） */}
+          {returnHomeFlights.map((flight, i) => (
             <img
+              key={i}
               className="tap-return-drone"
-              src={returnHomeFlight.icon}
+              src={flight.icon}
               alt=""
               draggable={false}
               style={{
-                left: returnHomeFlight.x,
-                top: returnHomeFlight.y,
-                transform: `translate(-50%, -50%) rotate(${returnHomeFlight.angle}deg)`,
+                left: flight.x,
+                top: flight.y,
+                transform: `translate(-50%, -50%) rotate(${flight.angle}deg)`,
               }}
             />
-          )}
+          ))}
 
           {/* 指点返航连线：飞机图标中心 → 落点图钉（SVG 视口屏幕空间，3px #00FF95）；
               两端锚定不随地图移动的 DOM 图标，地图缩放/平移时保持连接不断开；
@@ -2627,8 +3060,9 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
 
           {/* 编队飞行取点图钉（跟随鼠标）：与指点返航/环绕飞行同方案——
               tap-return-marker 切图 32×56 超出浏览器 32×32 光标上限，
-              钉尖对准鼠标；鼠标移出地图（UI 上）时隐藏跟随图钉 */}
-          {formationFlightOpen && formationFlightHover && (
+              钉尖对准鼠标；仅在未定格航点时跟随（定格后光标恢复正常样式，
+              右键取消标记后恢复跟随），鼠标移出地图（UI 上）时隐藏跟随图钉 */}
+          {formationFlightOpen && !formationFlightPoint && formationFlightHover && (
             <img
               className="tap-return-marker"
               src={homeImages.tapReturnMarker}
@@ -2650,6 +3084,64 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
               draggable={false}
             />
           )}
+
+          {/* 编队飞行降落点编队 + 航线（点击「航线生成」后）：在最左选中飞机图标上方按所选
+              编队队形布置「数量=选中飞机数」的降落点图标（area-landing-spot），并用
+              1px #00FF95 绿色实线连接各选中飞机中心与其对应降落点；队形/选中飞机数/拖拽
+              位置变化时联动重排，取消/关闭面板时随状态清除 */}
+          {formationFlightOpen &&
+            formationFlightRouteGenerated &&
+            (() => {
+              const geo = getFormationFlightGeometry()
+              if (!geo) return null
+              return (
+                <>
+                  <svg className="area-landing-route" aria-hidden="true">
+                    {geo.planes.map((p, i) =>
+                      geo.spots[i] ? (
+                        <line
+                          key={i}
+                          x1={p.x}
+                          y1={p.y}
+                          x2={geo.spots[i].x}
+                          y2={geo.spots[i].y}
+                          stroke="#00FF95"
+                          strokeWidth={1}
+                        />
+                      ) : null,
+                    )}
+                  </svg>
+                  {geo.spots.map((spot, i) => (
+                    <img
+                      key={i}
+                      className="area-landing-spot"
+                      src={homeImages.areaLandingSpot}
+                      style={{ left: spot.x, top: spot.y }}
+                      alt="编队飞行降落点"
+                      draggable={false}
+                    />
+                  ))}
+                </>
+              )
+            })()}
+
+          {/* 编队飞行模拟飞行无人机：滑窗确认后各机沿航线连线同步循环飞向队形中对应
+              降落点（fixed 视口定位 + 航向旋转，多机并行无限循环播放，
+              直至取消面板/重新生成后消失） */}
+          {formationFlightFlights.map((flight, i) => (
+            <img
+              key={i}
+              className="tap-return-drone"
+              src={flight.icon}
+              alt=""
+              draggable={false}
+              style={{
+                left: flight.x,
+                top: flight.y,
+                transform: `translate(-50%, -50%) rotate(${flight.angle}deg)`,
+              }}
+            />
+          ))}
 
           {/* 环绕飞行定格图钉 + 盘旋圆 + 最近点连线：左键点击地图定格环绕中心后，
               以盘旋半径（米）按当前缩放（getMetersPerPixel）换算像素半径绘制绿色虚线圆，
@@ -2977,6 +3469,69 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
             />
           ))}
 
+          {/* 集结点集结坪编队 + 航线（点击「航线生成」后）：在已确认集结区域内按所选
+              集结队形布置「数量=选中飞机数」的集结坪图标（area-landing-spot），并用
+              1px #00FF95 绿色实线连接各选中飞机中心与其对应集结坪；队形/选区/选中
+              飞机数变化时联动重排，重绘区域/取消/删除重绘时随状态清除 */}
+          {rallyPointRect &&
+            rallyPointRouteGenerated &&
+            rallyPointSpots.length > 0 &&
+            (() => {
+              const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
+              if (!stage) return null
+              // 选中飞机按设备序号升序与集结坪一一对应（第 i 架 → 第 i 个集结坪）
+              const picked = aircraft
+                .map((item, index) => ({ item, index }))
+                .filter(({ item }) => selectedDevices.has(item.deviceIndex))
+                .sort((a, b) => a.item.deviceIndex - b.item.deviceIndex)
+              return (
+                <>
+                  <svg className="area-landing-route" aria-hidden="true">
+                    {picked.map(({ index }, i) =>
+                      rallyPointSpots[i] ? (
+                        <line
+                          key={index}
+                          x1={stage.left + (aircraftPositions[index].x / 100) * stage.width + 24}
+                          y1={stage.top + (aircraftPositions[index].y / 100) * stage.height + 24}
+                          x2={rallyPointSpots[i].x}
+                          y2={rallyPointSpots[i].y}
+                          stroke="#00FF95"
+                          strokeWidth={1}
+                        />
+                      ) : null,
+                    )}
+                  </svg>
+                  {rallyPointSpots.map((spot, i) => (
+                    <img
+                      key={i}
+                      className="area-landing-spot"
+                      src={homeImages.areaLandingSpot}
+                      style={{ left: spot.x, top: spot.y }}
+                      alt="集结坪"
+                      draggable={false}
+                    />
+                  ))}
+                </>
+              )
+            })()}
+
+          {/* 集结点模拟飞行无人机：确认后各机沿航线连线循环飞向对应集结坪
+              （fixed 视口定位 + 航向旋转，多机并行无限循环播放，取消面板/删除重绘后消失） */}
+          {rallyPointFlights.map((flight, i) => (
+            <img
+              key={i}
+              className="tap-return-drone"
+              src={flight.icon}
+              alt=""
+              draggable={false}
+              style={{
+                left: flight.x,
+                top: flight.y,
+                transform: `translate(-50%, -50%) rotate(${flight.angle}deg)`,
+              }}
+            />
+          ))}
+
           {/* 集结点已确认区域：与区域降落同款截图式矩形（半透明紫色填充 + 删除重绘），
               但不渲染中心圆形徽章与降落坪地面标记图标；重绘/面板取消/点击删除时清除 */}
           {rallyPointRect && (
@@ -2992,6 +3547,9 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
               <div
                 className="area-landing-confirmed__delete-btn"
                 onClick={() => {
+                  // 删除重绘：终止循环动画并清除航线生成态与已确认区域
+                  stopRallyPointFlights()
+                  setRallyPointRouteGenerated(false)
                   setRallyPointRect(null)
                 }}
               >
@@ -3084,6 +3642,9 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
                                 // 供后续航线生成业务使用
                                 if (areaSelectSource === 'rally-point') {
                                   setRallyPointRect({ left, top, width, height })
+                                  // 重绘新区域后旧航线/集结坪失效，需重新点「航线生成」
+                                  setRallyPointRouteGenerated(false)
+                                  stopRallyPointFlights()
                                 } else {
                                   setAreaLandingRect({ left, top, width, height })
                                   setAreaLandingRouteGenerated(false)
@@ -3130,8 +3691,11 @@ const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | 
                                 setAreaSelectAnchor(null)
                                 setAreaSelectEnd(null)
                                 setAreaSelectDragging(false)
-                                if (areaSelectSource === 'rally-point') setRallyPointRect(null)
-                                else {
+                                if (areaSelectSource === 'rally-point') {
+                                  setRallyPointRect(null)
+                                  setRallyPointRouteGenerated(false)
+                                  stopRallyPointFlights()
+                                } else {
                                   setAreaLandingRect(null)
                                   setAreaLandingCorners(null)
                                   setAreaLandingRouteGenerated(false)
