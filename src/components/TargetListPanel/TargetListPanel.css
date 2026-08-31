@@ -447,8 +447,8 @@
   margin-left: clamp(6px, 0.5vw, 10px);
 }
 
-/* 详情：icon-delete.png（18×18）等比缩放 */
-.target-row__action--detail {
+/* 删除：icon-delete.png（18×18）等比缩放，点击弹出与底部「删除」一致的确认弹窗 */
+.target-row__action--delete {
   width: clamp(13px, 1.05vw, 18px);
   height: clamp(13px, 1.05vw, 18px);
 }
@@ -808,6 +808,26 @@
 
 .target-panel__action-btn:active {
   background-color: rgba(75, 188, 249, 0.4);
+}
+
+/* 禁用态（如删除按钮未选中任何行时）：置灰 + 去除交互反馈 */
+.target-panel__action-btn:disabled {
+  background-color: rgba(217, 217, 217, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.target-panel__action-btn:disabled:hover,
+.target-panel__action-btn:disabled:active {
+  background-color: rgba(217, 217, 217, 0.08);
+  box-shadow: none;
+}
+
+.target-panel__action-btn:disabled img {
+  opacity: 0.35;
+  filter: grayscale(1);
 }
 
 .target-panel__action-btn img {

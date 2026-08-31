@@ -1,0 +1,78 @@
+/* ====== 新增类型抽屉：点击「新增」按钮时从其上方划出（人员 / 车辆两个选项） ====== */
+
+/* 按钮容器：为绝对定位的抽屉提供定位上下文，并保持与兄弟按钮等宽（flex:1 与按钮一致） */
+.target-panel__add-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+
+/* 抽屉本体：贴在「新增」按钮正上方；背景/描边与「新增」按钮完全一致。
+   默认收起（透明 + 隐藏 + 禁点），由 --open 修饰类控制展开，
+   transition 驱动开/合双向划出动画（菜单常驻 DOM，animation 会在挂载时闪现，故弃用） */
+.target-panel__add-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% - 1px); /* 下探 1px 覆盖按钮顶边框，与按钮无缝贴紧 */
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  border-radius: 2px;
+  background-color: rgba(75, 188, 249, 0.1);
+  border: 1px solid rgba(14, 167, 249, 1);
+  box-shadow: 0 6px 16px 0 rgba(12, 69, 79, 0.6);
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+}
+
+/* 展开态：addMenuOpen 为 true 时挂载；再点按钮 / 点击面板外 / Esc 置 false 后自动收回 */
+.target-panel__add-menu--open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* 抽屉选项：类型图标 + 文字横向排列，hover 青色高亮 */
+.target-panel__add-menu-item {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 0.52vw, 10px);
+  padding: clamp(8px, 0.63vw, 12px) clamp(10px, 0.83vw, 16px);
+  font-size: clamp(10px, 0.73vw, 14px);
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.target-panel__add-menu-item + .target-panel__add-menu-item {
+  border-top: 1px solid rgba(14, 167, 249, 0.4);
+}
+
+.target-panel__add-menu-item:hover {
+  background-color: rgba(75, 188, 249, 0.25);
+  color: #fff;
+}
+
+.target-panel__add-menu-item img {
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+/* 抽屉展开期间「新增」按钮保持高亮（与 hover 反馈一致），提示抽屉由该按钮触发 */
+.target-panel__action-btn--open {
+  background-color: rgba(75, 188, 249, 0.25);
+  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.3);
+}

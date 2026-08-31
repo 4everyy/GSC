@@ -5,6 +5,7 @@ import { deviceImages } from '../../assets/images/device'
 import { homeImages } from '../../assets/images/home'
 import './TargetListPanel.css'
 import './TargetListPanel.clear.css'
+import './TargetListPanel.add.css'
 
 interface TargetListPanelProps {
   onClose: () => void
@@ -35,8 +36,12 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   // 刷新流程状态：idle 无提示 / refreshing 刷新中 / done 刷新完成（列表顶部提示条）
   const [refreshStatus, setRefreshStatus] = useState<'idle' | 'refreshing' | 'done'>('idle')
-  // 删除确认弹窗（设计稿 box_27）：点击底部「删除」按钮时弹出
+  // 删除确认弹窗（设计稿 box_27）：点击底部「删除」或行内删除按钮时弹出
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  // 待删除目标 id 集合：底部按钮为全部选中项；行内删除按钮仅该行目标
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([])
+  // 新增类型抽屉开关：点击底部「新增」按钮时从其上方划出（人员 / 车辆两个选项）
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
   // 目标列表本地副本：确认删除后移除对应目标（targetList 为静态 mock，删除仅影响当前会话）
   const [targets, setTargets] = useState<TargetItem[]>(targetList)
   const refreshTimer = useRef<number | null>(null)
@@ -54,11 +59,28 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     }
   }, [])
 
+  // 新增抽屉打开期间：点击面板外任意处或按 Escape 收起抽屉（按钮/选项自身事件已 stopPropagation，不会误触发）
+  useEffect(() => {
+    if (!addMenuOpen) return
+    const closeOnOutsideClick = () => setAddMenuOpen(false)
+    const closeOnKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAddMenuOpen(false)
+    }
+    document.addEventListener('click', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnKeyDown)
+    return () => {
+      document.removeEventListener('click', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnKeyDown)
+    }
+  }, [addMenuOpen])
+
   /** 点击刷新：按钮图标旋转 1.2 秒，列表顶部提示「刷新中」→「刷新完成」，停留 1.6 秒后自动消失 */
   const handleRefresh = () => {
     if (refreshStatus === 'refreshing') return
     if (refreshTimer.current !== null) window.clearTimeout(refreshTimer.current)
     if (refreshDoneTimer.current !== null) window.clearTimeout(refreshDoneTimer.current)
+    // 刷新时取消所有行的选中状态
+    setSelectedIds(new Set())
     setRefreshStatus('refreshing')
     refreshTimer.current = window.setTimeout(() => {
       refreshTimer.current = null
@@ -70,17 +92,40 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     }, REFRESH_SPIN_MS)
   }
 
-  /** 确认删除：移除所有已勾选目标，同步清理勾选/标记/展开集合并关闭弹窗 */
-  const handleDeleteConfirm = () => {
-    setTargets((prev) => prev.filter((t) => !selectedIds.has(t.id)))
-    setSelectedIds(new Set())
-    setExpandedIds(new Set())
-    setMarkedIds((prev) => {
-      const next = new Set(prev)
-      selectedIds.forEach((id) => next.delete(id))
-      return next
-    })
+  /** 打开删除确认弹窗：行内删除按钮传单个 id，底部按钮传全部选中 id */
+  const openDeleteDialog = (ids: string[]) => {
+    setPendingDeleteIds(ids)
+    setDeleteDialogOpen(true)
+  }
+
+  /** 关闭删除确认弹窗并清空待删除集合 */
+  const closeDeleteDialog = () => {
     setDeleteDialogOpen(false)
+    setPendingDeleteIds([])
+  }
+
+  /** 确认删除：移除弹窗指定的目标集合，同步清理勾选/标记/展开集合并关闭弹窗 */
+  const handleDeleteConfirm = () => {
+    const ids = new Set(pendingDeleteIds)
+    if (ids.size > 0) {
+      setTargets((prev) => prev.filter((t) => !ids.has(t.id)))
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        ids.forEach((id) => next.delete(id))
+        return next
+      })
+      setExpandedIds((prev) => {
+        const next = new Set(prev)
+        ids.forEach((id) => next.delete(id))
+        return next
+      })
+      setMarkedIds((prev) => {
+        const next = new Set(prev)
+        ids.forEach((id) => next.delete(id))
+        return next
+      })
+    }
+    closeDeleteDialog()
   }
 
   const filteredTargets = targets.filter(
@@ -337,10 +382,12 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                     onClick={() => toggleMark(t.id)}
                   />
                   <img
-                    className="target-row__action target-row__action--detail"
+                    className="target-row__action target-row__action--delete"
                     src={homeImages.iconDelete}
-                    alt="详情"
+                    alt="删除"
+                    title="删除"
                     draggable={false}
+                    onClick={() => openDeleteDialog([t.id])}
                   />
                   <img
                     className="target-row__action target-row__action--more"
@@ -436,7 +483,7 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
 
       {/* 删除确认弹窗（设计稿 box_27）：portal 到 body 的全局弹窗，遮罩覆盖整个页面并打断底层操作，视口正中 */}
       {deleteDialogOpen && createPortal(
-        <div className="target-panel__delete-overlay" onClick={() => setDeleteDialogOpen(false)}>
+        <div className="target-panel__delete-overlay" onClick={closeDeleteDialog}>
           <div
             className="target-panel__delete-dialog"
             role="dialog"
@@ -446,7 +493,11 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
           >
             <div className="target-panel__delete-dialog-accent" aria-hidden="true" />
             <span className="target-panel__delete-dialog-title">删除</span>
-            <span className="target-panel__delete-dialog-message">是否删除该目标</span>
+            <span className="target-panel__delete-dialog-message">
+              {pendingDeleteIds.length > 1
+                ? `是否删除选中的 ${pendingDeleteIds.length} 个目标`
+                : '是否删除该目标'}
+            </span>
             <div className="target-panel__delete-dialog-actions">
               <button
                 className="target-panel__delete-dialog-btn target-panel__delete-dialog-btn--confirm"
@@ -458,7 +509,7 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
               <button
                 className="target-panel__delete-dialog-btn target-panel__delete-dialog-btn--cancel"
                 type="button"
-                onClick={() => setDeleteDialogOpen(false)}
+                onClick={closeDeleteDialog}
               >
                 取消
               </button>
@@ -478,14 +529,58 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
           />
           刷新
         </button>
-        <button className="target-panel__action-btn" type="button">
-          <img src={deviceImages.iconAdd} alt="" />
-          新增
-        </button>
+        {/* 新增：点击后按钮上方划出类型抽屉（人员 / 车辆），再点击按钮或点击面板外收起 */}
+        <div className="target-panel__add-wrap">
+          <div
+            className={`target-panel__add-menu${addMenuOpen ? ' target-panel__add-menu--open' : ''}`}
+            role="menu"
+            aria-label="新增目标类型"
+            aria-hidden={!addMenuOpen}
+          >
+              {/* TODO: 选项点击后接入真实新增流程，当前仅收起抽屉 */}
+              <div
+                className="target-panel__add-menu-item"
+                role="menuitem"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setAddMenuOpen(false)
+                }}
+              >
+                <img src={typeIcon['人员']} alt="" draggable={false} />
+                <span>人员</span>
+              </div>
+              <div
+                className="target-panel__add-menu-item"
+                role="menuitem"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setAddMenuOpen(false)
+                }}
+              >
+                <img src={typeIcon['车辆']} alt="" draggable={false} />
+                <span>车辆</span>
+              </div>
+          </div>
+          <button
+            className={`target-panel__action-btn${addMenuOpen ? ' target-panel__action-btn--open' : ''}`}
+            type="button"
+            aria-expanded={addMenuOpen}
+            onClick={(e) => {
+              e.stopPropagation()
+              setAddMenuOpen((v) => !v)
+            }}
+          >
+            <img src={deviceImages.iconAdd} alt="" />
+            新增
+          </button>
+        </div>
+        {/* 未选中任何行时置灰不可点击（disabled 阻断点击 + :disabled 样式置灰） */}
         <button
           className="target-panel__action-btn"
           type="button"
-          onClick={() => setDeleteDialogOpen(true)}
+          disabled={selectedIds.size === 0}
+          aria-disabled={selectedIds.size === 0}
+          onClick={() => openDeleteDialog(Array.from(selectedIds))}
         >
           <img src={homeImages.iconDelete} alt="" />
           删除
