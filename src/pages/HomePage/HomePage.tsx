@@ -34,6 +34,7 @@ import './styles/HoverPanelPlacement.css'
 import { NoflyZone } from './components/zones/NoflyZone'
 import { InspectionZone } from './components/zones/InspectionZone'
 import AircraftLayer from './components/aircraft/AircraftLayer'
+import { TargetMarkerLayer } from './components/targets/TargetMarkerLayer'
 import { FlightCommandPanels } from './components/panels/FlightCommandPanels'
 import { WaypointFlightPanels } from './components/panels/WaypointFlightPanels'
 import { FlightMissionPanels } from './components/panels/FlightMissionPanels'
@@ -304,6 +305,10 @@ export function HomePage() {
               panelClasses={inspectionZonePanelClasses}
             />
           )}
+          {/* 目标图标层：目标列表每行对应一个态势图图标（车辆 tank / 人员 people），
+              三种状态背景（正常/hover·点击联动/标记重点），与 TargetListPanel
+              经 targetLinkStore 双向联动（hover/点击行/标记重点/删除同步） */}
+          <TargetMarkerLayer />
           {/* 无人机图标：显隐由图层控制面板「设备标签」开关联动（layerStore），默认开 */}
           {deviceLabelsVisible && (
             <>

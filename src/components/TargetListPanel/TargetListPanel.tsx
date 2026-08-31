@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { targetList, targetTypeOptions, type TargetItem } from '../../config/targets'
+import { targetTypeOptions, type TargetItem } from '../../config/targets'
 import { deviceImages } from '../../assets/images/device'
 import { homeImages } from '../../assets/images/home'
+import { useTargetLinkStore } from '../../stores/targetLinkStore'
 import './TargetListPanel.css'
 import './TargetListPanel.clear.css'
 import './TargetListPanel.add.css'
@@ -27,13 +28,26 @@ const REFRESH_DONE_MS = 1600
 export function TargetListPanel({ onClose, visible = true }: TargetListPanelProps) {
   const [typeFilter, setTypeFilter] = useState('请选择')
   const [openDropdown, setOpenDropdown] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  // 重点标记的目标 id 集合（旗标图标切换）
-  const [markedIds, setMarkedIds] = useState<Set<string>>(new Set())
   // 展开详情的目标 id 集合（行尾箭头切换）
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  // ===== 态势图目标图标联动（targetLinkStore 全局共享，与地图图标双向同步）=====
+  // 重点标记的目标 id 集合（旗标图标切换 + 地图图标标记背景同步）
+  const markedIds = useTargetLinkStore((s) => s.markedIds)
+  const toggleMarked = useTargetLinkStore((s) => s.toggleMarked)
+  const setStoreMarkedIds = useTargetLinkStore((s) => s.setMarkedIds)
+  const setStoreTargets = useTargetLinkStore((s) => s.setTargets)
   // hover 中的目标 id（行背景三态与设备管理面板一致：选中蓝 > hover 橙 > 普通灰）
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const hoveredId = useTargetLinkStore((s) => s.hoveredTargetId)
+  const setHoveredId = useTargetLinkStore((s) => s.setHoveredTargetId)
+  // 点击行联动态目标 id（行与地图图标双向同步，再次点击解除）
+  const clickedTargetId = useTargetLinkStore((s) => s.clickedTargetId)
+  const toggleClickedTarget = useTargetLinkStore((s) => s.toggleClickedTarget)
+  const clearClickedTarget = useTargetLinkStore((s) => s.clearClickedTarget)
+  // 行勾选状态迁移至全局 store（与设备面板 selectedDevices 同模式）：
+  // 地图图标单击与列表勾选框共用 toggleTarget，首页图标选中态双向同步
+  const selectedIds = useTargetLinkStore((s) => s.selectedTargetIds)
+  const toggleTarget = useTargetLinkStore((s) => s.toggleTarget)
+  const replaceSelectedIds = useTargetLinkStore((s) => s.setSelectedTargetIds)
   // 刷新流程状态：idle 无提示 / refreshing 刷新中 / done 刷新完成（列表顶部提示条）
   const [refreshStatus, setRefreshStatus] = useState<'idle' | 'refreshing' | 'done'>('idle')
   // 删除确认弹窗（设计稿 box_27）：点击底部「删除」或行内删除按钮时弹出
@@ -42,12 +56,13 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([])
   // 新增类型抽屉开关：点击底部「新增」按钮时从其上方划出（人员 / 车辆两个选项）
   const [addMenuOpen, setAddMenuOpen] = useState(false)
-  // 目标列表本地副本：确认删除后移除对应目标（targetList 为静态 mock，删除仅影响当前会话）
-  const [targets, setTargets] = useState<TargetItem[]>(targetList)
+  // 目标列表数据源：直接读 targetLinkStore（单一数据源），
+  // 与态势图目标图标层共享——删除目标后面板重开不会与地图不一致
+  const targets = useTargetLinkStore((s) => s.targets)
   const refreshTimer = useRef<number | null>(null)
   const refreshDoneTimer = useRef<number | null>(null)
 
-  // 组件卸载时清理定时器，避免内存泄漏与卸载后 setState
+  // 组件卸载时清理定时器与残留 hover 状态，避免内存泄漏与图标残留高亮
   useEffect(() => {
     return () => {
       if (refreshTimer.current !== null) {
@@ -56,6 +71,7 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
       if (refreshDoneTimer.current !== null) {
         window.clearTimeout(refreshDoneTimer.current)
       }
+      setHoveredId(null)
     }
   }, [])
 
@@ -79,8 +95,8 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     if (refreshStatus === 'refreshing') return
     if (refreshTimer.current !== null) window.clearTimeout(refreshTimer.current)
     if (refreshDoneTimer.current !== null) window.clearTimeout(refreshDoneTimer.current)
-    // 刷新时取消所有行的选中状态
-    setSelectedIds(new Set())
+    // 刷新时取消所有行的选中状态（走 store，同步取消地图图标选中态）
+    replaceSelectedIds(new Set())
     setRefreshStatus('refreshing')
     refreshTimer.current = window.setTimeout(() => {
       refreshTimer.current = null
@@ -104,26 +120,28 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     setPendingDeleteIds([])
   }
 
-  /** 确认删除：移除弹窗指定的目标集合，同步清理勾选/标记/展开集合并关闭弹窗 */
+  /** 确认删除：移除弹窗指定的目标集合（store 单一数据源，地图图标同步消失），
+   *  同步清理勾选/标记/展开集合与点击联动态，并关闭弹窗 */
   const handleDeleteConfirm = () => {
     const ids = new Set(pendingDeleteIds)
     if (ids.size > 0) {
-      setTargets((prev) => prev.filter((t) => !ids.has(t.id)))
-      setSelectedIds((prev) => {
-        const next = new Set(prev)
-        ids.forEach((id) => next.delete(id))
-        return next
-      })
+      setStoreTargets(targets.filter((t) => !ids.has(t.id)))
+      // 勾选集合走 store，同步清理地图图标的选中态
+      const nextSelected = new Set(selectedIds)
+      ids.forEach((id) => nextSelected.delete(id))
+      replaceSelectedIds(nextSelected)
       setExpandedIds((prev) => {
         const next = new Set(prev)
         ids.forEach((id) => next.delete(id))
         return next
       })
-      setMarkedIds((prev) => {
-        const next = new Set(prev)
-        ids.forEach((id) => next.delete(id))
-        return next
-      })
+      const nextMarked = new Set(markedIds)
+      ids.forEach((id) => nextMarked.delete(id))
+      setStoreMarkedIds(nextMarked)
+      // 删除的是当前联动目标时清除联动态
+      if (clickedTargetId !== null && ids.has(clickedTargetId)) {
+        clearClickedTarget()
+      }
     }
     closeDeleteDialog()
   }
@@ -145,28 +163,18 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     } else {
       filteredTargets.forEach((t) => next.add(t.id))
     }
-    setSelectedIds(next)
+    replaceSelectedIds(next)
   }
 
-  /** 切换重点标记：旗标图标在 flag / flag-marked 间切换 */
+  /** 切换重点标记：旗标图标在 flag / flag-marked 间切换
+   *  （走 store，同步切换态势图图标底衬的「标记」背景） */
   const toggleMark = (id: string) => {
-    const next = new Set(markedIds)
-    if (next.has(id)) {
-      next.delete(id)
-    } else {
-      next.add(id)
-    }
-    setMarkedIds(next)
+    toggleMarked(id)
   }
 
+  /** 切换行勾选（走 store，与地图图标单击共用同一入口，选中态双向同步） */
   const toggleSelect = (id: string) => {
-    const next = new Set(selectedIds)
-    if (next.has(id)) {
-      next.delete(id)
-    } else {
-      next.add(id)
-    }
-    setSelectedIds(next)
+    toggleTarget(id)
   }
 
   /** 切换行内详情展开/收起（行尾箭头） */
@@ -334,8 +342,10 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
             filteredTargets.map((t) => {
               const isSelected = selectedIds.has(t.id)
               const isExpanded = expandedIds.has(t.id)
-              // 行背景三态与设备管理面板一致：选中(蓝) > hover(橙) > 普通(灰)
-              const bgImage = isSelected
+              const isClicked = clickedTargetId === t.id
+              // 行背景多态与设备管理面板一致：
+              // 选中(蓝) > 点击联动(蓝) > hover(橙) > 普通(灰)
+              const bgImage = isSelected || isClicked
                 ? deviceImages.rowBgBlue
                 : hoveredId === t.id
                   ? deviceImages.rowBgOrange
@@ -346,9 +356,10 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                   key={t.id}
                 >
                 <div
-                  className={`target-row${isSelected ? ' target-row--selected' : ''}`}
+                  className={`target-row${isSelected ? ' target-row--selected' : ''}${clickedTargetId === t.id ? ' target-row--clicked' : ''}`}
                   onMouseEnter={() => setHoveredId(t.id)}
                   onMouseLeave={() => setHoveredId(null)}
+                  onClick={() => toggleClickedTarget(t.id)}
                 >
                   <img
                     className="target-row__bg"
@@ -358,7 +369,10 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                   />
                   <div
                     className={`target-row__checkbox${isSelected ? ' target-row__checkbox--checked' : ''}`}
-                    onClick={() => toggleSelect(t.id)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleSelect(t.id)
+                    }}
                     role="checkbox"
                     aria-checked={isSelected}
                     tabIndex={0}
@@ -379,7 +393,10 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                     alt={markedIds.has(t.id) ? '取消重点标记' : '标记为重点'}
                     title={markedIds.has(t.id) ? '取消重点标记' : '标记为重点'}
                     draggable={false}
-                    onClick={() => toggleMark(t.id)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleMark(t.id)
+                    }}
                   />
                   <img
                     className="target-row__action target-row__action--delete"
@@ -387,7 +404,10 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                     alt="删除"
                     title="删除"
                     draggable={false}
-                    onClick={() => openDeleteDialog([t.id])}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      openDeleteDialog([t.id])
+                    }}
                   />
                   <img
                     className="target-row__action target-row__action--more"
@@ -395,7 +415,10 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                     alt={isExpanded ? '收起详情' : '展开详情'}
                     title={isExpanded ? '收起详情' : '展开详情'}
                     draggable={false}
-                    onClick={() => toggleExpand(t.id)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleExpand(t.id)
+                    }}
                   />
                 </div>
 

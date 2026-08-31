@@ -21,6 +21,9 @@ import people from './people.png'
 import previewCorner from './preview-corner.png'
 import previewImage from './preview-image.png'
 import rowBgBlue from './row-bg-blue.png'
+import targetBgNormal from './target-bg-normal.png'
+import targetBgHighlight from './target-bg-highlight.png'
+import targetBgMarked from './target-bg-marked.png'
 import rowBgGray from './row-bg-gray.png'
 import rowBgOrange from './row-bg-orange.png'
 import signalIcon from './signal-icon.png'
@@ -55,6 +58,9 @@ export const deviceImages = {
   rowBgBlue,
   rowBgGray,
   rowBgOrange,
+  targetBgNormal,
+  targetBgHighlight,
+  targetBgMarked,
   signalIcon,
   tank,
   target,

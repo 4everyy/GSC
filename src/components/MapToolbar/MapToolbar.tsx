@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { toolbarItems } from '../../config/toolbar'
 import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
+import { useTargetLinkStore } from '../../stores/targetLinkStore'
 import { DeviceManagementPanel } from '../DeviceManagementPanel/DeviceManagementPanel'
 import { TargetListPanel } from '../TargetListPanel/TargetListPanel'
 import './MapToolbar.css'
@@ -51,6 +52,14 @@ export function MapToolbar() {
       setActive(0)
     }
   }, [devicePanelOpenRequests])
+
+  // Open target list panel when target icon on home page is clicked (counter signal)
+  const targetPanelOpenRequests = useTargetLinkStore((s) => s.targetPanelOpenRequests)
+  useEffect(() => {
+    if (targetPanelOpenRequests > 0) {
+      setActive(4)
+    }
+  }, [targetPanelOpenRequests])
 
   // 预加载 hover / active 背景图：首次 hover/click 时浏览器才开始下载这些图片，
   // 下载完成前会闪现空白，产生"背景图片替换"的闪烁感。
