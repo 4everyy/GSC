@@ -1,0 +1,138 @@
+/* NoflyZone —— 禁飞区区块与 Hover 信息面板
+   自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
+   HomePage.css 按拆分前的层叠顺序 @import 各文件。 */
+/* ====== 绂侀鍖?Hover 淇℃伅闈㈡澘锛堣璁＄绮剧‘杩樺師锛?==== */
+.block_7 {
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.3);
+  background-color: rgba(255, 95, 95, 0.4);
+  border-radius: 4px;
+  position: absolute;
+  width: 203px;
+  height: 117px;
+  border: 1px solid rgba(172, 14, 14, 1);
+  z-index: 10;
+  /* 榛樿闅愯棌锛宧over 绂侀鍖烘椂鏄剧ず */
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  /* 瀹氫綅鍦ㄥ尯鍩熷彸涓婃柟锛堥潰鏉垮簳閮ㄥ榻愬尯鍩熼《閮ㄥ亸涓婏級 */
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-30%);
+  margin-bottom: 8px;
+  pointer-events: none;
+  /* 鏁翠綋 flex 绾靛悜甯冨眬锛氶《閮ㄥ浐瀹氾紝搴曢儴涓夎鑷姩濉厖骞跺瀭鐩村眳涓?*/
+  display: flex;
+  flex-direction: column;
+}
+
+/* 椤堕儴锛氭爣棰?+ 鍒嗛殧绾匡紙鍥哄畾楂樺害锛屼笉鍙備笌灞呬腑锛?*/
+.block_7__top {
+  flex-shrink: 0;
+}
+
+/* 搴曢儴锛氭潵婧?闈㈢Н/妯″紡涓夎瀹瑰櫒锛屽崰鎹墿浣欑┖闂村苟鍨傜洿灞呬腑 */
+.block_7__bottom {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px; /* 涓夎涔嬮棿鐨勫瀭鐩撮棿璺?*/
+  /* 涓嶈 padding-bottom锛岃涓夎鍦ㄦ暣涓墿浣欑┖闂达紙鍒嗛殧绾库啋闈㈡澘搴曡竟锛夊唴绮剧‘鍨傜洿灞呬腑 */
+}
+
+.restricted-zone--red:hover .block_7 {
+  opacity: 1;
+  visibility: visible;
+}
+
+.text_8 {
+  width: 57px;
+  height: 19px;
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans-Regular';
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 14px;
+  margin: 9px 0 0 16px;
+  display: block;
+}
+
+.section_3 {
+  background-color: rgba(172, 14, 14, 0.4);
+  width: 201px;
+  height: 1px;
+  margin: 8px 0 0 1px;
+}
+
+.section_4,
+.section_5,
+.section_6 {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 0 0 0 16px; /* 椤堕儴闂磋窛鏀圭敱 .block_7__bottom 鐨?gap 缁熶竴鎺у埗 */
+}
+
+.box_13,
+.group_10,
+.group_11 {
+  background-color: rgba(172, 14, 14, 1);
+  width: 2px;
+  height: 8px;
+  flex-shrink: 0;
+}
+
+.text_9,
+.text_11,
+.text_13 {
+  width: 24px;
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 12px;
+  font-family: 'MiSans-Regular';
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 12px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.text_10,
+.text_12,
+.text_14 {
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 12px;
+  font-family: 'MiSans-Regular';
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 12px;
+  margin-left: 8px;
+}
+
+/* 鏈€鍚庝竴琛屼笉鍐嶅崟鐙缃簳閮ㄩ棿璺濓紱
+   涓夎鏁翠綋鐢?.block_7__bottom 鐨?justify-content:center 鍦ㄥ墿浣欑┖闂村唴鍨傜洿灞呬腑 */
+
+.restricted-zone--red img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.restricted-zone--orange {
+  right: 17.8%;
+  bottom: 22.6%;
+  width: 12.4%;
+  height: 18.3%;
+  border: 3px solid #c66000;
+  background: #be6c1e66;
+  transform: rotate(35deg);
+}

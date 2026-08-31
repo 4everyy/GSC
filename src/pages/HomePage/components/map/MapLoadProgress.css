@@ -1,0 +1,85 @@
+/*
+ * MapLoadProgress —— 地图加载进度指示器（首页右下角）。
+ *
+ * 定位避让：
+ * - 右侧竖排控件（zoom-controls / view-controls）占满右缘 0~80px，
+ *   本组件整体偏移到其左侧（right = 52~104px）；
+ * - 底部 map-footer 为 10px 高透明条（bottom 8~17px），本组件整体上移避开；
+ * - 容器 pointer-events:none，不拦截地图交互。
+ */
+.map-load-progress {
+  position: absolute;
+  /* 右缘偏移 = 控件外边距(8~16) + 控件宽(32~64) + 间隙(12~24) */
+  right: calc(
+    clamp(8px, 0.83vw, 16px) + clamp(32px, 3.33vw, 64px) + clamp(12px, 1.25vw, 24px)
+  );
+  /* 底部偏移 = footer 条(8~17 + 10 高) + 间隙 */
+  bottom: clamp(28px, 2.9vw, 56px);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(70, 220, 231, 0.6);
+  /* 完全不透明的深蓝黑渐变底：此前 0.9~0.95 半透明会透出地图底色，
+     叠加青色辉光后整体观感发蓝，压低文字对比；改为不透明后百分比
+     文字（白→冰青渐变）在暗底上对比强烈 */
+  background: linear-gradient(160deg, #04090f 0%, #071021 55%, #0a1626 100%);
+  box-shadow:
+    0 0 0 1px rgba(0, 229, 255, 0.12),
+    0 0 18px 2px rgba(0, 229, 255, 0.18),
+    0 6px 20px 0 rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+/* 完成后淡出 */
+.map-load-progress--leaving {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+/* 进度弧发光（作用于 antd Progress 仪表盘，普通 CSS 直接用类名选择器） */
+.map-load-progress .ant-progress-circle {
+  filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.55));
+}
+
+/* 百分比数字：白 → 冰青 → 天蓝垂直渐变文字，与深色容器底形成强对比。
+   注意：text-shadow 会渲染在渐变文字之上使其浑浊，故用 drop-shadow 发光 */
+/* 类名兼容：antd 6 已把百分比文字类名从 .ant-progress-text 改为
+   .ant-progress-indicator（此前只写旧类名导致样式从未生效、文字一直显示
+   默认黑色）。新旧类名并列书写，旧类名保留作 antd5 降级，无副作用 */
+/* 提高优先级：antd 的 CSS-in-JS 样式表注入顺序晚于本文件，
+   颜色/字号补 !important 兜底 */
+.map-load-progress .ant-progress .ant-progress-indicator,
+.map-load-progress .ant-progress .ant-progress-text {
+  background: linear-gradient(180deg, #ffffff 0%, #c8f8ff 50%, #5ee7ff 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  font-family: 'MiSans-Regular', sans-serif;
+  font-size: 20px !important;
+  font-weight: 700;
+  filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.7));
+}
+
+.map-load-progress__label {
+  /* 文字带青色微光，深底上对比更足 */
+  color: #d9f6ff;
+  text-shadow: 0 0 6px rgba(0, 229, 255, 0.45);
+  font-family: 'MiSans-Regular', sans-serif;
+  font-size: clamp(11px, 1.1vw, 13px);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* 尊重系统「减少动态效果」偏好：淡出动画改为瞬时 */
+@media (prefers-reduced-motion: reduce) {
+  .map-load-progress {
+    transition: none;
+  }
+}

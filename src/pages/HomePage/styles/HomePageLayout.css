@@ -1,0 +1,119 @@
+/* HomePageLayout —— 页面容器 / 地图舞台 / 限制区域
+   自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
+   HomePage.css 按拆分前的层叠顺序 @import 各文件。 */
+﻿/* ====== 椤甸潰瀹瑰櫒 ====== */
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100vh;
+}
+
+.design-viewport {
+  width: 100vw;
+  height: 100vh;
+  min-width: 960px;
+  overflow: hidden;
+  background: #0a1a2f;
+}
+
+.design-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  font-family: 'MiSans-Regular';
+  display: flex;
+  flex-direction: column;
+}
+
+/* ====== 鍦板浘鑸炲彴 ====== */
+.map-stage {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  overflow: hidden;
+  box-sizing: border-box;
+  /* 鏀捐榧犳爣浜嬩欢锛岃婊氳疆/鎷栨嫿鐩磋揪搴曞眰鍦板浘锛涗粎鍙氦浜掔殑瀛愬厓绱犲崟鐙仮澶?pointer-events */
+  pointer-events: none;
+}
+
+/* 鍦板浘鑸炲彴鍐呴渶瑕佷氦浜掔殑 UI 鍏冪礌锛氬崟鐙紑鍚紶鏍囦簨浠舵帴鏀?*/
+.map-stage .map-toolbar-wrapper,
+.map-stage .view-controls,
+.map-stage .zoom-controls,
+.map-stage .bottom-bar,
+.map-stage .layer-panel,
+.map-stage .device-panel,
+.map-stage .mission-panel,
+.map-stage .alarm-info-panel,
+.map-stage .route-panel,
+.map-stage .aircraft,
+.map-stage .corner-marker,
+.map-stage .restricted-zone,
+.map-stage .inspection-zone,
+.map-stage .offline-map-panel {
+  pointer-events: auto;
+}
+
+/* 鍦板浘搴曞浘灞傦細缁濆瀹氫綅閾烘弧鏁翠釜鐢诲竷锛堝惈鐘舵€佹爮鍑规Ы鍖哄煙锛夊苟缃簬鏈€搴曞眰锛?
+   鍏朵綑 UI 鍏冪礌閫氳繃鍚勮嚜鐨?z-index 娴簬鍏朵笂 */
+.map-base {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* ====== 闄愬埗鍖哄煙 ====== */
+.restricted-zone {
+  position: absolute;
+  z-index: 2;
+}
+
+/* 绂侀鍖猴細宸︿笅瑙掑€炬枩鍥涜竟褰紝SVG 缁樺埗杈规鍜屽～鍏?*/
+.restricted-zone--red {
+  left: 8%;
+  bottom: 12%;
+  width: 16%;
+  height: 22%;
+}
+
+/* SVG 杈规瀹瑰櫒锛氶摵婊＄埗鍏冪礌 */
+.restricted-zone__border {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* 鍥涜姝ｆ柟褰㈣妭鐐规爣璁帮細鍏叡鏍峰紡 */
+.corner-marker {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #9d211d;
+  border-radius: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* 宸︿笂瑙?(22%, 0%) */
+.corner-marker--tl {
+  left: calc(22% - 5px);
+  top: -5px;
+}
+/* 鍙充笂瑙?(78%, 8%) */
+.corner-marker--tr {
+  left: calc(78% - 5px);
+  top: calc(8% - 5px);
+}
+/* 鍙充笅瑙?(100%, 100%) */
+.corner-marker--br {
+  right: -5px;
+  bottom: -5px;
+}
+/* 宸︿笅瑙?(0%, 92%)锛歽=92%浠庨《閮?= 8%浠庡簳閮?*/
+.corner-marker--bl {
+  left: -5px;
+  bottom: calc(8% - 5px);
+}

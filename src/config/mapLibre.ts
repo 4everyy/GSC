@@ -35,22 +35,10 @@ export const MAPLIBRE_DEFAULT_ZOOM = Number(
  * MapLibre 地图初始化选项。
  */
 export const MAPLIBRE_MAP_OPTIONS = {
-  /** 允许滚轮缩放 */
-  scrollZoom: true,
-  /** 允许拖拽平移 */
-  dragPan: true,
-  /** 允许双击放大 */
-  doubleClickZoom: true,
-  /** 允许键盘操作 */
-  keyboard: true,
-  /** 允许触摸缩放/旋转 */
-  touchZoomRotate: true,
-  /** 抗锯齿 */
-  antialias: true,
-  /** 最大缩放级别 */
+  /** 最大缩放级别（写死，与苏州离线包 z9-18 数据层级对齐） */
   maxZoom: 18,
-  /** 最小缩放级别 */
-  minZoom: 3,
+  /** 最小缩放级别（写死，与苏州离线包 z9-18 数据层级对齐，z9 以下无瓦片数据） */
+  minZoom: 9,
   /**
    * 关闭右下角版权归属控件。
    *

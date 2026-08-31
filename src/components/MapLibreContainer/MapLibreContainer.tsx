@@ -60,6 +60,7 @@ const PLACEHOLDER_STYLE: StyleSpecification = {
   ],
 }
 
+
 /**
  * 在 MapLibre 地图上添加"我的位置"标注：精度圆 + 蓝色光点 Marker。
  *

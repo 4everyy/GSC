@@ -1,0 +1,283 @@
+/* FlightMarkers —— 取点图钉与跟随光标 / 航线连线 / 模拟飞行图标 / 环绕图形 / 集结坪
+   自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
+   HomePage.css 按拆分前的层叠顺序 @import 各文件。 */
+.tap-return-mode .map-base,
+.tap-return-mode .map-base canvas {
+  cursor: none;
+}
+
+/* 环绕飞行取点模式：面板打开期间地图区域隐藏原生光标，复用指点返航跟随图钉
+   （tap-return-marker）方案——由 orbit-flight-mode 类驱动图钉钉尖对准鼠标 */
+.orbit-flight-mode .map-base,
+.orbit-flight-mode .map-base canvas {
+  cursor: none;
+}
+
+/* 编队飞行取点模式：面板打开期间地图区域隐藏原生光标，复用指点返航跟随图钉
+   （tap-return-marker）方案——由 formation-flight-mode 类驱动图钉钉尖对准鼠标 */
+.formation-flight-mode .map-base,
+.formation-flight-mode .map-base canvas {
+  cursor: none;
+}
+
+/* 鎸囩偣杩旇埅钀界偣鍥鹃拤鏍囪锛?2脳56 鍒囧浘锛夛細鍥哄畾瀹氫綅锛岄拤灏栧鍑嗗彇鐐逛綅缃?*/
+.tap-return-marker {
+  position: fixed;
+  z-index: 1500;
+  width: 32px;
+  height: 56px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+/* 环绕飞行已标记态：定格图钉可交互（hover/点击显示「取消重绘」），鼠标恢复原生样式 */
+.tap-return-marker--pin {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.tap-return-marker--pin img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 鎸囩偣杩旇埅钀界偣姝ｄ笅鏂硅繑鑸尯鍩熷渾鍦堬紙璁捐绋?image-wrapper_4锛夛細
+   48脳48銆乺gba(255,255,255,0.2) 濉厖銆?px 鐧芥弿杈瑰渾褰紝flex 灞呬腑 20脳24 鍋滄満鍧浘鏍囷紱
+   鍦嗗湀椤堕儴璺濊惤鐐?60px锛堝浘閽夐珮 56px + 4px 闂撮殭锛夛紝涓庡浘閽夊瀭鐩存帓鍒?*/
+.tap-return-zone {
+  position: fixed;
+  z-index: 1499;
+  width: 48px;
+  height: 48px;
+  box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 1);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.tap-return-zone img {
+  width: 20px;
+  height: 24px;
+}
+
+/* 指点返航落点「确定 | 取消」按钮条：视口 fixed 定位（与落点图钉同一坐标空间），
+   视觉复用区域降落确认条（121×32、4px 圆角、半透明蓝底 + 1px 蓝描边 + 阴影，
+   内部标签/分隔线直接复用 area-select-confirm-bar__* 类）；
+   left/top 由内联样式注入（水平居中于落点、位于落点圆圈下方 8px），
+   transform 仅做水平居中偏移；pointer-events:auto 支持点击（图钉/圆圈均为 none） */
+.tap-return-confirm-bar {
+  position: fixed;
+  z-index: 1501;
+  display: flex;
+  align-items: flex-start;
+  width: 121px;
+  height: 32px;
+  box-sizing: border-box;
+  background-color: rgba(75, 188, 249, 0.4);
+  border: 1px solid rgba(75, 188, 249, 1);
+  border-radius: 4px;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  transform: translateX(-50%);
+  pointer-events: auto;
+  user-select: none;
+}
+
+/* 指点返航连线（SVG 视口屏幕空间）：fixed 全屏画布铺满视口（100vw×100vh），
+   无 viewBox 时 SVG 用户坐标即视口像素，line 的 x/y 直接使用 clientX/clientY；
+   z-index 低于落点圆圈(1499)/图钉(1500)，连线自图标与图钉下方穿过；
+   pointer-events:none 不拦截地图取点与面板交互 */
+.tap-return-route {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1498;
+  pointer-events: none;
+}
+
+/* 环绕飞行盘旋圆 + 最近点连线：与指点返航连线同方案的视口 SVG——
+   circle/line 坐标为视口像素（圆心 = 定格取点，半径 = 盘旋半径米 ÷ 每像素米数），
+   半径步进/缩放/重新取点时联动刷新；不拦截交互 */
+.orbit-flight-graphics {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1498;
+  pointer-events: none;
+}
+/* 模拟飞行无人机（确认指点返航后）：fixed 视口定位，left/top 由内联样式按
+   连线插值坐标驱动，translate(-50%,-50%) 让机身中心贴合坐标点，rotate 航向角；
+   z-index 高于图钉(1500)使飞行图标完整可见；pointer-events:none 不拦截交互；
+   循环飞行，手动点击「取消」后随状态清除消失 */
+.tap-return-drone {
+  position: fixed;
+  z-index: 1501;
+  width: 48px;
+  height: 48px;
+  pointer-events: none;
+}
+/* 航点飞行取点阶段（waypoint-picking：面板开启且未定格航点）：光标为航点标记图钉（32×56 切图，钉尖热点 16 55 对准鼠标）；
+   左键定格航点后类移除，光标恢复默认样式 */
+.waypoint-picking .map-base,
+.waypoint-picking .map-base canvas {
+  cursor: none;
+}
+
+/* route-flight-picking: hide native cursor, DOM pin follows mouse */
+.route-flight-picking .map-base,
+.route-flight-picking .map-base canvas {
+  cursor: none;
+}
+
+/* 航点飞行航点图钉（32×56 切图，仅图钉无 H 停机坪圈）：钉尖对准鼠标/定格点，
+   未点击时跟随鼠标移动，左键点击后定格 */
+.waypoint-flight-marker {
+  position: fixed;
+  z-index: 1500;
+  width: 32px;
+  height: 56px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+/* 航点飞行连线（SVG 视口屏幕空间）：选中飞机中心 → 鼠标/航点图钉，
+   1.5px #00FF95；未点击时 stroke-dasharray 虚线实时跟随，
+   左键点击定格后实线；pointer-events:none 不拦截地图取点 */
+.waypoint-flight-route {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1498;
+  pointer-events: none;
+}
+/* 航线飞行航线（SVG 视口屏幕空间）：飞机中心 → 航点1 → 航点2…（1.5px #00FF95），
+   取点中尾段连至鼠标为虚线，右键/Esc 结束后全部定格为实线；
+   pointer-events:none 不拦截地图取点 */
+.route-flight-route {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1498;
+  pointer-events: none;
+}
+
+/* 航线飞行编号航点图钉：设计稿橙色切图 32×56 + 白色序号叠加。
+   钉尖对准取点位置；pointer-events:none 不拦截取点 */
+.route-flight-marker {
+  position: fixed;
+  z-index: 1500;
+  width: 32px;
+  height: 56px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+/* 切图铺满容器，消除 inline 空隙 */
+.route-flight-marker img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 序号：居中于图钉头部圆心（32×56 切图头部圆形 bbox y=0~32，圆心约 (16,16)） */
+.route-flight-marker__num {
+  position: absolute;
+  left: 50%;
+  top: 16px;
+  transform: translate(-50%, -50%);
+  font-family: MiSans-Semibold, MiSans-Regular, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1;
+}
+
+/* 取点结束后图钉可交互：接收鼠标事件（悬浮/双击弹「删除航点」），光标变手型 */
+.route-flight-marker--interactive {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* 删除航点按钮（设计稿 text-wrapper_2）：78×32 蓝色半透明底 + 1px 蓝描边 + 圆角 4 +
+   投影，白色 14px 文案居中；悬浮/双击图钉后出现在图钉右侧（间距 8px，对齐图钉头部） */
+.route-flight-marker__delete {
+  position: absolute;
+  left: 40px;
+  top: 0;
+  width: 78px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  background-color: rgba(75, 188, 249, 0.4);
+  border: 1px solid rgba(75, 188, 249, 1);
+  border-radius: 4px;
+  color: #fff;
+  font-family: MiSans-Regular, sans-serif;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* 隐形桥接：向左延伸 8px 覆盖图钉（32px）与按钮（left 40px）之间的间隙——
+   伪元素属于按钮命中区（图钉子树内），鼠标从图钉移向按钮穿过间隙时
+   不触发图钉的 mouseleave，按钮不会提前消失，可顺畅点击 */
+.route-flight-marker__delete::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 0;
+  width: 8px;
+  height: 100%;
+}
+
+/* route-flight-cursor-pin：航线飞行取点跟随图钉（设计稿橙色切图 32×56）——
+   钉尖对准鼠标，取点结束（右键/Esc）后随 hover 清除消失 */
+.route-flight-cursor-pin {
+  position: fixed;
+  z-index: 1502;
+  width: 32px;
+  height: 56px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+/* 区域降落降落坪编队（点击「航线生成」后）：选中飞机中心 → 对应降落坪图标中心的
+   1px #00FF95 绿色实线（SVG 视口屏幕空间）；pointer-events:none 不拦截地图交互，
+   z-index 高于已确认区域填充(1500)避免连线被紫色半透明层压暗 */
+.area-landing-route {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1501;
+  pointer-events: none;
+}
+
+/* 区域降落降落坪图标：44×44 居中锚定在各排列点位上（translate(-50%,-50%)），
+   pointer-events:none 不遮挡已确认区域的「删除重绘」按钮 */
+.area-landing-spot {
+  position: fixed;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1502;
+}

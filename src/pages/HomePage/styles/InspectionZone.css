@@ -1,0 +1,212 @@
+/* InspectionZone —— 巡检区域区块与 Hover 信息面板
+   自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
+   HomePage.css 按拆分前的层叠顺序 @import 各文件。 */
+/* ====== 宸℃鍖哄煙锛堥珮绮惧害杩樺師锛?==== */
+.inspection-zone {
+  position: absolute;
+  z-index: 1;
+  /* 绮剧‘杩樺師锛氬崰鎹椤典腑蹇冪殑灏忓潡鍖哄煙锛堝啀娆＄缉灏忚嚦3/4锛?*/
+  left: 38.75%;
+  top: 25.5%;
+  width: 22.5%;
+  height: 33%;
+  pointer-events: auto;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 鎷栨嫿杩涜涓細鏀圭敤 grabbing 鍏夋爣 */
+.inspection-zone:active {
+  cursor: grabbing;
+}
+
+/* 宸℃鍖哄煙鑳屾櫙锛氬崐閫忔槑钃濊壊锛岀簿纭尮閰嶅弬鑰冨浘 */
+.inspection-zone__bg {
+  position: absolute;
+  inset: 0;
+  background: rgba(25, 95, 145, 0.18);
+  border: 1.5px solid rgba(100, 175, 230, 0.45);
+  border-radius: 3px;
+  box-shadow:
+    0 0 15px rgba(45, 130, 200, 0.15),
+    inset 0 0 25px rgba(55, 150, 210, 0.08);
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    border-radius 0.2s ease,
+    border-color 0.2s ease;
+}
+
+/* Hover锛氬贰妫€鍖哄煙鑳屾櫙楂樹寒 + 鍐呭彂鍏?*/
+.inspection-zone:hover .inspection-zone__bg {
+  background: rgba(32, 132, 186, 0.3);
+  border-color: rgba(135, 235, 255, 0.6);
+  border-radius: 0;
+  box-shadow: inset 0px 0px 12px 0px #87ebff;
+}
+
+/* 杞ㄨ抗绾?hover锛氬姞绮?+ 鍔犱寒 */
+.inspection-zone__path {
+  transition:
+    stroke 0.2s ease,
+    stroke-width 0.2s ease,
+    filter 0.2s ease;
+}
+
+.inspection-zone:hover .inspection-zone__path {
+  stroke-width: 4.5;
+  filter: drop-shadow(0 0 3px rgba(135, 235, 255, 0.8));
+}
+
+.inspection-zone:hover .inspection-zone__path--flown {
+  stroke: #ffffff;
+}
+
+.inspection-zone:hover .inspection-zone__path--pending {
+  stroke: #6eff9a;
+}
+
+/* ====== 宸℃鍖哄煙 Hover 淇℃伅闈㈡澘锛堣摑鑹诧紝瀹氫綅鍦ㄥ尯鍩熷彸涓婅澶栦笂鏂癸級====== */
+.inspection-zone__panel {
+  position: absolute;
+  bottom: 100%; /* 闈㈡澘搴曢儴瀵归綈宸℃鍖哄煙椤堕儴锛堟偓娴湪鍖哄煙涓婃柟锛?*/
+  right: -100px; /* 闈㈡澘鍙宠竟缂樼浉瀵瑰贰妫€鍖哄煙鍙宠竟缂樺悜鍙冲亸绉?100px */
+  margin-bottom: 8px;
+  z-index: 20;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.3);
+  background-color: rgba(75, 188, 249, 0.4);
+  border-radius: 4px;
+  width: 142px;
+  height: 93px;
+  border: 1px solid rgba(75, 188, 249, 1);
+  color: #fff;
+  font-family: 'MiSans-Regular';
+  /* 榛樿闅愯棌锛宧over 宸℃鍖哄煙鏃舵樉绀?*/
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  pointer-events: none;
+  /* 鏁翠綋 flex 绾靛悜甯冨眬锛氭爣棰?鍒嗛殧绾垮浐瀹氶珮搴︼紝body 鑷姩濉厖鍓╀綑绌洪棿骞跺瀭鐩村眳涓?*/
+  display: flex;
+  flex-direction: column;
+}
+
+/* hover 鏃舵樉绀洪潰鏉?*/
+.inspection-zone:hover .inspection-zone__panel {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 椤堕儴瀹瑰櫒锛氭爣棰?鍒嗛殧绾匡紝鍥哄畾楂樺害锛屼笉鍙備笌 body 鐨勫瀭鐩村眳涓垎閰?
+   锛堝畬鍏ㄥ鍒荤椋炲尯 .block_7__top 鐨勬ā寮忥級 */
+.inspection-zone__panel-top {
+  flex-shrink: 0;
+}
+
+/* 鏍囬锛?1鍙峰贰妫€鍖?鈥斺€?瀹屽叏澶嶅埢绂侀鍖?.text_8 鐨勮璁＄鍘熷瀹氫綅
+   锛坆lock 甯冨眬 + margin 瀹氫綅锛屼笉浣跨敤 flex 鎾戦珮锛屼繚鎸佽璁＄鍘熷瑙嗚浣嶇疆锛?*/
+.inspection-zone__panel-title {
+  display: block;
+  width: 71px;
+  height: 19px;
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 14px;
+  margin: 9px 0 0 16px;
+}
+
+/* 鍒嗛殧绾匡細瀹屽叏澶嶅埢绂侀鍖?.section_3 鐨?margin 妯″紡 */
+.inspection-zone__panel-divider {
+  background-color: rgba(75, 188, 249, 0.5);
+  width: 140px;
+  height: 1px;
+  margin: 8px 0 0 1px;
+}
+
+/* Body锛氫袱琛岀殑瀹瑰櫒锛屽崰婊″垎闅旂嚎涓嬫柟鐨勫墿浣欑┖闂达紝鏁翠綋鍨傜洿灞呬腑
+   锛堝畬鍏ㄥ鍒荤椋炲尯 .block_7__bottom 鐨勬ā寮忥級 */
+.inspection-zone__panel-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 淇℃伅琛岋細瀹屽叏澶嶅埢绂侀鍖?.section_4/5/6 鐨勬ā寮?
+   锛坒lex + align-items:center锛屼笉璁惧浐瀹?height锛岃鍐呭鑷劧鎾戝紑锛?*/
+.inspection-zone__panel-row {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* 闈㈢Н琛?*/
+.inspection-zone__panel-row--area {
+  margin-left: 16px;
+}
+
+/* 鍏宠仈浠诲姟琛?*/
+.inspection-zone__panel-row--task {
+  margin-left: 16px;
+}
+
+/* 绔栫嚎瑁呴グ鏉★紙闈掕壊锛夆€斺€?瀹屽叏澶嶅埢绂侀鍖?.box_13 */
+.inspection-zone__panel-bar {
+  background-color: rgba(138, 248, 234, 1);
+  width: 2px;
+  height: 8px;
+  flex-shrink: 0;
+}
+
+/* 鏍囩锛堥潰绉?/ 鍏宠仈浠诲姟锛夆€斺€?涓嶈鍥哄畾 width锛?
+   璁╂枃瀛楄嚜閫傚簲瀹藉害锛岄伩鍏?鍏宠仈浠诲姟"4瀛楁孩鍑轰笌鍚庨潰鐨勫€奸噸鍙?*/
+.inspection-zone__panel-label {
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 12px;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 12px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+/* 鍊硷紙109m / 鎯呮姤渚﹀療锛夆€斺€?瀹屽叏澶嶅埢绂侀鍖?.text_10 */
+.inspection-zone__panel-value {
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 12px;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 12px;
+  margin-left: 8px;
+}
+
+/* 闈㈢Н鍗曚綅涓婃爣锛埪诧級 */
+.inspection-zone__panel-sup {
+  color: rgba(255, 255, 255, 1);
+  font-size: 6px;
+  font-weight: normal;
+  white-space: nowrap;
+  line-height: 12px;
+  margin-left: 1px;
+  align-self: flex-start;
+}
+
+/* 杞ㄨ抗绾?SVG 瀹瑰櫒锛氶摵婊″贰妫€鍖哄煙 */
+.inspection-zone__trajectories {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}

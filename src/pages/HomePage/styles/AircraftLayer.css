@@ -1,0 +1,427 @@
+/* AircraftLayer —— 飞行器图标 / 设备联动高亮 / 返航标记 / 在线离线设备 Hover 面板
+   自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
+   HomePage.css 按拆分前的层叠顺序 @import 各文件。 */
+/* ====== 椋炶鍣?====== */
+.aircraft {
+  position: absolute;
+  z-index: 4;
+  display: flex; /* 鏀逛负 flex 浠ユ敮鎸佸浘鏍?鏍囩鍨傜洿鎺掑垪 */
+  flex-direction: column;
+  align-items: center;
+  width: auto; /* 瀹藉害鑷€傚簲鍐呭 */
+}
+
+/* 鍙嫋鎷介琛屽櫒锛氶紶鏍囨墜鍔?+ 绂佹閫変腑鏂囨湰锛岄槻姝㈡嫋鎷芥椂楂樹寒鏂囧瓧 */
+.aircraft--draggable {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 鎷栨嫿杩涜涓細鏀圭敤 grabbing 鍏夋爣 */
+.aircraft--draggable:active {
+  cursor: grabbing;
+}
+
+/* ====== 璁惧鑱斿姩楂樹寒锛堜笌璁惧绠＄悊闈㈡澘鍙屽悜鍚屾锛?====== */
+/* hover 楂樹寒锛氶潰鏉胯 hover 鎴栭椤靛浘鏍?hover 鏃讹紝鍥炬爣闈掕壊鍙戝厜 */
+.aircraft.aircraft--hovered img {
+  filter: drop-shadow(0 0 8px rgba(135, 235, 255, 0.95));
+}
+
+/* 閫変腑楂樹寒锛氶潰鏉垮閫夋鍕鹃€夋垨棣栭〉鍥炬爣鍗曞嚮閫変腑鏃讹紝鍥炬爣甯镐寒鍏夊湀 + 鏍囩鍙橀潚鑹?*/
+.aircraft.aircraft--selected img {
+  filter: drop-shadow(0 0 6px rgba(135, 235, 255, 0.75));
+}
+.aircraft.aircraft--selected .aircraft-label {
+  color: #87ebff;
+}
+
+/* 鎵€鏈夐琛屽櫒鍐呴儴鐨?img 缁熶竴濉弧瀹瑰櫒骞朵繚鎸佹瘮渚嬶紝
+   閬垮厤鍥剧墖鍘熷灏哄婧㈠嚭瀵艰嚧瑙嗚澶у皬涓嶄竴鑷?*/
+.aircraft img {
+  width: 48px; /* 缁熶竴鍥炬爣灏哄 */
+  height: 48px;
+  object-fit: contain;
+}
+
+/* 椋炶鍣ㄥ悕绉版爣绛?*/
+.aircraft-label {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #fff;
+  white-space: nowrap;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  line-height: 1.2;
+}
+
+/* ===== 返航指示（地面圆形标记）：悬于选中飞机图标正上方 ===== */
+/* 返航面板打开期间，选中飞机正上方渲染地面返航点标记（48×48 白色圆形，
+   内含 20×24 竖直 H 图标）——仅图标，不带竖线；
+   点击「航线生成」后由飞机图标中心向标记底部画绿色实线（HomePage.tsx SVG）。
+   标记底缘锚定飞机图标顶部，
+   pointer-events:none 不拦截事件，不影响拖拽与 hover 面板 */
+.aircraft-return-indicator {
+  position: absolute;
+  bottom: 185px; /* 容器总高（图标48 + 标签~17）+ 120px 间隙（60px 再拉大一倍）——连线锚点由 HomePage DOM 实测 getBoundingClientRect，不再依赖此常量 */
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+/* 地面标记圆圈：48×48 半透明白底 2px 白描边，内置 H 图标 */
+.aircraft-return-indicator__ground {
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 返航点 H 图标：20×24 竖直姿态（SVG 内联，白色填充） */
+.aircraft-return-indicator__h {
+  width: 20px;
+  height: 24px;
+}
+
+/* 绂荤嚎璁惧锛歨over 闈㈡澘瀹氫綅涓婁笅鏂?*/
+.aircraft--gray {
+  left: 56%;
+  top: 59%;
+}
+
+/* 鏃嬭浆鍙綔鐢ㄤ簬鍥炬爣锛屼笉褰卞搷鏍囩 */
+.aircraft--red img {
+  transform: rotate(-45deg);
+}
+.aircraft--gray img {
+  transform: rotate(45deg);
+}
+.aircraft--orange img {
+  transform: rotate(135deg);
+}
+.aircraft--blue img {
+  transform: rotate(100deg);
+}
+.aircraft--blue2 img {
+  transform: rotate(95deg);
+}
+
+/* ====== 绂荤嚎璁惧 Hover 淇℃伅闈㈡澘锛堣璁＄绮剧‘杩樺師锛?==== */
+.aircraft-hover-panel {
+  position: absolute;
+  left: calc(100% + 12px);
+  /* 闈㈡澘搴曢儴瀵归綈椋炴満鍥炬爣鐨勫瀭鐩翠腑蹇冪嚎锛堝浘鏍?48px 楂橈紝涓績鍦?24px 澶勶級 */
+  top: 24px;
+  transform: translateY(-100%);
+  width: 203px;
+  height: 69px;
+  background: rgba(184, 184, 184, 0.4);
+  border-radius: 4px;
+  border: 1px solid #626262;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.3);
+  padding: 8px 12px;
+  z-index: 20;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  pointer-events: none;
+  color: #fff;
+  font-family: 'MiSans-Regular';
+}
+
+/* hover 鏃舵樉绀洪潰鏉?*/
+.aircraft--gray:hover .aircraft-hover-panel {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 闈㈡澘鏁翠綋锛歠lex 绾靛悜甯冨眬锛岃涓嬫柟鍐呭鍖鸿嚜鍔ㄥ～鍏呭苟鍨傜洿灞呬腑 */
+.aircraft-hover-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 涓婂崐閮ㄥ垎锛氬ご閮?+ 鍒嗛殧绾匡紙鍥哄畾楂樺害锛?*/
+.aircraft-hover-panel__top {
+  flex-shrink: 0;
+}
+
+/* 涓嬪崐閮ㄥ垎锛氫俊鎭鍖哄煙锛堣嚜鍔ㄥ～鍏呭墿浣欑┖闂达紝浠呭瀭鐩村眳涓紝淇濇寔宸﹀榻愶級 */
+.aircraft-hover-panel__bottom {
+  flex: 1;
+  display: flex;
+  align-items: center; /* 鍨傜洿灞呬腑 */
+}
+
+/* 闈㈡澘澶撮儴锛氬悕绉?+ 鐘舵€侊紙涓庝笅鏂逛俊鎭宸﹀彸瀵归綈锛?*/
+.aircraft-hover-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* 涓嶈 padding-left锛氳"08鍙锋棤浜烘満"涓庝笅鏂圭珫绾垮乏绔榻愶紙鍧囧湪鍐呭鍖烘渶宸︿晶锛夛紝
+     "绂荤嚎"浠嶈创鍙充晶涓嶅彉 */
+}
+
+.aircraft-hover-panel__name {
+  font-family: 'MiSans-Regular';
+  font-weight: 400;
+  font-size: 14px;
+  color: #ffffff;
+  text-align: center;
+  font-style: normal;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.aircraft-hover-panel__status {
+  font-family: 'MiSans-Regular';
+  font-weight: 400;
+  font-size: 14px;
+  color: #ffffff;
+  text-align: center;
+  font-style: normal;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+/* 鍒嗛殧绾匡細璐┛闈㈡澘鍏ㄥ锛屾棤鍓嶅悗闂磋窛 */
+.aircraft-hover-panel__divider {
+  height: 1px;
+  background: rgba(198, 198, 198, 0.5);
+  border-radius: 0;
+  margin: 6px -12px; /* 鎶垫秷闈㈡澘宸﹀彸 padding锛屽疄鐜伴棴鐜?*/
+}
+
+/* 淇℃伅琛?*/
+.aircraft-hover-panel__info {
+  display: flex;
+  align-items: center;
+  width: 100%; /* 鍗犳弧鍐呭鍖猴紝閰嶅悎涓嬫柟 time 鐨?margin-left:auto锛?
+                            灏嗘椂闂村€兼帹鍒版渶鍙崇锛屼笌涓婃柟"绂荤嚎"鍙崇瀵归綈 */
+  white-space: nowrap;
+}
+
+/* 绔栫嚎瑁呴グ锛氫笌涓婃柟"08鍙锋棤浜烘満"鏂囧瓧宸︾瀵归綈锛屼笌鍙充晶"绂荤嚎鏃堕棿锛?闂撮殧 4px */
+.aircraft-hover-panel__bar {
+  width: 2px;
+  height: 8px;
+  background: #b7b7b7;
+  border-radius: 0;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+/* "绂荤嚎鏃堕棿锛?鏍囩 */
+.aircraft-hover-panel__label {
+  font-family: 'MiSans-Regular';
+  font-weight: 400;
+  font-size: 12px;
+  color: #ffffff;
+  text-align: left;
+  font-style: normal;
+  text-transform: none;
+  flex-shrink: 0;
+}
+
+/* 鏃ユ湡鏃堕棿鍊?*/
+.aircraft-hover-panel__time {
+  font-family: 'MiSans-Regular';
+  font-weight: 400;
+  font-size: 12px;
+  color: #ffffff;
+  text-align: left;
+  font-style: normal;
+  text-transform: none;
+  /* 灏嗘椂闂村€兼帹鑷宠灏撅紝涓庝笂鏂瑰ご閮ㄧ殑"绂荤嚎"鐘舵€佸彸绔榻愶紱
+     宸︿晶"绔栫嚎 + 绂荤嚎鏃堕棿锛?鍒欎笌"08鍙锋棤浜烘満"宸︾瀵归綈锛?
+     浠庤€屽疄鐜颁袱琛屾枃妗堝乏鍙充袱绔榻?*/
+  margin-left: auto;
+}
+
+/* ====== 鍦ㄧ嚎璁惧 Hover 淇℃伅闈㈡澘锛堣摑鑹诧紝璁捐绋跨簿纭繕鍘燂級 ====== */
+.aircraft-info-panel {
+  position: absolute;
+  left: calc(100% + 12px);
+  /* 闈㈡澘搴曢儴瀵归綈椋炴満鍥炬爣鐨勫瀭鐩翠腑蹇冪嚎锛堝浘鏍?48px 楂橈紝涓績鍦?24px 澶勶級 */
+  top: 24px;
+  transform: translateY(-100%);
+  width: 229px;
+  height: 117px;
+  background: rgba(75, 188, 249, 0.4);
+  border-radius: 4px;
+  border: 1px solid rgba(75, 188, 249, 1);
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  pointer-events: none;
+  color: #fff;
+  font-family: 'MiSans-Regular';
+  /* 鏁翠綋 flex 绾靛悜甯冨眬锛氶《閮ㄥ浐瀹氾紝搴曢儴涓夎鑷姩濉厖骞跺瀭鐩村眳涓?*/
+  display: flex;
+  flex-direction: column;
+}
+
+/* hover 鏃舵樉绀猴細鎵€鏈夐潪 gray 鐨勫湪绾块琛屽櫒 */
+.aircraft--draggable:not(.aircraft--gray):hover .aircraft-info-panel {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 椤堕儴锛氭爣棰樿 + 鍒嗛殧绾匡紙鍥哄畾楂樺害锛?*/
+.aircraft-info-panel__top {
+  flex-shrink: 0;
+}
+
+/* 鏍囬琛岋細鍚嶇О鍦ㄥ乏锛岀數閲?淇″彿鎸囩ず鍣ㄥ湪鍙炽€?
+   - 淇濇寔鍥哄畾 height:18px锛堢揣鍑戣瑙夛級锛屾斁澶х殑鐢垫睜鍥炬爣閫氳繃 overflow:visible 瀵圭О婧㈠嚭锛?
+     涓嶉€氳繃澧炲姞楂樺害鏉?鎾戝紑"瀵归綈绌洪棿锛?
+   - align-items:center 璁╂墍鏈夊厓绱犳寜瀹瑰櫒涓績瀵归綈锛?
+   - 淇″彿鍋忎笅闂鐢?.aircraft-info-panel__signal-icon 鐨?display:block 鍗曠嫭淇
+     锛堟秷闄?SVG 榛樿 inline baseline 鐨?descender 鍋忕Щ锛夛紝鑰岄潪闈犲鍔?header 楂樺害銆?*/
+.aircraft-info-panel__header {
+  display: flex;
+  align-items: center;
+  margin: 8px 9px 0;
+  height: 18px;
+  overflow: visible;
+}
+
+.aircraft-info-panel__name {
+  font-size: 12px;
+  color: #fff;
+  white-space: nowrap;
+  line-height: 16px;
+  /* 灏嗘寚绀哄櫒鎺ㄨ嚦鍙充晶 */
+  margin-right: auto;
+}
+
+.aircraft-info-panel__indicators {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+/* 鎻愬崌鐗瑰紓鎬т互瑕嗙洊 .aircraft img (0,1,1) 鍜?.aircraft--{color} img (0,2,1) 瑙勫垯銆?
+   閫夋嫨鍣?.aircraft-info-panel img.aircraft-info-panel__battery-icon = (0,2,1)锛?
+   涓?.aircraft--red img 鍚岀壒寮傛€э紝浣嗘湰瑙勫垯瀹氫箟鍦ㄥ叾鍚庯紝鏁呬紭鍏堢骇鏇撮珮銆?
+    battery-mid.png 鍘熷浘涓?24脳24锛屽唴閮ㄧ數姹犲浘褰㈡湰灏辩珫鍚戠粯鍒讹紙杈圭晫妗?10脳18锛夛細
+    - 浣跨敤绔栧悜鐩掓ā鍨?20脳33锛岀數姹犺嚜鐒剁珫鍚戞樉绀猴紙涓庤璁＄涓€鑷达紝涓嶅啀鏀惧ぇ锛夛紱
+    - 蹇呴』鏄惧紡 transform:none锛岃鐩栫埗绾?.aircraft--{color} img 鐨勬棆杞鍒?
+      (rotate -45/45/100/95/135deg)锛屽惁鍒欑數姹犲浘鏍囦細琚埗绾ф棆杞垚鍊炬枩/妯悜銆?*/
+.aircraft-info-panel img.aircraft-info-panel__battery-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 33px;
+  object-fit: contain;
+  transform: none;
+}
+
+.aircraft-info-panel__battery-text {
+  font-size: 12px;
+  color: #fff;
+  white-space: nowrap;
+  line-height: 16px;
+}
+
+.aircraft-info-panel__signal-icon {
+  flex-shrink: 0;
+  margin-left: 4px;
+  /* 淇"淇″彿鍋忎笅"锛?
+   - display:block 娑堥櫎 SVG 浣滀负 inline 鍏冪礌鍦?flex 涓殑 baseline 娈嬬暀锛?
+   - align-self:center 鏄惧紡鍨傜洿灞呬腑锛?
+   - translateY(-2px) 瑙嗚琛ュ伩鈥斺€擲VG 鍐?4 鏍逛俊鍙锋潯搴曢儴瀵归綈鍒?viewBox 搴曢儴锛?
+     瀹炲績闆嗕腑鍦ㄤ笅鍗婇儴锛岃瑙夐噸蹇冨亸涓嬶紝涓婄Щ 2px 璁╁叾涓庣數姹犲浘鏍?46%鏂囧瓧瑙嗚瀵归綈锛?
+   - 鍏ㄧ▼涓嶅鍔?header/indicators 瀹瑰櫒楂樺害銆?*/
+  display: block;
+  align-self: center;
+  transform: translateY(-2px);
+}
+
+/* 鍒嗛殧绾匡細璐┛闈㈡澘鍏ㄥ */
+.aircraft-info-panel__divider {
+  height: 1px;
+  background: rgba(75, 188, 249, 0.5);
+  margin: 6px 1px 0;
+}
+
+/* 搴曢儴锛氫綅缃?閫熷害/妯″紡+鐘舵€?涓夎锛屽瀭鐩村眳涓～鍏呭墿浣欑┖闂?*/
+.aircraft-info-panel__bottom {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 淇℃伅琛?*/
+.aircraft-info-panel__row {
+  display: flex;
+  align-items: center;
+  margin-left: 16px;
+  white-space: nowrap;
+}
+
+/* 绔栫嚎瑁呴グ鏉★紙闈掕壊锛?*/
+.aircraft-info-panel__bar {
+  width: 2px;
+  height: 8px;
+  background: rgba(138, 248, 234, 1);
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.aircraft-info-panel__label {
+  font-size: 12px;
+  color: #fff;
+  line-height: 16px;
+  flex-shrink: 0;
+}
+
+.aircraft-info-panel__value {
+  font-size: 12px;
+  color: #fff;
+  line-height: 16px;
+  margin-left: 8px;
+}
+
+/* 鍙屽垪琛岋紙妯″紡 + 鐘舵€侊級锛氱浜岀粍绔栫嚎涓庡墠涓€缁勪繚鎸?73px 闂撮殧 */
+.aircraft-info-panel__row--dual .aircraft-info-panel__bar--gap {
+  margin-left: 73px;
+}
+
+.aircraft--red {
+  left: 10.6%;
+  top: 6.8%;
+}
+
+.aircraft--orange {
+  left: 68.8%;
+  top: 22%;
+}
+
+.aircraft--blue {
+  left: 44.6%;
+  top: 35.4%;
+}
+
+.aircraft--blue2 {
+  left: 33.7%;
+  top: 71.5%;
+}

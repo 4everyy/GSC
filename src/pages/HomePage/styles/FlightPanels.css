@@ -1,0 +1,273 @@
+/* FlightPanels —— 起飞参数面板 / 功能按钮激活态背景 / 区域降落框选 / 指点返航取点
+   自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
+   HomePage.css 按拆分前的层叠顺序 @import 各文件。 */
+/* ====== 璧烽鍙傛暟闈㈡澘锛堝彸涓婅锛?===== */
+/* 闄嶈惤/杩旇埅/鎸囩偣杩旇埅闈㈡澘涓庤捣椋為潰鏉垮悓浣嶏紙鍙充笂瑙掞級锛岀敱浜掓枼鐘舵€佷繚璇佸悓涓€鏃跺埢鍙鏄剧ず鍏朵竴 */
+.takeoff-panel,
+.hover-panel,
+.landing-panel,
+.return-home-panel,
+.tap-return-panel,
+.area-landing-panel,
+.waypoint-flight-panel,
+.route-flight-panel,
+.orbit-flight-panel,
+.rally-point-panel,
+.formation-flight-panel {
+  position: absolute;
+  /* 下移至告警信息面板正下方：top = 告警框高 clamp(61px,6.35vw,122px) + 4px 间隙，
+     避免与右上角告警面板（z-index 6）重叠；告警面板保持原位不动。
+     面板高 469px，1920x1080 下底缘 ~641px，不遮挡右下角图层按钮组 */
+  top: calc(clamp(61px, 6.35vw, 122px) + 4px);
+  right: clamp(8px, 0.83vw, 16px);
+  z-index: 20;
+  /* Vertical guardrail (100% = .map-stage height): panel bottom must stay above the
+     right-bottom zoom/view button stack, which occupies A + 5B + 3C from bottom
+     (A=clamp(8,.83vw,16) offset, B=clamp(32,3.33vw,64) button, C=clamp(4,.42vw,8) gap,
+     see MapControls.css), plus a 4px breathing gap. max-height beats PanelShell fixed
+     height:469px - no shrink at 1920x1080; shorter viewports compress the panel
+     instead of covering the buttons. */
+  max-height: calc(
+    100% - clamp(61px, 6.35vw, 122px) - 4px - clamp(8px, 0.83vw, 16px) - 5 * clamp(32px, 3.33vw, 64px) -
+      3 * clamp(4px, 0.42vw, 8px) - 4px
+  );
+  overflow: hidden;
+  /* .map-stage 鐨?pointer-events: none 鍦ㄦ鎭㈠锛岄潰鏉垮唴鎺т欢鎵嶅彲浜や簰 */
+  pointer-events: auto;
+}
+
+/* Guardrail shrink (short viewports): let the panel body scroll so inner controls
+   stay reachable instead of being clipped by overflow:hidden */
+.takeoff-panel .panel-shell__body,
+.hover-panel .panel-shell__body,
+.landing-panel .panel-shell__body,
+.return-home-panel .panel-shell__body,
+.tap-return-panel .panel-shell__body,
+.area-landing-panel .panel-shell__body,
+.waypoint-flight-panel .panel-shell__body,
+.route-flight-panel .panel-shell__body,
+.orbit-flight-panel .panel-shell__body,
+.rally-point-panel .panel-shell__body,
+.formation-flight-panel .panel-shell__body {
+  overflow-y: auto;
+}
+
+/* 区域降落/集结点面板：与全屏框选遮罩（z-index 2000）共存时浮于其上，
+   否则按钮首次点击进入框选态时面板被遮罩盖住（看似未弹出）；
+   面板 pointer-events:auto，浮于遮罩上方时其按钮仍可正常点击 */
+.area-landing-panel,
+.rally-point-panel {
+  z-index: 2100;
+}
+
+/* 搴曢儴鎸夐挳銆屾縺娲汇€嶆€侊細鐐瑰嚮璧烽鎸夐挳鍚庣織鎸佸脊鍑?+ 鍐呭彂鍏夛紙涓?hover 瑙嗚鍚屼竴鑷翠絾鎸佺画锛屽洿鑷抽潰鏉垮叧闂級 */
+.bottom-bar__btn--active .bottom-bar__visual {
+  transform: translateY(clamp(-12px, -0.625vw, -6px));
+  opacity: 1;
+}
+
+.bottom-bar__btn--active .bottom-bar__visual::after {
+  opacity: 1;
+}
+
+/* ====== 鍔熻兘鎸夐挳婵€娲绘€侀珮浜庤儗鏅揑紙锛堢 2~12 娈甸€氱敤锛?===== */
+/* 鐙珛浜?button 涔嬪锛坵rapper 鍐咃級锛歜utton 鐨?clip-path 浼氳鏆铇壀鍒囧浘鍥涘懆鐨勫彂鍏夋姩/鎶曞奖
+   杈圭紭锛屼笖鍏冪礌鑳屾櫙鏃犳硶缁樺埗鍒拌嚜韬瓑澶栵紝瑙嗚鍟傚眰鍐呮鏃犳硶瀹屾暣鍛堢幇璇ュ垏鍥俱€?
+   婵€娲诲垏鍥捐鏍兼牸缁熶竴锛坆ottom-bar-seg-02-active.png ~ bottom-bar-seg-12-active.png锛夛細
+   鐢诲竷 76px 楂樸€佸疄浣撳尯 60px 楂橈紙y 6~66锛夈€佸乏鍙冲悇 8px 鍙戝厜杈圭紭銆佸敾甯冨 = 娈靛 + 16銆?
+   鏈灞傛寜鐧惧垎姣斿鏁澶栨墿瀹氫綅锛屼娇鍒囧浘瀹炰綋鍖轰鏅樿鎷夐粯璁ゆ鍍忕礌绾ч噸鍚堬紝鍥涘懆鍙戝厜杈圭紭瀹屾暣澶栨孩鏄剧ず锛?
+   - left / width 鐢?TSX 鎸夋鏈靛搴﹀唴鑱旀敞鍏ワ紙left = -8/娈靛搴︼紝width = (娈靛搴?16)/娈靛搴︼級锛?
+   - height  105.56% =  76/72锛堢敾甯冮珮 / 鍛腑灞傞珮锛屽疄浣?60px 鎭备负鍛腑灞傜殑 5/6锛?
+   - bottom -13.89% = -10/72锛堢敾甯冨簳缂樺湪瀹炰綋搴曠紭锛涜鍏嗚鍞嗗眰搴曚笅鏂?10px锛?
+   鐧惧垎姣斿潎鐩稿鍨冲懳眰?button锛堬?2 @1920 鍩哄噯锛岄殢 clamp 鍚屾洸绾跨缉鏀撅級锛?
+   浠绘剰瑙嗗彛瀹藉害涓嬪潎淇濇寔瀹炰綋鍖洪噸鍚堬€傛贰鍏ユ贰鍑?+ 涓庤鍏嗚鍞嗗眰鍚屾鍚屾鏈戦《鍑?鎸夊帇鍥炶惤 */
+.bottom-bar__active-glow {
+  position: absolute;
+  bottom: -13.89%;
+  height: 105.56%;
+  z-index: 5; /* 鐩栬繃鐩搁偦娈佃礋 margin 閲嶅彔鐨勯€忔槑鍖?*/
+  background-color: transparent;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  pointer-events: none; /* wrapper 宸插鍛戒腑锛屽弻淇濋櫓锛氱粷涓嶆嫤鎴浜嗙浉閭绘锛屾椂闂翠欢 */
+  opacity: 0;
+  transform: translateY(0);
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.2s ease;
+  will-change: transform;
+}
+
+/* 婵€娲伙紙璧烽闈㈡澘灞曞紑锛夋椂娣卞叆锛屽苟淇濇寔涓庤鍏嗚鍞嗗眰涓鑷寸殑椤跺嚭閲忥紙12px 寮规€ф洸鐜扮嚎锛夈€?
+   hover 鏃惰鍏嗚鍞嗗眰鍚屾牱椤跺嚭 12px锛屾棤闇€鍗曠嫭瑙勫垯锛涙寜鍘嬪洖钀借鍏嗕笅鏂? :active */
+.bottom-bar__item--active-bg .bottom-bar__active-glow {
+  opacity: 1;
+  transform: translateY(clamp(-12px, -0.625vw, -6px));
+}
+
+/* 鎸夊帇鍥炶惤涓€鍗?+ 杞诲井鍘嬫殫锛氫笌鍏嗚鍞嗗眰?:active 鍙嶉璁鍚屾锛坵rapper pointer-events:none
+   涓嶅奖鍝?:active 娌跨户鍏堥摼鐢熸晥锛屼笌 :hover 鍚屾悊锛?*/
+.bottom-bar__item--active-bg:active .bottom-bar__active-glow {
+  transform: translateY(clamp(-5px, -0.26vw, -2.5px));
+  filter: brightness(0.9);
+  transition:
+    transform 0.1s ease-out,
+    filter 0.1s ease-out;
+}
+
+/* 鍥炬爣鍓ф湰锛氬眳涓浆浜庡鍔涘妯忔眮鐨勫疄浣撳尯鑰岄潪灞傚嚑浣曚腑蹇冁€斺?
+   鐢诲竷瀹炰綋 y 6~66 鈫?涓績 36/76 = 47.37%锛?0% 浼氶鏍囧鍔涘妯忔暣浣撳亸涓嬬绾?2px锛夈€?
+   clamp 灏哄鸨涓?.bottom-bar__icon 瀹屽叏涓鑷达紝涓庤鍏嗚鍞嗗眰鍥炬爣鍍忕礌绾ч噸鍚堬紝娣卞叆鏃犺烦鍔ㄦ劅 */
+.bottom-bar__icon--active-glow {
+  top: 47.37%;
+}
+
+/* ===== 鍖哄煙闄嶈惤妗嗛€夋ā寮忥紙鑸嚎鐢熸垚锛?===== */
+/* 鍏ㄥ睆鎷︽彇灞傦細fixed 瀹氫綅鐩存帴浣跨敤瑙嗗彛鍧愭爣锛坔lientX/clientY锛夛紝楂?z-index 鐩栦綇鍏ㄩ儴鐣岄潰锛?
+   鍏夋爣涓哄仠鏈哄嘲鍥炬爣锛坔otspot 璁捐鍦ㄥ浘鍍忎腑蹇?27,27锛夈€?
+   鎴浘寮忓彉鏆嵂敱铏氱嚎妗嗙殑瓒呭ぇ澶栨墿 box-shadow 瀹炵幇锛氭鍐呬繚鎸佹竻鏅帮紝妗嗗鍻ㄥ潎鍙樻殫 */
+/* ===== 宸茬‘璁ょ殑鍖哄煙闄嶈惤鑼冨洿 ===== */
+/* 鍗婇€忔槑绱壊濉嶅厖锛堣鎷璁＄17 background: rgba(113,96,242,0.3)锛夈€乥order-radius 0锛堢洿瑙掞級锛?   fixed 瀹氫綅浣跨敤瑙嗗彛鍧愭爣锛坔eft/top/width/height 鍐呰仈娉ㄥ叆锛夛紝
+   z-index 1500 浣庝簁嗘灦閫夊崟鑾峰眰锛?000锛夛細鍐嶆?℃灦閫夐噸缁樻椂鏂伴伄缃╄啫鐩栧叾涓婏紱
+   pointer-events none 涓嶉鎷︽℃湅鍦板浘涓庣晫闈二氦浜? */
+.area-landing-confirmed {
+  position: fixed;
+  z-index: 1500;
+  background: rgba(113, 96, 242, 0.3);
+  border-radius: 0;
+  pointer-events: none;
+}
+
+/* 鍖哄煙姝ｄ腑蹇冨渾褰㈢璀绔狅紙璁捐鐘? image-wrapper_4锛夛細100脳100銆佸渾褰㈤」銆?   rgba(113,96,242,0.1) 濉嶅厖銆?px 鐧?0.2 鎻忚竟锛涘唴鍚洯檷钀藉嘲鍥炬爣锛岀粷瀵瑰眳涓*/
+.area-landing-confirmed__badge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  background-color: rgba(113, 96, 242, 0.1);
+  border: 8px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* 寰界珷鍐呴檷钀藉嘲鍥炬爣锛堣鎷璁＄17 image_3锛夛細44脳52锛宖lex 灞呬腑 */
+.area-landing-confirmed__icon {
+  width: 44px;
+  height: 52px;
+  flex: none;
+  pointer-events: none;
+}
+
+/* 瀹氬瀷鍖哄煙宸︿笂鎺溿€屽垹闄ら噸缁樸€嶆寜閽級紙璁捐鐘? text-wrapper_2 / text_2锛夛細
+   78脳32銆佸崐閫忔槑钃濆簳 rgba(75,188,249,0.4) + 1px 钃濆弿杈?+ 4px 鍦嗚嫻 + 闃村奖銆?4px 鐧藉瓧锛?   鐐瑰嚮鍚庢竻闄ゅ畾鍨嬪尯鍩熷苟閲嶆柊杩涘叆妗嗛€夋ā寮?*/
+.area-landing-confirmed__delete-btn {
+  position: absolute;
+  /* 绉诲嚭缁樺埗鍖哄煙锛氫綅浜庡尯鍩熸袱涓婅鍗ч闈㈠栧渷锛屽彸缂樹笌鍖哄煙宸﹂紭鐣?8px 闂撮殭 */
+  right: calc(100% + 8px);
+  top: 0;
+  width: 78px;
+  height: 32px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(75, 188, 249, 0.4);
+  border: 1px solid rgba(75, 188, 249, 1);
+  border-radius: 4px;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans-Regular', sans-serif;
+  line-height: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.area-select-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background-color: transparent;
+}
+
+/* Frame-selection follow cursor (area-landing-cursor helipad icon 54x54): replaces native cursor -
+   cursor:none, same solution as tap-return point-picking; image center (27,27) aligned to mouse,
+   pointer-events:none does not block frame-selection dragging */
+.area-select-cursor {
+  position: fixed;
+  width: 54px;
+  height: 54px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 妗嗛€夎櫄绾垮锛?px 绱壊绱鋈殕绾匡紝?7160F2锛夈€佹棤鍦嗚姻锛沴eft/top/width/height 鐢变唴鑱旀牱寮?
+   鎸夋嫋鎷借捣缁堢偣褰掍竴鍖栨敞鍏ワ紙鑷畾涔夊ぇ灏忥級锛沚ox-shadow 澶栨墿 9999px 閬嶆殫妗嗗鍏ㄩ儴鍖哄煙 */
+.area-select-frame {
+  position: absolute;
+  border: 2px dashed #7160f2;
+  border-radius: 0;
+  box-sizing: border-box;
+  background-color: transparent;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+/* 纭/鍙栨秷鎸夐挳鏉★細121x32銆?px 鍦嗚姻銆佸崐閫忔槑钃濆簳 + 1px 钃濆弿杈?+ 闃村奖锛堣鎷璁＄17 box_29锛夛紱
+   left/top 鐢变唴鑱旀牱寮忔敞鍏ワ紙鍙冲榻块€夊尯鍙崇紭銆侀€夊尯涓嬫柟 8px锛夛紱
+   pointer-events:auto鈥斺€旈€夋鏈韩 none锛屾寜閽闇鎭㈠鍙鐐瑰嚮*/
+.area-select-confirm-bar {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  width: 121px;
+  height: 32px;
+  box-sizing: border-box;
+  background-color: rgba(75, 188, 249, 0.4);
+  border: 1px solid rgba(75, 188, 249, 1);
+  border-radius: 4px;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  user-select: none;
+}
+
+/* 鏂囨湰鏍囩锛坱ext_7/text_8锛夛細14px MiSans銆佷笂杈硅窛 7px 瀵瑰塌鍩哄噯 */
+.area-select-confirm-bar__label {
+  flex: none;
+  margin: 7px 0 0 16px;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans-Regular', sans-serif;
+  line-height: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 鍙栨秷鏍囩锛氬彸渚у悓鏍蜂繚鐣?16px 闂撮殭 */
+.area-select-confirm-bar__label--cancel {
+  margin-right: 16px;
+}
+
+/* 涓棿 1px 绔栧垎闅旂嚎锛坓roup_10锛?*/
+.area-select-confirm-bar__divider {
+  flex: none;
+  width: 1px;
+  height: 31px;
+  margin-left: 16px;
+  background-color: rgba(75, 188, 249, 1);
+}
+
+/* 框选模式全程隐藏原生光标（选区定格后也保持标记光标跟随）：
+   遮罩内的「确认/取消」标签覆盖为 cursor:none，避免悬停时露出系统箭头；
+
+/* ============ 鎸囩偣杩旇埅鍙栫偣妯″紡 ============ */
+/* 闈㈡澘鎵撳紑鏈熼棿鍦板浘鍖哄煙鏄剧ず鑷畾涔夊彇鐐瑰厜鏍凤紙澶嶇敤鍖哄煙闄嶈惤鍙栫偣鍏夋爣鍒囧浘锛岀儹鐐?27 27 灞呬腑锛夛紱
+   MapLibre 浜や簰鐢诲竷榛樿 grab 鍏夋爣锛岄渶涓€骞惰鐩?*/
