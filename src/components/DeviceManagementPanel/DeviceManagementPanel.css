@@ -175,11 +175,7 @@
   flex-shrink: 0;
 }
 
-/* 全选框后的第一个筛选标签（"状态"）推到最右侧，
-   使"状态/类型"两个下拉框组靠右排列，右边缘与下方设备行右边缘对齐 */
-.device-panel__select-all + .device-panel__filter-label {
-  margin-left: auto;
-}
+/* "状态"标签紧跟全选框，行内剩余空间由"状态/类型"两个下拉框（flex:1）弹性撑满 */
 
 /* 全选复选框：与设备行复选框（.device-row__checkbox）样式完全一致 */
 .device-panel__select-all {
@@ -232,14 +228,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: clamp(70px, 5.2vw, 100px);
+  /* 弹性撑满筛选行剩余空间，min-width 保底防止过窄 */
+  flex: 1 1 0;
+  min-width: clamp(70px, 5.2vw, 100px);
   height: clamp(20px, 1.25vw, 24px);
-  margin-left: clamp(6px, .42vw, 8px);
   padding: 0 clamp(3px, .21vw, 4px);
   background-color: rgba(217, 217, 217, 0.1);
   border: 1px solid rgba(70, 220, 231, 1);
   border-radius: 2px;
-  flex-shrink: 0;
   cursor: pointer;
   user-select: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
