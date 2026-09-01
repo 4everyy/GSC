@@ -329,6 +329,7 @@
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   height: clamp(36px, 2.6vw, 44px);
   padding: 0 clamp(8px, 0.63vw, 12px);
   border-radius: 2px;
@@ -399,7 +400,7 @@
   white-space: nowrap;
   line-height: 1;
   color: #fff;
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -412,7 +413,7 @@
   white-space: nowrap;
   line-height: 1;
   color: rgba(255, 255, 255, 0.85);
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -424,7 +425,7 @@
   white-space: nowrap;
   line-height: 1;
   color: rgba(255, 255, 255, 0.85);
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
