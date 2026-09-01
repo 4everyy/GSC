@@ -141,6 +141,62 @@
   height: clamp(8px, 0.83vw, 16px);
   margin-left: clamp(6px, 1.35vw, 26px);
   cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+/* 叉号悬停反馈：轻微放大，提示可点击处理 */
+.alarm-info-panel__close:hover {
+  transform: scale(1.25);
+}
+
+/* ====== 行隐藏动画：点击叉号处理完成后播放 ======
+   阶段一（0%→70%）：淡出 + 右移（视觉上"被处理掉"）；
+   阶段二（70%→100%）：折叠收起占位（max-height + margin-top 归零），其余行自然上移补位。
+   总时长 360ms 与组件内 ROW_HIDE_DURATION 保持一致，动画结束后由 JS 从列表移除该行。 */
+@keyframes alarm-row-hide {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+    max-height: 24px; /* 略大于行实际高度上限（16px），保证折叠平滑 */
+    margin-top: clamp(6px, 1.07vw, 20.5px);
+  }
+  70% {
+    opacity: 0;
+    transform: translateX(clamp(4px, 0.42vw, 8px));
+    max-height: 24px;
+    margin-top: clamp(6px, 1.07vw, 20.5px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(clamp(4px, 0.42vw, 8px));
+    max-height: 0;
+    margin-top: 0;
+  }
+}
+
+.alarm-info-panel__row.is-leaving {
+  overflow: hidden; /* 折叠时裁剪行内容 */
+  animation: alarm-row-hide 360ms ease forwards;
+  pointer-events: none; /* 动画期间禁止交互，防止重复点击 */
+}
+
+/* ====== 面板整体隐藏动画：全部告警处理完成后播放 ======
+   淡出 + 整体右滑离场（向屏幕右缘"滑走"），与行隐藏动画风格一致。
+   总时长 400ms 与组件内 PANEL_HIDE_DURATION 保持一致，动画结束后由 JS 不再渲染面板。 */
+@keyframes alarm-panel-hide {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(clamp(20px, 2.08vw, 40px));
+  }
+}
+
+.alarm-info-panel.is-leaving {
+  animation: alarm-panel-hide 400ms ease forwards;
+  pointer-events: none; /* 动画期间禁止交互 */
 }
 
 /* ====== 告警色调（点击顶栏徽标切换） ======
