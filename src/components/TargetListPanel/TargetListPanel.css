@@ -1,4 +1,4 @@
-﻿/* ====== 目标列表面板（视觉与设备管理面板一致） ====== */
+/* ====== 目标列表面板（视觉与设备管理面板一致） ====== */
 .target-panel {
   position: absolute;
   top: 0;
@@ -182,7 +182,6 @@
   line-height: 1.3;
   color: #fff;
   flex-shrink: 0;
-  margin-left: clamp(6px, 0.52vw, 10px);
 }
 
 .target-panel__select {
@@ -391,7 +390,6 @@
   height: clamp(15px, 1.15vw, 21px);
   object-fit: contain;
   flex-shrink: 0;
-  margin-left: clamp(6px, 0.52vw, 10px);
   -webkit-user-drag: none;
 }
 
@@ -449,7 +447,6 @@
 .target-row__action--locate {
   width: clamp(16px, 1.25vw, 24px);
   height: clamp(16px, 1.25vw, 24px);
-  margin-left: clamp(6px, 0.5vw, 10px);
 }
 
 /* 删除：icon-delete.png（18×18）等比缩放，点击弹出与底部「删除」一致的确认弹窗 */
@@ -913,7 +910,7 @@
 /* 提示文字：字号固定 16px；margin-left = 行 gap + 类型图标 margin-left，
    使文字起点与下方行的第一列类型图标纵向对齐 */
 .target-panel__refresh-text {
-  margin-left: clamp(10px, 0.83vw, 16px);
+  margin-left: clamp(4px, 0.31vw, 6px);
   font-size: 16px;
   line-height: 1.3;
   color: #fff;
