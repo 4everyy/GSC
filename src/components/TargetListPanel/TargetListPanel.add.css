@@ -39,10 +39,11 @@
   transform: translateY(0);
 }
 
-/* 抽屉选项：类型图标 + 文字横向排列，hover 青色高亮 */
+/* 抽屉选项：类型图标 + 文字横向排列，内容整体水平垂直居中，hover 青色高亮 */
 .target-panel__add-menu-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: clamp(6px, 0.52vw, 10px);
   padding: clamp(8px, 0.63vw, 12px) clamp(10px, 0.83vw, 16px);
   font-size: clamp(10px, 0.73vw, 14px);
