@@ -412,9 +412,10 @@
   white-space: nowrap;
   line-height: 1;
   color: rgba(255, 255, 255, 0.85);
-  flex: 0 0 clamp(44px, 3.2vw, 58px);
+  flex: 1;
   min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 状态列（"状态:默认侦查"）：固定宽度，各行严格对齐 */
@@ -423,9 +424,10 @@
   white-space: nowrap;
   line-height: 1;
   color: rgba(255, 255, 255, 0.85);
-  flex: 0 0 clamp(64px, 4.8vw, 84px);
+  flex: 1;
   min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 三个操作图标（从左到右）：
