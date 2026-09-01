@@ -54,7 +54,7 @@ const firstTelemetry: DeviceTelemetry = {
 
 export const deviceList: Device[] = [
   {
-    name: '01晶锐',
+    name: '01中科晶锐',
     telemetry: firstTelemetry,
     status: 'tasking',
     statusText: '任务中',
@@ -64,7 +64,7 @@ export const deviceList: Device[] = [
     deviceType: 'gray',
   },
   {
-    name: '02中科晶...',
+    name: '02中科晶锐',
     status: 'offline',
     statusText: '离线',
     altitudeValue: '40m',

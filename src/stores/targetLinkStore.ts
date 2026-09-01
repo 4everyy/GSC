@@ -5,7 +5,10 @@
  * hover/点击联动/标记重点/删除等状态，故用 zustand 全局 store 承载
  * （与 deviceLinkStore 同模式，目标 id 对应 config/targets.ts targetList 的 id）：
  * - targets：当前会话的目标列表（含地图坐标 x/y 百分比）；
- *   由 TargetListPanel 挂载时初始化、确认删除后同步移除；
+ *   由模块加载时从 mock 数据初始化，运行期间不物理移除；
+ * - deletedTargetIds：确认删除后的「假删除」（软删除）目标 id 集合：
+ *   列表与地图图标层渲染时过滤集合内目标（表现上消失），
+ *   targets 数组与 mock 源数据保留，面板「刷新」清空集合即恢复显示；
  * - hoveredTargetId：hover 中的目标 id（列表行与地图图标双向同步）；
  * - clickedTargetId：点击联动中的目标 id（列表行点击与地图图标点击双向同步，
  *   再次点击同一目标解除联动）；
@@ -25,8 +28,6 @@ export const TARGET_MAP_POSITIONS: Record<string, { x: number; y: number }> = {
   '03': { x: 60.2, y: 47.8 },
   '04': { x: 15.8, y: 41.5 },
   '05': { x: 47.3, y: 63.6 },
-  '06': { x: 80.6, y: 72.4 },
-  '07': { x: 27.9, y: 84.8 },
 }
 
 /** 地图图标层读取的目标数据（TargetItem + 地图坐标） */
@@ -46,6 +47,8 @@ interface TargetLinkState {
   markedIds: Set<string>
   /** 已勾选目标的 id 集合（列表勾选框与地图图标单击双向同步） */
   selectedTargetIds: Set<string>
+  /** 「假删除」（软删除）目标 id 集合：渲染层过滤隐藏，刷新时清空恢复 */
+  deletedTargetIds: Set<string>
   /** Open-panel request counter: +1 each time a target icon is clicked on home page */
   targetPanelOpenRequests: number
   setTargets: (targets: TargetMarkerItem[]) => void
@@ -63,6 +66,11 @@ interface TargetLinkState {
   setSelectedTargetIds: (ids: Set<string>) => void
   /** Ask MapToolbar to open the target list panel */
   requestOpenTargetPanel: () => void
+  /** 确认删除：目标「假删除」（仅打软删除标记不物理移除 mock 数据，刷新可恢复），
+   *  并同步清理勾选/标记集合与点击联动态 */
+  softDeleteTargets: (ids: string[]) => void
+  /** 恢复全部软删除目标（面板「刷新」时调用，从 mock 态恢复显示） */
+  restoreTargets: () => void
   /** 拖拽更新目标图标坐标（map-stage 百分比，自动夹取到 0~100） */
   moveTarget: (id: string, x: number, y: number) => void
 }
@@ -78,6 +86,7 @@ export const useTargetLinkStore = create<TargetLinkState>((set) => ({
   clickedTargetId: null,
   markedIds: new Set(),
   selectedTargetIds: new Set(),
+  deletedTargetIds: new Set(),
   targetPanelOpenRequests: 0,
   setTargets: (targets) => set({ targets }),
   setHoveredTargetId: (id) => set({ hoveredTargetId: id }),
@@ -110,6 +119,21 @@ export const useTargetLinkStore = create<TargetLinkState>((set) => ({
   setSelectedTargetIds: (ids) => set({ selectedTargetIds: ids }),
   requestOpenTargetPanel: () =>
     set((state) => ({ targetPanelOpenRequests: state.targetPanelOpenRequests + 1 })),
+  softDeleteTargets: (ids) =>
+    set((state) => ({
+      deletedTargetIds: new Set([...state.deletedTargetIds, ...ids]),
+      // 同步清理勾选/标记集合，避免残留指向已隐藏目标
+      selectedTargetIds: new Set(
+        [...state.selectedTargetIds].filter((id) => !ids.includes(id)),
+      ),
+      markedIds: new Set([...state.markedIds].filter((id) => !ids.includes(id))),
+      // 删除的是当前联动目标时清除联动态
+      clickedTargetId:
+        state.clickedTargetId !== null && ids.includes(state.clickedTargetId)
+          ? null
+          : state.clickedTargetId,
+    })),
+  restoreTargets: () => set({ deletedTargetIds: new Set() }),
   moveTarget: (id, x, y) =>
     set((state) => ({
       targets: state.targets.map((t) =>

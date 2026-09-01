@@ -549,3 +549,23 @@
 .aircraft-focus-panel__bar--gap {
   margin-left: auto; /* 关键：将第二组（gap + 偏航角 + 12）推到行尾 */
 }
+
+/* ====== compact 模式（设备管理面板实例）：隐藏头部指示器与设备详情 ====== */
+/* 头部指示器隐藏后，关闭按钮仍右对齐 */
+.aircraft-focus-panel--compact .aircraft-focus-panel__close {
+  margin-left: auto;
+}
+
+/* ====== compact 模式高度裁剪：设备详情移除后，高度贴合实际内容 ====== */
+.aircraft-focus-panel--compact {
+  height: fit-content;
+  /* 底部呼吸空间，避免最后一行贴边 */
+  padding-bottom: 8px;
+}
+
+/* compact 模式下无剩余空间可分配，margin-top:auto 会归零，
+   使"云台参数"上方分隔线与标题间距塌陷，这里恢复基础 8px 间距 */
+.aircraft-focus-panel--compact .aircraft-focus-panel__separator:last-of-type,
+.aircraft-focus-panel--compact .aircraft-focus-panel__section-title:last-of-type {
+  margin-top: 8px;
+}

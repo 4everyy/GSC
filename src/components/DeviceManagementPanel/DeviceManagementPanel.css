@@ -6,7 +6,7 @@
   z-index: 10;
   display: flex;
   flex-direction: column;
-  width: clamp(340px, 22vw, 400px);
+  width: 465px;
   /* 高度贴合实际内容（头部+筛选+7行设备+适当底边距），消除多余留白但不溢出 */
   height: clamp(460px, 30vw, 560px);
   background: linear-gradient(180deg, rgba(36, 86, 107, 0.7) 0%, rgba(71, 167, 209, 0.4) 100%);
@@ -412,34 +412,16 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  /* 始终预留滚动条空间，防止展开详情时滚动条出现挤压内容 */
-  scrollbar-gutter: stable;
-  /* 左右对称：左侧与滚动条预留空间等宽 */
-  padding-left: 4px;
-  padding-right: 4px;
-  /* Firefox：细滚动条 */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(70, 220, 231, 0.4) transparent;
+  /* 隐藏滚动条但保留滚动功能（展开详情后内容超高时默认滚动条不美观） */
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* IE / 旧版 Edge */
 }
 
-/* WebKit：细滚动条 */
+/* Chrome / Edge / Safari：隐藏滚动条 */
 .device-panel__list::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  display: none;
 }
 
-.device-panel__list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.device-panel__list::-webkit-scrollbar-thumb {
-  background: rgba(70, 220, 231, 0.4);
-  border-radius: 2px;
-}
-
-.device-panel__list::-webkit-scrollbar-thumb:hover {
-  background: rgba(70, 220, 231, 0.6);
-}
 
 /* ====== 设备行 ====== */
 .device-row-wrapper {
@@ -460,7 +442,9 @@
   overflow: hidden;
   box-sizing: border-box;
   flex-shrink: 0;
-  /* 统一列间距 */
+  /* 等间距：space-between 将行内剩余空间均分到所有列间隙，
+     gap 仅作最小间距保底，保证任意视口下各列间距完全相等 */
+  justify-content: space-between;
   gap: clamp(4px, .31vw, 6px);
 }
 
@@ -524,7 +508,8 @@
   -webkit-user-drag: none;
 }
 
-/* 设备名：弹性宽度，吸收行内剩余空间，使后续各列被推到右侧统一位置 */
+/* 设备名：固定列宽，不再用 flex:1 吸收剩余空间（否则其余列间隙无法均分）；
+     固定宽度同时保证跨行各列位置对齐，超长名称以省略号截断 */
 .device-row__name {
   position: relative;
   z-index: 1;
@@ -532,7 +517,7 @@
   white-space: nowrap;
   line-height: 1;
   color: #fff;
-  flex: 1;
+  flex: 0 0 clamp(80px, 6vw, 110px);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -542,16 +527,32 @@
 /* 状态文字（任务中/待命/离线）
    宽度需容纳3个中文("任务中")在80%-125%浏览器缩放下完整显示 */
 .device-row__status {
+  /* 状态文字固定白色，圆点颜色由内联样式（状态色）控制 */
+  color: #fff;
   position: relative;
   z-index: 1;
+  /* 圆点+文字作为 inline-flex 整体在行内垂直居中 */
+  display: inline-flex;
+  align-items: center;
   font-size: clamp(10px, .73vw, 14px);
   white-space: nowrap;
   line-height: 1;
-  /* 3个中文约需 42-52px：80%缩放时 ~52px，100%时 ~42px，125%时 ~34px */
-  flex: 0 0 clamp(36px, 3vw, 54px);
+  /* 圆点8px+间距2-4px+3个中文约42-52px：合计约52-64px */
+  flex: 0 0 clamp(48px, 3.9vw, 66px);
   min-width: 0;
   overflow: hidden;
   text-align: left;
+}
+
+/* 状态圆点：与状态文字同色（currentColor），置于文字前 */
+.device-row__status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: currentColor;
+  margin-right: clamp(2px, .21vw, 4px);
+  flex-shrink: 0;
 }
 
 /* 指标组（高度/电量，图标+数值） */
@@ -574,8 +575,6 @@
   height: clamp(12px, 1vw, 16px);
   /* 保持原始比例，不拉伸变形 */
   object-fit: contain;
-  /* 垂直居中对齐 */
-  vertical-align: middle;
   display: block;
   flex-shrink: 0;
   -webkit-user-drag: none;
@@ -588,7 +587,7 @@
   color: #fff;
 }
 
-/* 信号图标：与展开箭头保持较大间距 */
+/* 信号图标：不再单独设置与展开箭头的额外间距，统一由 space-between 等间距分配 */
 .device-row__signal {
   position: relative;
   z-index: 1;
@@ -598,8 +597,6 @@
   object-fit: contain;
   flex-shrink: 0;
   -webkit-user-drag: none;
-  /* 与右侧展开箭头的间距 */
-  margin-right: clamp(6px, .5vw, 10px);
 }
 
 .device-row__action-icon {
@@ -731,7 +728,8 @@
 }
 
 .device-row__detail-label {
-  font-size: clamp(9px, .63vw, 12px);
+  /* 与行数据字体保持一致 */
+  font-size: clamp(10px, .73vw, 14px);
   white-space: nowrap;
   line-height: 1;
   color: #fff;
@@ -740,7 +738,8 @@
 }
 
 .device-row__detail-value {
-  font-size: clamp(9px, .63vw, 12px);
+  /* 与行数据字体保持一致 */
+  font-size: clamp(10px, .73vw, 14px);
   white-space: nowrap;
   line-height: 1;
   color: #fff;
@@ -756,7 +755,7 @@
 
 /* 延迟数值：绿色 */
 .device-row__detail-value--green {
-  color: #07972B;
+  color: #7BFF00;
 }
 
 /* GPS 数值：黄色 */
@@ -808,7 +807,8 @@
 }
 
 .device-row__detail-time {
-  font-size: clamp(9px, .63vw, 12px);
+  /* 与行数据字体保持一致 */
+  font-size: clamp(10px, .73vw, 14px);
   white-space: nowrap;
   line-height: 1;
   color: #fff;  /* 与标签颜色一致 */
@@ -817,7 +817,8 @@
 }
 
 .device-row__detail-delay {
-  font-size: clamp(9px, .63vw, 12px);
+  /* 与行数据字体保持一致 */
+  font-size: clamp(10px, .73vw, 14px);
   white-space: nowrap;
   line-height: 1;
   color: #07972B;
@@ -889,4 +890,16 @@
   line-height: 1;
   /* 与上方图标的间距随面板缩放 */
   margin-top: clamp(8px, .83vw, 16px);
+}
+
+/* ====== 信号图标可点击：触发电机聚焦视图面板 ====== */
+.device-row__signal--clickable {
+  cursor: pointer;
+}
+
+/* ====== 聚焦视图面板锚定：设备管理面板右侧、间距 8px ====== */
+/* 仅作用于设备面板内实例；首页双击触发的实例由内联 aircraftPosition 定位，不受影响 */
+.device-panel .aircraft-focus-panel {
+  left: calc(100% + 8px);
+  top: 0;
 }

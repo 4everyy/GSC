@@ -8,6 +8,7 @@ import {
 } from '../../config/devices'
 import { deviceImages } from '../../assets/images/device'
 import { homeImages } from '../../assets/images/home'
+import { AircraftFocusPanel } from '../AircraftFocusPanel/AircraftFocusPanel'
 import './DeviceManagementPanel.css'
 
 interface DeviceManagementPanelProps {
@@ -58,6 +59,28 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
   const [openDropdown, setOpenDropdown] = useState<'status' | 'type' | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('请选择')
   const [typeFilter, setTypeFilter] = useState<string>('请选择')
+
+  // ====== 聚焦视图面板：位于设备管理面板右侧、间距 8px（定位见 CSS） ======
+  const [focusIndex, setFocusIndex] = useState<number | null>(null)
+  const [focusVisible, setFocusVisible] = useState(false)
+  const focusHideTimer = useRef<number | null>(null)
+
+  // 关闭聚焦面板：先淡出（250ms 与面板过渡一致）再卸载
+  const closeFocus = useCallback(() => {
+    setFocusVisible(false)
+    if (focusHideTimer.current) window.clearTimeout(focusHideTimer.current)
+    focusHideTimer.current = window.setTimeout(() => setFocusIndex(null), 250)
+  }, [])
+
+  // 打开/切换聚焦面板
+  const openFocus = useCallback((index: number) => {
+    if (focusHideTimer.current) window.clearTimeout(focusHideTimer.current)
+    setFocusIndex(index)
+    // 双 rAF：等挂载首帧渲染后再触发淡入 class
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => setFocusVisible(true))
+    })
+  }, [])
 
   // 运行时对齐"最后更新时间"行与右列数值的右边：
   // ref 指向当前展开行的 footer 与第二行右列（含最右数值的列）
@@ -440,10 +463,11 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                     </span>
 
                     {/* 状态文字 */}
-                    <span
-                      className="device-row__status"
-                      style={{ color: getStatusColor(device.status) }}
-                    >
+                    <span className="device-row__status">
+                      <span
+                        className="device-row__status-dot"
+                        style={{ backgroundColor: getStatusColor(device.status) }}
+                      />
                       {device.statusText}
                     </span>
 
@@ -459,12 +483,27 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                       <span className="device-row__metric-value">{device.batteryValue}</span>
                     </div>
 
-                    {/* 信号图标 */}
+                    {/* 信号图标：点击显示该无人机的聚焦视图面板 */}
                     <img
-                      className="device-row__signal"
+                      className="device-row__signal device-row__signal--clickable"
                       src={deviceImages.signalIcon}
                       alt=""
                       draggable={false}
+                      role="button"
+                      tabIndex={0}
+                      title="打开云台"
+                      aria-label="打开云台"
+                      onClick={() => (focusIndex === index ? closeFocus() : openFocus(index))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          if (focusIndex === index) {
+                            closeFocus()
+                          } else {
+                            openFocus(index)
+                          }
+                        }
+                      }}
                     />
 
                     {/* 展开/收起箭头 */}
@@ -489,10 +528,10 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                             <img
                               className="device-row__detail-failed-icon"
                               src={deviceImages.loadFail}
-                              alt="加载详情失败"
+                              alt="设备已离线"
                               draggable={false}
                             />
-                            <span className="device-row__detail-failed-text">加载详情失败</span>
+                            <span className="device-row__detail-failed-text">设备已离线</span>
                           </div>
                         </div>
                       ) : device.telemetry ? (
@@ -617,6 +656,17 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
           </div>
         </div>
       </div>
+      {/* 聚焦视图面板：位于设备管理面板右侧、间距 8px（定位见 CSS） */}
+      {focusIndex !== null && (
+        <AircraftFocusPanel
+          name={deviceList[focusIndex].name}
+          batteryLevel={parseInt(deviceList[focusIndex].batteryValue, 10)}
+          visible={focusVisible}
+          onClose={closeFocus}
+          showHeaderIndicators={false}
+          showDeviceDetails={false}
+        />
+      )}
     </div>
   )
 }

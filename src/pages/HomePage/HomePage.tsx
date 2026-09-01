@@ -268,21 +268,19 @@ export function HomePage() {
           autoLocate
         />
 
-        <StatusHeader activeAlarm={activeAlarm} onAlarmClick={setActiveAlarm} />
+        <StatusHeader
+          activeAlarm={activeAlarm}
+          onAlarmClick={(index) => setActiveAlarm((prev) => (prev === index ? null : index))}
+        />
 
         <section className="map-stage">
           <MapToolbar />
 
           {/* 告警信息面板：右上角常显，色调随顶栏激活的告警徽标切换。
-              告警详情面板（AlarmDetailPanel）暂隐藏——点击顶栏告警徽标也不展示，功能就绪后恢复 */}
+              详情面板（AlarmDetailPanel）暂时隐藏：点击徽标不再展开详情，
+              仅保留徽标高亮与常驻框色调联动；需要时恢复条件渲染即可 */}
           <div className="alarm-panels">
             <AlarmInfoPanel alarmColor={currentAlarmColor} />
-            {/* {activeAlarm !== null && (
-              <AlarmDetailPanel
-                alarmColor={currentAlarmColor}
-                onClose={() => setActiveAlarm(null)}
-              />
-            )} */}
           </div>
           {/* 离线地图管理面板（导入 / 城市切换 / 包列表）暂隐藏——默认自动加载最新苏州包，
               需要手动管理时恢复下方注释即可（严格离线，仅读写本地 IndexedDB） */}

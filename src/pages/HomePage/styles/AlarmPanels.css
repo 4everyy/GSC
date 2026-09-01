@@ -11,10 +11,20 @@
   right: clamp(8px, 0.83vw, 16px);
   z-index: 6;
   width: clamp(207px, 21.56vw, 414px);
+  /* max-height：底缘为右下控件竖排（view-controls 测距/2D/图层 3 按钮 + zoom ×2）
+     预留完整占位 + 安全间距——视口高度不足时压缩详情面板而非覆盖控件。
+     1920×1080 基准：view-controls bottom 152px + 按钮 64×3=192px + 间隙 8×2=16px
+     + zoom 按钮紧邻无冲突（已含在 bottom 152px 内）+ 安全 8px = 368px */
+  max-height: calc(100% - 368px);
   display: flex;
   flex-direction: column;
   gap: 0;
   pointer-events: none;
+}
+
+/* 常驻框固定高度不参与收缩：保证压缩只作用于详情面板 */
+.alarm-panels .alarm-info-panel {
+  flex-shrink: 0;
 }
 
 /* 常驻告警框在 wrapper 内改为文档流定位（覆盖组件内 absolute + 右偏移），

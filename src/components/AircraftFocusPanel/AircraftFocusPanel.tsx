@@ -41,6 +41,10 @@ interface AircraftFocusPanelProps {
   aircraftPosition?: { x: number; y: number }
   /** 方向罗盘操作回调 */
   onDirection?: (direction: 'up' | 'down' | 'left' | 'right') => void
+  /** 是否显示标题栏右侧的电池/信号指示器（默认 true） */
+  showHeaderIndicators?: boolean
+  /** 是否显示底部“设备详情”区块（默认 true） */
+  showDeviceDetails?: boolean
 }
 
 // 变焦倍数选项
@@ -53,6 +57,8 @@ export function AircraftFocusPanel({
   visible = true,
   aircraftPosition,
   onDirection,
+  showHeaderIndicators = true,
+  showDeviceDetails = true,
 }: AircraftFocusPanelProps) {
   const [activeZoom, setActiveZoom] = useState<string>('2x')
 
@@ -62,7 +68,9 @@ export function AircraftFocusPanel({
 
   return (
     <div
-      className={`aircraft-focus-panel${visible ? ' aircraft-focus-panel--visible' : ''}`}
+      className={`aircraft-focus-panel${visible ? ' aircraft-focus-panel--visible' : ''}${
+        !showHeaderIndicators || !showDeviceDetails ? ' aircraft-focus-panel--compact' : ''
+      }`}
       role="dialog"
       aria-label={`${name} 聚焦视图`}
       // data-hover-panel 让 usePanelClamp 将本面板纳入边缘自适应平移兜底，
@@ -81,21 +89,23 @@ export function AircraftFocusPanel({
       {/* ====== 标题栏：名称 + 电池 + 信号 + 关闭 ====== */}
       <div className="aircraft-focus-panel__header">
         <span className="aircraft-focus-panel__name">{name}</span>
-        <div className="aircraft-focus-panel__indicators">
-          <img
-            className="aircraft-focus-panel__battery-icon"
-            src={deviceImages.batteryMid}
-            alt="电量"
-            draggable={false}
-          />
-          <span className="aircraft-focus-panel__battery-text">{batteryLevel}%</span>
-          <img
-            className="aircraft-focus-panel__signal-icon"
-            src={homeImages.signalIcon}
-            alt="信号"
-            draggable={false}
-          />
-        </div>
+        {showHeaderIndicators && (
+          <div className="aircraft-focus-panel__indicators">
+            <img
+              className="aircraft-focus-panel__battery-icon"
+              src={deviceImages.batteryMid}
+              alt="电量"
+              draggable={false}
+            />
+            <span className="aircraft-focus-panel__battery-text">{batteryLevel}%</span>
+            <img
+              className="aircraft-focus-panel__signal-icon"
+              src={homeImages.signalIcon}
+              alt="信号"
+              draggable={false}
+            />
+          </div>
+        )}
         <button
           type="button"
           className="aircraft-focus-panel__close"
@@ -224,33 +234,38 @@ export function AircraftFocusPanel({
         <span className="aircraft-focus-panel__value">{activeZoom}</span>
       </div>
 
-      {/* 分隔线 */}
-      <div className="aircraft-focus-panel__separator" />
+      {/* 设备详情区块：可通过 showDeviceDetails 关闭（设备管理面板实例不展示） */}
+      {showDeviceDetails && (
+        <>
+        {/* 分隔线 */}
+        <div className="aircraft-focus-panel__separator" />
 
-      {/* ====== 设备详情 ====== */}
-      <div className="aircraft-focus-panel__section-title">设备详情</div>
-      <div className="aircraft-focus-panel__info-row">
-        <span className="aircraft-focus-panel__bar" />
-        <span className="aircraft-focus-panel__label">位置</span>
-        <span className="aircraft-focus-panel__value">
-          Lat:0000,&nbsp;Lon:0000,&nbsp;H:0000
-        </span>
-      </div>
-      <div className="aircraft-focus-panel__info-row">
-        <span className="aircraft-focus-panel__bar" />
-        <span className="aircraft-focus-panel__label">速度</span>
-        <span className="aircraft-focus-panel__value">
-          X:000&nbsp;Y:000&nbsp;Z:000
-        </span>
-      </div>
-      <div className="aircraft-focus-panel__info-row aircraft-focus-panel__info-row--dual aircraft-focus-panel__info-row--last">
-        <span className="aircraft-focus-panel__bar" />
-        <span className="aircraft-focus-panel__label">模式</span>
-        <span className="aircraft-focus-panel__value">悬停</span>
-        <span className="aircraft-focus-panel__bar aircraft-focus-panel__bar--gap" />
-        <span className="aircraft-focus-panel__label">状态</span>
-        <span className="aircraft-focus-panel__value">待命</span>
-      </div>
+        {/* ====== 设备详情 ====== */}
+        <div className="aircraft-focus-panel__section-title">设备详情</div>
+        <div className="aircraft-focus-panel__info-row">
+          <span className="aircraft-focus-panel__bar" />
+          <span className="aircraft-focus-panel__label">位置</span>
+          <span className="aircraft-focus-panel__value">
+            Lat:0000,&nbsp;Lon:0000,&nbsp;H:0000
+          </span>
+        </div>
+        <div className="aircraft-focus-panel__info-row">
+          <span className="aircraft-focus-panel__bar" />
+          <span className="aircraft-focus-panel__label">速度</span>
+          <span className="aircraft-focus-panel__value">
+            X:000&nbsp;Y:000&nbsp;Z:000
+          </span>
+        </div>
+        <div className="aircraft-focus-panel__info-row aircraft-focus-panel__info-row--dual aircraft-focus-panel__info-row--last">
+          <span className="aircraft-focus-panel__bar" />
+          <span className="aircraft-focus-panel__label">模式</span>
+          <span className="aircraft-focus-panel__value">悬停</span>
+          <span className="aircraft-focus-panel__bar aircraft-focus-panel__bar--gap" />
+          <span className="aircraft-focus-panel__label">状态</span>
+          <span className="aircraft-focus-panel__value">待命</span>
+        </div>
+        </>
+      )}
     </div>
   )
 }

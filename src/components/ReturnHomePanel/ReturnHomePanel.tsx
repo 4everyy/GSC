@@ -6,7 +6,8 @@
  * - 「参数设置 / 飞机列表」tab 栏复用 PanelTabs；
  * - 返航高度：−/+ 步进器复用 HeightStepper（默认 10m，支持手动键入 editable）；
  * - 交互状态流：打开面板即可点「航线生成」（高度默认 10m 有效），
- *   点击「航线生成」画出航线后「确认」解除置灰（confirmMuted 由 HomePage 联动）；
+ *   点击「航线生成」画出航线后「确认」解除置灰（confirmMuted 由 HomePage 联动），
+ *   「航线生成」点击后置灰（middleMuted 由 HomePage 联动，统一交互规范）；
  * - 「确认」回调 onConfirm(height)，「取消」回调 onCancel() 关闭面板。
  */
 import { useState } from 'react'
@@ -26,8 +27,10 @@ export interface ReturnHomePanelProps {
   onRemove?: (id: string) => void
   /** 确认返航：携带当前设置的返航高度（米） */
   onConfirm: (height: number) => void
-  /** 确认按钮置灰态：未生成返航航线（HomePage returnHomeLine 为空）前置灰，生成后解除 */
+  /** 确认按钮置灰态：未生成返航航线（HomePage returnHomeLine 为空）前置灰，生成后解除；二次滑窗确认后再置灰 */
   confirmMuted?: boolean
+  /** 「航线生成」中间按钮置灰态：点击生成航线后置灰（统一交互：生成后不可重复点击），默认 false */
+  middleMuted?: boolean
   /** 航线生成：选中飞机 → 上方返航点连线（中间按钮）；面板打开即可点击 */
   onGenerateRoute?: () => void
   /** 取消并关闭面板 */
@@ -39,6 +42,7 @@ export function ReturnHomePanel({
   onRemove,
   onConfirm,
   confirmMuted = false,
+  middleMuted = false,
   onGenerateRoute,
   onCancel,
 }: ReturnHomePanelProps) {
@@ -56,7 +60,7 @@ export function ReturnHomePanel({
       className="return-home-panel"
       ariaLabel="返航参数面板"
       middleText="航线生成"
-      middleMuted={false}
+      middleMuted={middleMuted}
       confirmMuted={confirmMuted}
       onConfirm={() => onConfirm(height)}
       // 航线生成：直接触发（高度默认值有效，不再静默拦截）

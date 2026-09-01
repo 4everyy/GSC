@@ -11,8 +11,12 @@
   position: relative;
   box-sizing: border-box;
   width: clamp(207px, 21.5625vw, 414px);
-  /* 仅详情部分高度：510 = 632（box_6 全高）- 122（box_3 复制区） */
+  /* 仅详情部分高度：510 = 632（box_6 全高）- 122（box_3 复制区）。
+     作为 wrapper 第二个 flex 项允许收缩：视口高度不足时（wrapper max-height
+     已为右下控件带预留空间）按可用空间压缩高度，避免覆盖图层按钮 */
   height: clamp(255px, 26.5625vw, 510px);
+  min-height: 0;
+  overflow: hidden;
   padding: 0;
   /* 背景切图移至伪元素层（见 ::before），本体不再承载背景，便于单独控制透明度 */
   background: none;
@@ -20,43 +24,6 @@
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-}
-
-/* 关闭按钮：24×24 透明热区，居中 10×10 对角线叉线。
-   负偏移上移至常驻框标题行右侧（原 box_6 标题行由常驻框承担）：
-   常驻框 padding-top + header 行高一半 - 按钮半高 - 常驻框全高 */
-.alarm-detail-panel__close {
-  position: absolute;
-  top: calc(
-    clamp(6px, 0.63vw, 12px) + clamp(10.5px, 1.09vw, 21px) / 2 - clamp(6px, 0.625vw, 12px) -
-      clamp(61px, 6.35vw, 122px)
-  );
-  right: clamp(4px, 0.417vw, 8px);
-  width: clamp(12px, 1.25vw, 24px);
-  height: clamp(12px, 1.25vw, 24px);
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-}
-
-.alarm-detail-panel__close::before,
-.alarm-detail-panel__close::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: clamp(5px, 0.52vw, 10px);
-  height: clamp(1px, 0.104vw, 2px);
-  background: #fff;
-}
-
-.alarm-detail-panel__close::before {
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-
-.alarm-detail-panel__close::after {
-  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 /* ==================== 筛选条 ==================== */
@@ -260,14 +227,15 @@
     inset 0 0 clamp(10px, 1.56vw, 30px) rgba(64, 158, 255, 0.18);
 }
 
-/* 背景切图按 box_6 全高渲染并上移，裁掉顶部复制区，顶缘平齐直拼常驻框底缘；
+/* 背景切图按 box_6 全高渲染、底缘锚定：满高 510px 时顶部 122px 复制区被面板顶边裁掉，
+   与原「上移 -122px」效果完全一致；高度收缩时顶部动态多裁、底部圆角始终贴合面板底缘。
    独立伪元素层单独设透明度（与常驻告警框 ::before 的 0.8 一致，透出底层地图） */
 .alarm-detail-panel::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: url('../../assets/images/home/alarm-detail-bg.png')
-    0 clamp(-122px, -6.354vw, -61px) / 100% clamp(316px, 32.9vw, 632px) no-repeat;
+  background: url('../../assets/images/home/alarm-detail-bg.png') 0 bottom / 100%
+    clamp(316px, 32.9vw, 632px) no-repeat;
   opacity: 0.8;
   pointer-events: none;
   z-index: 0;

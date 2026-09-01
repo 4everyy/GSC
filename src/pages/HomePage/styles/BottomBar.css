@@ -26,12 +26,12 @@
   height: clamp(16px, 1.67vw, 32px);
   border: 0;
   color: #fff;
-  background: url('../../assets/images/home/emergency-btn-bg.png') center / 100% 100%;
+  background: url('../../../assets/images/home/emergency-btn-bg.png') center / 100% 100%;
   font-size: clamp(6px, 0.63vw, 12px);
 }
 
 .emergency-actions .danger {
-  background-image: url('../../assets/images/home/stop-btn-bg.png');
+  background-image: url('../../../assets/images/home/stop-btn-bg.png');
 }
 
 .scale {
@@ -213,6 +213,11 @@
 
 .bottom-bar__btn--disabled:hover .bottom-bar__visual::after {
   opacity: 0;
+}
+
+/* disabled decorative end caps keep default cursor (no not-allowed) */
+.bottom-bar__btn--static.bottom-bar__btn--disabled {
+  cursor: default;
 }
 
 /* 鍔熻兘鍥炬爣锛氱粷瀵瑰眳涓簬瑙嗚灞傦紝灏哄涓?60px 璁捐楂樼殑 75%锛?920 涓?45px锛夛紝

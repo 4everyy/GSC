@@ -95,6 +95,10 @@ import bottomBarSeg9Disabled from './bottom-bar-seg-09-disabled.png'
 import bottomBarSeg10Disabled from './bottom-bar-seg-10-disabled.png'
 import bottomBarSeg11Disabled from './bottom-bar-seg-11-disabled.png'
 import bottomBarSeg12Disabled from './bottom-bar-seg-12-disabled.png'
+// 首尾装饰段（第 1 / 13 段）禁用态背景切图：设计稿导出文件 Rectangle 273/272.png
+// （273 = 左端段、272 = 右端段），未选中设备（全部功能按钮置灰）时同步替换默认背景
+import bottomBarSeg1Disabled from './Rectangle 273.png'
+import bottomBarSeg13Disabled from './Rectangle 272.png'
 
 export const homeImages = {
   aircraftBlue,
@@ -181,4 +185,6 @@ export const homeImages = {
   bottomBarSeg10Disabled,
   bottomBarSeg11Disabled,
   bottomBarSeg12Disabled,
+  bottomBarSeg1Disabled,
+  bottomBarSeg13Disabled,
 }

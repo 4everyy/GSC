@@ -4,6 +4,8 @@
  * 点击顶栏三个告警徽标（红/橙/蓝铃铛）后弹出，拼接到常驻告警信息框（AlarmInfoPanel）正下方——
  * box_6 顶部 122px 的标题/提示行区与常驻框（box_3）相同，由常驻框承担，本组件仅呈现
  * section_5 及以下内容，高度 510 = 632 - 122。
+ * 关闭：再次点击顶栏同一告警徽标（HomePage toggle），不再设独立关闭按钮，
+ * 避免按钮经负偏移上浮进入常驻框区域形成重叠。
  *
  * 结构（对应设计稿）：
  * - 标题行：铃铛图标 + "告警信息"（block_7）
@@ -38,23 +40,14 @@ const DEMO_EVENTS: AlarmEvent[] = [
 interface AlarmDetailPanelProps {
   /** 当前激活的告警色调（与常驻告警框同步，红/橙/蓝） */
   alarmColor?: AlarmColor
-  /** 关闭按钮回调 */
-  onClose: () => void
 }
 
-export function AlarmDetailPanel({ alarmColor, onClose }: AlarmDetailPanelProps) {
+export function AlarmDetailPanel({ alarmColor }: AlarmDetailPanelProps) {
   const colorClass = alarmColor ? ` alarm-detail-panel--${alarmColor}` : ''
 
   return (
     <div className={`alarm-detail-panel${colorClass}`}>
-      {/* 关闭按钮（标题行/提示行由常驻框承担，此处仅详情内容） */}
-      <button
-        type='button'
-        className='alarm-detail-panel__close'
-        aria-label='关闭告警详情'
-        onClick={onClose}
-      />
-
+      {/* 标题行/提示行由常驻框承担，此处仅详情内容；收起走顶栏徽标 toggle */}
       <div className="alarm-detail-panel__filter">
         <img src={homeImages.alarmDetailFilterBar} alt="" className="alarm-detail-panel__filter-bg" />
         <img src={homeImages.alarmDetailIcon} alt="" className="alarm-detail-panel__filter-icon" />

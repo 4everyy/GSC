@@ -34,15 +34,16 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
   // 重点标记的目标 id 集合（旗标图标切换 + 地图图标标记背景同步）
   const markedIds = useTargetLinkStore((s) => s.markedIds)
   const toggleMarked = useTargetLinkStore((s) => s.toggleMarked)
-  const setStoreMarkedIds = useTargetLinkStore((s) => s.setMarkedIds)
-  const setStoreTargets = useTargetLinkStore((s) => s.setTargets)
+  // 「假删除」（软删除）：确认删除仅打标记（mock 数据保留，刷新可恢复）
+  const softDeleteTargets = useTargetLinkStore((s) => s.softDeleteTargets)
+  const restoreTargets = useTargetLinkStore((s) => s.restoreTargets)
+  const deletedIds = useTargetLinkStore((s) => s.deletedTargetIds)
   // hover 中的目标 id（行背景三态与设备管理面板一致：选中蓝 > hover 橙 > 普通灰）
   const hoveredId = useTargetLinkStore((s) => s.hoveredTargetId)
   const setHoveredId = useTargetLinkStore((s) => s.setHoveredTargetId)
   // 点击行联动态目标 id（行与地图图标双向同步，再次点击解除）
   const clickedTargetId = useTargetLinkStore((s) => s.clickedTargetId)
   const toggleClickedTarget = useTargetLinkStore((s) => s.toggleClickedTarget)
-  const clearClickedTarget = useTargetLinkStore((s) => s.clearClickedTarget)
   // 行勾选状态迁移至全局 store（与设备面板 selectedDevices 同模式）：
   // 地图图标单击与列表勾选框共用 toggleTarget，首页图标选中态双向同步
   const selectedIds = useTargetLinkStore((s) => s.selectedTargetIds)
@@ -97,6 +98,8 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     if (refreshDoneTimer.current !== null) window.clearTimeout(refreshDoneTimer.current)
     // 刷新时取消所有行的选中状态（走 store，同步取消地图图标选中态）
     replaceSelectedIds(new Set())
+    // 刷新从 mock 态恢复全部「假删除」的目标（清空软删除标记，列表与地图图标重现）
+    restoreTargets()
     setRefreshStatus('refreshing')
     refreshTimer.current = window.setTimeout(() => {
       refreshTimer.current = null
@@ -120,34 +123,25 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     setPendingDeleteIds([])
   }
 
-  /** 确认删除：移除弹窗指定的目标集合（store 单一数据源，地图图标同步消失），
-   *  同步清理勾选/标记/展开集合与点击联动态，并关闭弹窗 */
+  /** 确认删除：目标「假删除」（store 打软删除标记，mock 数据保留、刷新可恢复），
+   *  列表与地图图标随过滤同步消失；勾选/标记集合与点击联动态由 store action 清理 */
   const handleDeleteConfirm = () => {
-    const ids = new Set(pendingDeleteIds)
-    if (ids.size > 0) {
-      setStoreTargets(targets.filter((t) => !ids.has(t.id)))
-      // 勾选集合走 store，同步清理地图图标的选中态
-      const nextSelected = new Set(selectedIds)
-      ids.forEach((id) => nextSelected.delete(id))
-      replaceSelectedIds(nextSelected)
+    if (pendingDeleteIds.length > 0) {
+      softDeleteTargets(pendingDeleteIds)
+      // 收起被删目标行内展开的详情
       setExpandedIds((prev) => {
         const next = new Set(prev)
-        ids.forEach((id) => next.delete(id))
+        pendingDeleteIds.forEach((id) => next.delete(id))
         return next
       })
-      const nextMarked = new Set(markedIds)
-      ids.forEach((id) => nextMarked.delete(id))
-      setStoreMarkedIds(nextMarked)
-      // 删除的是当前联动目标时清除联动态
-      if (clickedTargetId !== null && ids.has(clickedTargetId)) {
-        clearClickedTarget()
-      }
     }
     closeDeleteDialog()
   }
 
+  // 「假删除」目标从列表过滤隐藏（软删除标记，mock 数据仍在 store 中，刷新恢复）
   const filteredTargets = targets.filter(
-    (t) => typeFilter === '请选择' || t.type === typeFilter,
+    (t) =>
+      !deletedIds.has(t.id) && (typeFilter === '请选择' || t.type === typeFilter),
   )
 
   const isAllSelected =
@@ -386,6 +380,7 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                   </div>
                   <img className="target-row__icon" src={typeIcon[t.type]} alt={t.type} title={t.type} draggable={false} />
                   <span className="target-row__name" title={t.name}>{t.name}</span>
+                  <span className="target-row__value">{`价值:${t.value}`}</span>
                   <span className="target-row__status">{`状态:${t.status}`}</span>
                   <img
                     className="target-row__action target-row__action--locate"

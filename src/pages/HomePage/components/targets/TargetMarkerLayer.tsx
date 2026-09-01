@@ -48,6 +48,8 @@ export function TargetMarkerLayer() {
   const requestOpenTargetPanel = useTargetLinkStore((s) => s.requestOpenTargetPanel)
   // 拖拽更新坐标（map-stage 百分比）
   const moveTarget = useTargetLinkStore((s) => s.moveTarget)
+  // 「假删除」（软删除）目标 id 集合：图标层过滤隐藏（刷新可恢复）
+  const deletedIds = useTargetLinkStore((s) => s.deletedTargetIds)
 
   // 拖拽会话（ref 不触发重渲染）：pointerId 匹配当前指针才处理，
   // moved 标记是否已超过阈值判定为拖拽
@@ -113,9 +115,12 @@ export function TargetMarkerLayer() {
     dragState.current = null
   }
 
+  // 「假删除」目标不渲染图标（软删除标记，刷新恢复后重现）
+  const visibleTargets = targets.filter((t) => !deletedIds.has(t.id))
+
   return (
     <div className="target-marker-layer" aria-label="目标图标层">
-      {targets.map((t: TargetMarkerItem) => {
+      {visibleTargets.map((t: TargetMarkerItem) => {
         const isMarked = markedIds.has(t.id)
         const isSelected = selectedTargetIds.has(t.id)
         const isActive = isSelected || clickedTargetId === t.id || hoveredTargetId === t.id

@@ -57,7 +57,12 @@ export interface BottomBarItem {
 // 第 2~12 段为功能按钮：icon 为叠加在背景框体中心的功能图标（64×64 切图），
 // tooltip 为悬停时显示于按钮上方的中文名称。
 export const BOTTOM_BAR_ITEMS: BottomBarItem[] = [
-  { background: homeImages.bottomBarSeg1, width: 119 },
+  {
+    background: homeImages.bottomBarSeg1,
+    // 禁用态切图（Rectangle 273.png）：未选中设备、全部功能按钮置灰时替换
+    disabledBackground: homeImages.bottomBarSeg1Disabled,
+    width: 119,
+  },
   {
     background: homeImages.bottomBarSeg2,
     activeBackground: homeImages.bottomBarSeg2Active,
@@ -168,5 +173,10 @@ export const BOTTOM_BAR_ITEMS: BottomBarItem[] = [
     mode: 'multi',
     panel: 'formation-flight',
   },
-  { background: homeImages.bottomBarSeg13, width: 119 },
+  {
+    background: homeImages.bottomBarSeg13,
+    // 禁用态切图（Rectangle 272.png）：未选中设备、全部功能按钮置灰时替换
+    disabledBackground: homeImages.bottomBarSeg13Disabled,
+    width: 119,
+  },
 ]

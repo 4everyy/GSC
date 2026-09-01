@@ -16,6 +16,8 @@ export interface TargetItem {
   type: TargetType
   /** 状态文字（如「默认侦查」） */
   status: string
+  /** 目标价值（如「高」） */
+  value: string
   /** 发现源（首次侦测到该目标的平台，如「无人机02」） */
   source: string
   /** 威胁半径（如「050m」） */
@@ -43,6 +45,7 @@ export const targetList: TargetItem[] = [
     name: '01目标车辆',
     type: '车辆',
     status: '默认侦查',
+    value: '高',
     source: '无人机02',
     threatRadius: '050m',
     altitude: '120m',
@@ -56,6 +59,7 @@ export const targetList: TargetItem[] = [
     name: '02目标人',
     type: '人员',
     status: '默认侦查',
+    value: '高',
     source: '光电吊舱',
     threatRadius: '030m',
     altitude: '000m',
@@ -69,6 +73,7 @@ export const targetList: TargetItem[] = [
     name: '03目标车辆',
     type: '车辆',
     status: '默认侦查',
+    value: '高',
     source: '雷达站A',
     threatRadius: '080m',
     altitude: '200m',
@@ -82,6 +87,7 @@ export const targetList: TargetItem[] = [
     name: '04目标人',
     type: '人员',
     status: '默认侦查',
+    value: '高',
     source: '无人机05',
     threatRadius: '020m',
     altitude: '000m',
@@ -95,6 +101,7 @@ export const targetList: TargetItem[] = [
     name: '05目标车辆',
     type: '车辆',
     status: '默认侦查',
+    value: '高',
     source: '卫星侦察',
     threatRadius: '100m',
     altitude: '350m',
@@ -102,31 +109,5 @@ export const targetList: TargetItem[] = [
     position: 'Lat:30.512, Lon:120.812',
     firstSeenAt: '2026/07/28 14:28:15',
     lastUpdatedAt: '2026/07/28 14:28:15',
-  },
-  {
-    id: '06',
-    name: '06目标人',
-    type: '人员',
-    status: '默认侦查',
-    source: '光电吊舱',
-    threatRadius: '025m',
-    altitude: '000m',
-    strikeMode: '二次打击',
-    position: 'Lat:30.623, Lon:120.921',
-    firstSeenAt: '2026/07/28 14:29:03',
-    lastUpdatedAt: '2026/07/28 14:29:03',
-  },
-  {
-    id: '07',
-    name: '07目标车辆',
-    type: '车辆',
-    status: '默认侦查',
-    source: '雷达站A',
-    threatRadius: '060m',
-    altitude: '150m',
-    strikeMode: '单向序贯',
-    position: 'Lat:30.715, Lon:121.014',
-    firstSeenAt: '2026/07/28 14:30:27',
-    lastUpdatedAt: '2026/07/28 14:30:27',
   },
 ]
