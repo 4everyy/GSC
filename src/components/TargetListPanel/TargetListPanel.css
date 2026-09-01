@@ -291,19 +291,12 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  scrollbar-gutter: stable;
   padding: 0 4px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(70, 220, 231, 0.4) transparent;
+  scrollbar-width: none;
 }
 
 .target-panel__list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.target-panel__list::-webkit-scrollbar-thumb {
-  background: rgba(70, 220, 231, 0.4);
-  border-radius: 2px;
+  display: none;
 }
 
 /* 空数据占位 */
