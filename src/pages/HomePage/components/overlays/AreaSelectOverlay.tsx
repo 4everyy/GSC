@@ -46,7 +46,7 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
     <>
           {/* 区域降落框选模式（航线生成）：截图式拖拽选区——按下左键确定起点，
               按住拖动实时拉伸出自定义大小的矩形（框内清晰、框外遮罩变暗），
-              松开定格，Esc/右键退出 */}
+              松开定格；定格后右键等效「取消」回到绘制态，绘制阶段右键/Esc 退出 */}
           {areaSelectMode &&
             createPortal(
               <div
@@ -55,7 +55,7 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                   // 绘制阶段（未定格）隐藏原生光标：area-landing-cursor 切图 54×54 超出
                   // 浏览器 32×32 光标上限，cursor:url() 会回退成十字准线，改由下方 DOM
                   // 图片跟随鼠标；选区定格（松开左键）后恢复默认光标便于点击
-                  // 「确定/取消」，点击「取消」回到绘制态后再次隐藏
+                  // 「确定/取消」，点击「取消」或定格后右键取消回到绘制态后再次隐藏
                   cursor: areaSelectAnchor && !areaSelectDragging ? 'default' : 'none',
                 }}
                 onMouseDown={(e) => {
@@ -77,10 +77,27 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                 onMouseLeave={() => setAreaSelectHover(null)}
                 onContextMenu={(e) => {
                   e.preventDefault()
+                  // 已定格选区：右键等效「取消」按钮——仅清除定格选区回到绘制态
+                  // （光标恢复停机坪图标）可重新绘制；框选模式与面板均保持展开，不退出
+                  if (areaSelectAnchor && !areaSelectDragging) {
+                    setAreaSelectAnchor(null)
+                    setAreaSelectEnd(null)
+                    setAreaSelectDragging(false)
+                    if (areaSelectSource === 'rally-point') {
+                      setRallyPointRect(null)
+                      setRallyPointRouteGenerated(false)
+                      stopRallyPointFlights()
+                    } else {
+                      setAreaLandingRect(null)
+                      setAreaLandingCorners(null)
+                      setAreaLandingRouteGenerated(false)
+                    }
+                    return
+                  }
+                  // 绘制阶段（未定格）：右键退出框选模式并重新展示对应面板（信息已提升保留）
                   setAreaSelectMode(false)
                   setAreaSelectAnchor(null)
                   setAreaSelectEnd(null)
-                  // 取消绘制并重新展示对应面板（信息已提升保留）
                   if (areaSelectSource === 'rally-point') setRallyPointOpen(true)
                   else setAreaLandingOpen(true)
                 }}

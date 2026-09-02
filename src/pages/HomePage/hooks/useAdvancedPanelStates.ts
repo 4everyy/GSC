@@ -1,4 +1,4 @@
-/**
+﻿/**
  * useAdvancedPanelStates —— 高级面板状态声明（航点/航线/环绕/集结点/编队面板与滑动二次确认）。
  *
  * 面板 useState 声明下半：滑出动画/航点飞行/航线飞行/绕轨/集合点/编队等。
@@ -121,6 +121,9 @@ export function useAdvancedPanelStates() {
   // 集结坪（area-landing-spot）图标并绘制飞机中心→集结坪 1px #00FF95 绿色实线，
   // 同时解除「确认」置灰；重绘区域/取消/删除重绘时清除
   const [rallyPointRouteGenerated, setRallyPointRouteGenerated] = useState(false)
+  // 集结指令已确认：滑动二次确认成功后置 true，「确认」按钮随之置灰（防止重复下发指令）；
+  // 面板关闭（取消/互斥切换）或航线失效（删除重绘/区域清除/重新生成）时复位，重开面板恢复可确认
+  const [rallyPointConfirmed, setRallyPointConfirmed] = useState(false)
   // 集结队形（受控状态，面板下拉与地图集结坪布置联动）：变化时即时重排集结坪布局
   const [rallyPointFormation, setRallyPointFormation] = useState<RallyPointFormation>('人字形')
   // 编队飞行二次确认：面板「确认」先暂存高度/队形并弹出滑动确认弹窗，滑到最右才真正执行
@@ -251,6 +254,8 @@ export function useAdvancedPanelStates() {
     setRallyPointSlide,
     rallyPointRouteGenerated,
     setRallyPointRouteGenerated,
+    rallyPointConfirmed,
+    setRallyPointConfirmed,
     rallyPointFormation,
     setRallyPointFormation,
     formationFlightSlide,

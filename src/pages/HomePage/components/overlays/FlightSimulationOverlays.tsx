@@ -28,6 +28,8 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
     setRallyPointRect,
     rallyPointRouteGenerated,
     setRallyPointRouteGenerated,
+    setAreaSelectMode,
+    setAreaSelectSource,
   } = panels
   const {
     waypointFlight,
@@ -167,6 +169,10 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
                   setAreaLandingRect(null)
                   setAreaLandingCorners(null)
                   setAreaLandingRouteGenerated(false)
+                  // 删除重绘：清除定型区域后重新进入框选模式（光标恢复停机坪图标
+                  // 跟随鼠标），可立即重新绘制降落区域；绘制确认/取消后回到面板
+                  setAreaSelectSource('area-landing')
+                  setAreaSelectMode(true)
                 }}
               >
                 删除重绘
@@ -319,6 +325,10 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
                   stopRallyPointFlights()
                   setRallyPointRouteGenerated(false)
                   setRallyPointRect(null)
+                  // 重新进入框选模式（与区域降落同款交互）：光标恢复停机坪图标
+                  // 跟随鼠标，可立即重新绘制集结区域；绘制确认/取消后回到面板
+                  setAreaSelectSource('rally-point')
+                  setAreaSelectMode(true)
                 }}
               >
                 删除重绘

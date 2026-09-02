@@ -1,4 +1,4 @@
-/**
+﻿/**
  * useFlightInteractions —— 飞行面板交互逻辑（自 HomePage.tsx 拆出）。
  *
  * 汇总 5 套地图取点监听（指点返航 / 环绕飞行 / 编队飞行 / 航点飞行 / 航线飞行）
@@ -38,6 +38,7 @@ export function useFlightInteractions(
     rallyPointOpen,
     rallyPointRect,
     rallyPointRouteGenerated,
+    setRallyPointConfirmed,
     formationFlightOpen,
     formationFlightPoint,
     formationFlightRouteGenerated,
@@ -119,6 +120,7 @@ export function useFlightInteractions(
   useEffect(() => {
     if (!rallyPointOpen || !rallyPointRect || !rallyPointRouteGenerated) {
       stopRallyPointFlights()
+      setRallyPointConfirmed(false)
     }
   }, [rallyPointOpen, rallyPointRect, rallyPointRouteGenerated, stopRallyPointFlights])
   // 编队飞行面板关闭（取消/互斥切换）或航线失效时终止循环飞行；「确认」不收起面板，

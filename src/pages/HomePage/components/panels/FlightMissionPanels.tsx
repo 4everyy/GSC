@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FlightMissionPanels —— 航迹任务面板组：航线飞行/环绕飞行/集结点/编队飞行 + 确认弹窗（自 HomePage.tsx 拆出）。
  * 纯展示组件：面板状态经 panels/anims 分组传入，按需解构。
  */
@@ -62,6 +62,8 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
     setRallyPointRect,
     rallyPointRouteGenerated,
     setRallyPointRouteGenerated,
+    rallyPointConfirmed,
+    setRallyPointConfirmed,
     rallyPointFormation,
     setRallyPointFormation,
     formationFlightPoint,
@@ -237,6 +239,7 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
                   ),
                 )
               }
+              setRallyPointConfirmed(true)
             }}
             onCancel={() => setRallyPointSlide((s) => ({ ...s, open: false }))}
           />
@@ -288,7 +291,7 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
               // 置灰条件：未确认集结区域 或 航线已生成时「航线生成」按钮置灰（防重复生成，
               // 守卫已在 onGenerateRoute 兜底）；需重新绘制时先「取消」收起面板再重进框选
               routeMuted={!rallyPointRect || rallyPointRouteGenerated}
-              confirmMuted={!rallyPointRouteGenerated}
+              confirmMuted={!rallyPointRouteGenerated || rallyPointConfirmed}
               formation={rallyPointFormation}
               onFormationChange={(f) => {
                 setRallyPointFormation(f)
@@ -319,6 +322,7 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
               }}
               onConfirm={(height, speed, formation) => {
                 // 先弹出滑动二次确认弹窗，滑到最右松手后才真正执行（见下方 SlideConfirmDialog）
+                if (!rallyPointRouteGenerated || rallyPointConfirmed) return
                 setRallyPointSlide({ open: true, height, speed, formation })
               }}
               onGenerateRoute={() => {
