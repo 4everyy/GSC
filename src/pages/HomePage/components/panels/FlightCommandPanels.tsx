@@ -43,6 +43,7 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
     tapReturnConfirmed,
     setTapReturnConfirmed,
     tapReturnPoint,
+    tapReturnPointConfirmed,
     setTapReturnPoint,
     tapReturnRouteReady,
     setTapReturnRouteReady,
@@ -160,7 +161,8 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
             <TapReturnPanel
               waypoint={tapReturnPoint}
               confirmMuted={!tapReturnRouteReady || tapReturnConfirmed}
-              middleMuted={tapReturnRouteReady}
+              // 缃伆鏉′欢锛氳埅绾垮凡鐢熸垚 鎴?钀界偣鏈‘璁わ紙灏氭湭鐐瑰嚮鍥鹃拤涓嬫柟銆岀‘瀹氥€嶆寜閽潯锛夋椂
+              // 銆岃埅绾跨敓鎴愩€嶆寜閽疆鐏扳€斺€斿厛鍦ㄥ湴鍥句笂纭钀界偣锛屽啀鍥為潰鏉跨敓鎴愯埅绾?nl              middleMuted={tapReturnRouteReady || !tapReturnPointConfirmed}
               onConfirm={(height) => {
                 // 置灰守卫：未生成航线/已确认过时不弹确认弹窗（按钮视觉置灰兜底拦截）
                 if (!tapReturnRouteReady || tapReturnConfirmed) return
@@ -170,7 +172,7 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
               onGenerateRoute={() => {
                 // 置灰守卫：航线已生成时按钮置灰，点击兜底拦截（保持已生成航线不变）；
                 // 需重新生成时先「取消」收起面板再重开（关闭时落点/航线自动清除）
-                if (tapReturnRouteReady) return
+                if (tapReturnRouteReady || !tapReturnPointConfirmed) return
                 // 航线生成：由选中飞机图标中心向落点画 1px #00FF95 连线（SVG 视口屏幕坐标）；
                 // 连线两端锚定不随地图移动的 DOM 图标，地图缩放/平移不会断开；
                 // 确实画出连线后才解除「确认」置灰（未取点/未选中飞机则保持置灰）
