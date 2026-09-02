@@ -37,7 +37,9 @@
 }
 
 /* Guardrail shrink (short viewports): let the panel body scroll so inner controls
-   stay reachable instead of being clipped by overflow:hidden */
+   stay reachable instead of being clipped by overflow:hidden.
+   Scrollbar fully hidden on all engines (wheel/touch scrolling still works);
+   overflow-x hidden prevents a horizontal bar when content is wider than the body. */
 .takeoff-panel .panel-shell__body,
 .hover-panel .panel-shell__body,
 .landing-panel .panel-shell__body,
@@ -50,6 +52,26 @@
 .rally-point-panel .panel-shell__body,
 .formation-flight-panel .panel-shell__body {
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE / legacy Edge */
+}
+
+/* 闅愯棌婊氬姩鏉′絾淇濈暀婊氬姩锛欳hromium/WebKit锛堟粴杞?瑙︽懜婊氬姩涓嶅彈褰卞搷锛?*/
+.takeoff-panel .panel-shell__body::-webkit-scrollbar,
+.hover-panel .panel-shell__body::-webkit-scrollbar,
+.landing-panel .panel-shell__body::-webkit-scrollbar,
+.return-home-panel .panel-shell__body::-webkit-scrollbar,
+.tap-return-panel .panel-shell__body::-webkit-scrollbar,
+.area-landing-panel .panel-shell__body::-webkit-scrollbar,
+.waypoint-flight-panel .panel-shell__body::-webkit-scrollbar,
+.route-flight-panel .panel-shell__body::-webkit-scrollbar,
+.orbit-flight-panel .panel-shell__body::-webkit-scrollbar,
+.rally-point-panel .panel-shell__body::-webkit-scrollbar,
+.formation-flight-panel .panel-shell__body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* 区域降落/集结点面板：与全屏框选遮罩（z-index 2000）共存时浮于其上，

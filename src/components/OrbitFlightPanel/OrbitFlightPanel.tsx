@@ -14,6 +14,8 @@ export interface OrbitFlightPanelProps {
   waypoint?: { lat: number; lng: number } | null
   /** 确认按钮置灰态：未点击「航线生成」定格实线前置灰，生成后解除 */
   confirmMuted?: boolean
+  /** 「航线生成」中间按钮置灰态：航线已生成（实线）后置灰防重复生成，默认 false */
+  middleMuted?: boolean
   /** 确认：携带当前设置的盘旋高度（米）与盘旋半径（米，未开启半径步进时缺省） */
   onConfirm: (height: number, radius?: number) => void
   /** 盘旋半径步进回调：驱动地图盘旋圆像素半径实时刷新 */
@@ -27,6 +29,7 @@ export interface OrbitFlightPanelProps {
 export function OrbitFlightPanel({
   waypoint,
   confirmMuted = false,
+  middleMuted = false,
   onConfirm,
   onRadiusChange,
   onGenerateRoute,
@@ -41,6 +44,7 @@ export function OrbitFlightPanel({
       className="orbit-flight-panel"
       waypoint={waypoint}
       confirmMuted={confirmMuted}
+      middleMuted={middleMuted}
       onConfirm={onConfirm}
       onRadiusChange={onRadiusChange}
       onGenerateRoute={onGenerateRoute}

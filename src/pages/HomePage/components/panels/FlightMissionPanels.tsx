@@ -49,12 +49,15 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
     setRouteFlightFinished,
     routeFlightGenerated,
     setRouteFlightGenerated,
+    routeFlightConfirmed,
     orbitPoint,
     setOrbitPoint,
     orbitRadius,
     setOrbitRadius,
     orbitRouteGenerated,
     setOrbitRouteGenerated,
+    orbitFlightConfirmed,
+    setOrbitFlightConfirmed,
     rallyPointRect,
     setRallyPointRect,
     rallyPointRouteGenerated,
@@ -64,6 +67,8 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
     formationFlightPoint,
     formationFlightRouteGenerated,
     setFormationFlightRouteGenerated,
+    formationFlightConfirmed,
+    setFormationFlightConfirmed,
     formationFlightFormation,
     setFormationFlightFormation,
     setRouteSlide,
@@ -76,7 +81,6 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
   } = panels
   const {
     formationFlightFlights,
-    stopRouteFlightAnimation,
     startRallyPointFlights,
     stopRallyPointFlights,
     startFormationFlightFlights,
@@ -92,24 +96,22 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
               确认/取消均收起面板并清除航线 */}
           {routeFlightOpen && (
             <RouteFlightPanel
-              confirmReady={routeFlightFinished}
+              confirmReady={routeFlightFinished && !routeFlightConfirmed}
+              routeMuted={routeFlightGenerated}
               waypoints={routeFlightPoints}
               onConfirm={(height) => {
+                // 置灰守卫：未定格航线或指令已确认过时不弹确认滑窗（按钮视觉置灰兜底拦截）
+                if (!routeFlightFinished || routeFlightConfirmed) return
                 // 先弹出滑动二次确认弹窗，滑到最右松手后才真正执行（见下方 SlideConfirmDialog）
                 setRouteSlide({ open: true, height })
               }}
               onGenerateRoute={() => {
-                // 航线生成：已标记航点（右键/Esc 结束，虚线）→ 虚线定格为实线；已生成实线 → 清除旧航线重新取点；
+                // 置灰守卫：航线已生成时按钮置灰，点击兜底拦截（保持已生成航线不变）；
+                // 需重新生成时先「取消」收起面板再重开（关闭时航线自动清除）
+                if (routeFlightGenerated) return
+                // 航线生成：已标记航点（右键/Esc 结束，虚线）→ 虚线定格为实线；
                 // 左键逐点追加航点，右键/Esc 结束取点，面板保留可继续操作
-                if (routeFlightGenerated) {
-                  // 已生成实线时点击：终止进行中的循环飞行，清除旧航线重新取点
-                  stopRouteFlightAnimation()
-                  setRouteFlightPoints([])
-                  setRouteFlightHover(null)
-                  setRouteFlightFinished(false)
-                  setRouteFlightGenerated(false)
-                  setRouteFlightPicking(true)
-                } else if (routeFlightPoints.length > 0) {
+                if (routeFlightPoints.length > 0) {
                   setRouteFlightPicking(false)
                   setRouteFlightFinished(true)
                   setRouteFlightGenerated(true)
@@ -131,19 +133,22 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
           {orbitFlightOpen && (
             <OrbitFlightPanel
               waypoint={orbitPoint ? { lat: orbitPoint.lat, lng: orbitPoint.lng } : null}
-              confirmMuted={!orbitRouteGenerated}
+              confirmMuted={!orbitRouteGenerated || orbitFlightConfirmed}
+              middleMuted={orbitRouteGenerated}
               onConfirm={(height, radius) => {
+                // 置灰守卫：未生成实线航线或指令已确认过时不弹确认滑窗（按钮视觉置灰兜底拦截）
+                if (!orbitRouteGenerated || orbitFlightConfirmed) return
                 // 先弹出滑动二次确认弹窗，滑到最右松手后才真正执行（见下方 SlideConfirmDialog）
                 setOrbitSlide({ open: true, height, radius })
               }}
               onRadiusChange={setOrbitRadius}
               onGenerateRoute={() => {
+                // 置灰守卫：航线已生成时按钮置灰，点击兜底拦截（保持已生成航线不变）；
+                // 地图重新取点会自动回到虚线待生成态（解除置灰），取消收起面板亦可复位
+                if (orbitRouteGenerated) return
                 // 航线生成：已定格环绕中心（虚线）→ 虚线定格为实线并解除「确认」置灰；
-                // 已生成实线 → 清除环绕中心重新取点；未取点 → 保持置灰等待地图取点
-                if (orbitRouteGenerated) {
-                  setOrbitPoint(null)
-                  setOrbitRouteGenerated(false)
-                } else if (orbitPoint) {
+                // 未取点 → 保持置灰等待地图取点
+                if (orbitPoint) {
                   setOrbitRouteGenerated(true)
                 }
               }}
@@ -186,6 +191,8 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
                   )
                 }
               }
+              // 确认成功：置灰「确认」按钮（防止重复下发环绕飞行指令）；面板关闭/重新取点时自动复位
+              setOrbitFlightConfirmed(true)
               setOrbitSlide((s) => ({ ...s, open: false }))
             }}
             onCancel={() => setOrbitSlide((s) => ({ ...s, open: false }))}
@@ -244,6 +251,8 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
               console.info(
                 `[formation-flight] 确认编队飞行，高度 ${formationFlightSlide.height}m，队形 ${formationFlightSlide.formation}`,
               )
+              // 确认成功：置灰「确认」按钮（防止重复下发编队飞行指令）；面板关闭时自动复位
+              setFormationFlightConfirmed(true)
               setFormationFlightSlide((s) => ({ ...s, open: false }))
               // 面板保持展开：启动多机循环模拟飞行——各选中无人机沿已生成航线飞向队形中
               // 对应降落点并无限循环，直至取消面板/重新生成终止
@@ -276,7 +285,9 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
             <RallyPointPanel
               aircraft={selectedAircraft}
               onRemove={handleRemoveAircraft}
-              routeMuted={!rallyPointRect}
+              // 置灰条件：未确认集结区域 或 航线已生成时「航线生成」按钮置灰（防重复生成，
+              // 守卫已在 onGenerateRoute 兜底）；需重新绘制时先「取消」收起面板再重进框选
+              routeMuted={!rallyPointRect || rallyPointRouteGenerated}
               confirmMuted={!rallyPointRouteGenerated}
               formation={rallyPointFormation}
               onFormationChange={(f) => {
@@ -340,7 +351,8 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
           {formationFlightOpen && (
             <FormationFlightPanel
               waypoint={formationFlightPoint}
-              confirmMuted={!formationFlightRouteGenerated}
+              confirmMuted={!formationFlightRouteGenerated || formationFlightConfirmed}
+              middleMuted={formationFlightRouteGenerated}
               formation={formationFlightFormation}
               onFormationChange={(f) => {
                 setFormationFlightFormation(f)
@@ -365,13 +377,14 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
                 )
               }}
               onConfirm={(height, formation) => {
-                // 置灰守卫：未生成航线时不弹确认滑窗（按钮仅视觉置灰，此处兜底拦截）
-                if (!formationFlightRouteGenerated) return
+                // 置灰守卫：未生成航线或指令已确认过时不弹确认滑窗（按钮视觉置灰兜底拦截）
+                if (!formationFlightRouteGenerated || formationFlightConfirmed) return
                 // 先弹出滑动二次确认弹窗，滑到最右松手后才真正执行（见下方 SlideConfirmDialog）
                 setFormationFlightSlide({ open: true, height, formation })
               }}
               onGenerateRoute={() => {
-                // 已生成时再次点击：保持面板展开与已生成航线不变（与区域降落/集结点一致，防误点）
+                // 置灰守卫：航线已生成时按钮置灰，点击兜底拦截（保持已生成航线不变）；
+                // 需重新生成时先「取消」收起面板再重开（关闭时航线自动清除）
                 if (formationFlightRouteGenerated) return
                 // 未选中飞机：无可布置降落点，忽略（与返航线生成的守卫一致）
                 if (!getFormationFlightGeometry()) return
@@ -389,4 +402,3 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
     </>
   )
 }
-

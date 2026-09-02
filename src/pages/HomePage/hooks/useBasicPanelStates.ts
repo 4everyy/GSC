@@ -20,6 +20,9 @@ export function useBasicPanelStates() {
   const [returnHomeLines, setReturnHomeLines] = useState<
     { x1: number; y1: number; x2: number; y2: number }[] | null
   >(null)
+  // 返航指令已确认：滑动二次确认成功后置 true，「确认」按钮随之置灰（防止重复下发指令）；
+  // 面板关闭（取消/互斥切换）时随航线一并复位，重开面板恢复可确认
+  const [returnHomeConfirmed, setReturnHomeConfirmed] = useState(false)
   const [tapReturnOpen, setTapReturnOpen] = useState(false)
   // 指点返航地图取点：面板打开期间点击地图记录落点（视口坐标 + WGS84 经纬度），
   // 用于渲染图钉标记并回填面板「航点信息」坐标；确认后保留，取消面板时清除
@@ -37,7 +40,7 @@ export function useBasicPanelStates() {
   // 故改为 cursor:none + DOM 图钉跟随鼠标（与航点飞行取点同方案）
   const [tapReturnHover, setTapReturnHover] = useState<{ x: number; y: number } | null>(null)
   // 航点飞行跟随点：面板打开期间鼠标在地图上移动时的实时位置
-  // （视口坐标 + WGS84 经纬度），驱动图钉跟随与实时虚线连线
+  // （视口坐标 + 经纬度），驱动图钉跟随与实时虚线连线
   const [waypointHover, setWaypointHover] = useState<{
     x: number
     y: number
@@ -64,6 +67,9 @@ export function useBasicPanelStates() {
     x2: number
     y2: number
   } | null>(null)
+  // 指点返航指令已确认：滑动二次确认成功后置 true，「确认」按钮随之置灰（防止重复下发指令）；
+  // 面板关闭（取消/互斥切换）或重新取点时复位，重开面板恢复可确认
+  const [tapReturnConfirmed, setTapReturnConfirmed] = useState(false)
   const [areaLandingOpen, setAreaLandingOpen] = useState(false)
   // 区域降落面板信息（提升到 HomePage：面板收起（进入框选）/重开之间保留）：
   // 当前 tab、降落速度（m/s）、降落编队；rect 为框选「确认」定格的选区（视口坐标）
@@ -85,6 +91,9 @@ export function useBasicPanelStates() {
   // 区域降落航线已生成：点击「航线生成」后按所选降落编队在已确认区域内布置降落坪
   // 图标（数量=选中飞机数）并与各飞机画绿色实线；重绘区域/取消时复位
   const [areaLandingRouteGenerated, setAreaLandingRouteGenerated] = useState(false)
+  // 区域降落指令已确认：滑动二次确认成功后置 true，「确认」按钮随之置灰（防止重复下发指令）；
+  // 面板关闭（取消/互斥切换）或重绘选区时复位，重开面板恢复可确认
+  const [areaLandingConfirmed, setAreaLandingConfirmed] = useState(false)
   // 区域降落/集结点框选模式：由区域降落/集结点面板内「航线生成」进入——首页全屏遮罩 + 拖拽自定义大小紫色虚线框；
   // 光标为停机坪图标图片跟随鼠标；按住左键时框实时跟随光标
   // （光标锚定框右下角），松开定格，Esc/右键退出；areaSelectSource 标记选区归属面板
@@ -134,6 +143,8 @@ export function useBasicPanelStates() {
     setReturnHomeOpen,
     returnHomeLines,
     setReturnHomeLines,
+    returnHomeConfirmed,
+    setReturnHomeConfirmed,
     tapReturnOpen,
     setTapReturnOpen,
     tapReturnPoint,
@@ -150,6 +161,8 @@ export function useBasicPanelStates() {
     setTapReturnRouteReady,
     tapReturnLine,
     setTapReturnLine,
+    tapReturnConfirmed,
+    setTapReturnConfirmed,
     areaLandingOpen,
     setAreaLandingOpen,
     areaLandingTab,
@@ -164,6 +177,8 @@ export function useBasicPanelStates() {
     setAreaLandingCorners,
     areaLandingRouteGenerated,
     setAreaLandingRouteGenerated,
+    areaLandingConfirmed,
+    setAreaLandingConfirmed,
     areaSelectMode,
     setAreaSelectMode,
     areaSelectAnchor,
@@ -182,4 +197,3 @@ export function useBasicPanelStates() {
     setHoverOpen,
   }
 }
-

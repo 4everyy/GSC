@@ -14,30 +14,25 @@
   width: 100%;
 }
 
-/* 航点列表：面板外壳固定 260×469 不可滚，航点行多时列表内出现竖向滚动条，
-   overflow-x hidden 防止行内容超宽时出现横向滚动条 */
+/* 航点列表：面板外壳固定 260×469 不可滚，航点行多时列表内仍可滚轮滚动，
+   但完全隐藏滚动条（视觉更干净），overflow-x hidden 防止行内容超宽时出现横向滚动条 */
 .route-flight-panel__waypoint-list {
   display: flex;
   flex-direction: column;
   max-height: 240px;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(85, 206, 222, 0.6) transparent;
+  /* 隐藏滚动条但保留滚动：Firefox */
+  scrollbar-width: none;
+  /* 隐藏滚动条但保留滚动：旧 Edge/IE */
+  -ms-overflow-style: none;
 }
 
-/* 竖向滚动条（Chromium/WebKit）：4px 宽青色半透明细条，轨道透明 */
+/* 隐藏滚动条但保留滚动：Chromium/WebKit（display:none 后滚轮/触摸/拖拽滚动均不受影响） */
 .route-flight-panel__waypoint-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.route-flight-panel__waypoint-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.route-flight-panel__waypoint-list::-webkit-scrollbar-thumb {
-  border-radius: 2px;
-  background: rgba(85, 206, 222, 0.6);
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* 蓝色分割线：飞行高度步进行与航线信息区之间 */

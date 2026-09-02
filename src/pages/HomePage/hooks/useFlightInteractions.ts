@@ -26,12 +26,15 @@ export function useFlightInteractions(
     setTapReturnHover,
     setTapReturnLine,
     setTapReturnRouteReady,
+    setTapReturnConfirmed,
     tapReturnPoint,
     returnHomeOpen,
     setReturnHomeLines,
+    setReturnHomeConfirmed,
     areaLandingOpen,
     areaLandingRect,
     areaLandingRouteGenerated,
+    setAreaLandingConfirmed,
     rallyPointOpen,
     rallyPointRect,
     rallyPointRouteGenerated,
@@ -41,12 +44,14 @@ export function useFlightInteractions(
     setFormationFlightHover,
     setFormationFlightPoint,
     setFormationFlightRouteGenerated,
+    setFormationFlightConfirmed,
     orbitFlightOpen,
     orbitPoint,
     orbitRouteGenerated,
     setOrbitFlightHover,
     setOrbitPoint,
     setOrbitRouteGenerated,
+    setOrbitFlightConfirmed,
     setOrbitPinMenuOpen,
     setOrbitZoomTick,
     waypointFlightOpen,
@@ -57,6 +62,7 @@ export function useFlightInteractions(
     setWaypointFlightOpen,
     setWaypointPickingActive,
     setWaypointRouteGenerated,
+    setWaypointFlightConfirmed,
     routeFlightOpen,
     routeFlightPicking,
     routeFlightPoints,
@@ -65,6 +71,7 @@ export function useFlightInteractions(
     setRouteFlightPicking,
     setRouteFlightFinished,
     setRouteFlightGenerated,
+    setRouteFlightConfirmed,
     setRoutePinMenu,
     setRoutePinPinned,
   } = panels
@@ -82,13 +89,19 @@ export function useFlightInteractions(
   // 面板收起时（手动取消/点击其他功能按钮互斥切换）终止循环飞行动画；
   // 「确认」不再收起面板，因此确认后循环持续播放，仅手动取消可终止
   useEffect(() => {
-    if (!tapReturnOpen) stopTapReturnFlight()
+    if (!tapReturnOpen) {
+      stopTapReturnFlight()
+      // 确认置灰标记随面板关闭一并复位，重开面板恢复可确认
+      setTapReturnConfirmed(false)
+    }
   }, [tapReturnOpen, stopTapReturnFlight])
   // 返航面板关闭（取消/互斥切换）时清除返航航线连线并终止循环飞行动画；
   // 「确认」不再收起面板，因此确认后循环持续播放，仅手动取消可终止
   useEffect(() => {
     if (!returnHomeOpen) {
       setReturnHomeLines(null)
+      // 确认置灰标记随航线一并复位，重开面板恢复可确认
+      setReturnHomeConfirmed(false)
       stopReturnHomeFlights()
     }
   }, [returnHomeOpen, stopReturnHomeFlights])
@@ -97,6 +110,8 @@ export function useFlightInteractions(
   useEffect(() => {
     if (!areaLandingOpen || !areaLandingRect || !areaLandingRouteGenerated) {
       stopAreaLandingFlights()
+      // 确认置灰标记随面板关闭/选区失效一并复位，重开面板恢复可确认
+      setAreaLandingConfirmed(false)
     }
   }, [areaLandingOpen, areaLandingRect, areaLandingRouteGenerated, stopAreaLandingFlights])
   // 集结点面板关闭（取消/互斥切换）或航线失效（删除重绘/区域清除/重新生成）时终止循环飞行；
@@ -118,6 +133,8 @@ export function useFlightInteractions(
   useEffect(() => {
     if (!orbitFlightOpen || !orbitPoint || !orbitRouteGenerated) {
       stopOrbitFlight()
+      // 确认置灰标记随面板关闭/航线失效一并复位，重开面板恢复可确认
+      setOrbitFlightConfirmed(false)
     }
   }, [orbitFlightOpen, orbitPoint, orbitRouteGenerated, stopOrbitFlight])
 
@@ -245,10 +262,12 @@ export function useFlightInteractions(
       setFormationFlightHover(null)
       setFormationFlightPoint(null)
       setFormationFlightRouteGenerated(false)
+      // 确认置灰标记随面板关闭一并复位，重开面板恢复可确认
+      setFormationFlightConfirmed(false)
     }
   }, [formationFlightOpen])
 
-  // 盘旋圆随缩放重算：缩放结束后 getMetersPerPixel 变化，tick 触发重渲染刷新像素半径
+  // 盘旋圆随缩放重算：缩放结束后 getMetersPerPixel 变化，tick 触发重渲染重算像素半径
   useEffect(() => {
     if (!adapter || !orbitFlightOpen) return
     return adapter.onZoomEnd(() => setOrbitZoomTick((t) => t + 1))
@@ -309,6 +328,8 @@ export function useFlightInteractions(
       setWaypointPoint(null)
       setWaypointRouteGenerated(false)
       setWaypointPickingActive(false)
+      // 确认置灰标记随面板关闭一并复位，重开面板恢复可确认
+      setWaypointFlightConfirmed(false)
     }
   }, [waypointFlightOpen, stopWaypointFlight])
 
@@ -378,6 +399,8 @@ export function useFlightInteractions(
       setRouteFlightGenerated(false)
       setRoutePinMenu(null)
       setRoutePinPinned(null)
+      // 确认置灰标记随面板关闭一并复位，重开面板恢复可确认
+      setRouteFlightConfirmed(false)
     }
   }, [routeFlightOpen, stopRouteFlightAnimation])
 
@@ -396,6 +419,8 @@ export function useFlightInteractions(
     if (routeFlightPoints.length === 0) {
       setRouteFlightFinished(false)
       setRouteFlightGenerated(false)
+      // 确认置灰标记随航线失效一并复位，重新生成并确认后方可再次执行
+      setRouteFlightConfirmed(false)
     }
   }, [routeFlightPoints])
 
@@ -412,6 +437,8 @@ export function useFlightInteractions(
   useEffect(() => {
     setTapReturnRouteReady(false)
     setTapReturnLine(null)
+    // 指令确认置灰标记一并复位：重新取点后需重新走「航线生成 → 确认」流程
+    setTapReturnConfirmed(false)
   }, [tapReturnPoint])
 
   return { handleDeleteRoutePoint }

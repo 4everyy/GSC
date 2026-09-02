@@ -51,6 +51,9 @@ export function useAdvancedPanelStates() {
   const [waypointPickingActive, setWaypointPickingActive] = useState(false)
   // 航线生成状态：定格航点（保持虚线）后点击「航线生成」，虚线定格为实线；重新取点/关闭面板时复位
   const [waypointRouteGenerated, setWaypointRouteGenerated] = useState(false)
+  // 航点飞行指令已确认：滑动二次确认成功后置 true，「确认」按钮随之置灰（防止重复下发指令）；
+  // 面板关闭（取消/互斥切换）时复位，重开面板恢复可确认
+  const [waypointFlightConfirmed, setWaypointFlightConfirmed] = useState(false)
   // 航线飞行取点：点击「航线生成」后进入——光标变带编号的航线图钉，
   // 左键逐点追加航点（1、2、3…），航点1 → 航点2 → … 连线（全程虚线，不与飞机连线）；
   // 右键/Esc 结束取点（保持虚线）并解除「确认」置灰，面板保留可继续操作
@@ -67,6 +70,9 @@ export function useAdvancedPanelStates() {
   const [routeFlightFinished, setRouteFlightFinished] = useState(false)
   // 航线生成状态：标记完成（保持虚线）后点击「航线生成」，虚线定格为实线；重新取点/关闭面板时复位
   const [routeFlightGenerated, setRouteFlightGenerated] = useState(false)
+  // 航线飞行指令已确认：滑动二次确认成功后置 true，「确认」按钮随之置灰（防止重复下发指令）；
+  // 面板关闭（取消/互斥切换）或航点全部删除（航线失效）时复位，重开面板恢复可确认
+  const [routeFlightConfirmed, setRouteFlightConfirmed] = useState(false)
   // 航点删除菜单：menu = 当前显示「删除航点」按钮的航点下标（悬浮或双击触发），
   // pinned = 双击固定的下标（鼠标移出图钉后仍保留）；删除航点/重新取点/关闭面板时清除
   const [routePinMenu, setRoutePinMenu] = useState<number | null>(null)
@@ -90,6 +96,9 @@ export function useAdvancedPanelStates() {
   // 航线生成状态：定格环绕中心（保持虚线）后点击「航线生成」，盘旋圆/最近点连线由虚线定格为实线；
   // 重新取点/关闭面板时复位，生成前「确认」保持置灰
   const [orbitRouteGenerated, setOrbitRouteGenerated] = useState(false)
+  // 环绕飞行指令已确认：滑动二次确认成功后置 true，「确认」按钮随之置灰（防止重复下发指令）；
+  // 面板关闭（取消/互斥切换）或重新取点（航线失效）时复位，重开面板恢复可确认
+  const [orbitFlightConfirmed, setOrbitFlightConfirmed] = useState(false)
   // 环绕飞行已标记态：hover/点击定格图钉显示「取消重绘」按钮，点击按钮清除环绕中心
   // 与实线回到取点模式（跟随 tap-return-marker 图钉 + 隐藏原生光标，可继续标记）
   const [orbitPinMenuOpen, setOrbitPinMenuOpen] = useState(false)
@@ -139,6 +148,9 @@ export function useAdvancedPanelStates() {
   // 布置降落点（area-landing-spot）图标并绘制飞机中心→降落点 1px #00FF95 绿色实线，
   // 同时解除「确认」置灰；取消/关闭面板时清除
   const [formationFlightRouteGenerated, setFormationFlightRouteGenerated] = useState(false)
+  // 编队飞行指令已确认：滑动二次确认成功后置 true，「确认」按钮随之置灰（防止重复下发指令）；
+  // 面板关闭（取消/互斥切换）时复位，重开面板恢复可确认
+  const [formationFlightConfirmed, setFormationFlightConfirmed] = useState(false)
   // 编队队形（受控状态，面板下拉与地图降落点布置联动）：变化时即时重排降落点布局，
   // 模拟飞行进行中则以新队形重启动画
   const [formationFlightFormation, setFormationFlightFormation] =
@@ -196,6 +208,8 @@ export function useAdvancedPanelStates() {
     setWaypointPickingActive,
     waypointRouteGenerated,
     setWaypointRouteGenerated,
+    waypointFlightConfirmed,
+    setWaypointFlightConfirmed,
     routeFlightPicking,
     setRouteFlightPicking,
     routeFlightPoints,
@@ -206,6 +220,8 @@ export function useAdvancedPanelStates() {
     setRouteFlightFinished,
     routeFlightGenerated,
     setRouteFlightGenerated,
+    routeFlightConfirmed,
+    setRouteFlightConfirmed,
     routePinMenu,
     setRoutePinMenu,
     routePinPinned,
@@ -221,6 +237,8 @@ export function useAdvancedPanelStates() {
     setOrbitZoomTick,
     orbitRouteGenerated,
     setOrbitRouteGenerated,
+    orbitFlightConfirmed,
+    setOrbitFlightConfirmed,
     orbitPinMenuOpen,
     setOrbitPinMenuOpen,
     orbitSlide,
@@ -243,8 +261,9 @@ export function useAdvancedPanelStates() {
     setFormationFlightPoint,
     formationFlightRouteGenerated,
     setFormationFlightRouteGenerated,
+    formationFlightConfirmed,
+    setFormationFlightConfirmed,
     formationFlightFormation,
     setFormationFlightFormation,
   }
 }
-

@@ -21,6 +21,9 @@ export interface RouteWaypoint {
 export interface RouteFlightPanelProps {
   /** 航线就绪（已取点定格）后解除「确认」置灰，默认 false 保持置灰 */
   confirmReady?: boolean
+  /** 「航线生成」中间按钮置灰态：默认随 confirmReady（未就绪置灰），
+   *  传入 true 强制置灰（航线已生成后防重复生成） */
+  routeMuted?: boolean
   /** 航点列表：逐行展示（航点 序号 纬度 N° / 经度 E°），随地图取点实时更新 */
   waypoints?: RouteWaypoint[]
   /** 确认：携带当前设置的飞行高度（米） */
@@ -36,6 +39,7 @@ const formatCoord = (v: number) => Math.abs(v).toFixed(2).padStart(6, '0')
 
 export function RouteFlightPanel({
   confirmReady = false,
+  routeMuted,
   waypoints = [],
   onConfirm,
   onGenerateRoute,
@@ -47,7 +51,7 @@ export function RouteFlightPanel({
       heightLabel="飞行高度"
       className="route-flight-panel"
       confirmMuted={!confirmReady}
-      middleMuted={!confirmReady}
+      middleMuted={routeMuted ?? !confirmReady}
       showWaypoint={false}
       onConfirm={onConfirm}
       onGenerateRoute={onGenerateRoute}

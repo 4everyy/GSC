@@ -39,6 +39,9 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
     setHoverOpen,
     returnHomeLines,
     setReturnHomeLines,
+    returnHomeConfirmed,
+    tapReturnConfirmed,
+    setTapReturnConfirmed,
     tapReturnPoint,
     setTapReturnPoint,
     tapReturnRouteReady,
@@ -56,6 +59,8 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
     setAreaLandingCorners,
     areaLandingRouteGenerated,
     setAreaLandingRouteGenerated,
+    areaLandingConfirmed,
+    setAreaLandingConfirmed,
     setTakeoffSlide,
     setLandingSlide,
     setReturnHomeSlide,
@@ -106,10 +111,14 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
             <ReturnHomePanel
               aircraft={selectedAircraft}
               onRemove={handleRemoveAircraft}
-              confirmMuted={!returnHomeLines || returnHomeLines.length === 0}
+              confirmMuted={returnHomeConfirmed || !returnHomeLines || returnHomeLines.length === 0}
+              middleMuted={!!returnHomeLines && returnHomeLines.length > 0}
               onGenerateRoute={() => {
+                // 置灰守卫：航线已生成时按钮置灰，点击兜底拦截（保持已生成航线不变）；
+                // 需重新生成时先「取消」收起面板再重开（关闭时航线自动清除）
+                if (returnHomeLines && returnHomeLines.length > 0) return
                 // 航线生成：每架选中飞机均由其图标中心向正上方各自的返航标记画绿色实线；
-                // 再次点击整体重画；未选中飞机则忽略（保持「确认」置灰）
+                // 未选中飞机则忽略（保持「确认」置灰）
                 // DOM measured anchors (viewport coords) instead of hard-coded offsets:
                 // aircraft icon center -> each selected plane's return marker bottom edge.
                 // getBoundingClientRect() matches the fixed full-viewport SVG
@@ -135,8 +144,8 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
                 setReturnHomeLines(lines.length > 0 ? lines : null)
               }}
               onConfirm={(height) => {
-                // 置灰守卫：未生成返航航线时不弹确认弹窗（按钮视觉置灰兜底拦截）
-                if (!returnHomeLines) return
+                // 置灰守卫：未生成返航航线/已确认过时不弹确认弹窗（按钮视觉置灰兜底拦截）
+                if (!returnHomeLines || returnHomeConfirmed) return
                 // 先弹出滑动二次确认弹窗，滑到最右松手后才真正执行（见下方 SlideConfirmDialog）
                 setReturnHomeSlide({ open: true, height })
               }}
@@ -150,12 +159,18 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
           {tapReturnOpen && (
             <TapReturnPanel
               waypoint={tapReturnPoint}
-              confirmMuted={!tapReturnRouteReady}
+              confirmMuted={!tapReturnRouteReady || tapReturnConfirmed}
+              middleMuted={tapReturnRouteReady}
               onConfirm={(height) => {
+                // 置灰守卫：未生成航线/已确认过时不弹确认弹窗（按钮视觉置灰兜底拦截）
+                if (!tapReturnRouteReady || tapReturnConfirmed) return
                 // 先弹出滑动二次确认弹窗，滑到最右松手后才真正执行（见下方 SlideConfirmDialog）
                 setTapReturnSlide({ open: true, height })
               }}
               onGenerateRoute={() => {
+                // 置灰守卫：航线已生成时按钮置灰，点击兜底拦截（保持已生成航线不变）；
+                // 需重新生成时先「取消」收起面板再重开（关闭时落点/航线自动清除）
+                if (tapReturnRouteReady) return
                 // 航线生成：由选中飞机图标中心向落点画 1px #00FF95 连线（SVG 视口屏幕坐标）；
                 // 连线两端锚定不随地图移动的 DOM 图标，地图缩放/平移不会断开；
                 // 确实画出连线后才解除「确认」置灰（未取点/未选中飞机则保持置灰）
@@ -174,9 +189,10 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
                 setTapReturnRouteReady(true)
               }}
               onCancel={() => {
-                // 手动取消：终止循环飞行动画并清除落点/连线，收起面板
+                // 手动取消：终止循环飞行动画并清除落点/连线/确认标记，收起面板
                 stopTapReturnFlight()
                 setTapReturnPoint(null)
+                setTapReturnConfirmed(false)
                 setTapReturnOpen(false)
               }}
             />
@@ -187,8 +203,11 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
             <AreaLandingPanel
               aircraft={selectedAircraft}
               onRemove={handleRemoveAircraft}
-              routeMuted={!areaLandingRect}
-              confirmMuted={!areaLandingRouteGenerated}
+              // 置灰条件：未框选区域 或 航线已生成时「航线生成」按钮置灰（防重复生成，
+              // 守卫已在 onGenerateRoute 兜底）；需重新绘制时先「取消」收起面板再重进框选
+              routeMuted={!areaLandingRect || areaLandingRouteGenerated}
+              // 置灰条件：未生成航线 或 指令已确认时「确认」按钮置灰（防重复下发指令）
+              confirmMuted={!areaLandingRouteGenerated || areaLandingConfirmed}
               tab={areaLandingTab}
               onTabChange={setAreaLandingTab}
               speed={areaLandingSpeed}
@@ -197,6 +216,8 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
               onFormationChange={setAreaLandingFormation}
               corners={areaLandingCorners}
               onConfirm={(speed, formation) => {
+                // 置灰守卫：未生成航线/已确认过时不弹确认弹窗（按钮视觉置灰兜底拦截）
+                if (!areaLandingRouteGenerated || areaLandingConfirmed) return
                 // 先弹出滑动二次确认弹窗，滑到最右松手后才真正执行（见下方 SlideConfirmDialog）
                 setAreaLandingSlide({ open: true, speed, formation })
               }}
@@ -214,6 +235,8 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
                 setAreaLandingRect(null)
                 setAreaLandingCorners(null)
                 setAreaLandingRouteGenerated(false)
+                // 确认置灰标记随面板取消一并复位，重开面板恢复可确认
+                setAreaLandingConfirmed(false)
                 setAreaLandingOpen(false)
               }}
             />
@@ -236,4 +259,3 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
     </>
   )
 }
-

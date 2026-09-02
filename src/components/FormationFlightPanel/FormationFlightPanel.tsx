@@ -21,6 +21,8 @@ export interface FormationFlightPanelProps {
   waypoint?: { lat: number; lng: number } | null
   /** 「确认」置灰态：默认置灰，航线生成成功后由父层解除（传 false） */
   confirmMuted?: boolean
+  /** 「航线生成」中间按钮置灰态：航线已生成（实线）后置灰防重复生成，默认 false */
+  middleMuted?: boolean
   /* ---- 受控状态（可选）：父层持有可在面板收起/重开间保留已设置信息 ---- */
   /** 编队队形 */
   formation?: FormationFlightFormation
@@ -36,6 +38,7 @@ export interface FormationFlightPanelProps {
 export function FormationFlightPanel({
   waypoint,
   confirmMuted = false,
+  middleMuted = false,
   formation: formationProp,
   onFormationChange,
   onConfirm,
@@ -53,6 +56,7 @@ export function FormationFlightPanel({
       heightLabel="飞行高度"
       className="formation-flight-panel"
       confirmMuted={confirmMuted}
+      middleMuted={middleMuted}
       waypoint={waypoint}
       onConfirm={(height) => onConfirm(height, formation)}
       onGenerateRoute={onGenerateRoute}

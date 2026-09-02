@@ -26,9 +26,12 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
     setHoverOpen,
     setWaypointFlightOpen,
     returnHomeLines,
+    setReturnHomeConfirmed,
+    setTapReturnConfirmed,
     tapReturnLine,
     areaLandingRect,
     areaLandingRouteGenerated,
+    setAreaLandingConfirmed,
     waypointHover,
     setWaypointHover,
     waypointPoint,
@@ -36,7 +39,10 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
     setWaypointPickingActive,
     waypointRouteGenerated,
     setWaypointRouteGenerated,
+    waypointFlightConfirmed,
+    setWaypointFlightConfirmed,
     routeFlightPoints,
+    setRouteFlightConfirmed,
     takeoffSlide,
     setTakeoffSlide,
     landingSlide,
@@ -57,7 +63,6 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
   const {
     startTapReturnFlight,
     startWaypointFlight,
-    stopWaypointFlight,
     startRouteFlightAnimation,
     startReturnHomeFlights,
     startAreaLandingFlights,
@@ -71,24 +76,21 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
           {waypointFlightOpen && (
             <WaypointFlightPanel
               waypoint={waypointPoint ?? waypointHover}
-              confirmMuted={!waypointRouteGenerated}
+              confirmMuted={!waypointRouteGenerated || waypointFlightConfirmed}
+              middleMuted={waypointRouteGenerated}
               onConfirm={(height) => {
-                // 置灰守卫：未生成实线航线时不弹确认弹窗（按钮视觉置灰兜底拦截）
-                if (!waypointRouteGenerated) return
+                // 置灰守卫：未生成实线航线或指令已确认过时不弹确认弹窗（按钮视觉置灰兜底拦截）
+                if (!waypointRouteGenerated || waypointFlightConfirmed) return
                 // 先弹出滑动二次确认弹窗，滑到最右松手后才真正执行（见下方 SlideConfirmDialog）
                 setWaypointSlide({ open: true, height })
               }}
               onGenerateRoute={() => {
-                // 航线生成：已定格航点（虚线）→ 虚线定格为实线；已生成实线 → 清除旧航点重新取点；
+                // 置灰守卫：航线已生成时按钮置灰，点击兜底拦截（保持已生成航线不变）；
+                // 需重新生成时先「取消」收起面板再重开（关闭时航线自动清除）
+                if (waypointRouteGenerated) return
+                // 航线生成：已定格航点（虚线）→ 虚线定格为实线；
                 // 左键定格航点后退出取点，面板保留可继续确认/取消
-                if (waypointRouteGenerated) {
-                  // 已生成实线时点击：终止进行中的循环飞行，清除旧航点重新取点
-                  stopWaypointFlight()
-                  setWaypointPoint(null)
-                  setWaypointHover(null)
-                  setWaypointRouteGenerated(false)
-                  setWaypointPickingActive(true)
-                } else if (waypointPoint) {
+                if (waypointPoint) {
                   setWaypointRouteGenerated(true)
                 } else {
                   setWaypointPoint(null)
@@ -145,6 +147,8 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
                   .map((item) => item.src)
                 startReturnHomeFlights(returnHomeLines, icons)
               }
+              // 确认成功：置灰「确认」按钮（防止重复下发返航指令）；面板关闭时自动复位
+              setReturnHomeConfirmed(true)
               setReturnHomeSlide((s) => ({ ...s, open: false }))
             }}
             onCancel={() => setReturnHomeSlide((s) => ({ ...s, open: false }))}
@@ -167,6 +171,8 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
                   flyIdx !== -1 ? aircraft[flyIdx].src : homeImages.aircraftRed,
                 )
               }
+              // 确认成功：置灰「确认」按钮（防止重复下发指点返航指令）；面板关闭/重新取点时自动复位
+              setTapReturnConfirmed(true)
               setTapReturnSlide((s) => ({ ...s, open: false }))
             }}
             onCancel={() => setTapReturnSlide((s) => ({ ...s, open: false }))}
@@ -224,6 +230,8 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
                   startAreaLandingFlights(routes, pickedFlights.map(({ item }) => item.src))
                 }
               }
+              // 确认成功：置灰「确认」按钮（防止重复下发区域降落指令）；面板关闭/选区失效时自动复位
+              setAreaLandingConfirmed(true)
               setAreaLandingSlide((s) => ({ ...s, open: false }))
             }}
             onCancel={() => setAreaLandingSlide((s) => ({ ...s, open: false }))}
@@ -268,6 +276,8 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
                   )
                 }
               }
+              // 确认成功：置灰「确认」按钮（防止重复下发航点飞行指令）；面板关闭时自动复位
+              setWaypointFlightConfirmed(true)
               setWaypointSlide((s) => ({ ...s, open: false }))
             }}
             onCancel={() => setWaypointSlide((s) => ({ ...s, open: false }))}
@@ -294,6 +304,8 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
                   )
                 }
               }
+              // 确认成功：置灰「确认」按钮（防止重复下发航线飞行指令）；面板关闭/航点清空时自动复位
+              setRouteFlightConfirmed(true)
               setRouteSlide((s) => ({ ...s, open: false }))
             }}
             onCancel={() => setRouteSlide((s) => ({ ...s, open: false }))}
@@ -302,4 +314,3 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
     </>
   )
 }
-

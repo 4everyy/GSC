@@ -143,3 +143,12 @@
   background-color: rgba(153, 153, 153, 0.8);
   color: rgba(255, 255, 255, 0.4);
 }
+
+/* Muted middle button (route-flight / return-home design): gray border + gray text,
+   used after the route has been generated to prevent repeated clicks */
+.panel-shell__btn--middle-muted {
+  border: 1px solid rgba(153, 153, 153, 0.6);
+  background-color: rgba(153, 153, 153, 0.15);
+  color: rgba(255, 255, 255, 0.4);
+  cursor: not-allowed;
+}
