@@ -14,6 +14,7 @@ import { MissionPanel } from '../../components/MissionPanel/MissionPanel'
 import { MapControls } from '../../components/MapControls/MapControls'
 import { MapLoadProgress } from './components/map/MapLoadProgress'
 import { AlarmInfoPanel } from '../../components/AlarmInfoPanel/AlarmInfoPanel'
+import { AlarmDetailPanel } from '../../components/AlarmDetailPanel/AlarmDetailPanel'
 import { MapLibreContainer } from '../../components/MapLibreContainer/MapLibreContainer'
 import { MapScale } from '../../components/MapScale/MapScale'
 import { type FormationFlightFormation } from '../../components/FormationFlightPanel/FormationFlightPanel'
@@ -277,10 +278,11 @@ export function HomePage() {
           <MapToolbar />
 
           {/* 告警信息面板：右上角常显，色调随顶栏激活的告警徽标切换。
-              详情面板（AlarmDetailPanel）暂时隐藏：点击徽标不再展开详情，
-              仅保留徽标高亮与常驻框色调联动；需要时恢复条件渲染即可 */}
-          <div className="alarm-panels">
+              详情面板（AlarmDetailPanel）：点击顶栏告警徽标展开、拼接到常驻框正下方，
+              再次点击同一徽标收起（toggle 由 StatusHeader onAlarmClick 承担） */}
+          <div className={`alarm-panels${activeAlarm !== null ? ' alarm-panels--expanded' : ''}`}>
             <AlarmInfoPanel alarmColor={currentAlarmColor} />
+            {activeAlarm !== null && <AlarmDetailPanel alarmColor={currentAlarmColor} />}
           </div>
           {/* 离线地图管理面板（导入 / 城市切换 / 包列表）暂隐藏——默认自动加载最新苏州包，
               需要手动管理时恢复下方注释即可（严格离线，仅读写本地 IndexedDB） */}

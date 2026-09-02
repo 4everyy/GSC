@@ -81,6 +81,10 @@
   white-space: nowrap;
 }
 
+.status-metric--online span {
+  color: #7bff00;
+}
+
 .status-metric--takeoff span {
   color: #60bff2;
 }
