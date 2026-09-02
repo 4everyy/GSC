@@ -10,13 +10,17 @@
  *   列表与地图图标层渲染时过滤集合内目标（表现上消失），
  *   targets 数组与 mock 源数据保留，面板「刷新」清空集合即恢复显示；
  * - hoveredTargetId：hover 中的目标 id（列表行与地图图标双向同步）；
- * - clickedTargetId：点击联动中的目标 id（列表行点击与地图图标点击双向同步，
+ * - clickedTargetId：点击联动态的目标 id（列表行点击与地图图标点击双向同步，
  *   再次点击同一目标解除联动）；
  * - markedIds：已标记重点的目标 id 集合（列表旗标与地图图标标记背景同步）；
  * - selectedTargetIds：已勾选目标 id 集合（列表勾选框与地图图标单击双向同步，
  *   与 deviceLinkStore.selectedDevices 同模式）；
  * - targetPanelOpenRequests：面板打开请求计数器（首页地图图标点击时 +1，
- *   MapToolbar 监听后打开目标列表面板，与 devicePanelOpenRequests 同模式）。
+ *   MapToolbar 监听后打开目标列表面板，与 devicePanelOpenRequests 同模式）；
+ * - focusTargetRequest：列表聚焦请求（首页地图图标单击时写入目标 id + 递增序号 +
+ *   expand 标记；expand=true 选中点击：列表自动展开对应行详情（手风琴式收起其他行）
+ *   并滚动到列表可视中心；expand=false 再次点击取消选中：收起该行详情；
+ *   处理完成由列表侧清除，避免之后手动重开面板时重复聚焦）。
  */
 import { create } from 'zustand'
 import { targetList, type TargetItem } from '../config/targets'
@@ -51,6 +55,9 @@ interface TargetLinkState {
   deletedTargetIds: Set<string>
   /** Open-panel request counter: +1 each time a target icon is clicked on home page */
   targetPanelOpenRequests: number
+  /** 列表聚焦请求：id 为目标 id，seq 递增保证重复点击同一目标也能触发监听 effect；
+   *  expand=true 展开详情并居中，expand=false 收起详情（取消选中场景） */
+  focusTargetRequest: { id: string; seq: number; expand: boolean } | null
   setTargets: (targets: TargetMarkerItem[]) => void
   setHoveredTargetId: (id: string | null) => void
   /** 点击目标（列表行/地图图标）：再次点击同一目标解除联动 */
@@ -66,6 +73,12 @@ interface TargetLinkState {
   setSelectedTargetIds: (ids: Set<string>) => void
   /** Ask MapToolbar to open the target list panel */
   requestOpenTargetPanel: () => void
+  /** 请求列表聚焦指定目标（首页地图图标单击时调用）：
+   *  expand=true：自动展开对应行详情并滚动到列表可视中心（手风琴式收起其他行）；
+   *  expand=false：收起对应行详情（图标再次点击取消选中时） */
+  requestFocusTarget: (id: string, expand: boolean) => void
+  /** 清除聚焦请求（列表完成展开与滚动后调用，避免重复消费） */
+  clearFocusTargetRequest: () => void
   /** 确认删除：目标「假删除」（仅打软删除标记不物理移除 mock 数据，刷新可恢复），
    *  并同步清理勾选/标记集合与点击联动态 */
   softDeleteTargets: (ids: string[]) => void
@@ -88,6 +101,7 @@ export const useTargetLinkStore = create<TargetLinkState>((set) => ({
   selectedTargetIds: new Set(),
   deletedTargetIds: new Set(),
   targetPanelOpenRequests: 0,
+  focusTargetRequest: null,
   setTargets: (targets) => set({ targets }),
   setHoveredTargetId: (id) => set({ hoveredTargetId: id }),
   toggleClickedTarget: (id) =>
@@ -119,6 +133,11 @@ export const useTargetLinkStore = create<TargetLinkState>((set) => ({
   setSelectedTargetIds: (ids) => set({ selectedTargetIds: ids }),
   requestOpenTargetPanel: () =>
     set((state) => ({ targetPanelOpenRequests: state.targetPanelOpenRequests + 1 })),
+  requestFocusTarget: (id, expand) =>
+    set((state) => ({
+      focusTargetRequest: { id, seq: (state.focusTargetRequest?.seq ?? 0) + 1, expand },
+    })),
+  clearFocusTargetRequest: () => set({ focusTargetRequest: null }),
   softDeleteTargets: (ids) =>
     set((state) => ({
       deletedTargetIds: new Set([...state.deletedTargetIds, ...ids]),
@@ -132,6 +151,11 @@ export const useTargetLinkStore = create<TargetLinkState>((set) => ({
         state.clickedTargetId !== null && ids.includes(state.clickedTargetId)
           ? null
           : state.clickedTargetId,
+      // 被删目标如有未消费的聚焦请求一并清除，避免列表消费到已删除目标
+      focusTargetRequest:
+        state.focusTargetRequest !== null && ids.includes(state.focusTargetRequest.id)
+          ? null
+          : state.focusTargetRequest,
     })),
   restoreTargets: () => set({ deletedTargetIds: new Set() }),
   moveTarget: (id, x, y) =>

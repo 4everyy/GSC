@@ -11,7 +11,9 @@
  * - 列表行 hover / 点击 → 地图图标背景切换
  * - 地图图标 hover / 单击 → 列表行背景同步高亮（hover 橙 / 选中蓝）；
  *   单击行为与设备面板一致：切换该目标的勾选态并请求打开目标列表面板
- *   （勾选集合 selectedTargetIds 双向同步，列表勾选框同步勾上/取消）
+ *   （勾选集合 selectedTargetIds 双向同步，列表勾选框同步勾上/取消），
+ *   同时发出列表聚焦请求（requestFocusTarget）：目标列表对应行详情自动展开
+ *   并滚动到列表可视中心，便于用户一眼查看
  *
  * 拖拽（Pointer Events 统一鼠标/触屏/笔）：
  * - 按下后位移超过 4px 判定为拖拽，图标中心跟随指针实时更新坐标（moveTarget）；
@@ -46,6 +48,8 @@ export function TargetMarkerLayer() {
   const selectedTargetIds = useTargetLinkStore((s) => s.selectedTargetIds)
   const toggleTarget = useTargetLinkStore((s) => s.toggleTarget)
   const requestOpenTargetPanel = useTargetLinkStore((s) => s.requestOpenTargetPanel)
+  // 列表聚焦请求：单击图标后目标列表自动展开对应行详情并滚动到可视中心
+  const requestFocusTarget = useTargetLinkStore((s) => s.requestFocusTarget)
   // 拖拽更新坐标（map-stage 百分比）
   const moveTarget = useTargetLinkStore((s) => s.moveTarget)
   // 「假删除」（软删除）目标 id 集合：图标层过滤隐藏（刷新可恢复）
@@ -97,16 +101,19 @@ export function TargetMarkerLayer() {
     moveTarget(ds.id, x, y)
   }
 
-  /** 松手：若始终未超阈值则视为单击（勾选联动 + 请求开面板） */
-  const handlePointerUp = (e: ReactPointerEvent<HTMLDivElement>, t: TargetMarkerItem) => {
-    const ds = dragState.current
-    if (!ds || ds.pointerId !== e.pointerId) return
-    const wasDrag = ds.moved
-    dragState.current = null
-    if (wasDrag) return
-    toggleTarget(t.id)
-    requestOpenTargetPanel()
-  }
+   /** 松手：若始终未超阈值则视为单击（勾选联动 + 请求开面板 + 列表聚焦展开/收起） */
+   const handlePointerUp = (e: ReactPointerEvent<HTMLDivElement>, t: TargetMarkerItem) => {
+     const ds = dragState.current
+     if (!ds || ds.pointerId !== e.pointerId) return
+     const wasDrag = ds.moved
+     dragState.current = null
+     if (wasDrag) return
+     // 点击前已选中 → 本次点击是取消选中：列表收起该行详情（expand=false）
+     const willSelect = !selectedTargetIds.has(t.id)
+     toggleTarget(t.id)
+     requestOpenTargetPanel()
+     requestFocusTarget(t.id, willSelect)
+   }
 
   /** 指针被系统打断（如触摸被接管）：结束会话，不触发单击 */
   const handlePointerCancel = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -145,13 +152,16 @@ export function TargetMarkerLayer() {
             role="button"
             tabIndex={0}
             aria-label={`${t.name}（${t.type}）`}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                toggleTarget(t.id)
-                requestOpenTargetPanel()
-              }
-            }}
+             onKeyDown={(e) => {
+               if (e.key === 'Enter' || e.key === ' ') {
+                 e.preventDefault()
+                 // 点击前已选中 → 本次是取消选中：列表收起该行详情（expand=false）
+                 const willSelect = !selectedTargetIds.has(t.id)
+                 toggleTarget(t.id)
+                 requestOpenTargetPanel()
+                 requestFocusTarget(t.id, willSelect)
+               }
+             }}
           >
             <img className="target-marker__bg" src={bgImage} alt="" draggable={false} />
             <img className="target-marker__icon" src={typeIcon[t.type]} alt={t.type} draggable={false} />

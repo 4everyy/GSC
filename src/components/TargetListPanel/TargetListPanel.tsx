@@ -25,11 +25,18 @@ const REFRESH_SPIN_MS = 1200
 /** 「刷新完成」提示停留时长（毫秒），到时后提示条自动消失 */
 const REFRESH_DONE_MS = 1600
 
+/** 聚焦滚动：行位置连续两帧位移小于该值视为布局已稳定 */
+const FOCUS_STABLE_DELTA_PX = 0.5
+
+/** 聚焦滚动：稳定前最多重试的帧数（60 帧 ≈ 1 秒），超时放弃本次居中 */
+const FOCUS_MAX_ATTEMPTS = 60
+
 export function TargetListPanel({ onClose, visible = true }: TargetListPanelProps) {
   const [typeFilter, setTypeFilter] = useState('请选择')
   const [openDropdown, setOpenDropdown] = useState(false)
-  // 展开详情的目标 id 集合（行尾箭头切换）
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  // 当前展开详情的目标 id（手风琴模式：同一时刻至多一行展开，
+  // 首页图标聚焦切换目标时自动收起上一行，只展示最新点击目标的详情）
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   // ===== 态势图目标图标联动（targetLinkStore 全局共享，与地图图标双向同步）=====
   // 重点标记的目标 id 集合（旗标图标切换 + 地图图标标记背景同步）
   const markedIds = useTargetLinkStore((s) => s.markedIds)
@@ -62,6 +69,11 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
   const targets = useTargetLinkStore((s) => s.targets)
   const refreshTimer = useRef<number | null>(null)
   const refreshDoneTimer = useRef<number | null>(null)
+  // 列表滚动容器 ref：聚焦定位时把展开行滚动到可视中心
+  const listRef = useRef<HTMLDivElement>(null)
+  // 首页目标图标单击的聚焦请求：自动展开对应行详情并滚动到列表可视中心
+  const focusTargetRequest = useTargetLinkStore((s) => s.focusTargetRequest)
+  const clearFocusTargetRequest = useTargetLinkStore((s) => s.clearFocusTargetRequest)
 
   // 组件卸载时清理定时器与残留 hover 状态，避免内存泄漏与图标残留高亮
   useEffect(() => {
@@ -90,6 +102,73 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
       document.removeEventListener('keydown', closeOnKeyDown)
     }
   }, [addMenuOpen])
+
+  // ===== 首页目标图标单击 → 列表自动聚焦 =====
+  // 收到聚焦请求时（expand 标记区分选中/取消选中）：
+  // - expand=true（选中）：确保行可见（必要时重置筛选）→ 手风琴式仅展开该行详情
+  //   （其余行收起）→ 滚动到列表可视中心；rAF 稳定帧检测后再计算居中，
+  //   规避首次挂载时详情划入动画（0.2s translateY）、字体加载与图片解码
+  //   导致的行位置头几帧持续变化（过早计算会滚动偏差甚至不生效的根因）；
+  // - expand=false（再次点击取消选中）：收起该行详情，不滚动；
+  // 完成后消费请求，避免之后手动重开面板时重复聚焦；超时（≈1s）兜底消费。
+  useEffect(() => {
+    if (!focusTargetRequest) return
+    const { id, expand } = focusTargetRequest
+    // 取消选中：收起该行详情（仅当展开的正是该行），无需滚动，直接消费
+    if (!expand) {
+      setExpandedId((prev) => (prev === id ? null : prev))
+      clearFocusTargetRequest()
+      return
+    }
+    const target = targets.find((t) => t.id === id)
+    // 目标不存在或已被「假删除」：仅消费请求，不展开不滚动
+    if (!target || deletedIds.has(id)) {
+      clearFocusTargetRequest()
+      return
+    }
+    // 当前类型筛选会隐藏该行时重置为「请选择」，保证目标行可见
+    if (typeFilter !== '请选择' && target.type !== typeFilter) {
+      setTypeFilter('请选择')
+    }
+    // 手风琴式展开：仅该行展开，其余行收起（已是该行则保持）
+    setExpandedId(id)
+    // rAF 重试循环：行进入 DOM 且几何位置连续两帧稳定后才计算居中滚动
+    let raf = 0
+    let lastTop = Number.NaN
+    let stableFrames = 0
+    let attempts = 0
+    const tick = () => {
+      const list = listRef.current
+      const row = list?.querySelector<HTMLElement>(`[data-target-id="${CSS.escape(id)}"]`)
+      if (list && row && row.offsetHeight > 0) {
+        const top = row.getBoundingClientRect().top
+        if (Number.isFinite(lastTop) && Math.abs(top - lastTop) < FOCUS_STABLE_DELTA_PX) {
+          stableFrames += 1
+        } else {
+          stableFrames = 0
+        }
+        lastTop = top
+        if (stableFrames >= 2) {
+          // 布局已稳定：行中心对齐列表可视区中心（rect 差值换算，不受嵌套定位影响）
+          const listRect = list.getBoundingClientRect()
+          const rowRect = row.getBoundingClientRect()
+          list.scrollTop += rowRect.top + rowRect.height / 2 - (listRect.top + list.clientHeight / 2)
+          // 居中完成后消费请求
+          clearFocusTargetRequest()
+          return
+        }
+      }
+      attempts += 1
+      if (attempts >= FOCUS_MAX_ATTEMPTS) {
+        // 兜底：超时仍未稳定则放弃本次居中，仅消费请求避免悬挂
+        clearFocusTargetRequest()
+        return
+      }
+      raf = window.requestAnimationFrame(tick)
+    }
+    raf = window.requestAnimationFrame(tick)
+    return () => window.cancelAnimationFrame(raf)
+  }, [focusTargetRequest, targets, deletedIds, typeFilter, clearFocusTargetRequest])
 
   /** 点击刷新：按钮图标旋转 1.2 秒，列表顶部提示「刷新中」→「刷新完成」，停留 1.6 秒后自动消失 */
   const handleRefresh = () => {
@@ -128,12 +207,8 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
   const handleDeleteConfirm = () => {
     if (pendingDeleteIds.length > 0) {
       softDeleteTargets(pendingDeleteIds)
-      // 收起被删目标行内展开的详情
-      setExpandedIds((prev) => {
-        const next = new Set(prev)
-        pendingDeleteIds.forEach((id) => next.delete(id))
-        return next
-      })
+      // 收起被删目标行内展开的详情（展开的行被删时清空展开态）
+      setExpandedId((prev) => (prev !== null && pendingDeleteIds.includes(prev) ? null : prev))
     }
     closeDeleteDialog()
   }
@@ -171,15 +246,9 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     toggleTarget(id)
   }
 
-  /** 切换行内详情展开/收起（行尾箭头） */
+  /** 切换行内详情展开/收起（行尾箭头，手风琴：展开新行自动收起其他行） */
   const toggleExpand = (id: string) => {
-    const next = new Set(expandedIds)
-    if (next.has(id)) {
-      next.delete(id)
-    } else {
-      next.add(id)
-    }
-    setExpandedIds(next)
+    setExpandedId((prev) => (prev === id ? null : id))
   }
 
   /** 清除类型筛选：恢复「请选择」占位（显示全部目标） */
@@ -326,7 +395,7 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
 
       {/* 目标列表 */}
       <div className="target-panel__body">
-        <div className="target-panel__list">
+        <div className="target-panel__list" ref={listRef}>
           {filteredTargets.length === 0 ? (
             <div className="target-panel__list-empty">
               <img src={deviceImages.noData} alt="暂无目标" draggable={false} />
@@ -335,7 +404,7 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
           ) : (
             filteredTargets.map((t) => {
               const isSelected = selectedIds.has(t.id)
-              const isExpanded = expandedIds.has(t.id)
+              const isExpanded = expandedId === t.id
               const isClicked = clickedTargetId === t.id
               // 行背景多态与设备管理面板一致：
               // 选中(蓝) > 点击联动(蓝) > hover(橙) > 普通(灰)
@@ -348,6 +417,7 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                 <div
                   className={`target-row-wrapper${isExpanded ? ' target-row-wrapper--expanded' : ''}`}
                   key={t.id}
+                  data-target-id={t.id}
                 >
                 <div
                   className={`target-row${isSelected ? ' target-row--selected' : ''}${clickedTargetId === t.id ? ' target-row--clicked' : ''}`}
