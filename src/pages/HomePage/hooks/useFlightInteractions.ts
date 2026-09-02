@@ -141,7 +141,8 @@ export function useFlightInteractions(
   }, [orbitFlightOpen, orbitPoint, orbitRouteGenerated, stopOrbitFlight])
 
   // 指点返航取点：面板打开期间点击地图（.map-base 容器内）即取点——document capture 阶段监听，
-  // 面板/底栏/顶栏等 UI 上的点击因不在地图容器内而被忽略；再次点击覆盖上一次落点
+  // 面板/底栏/顶栏等 UI 上的点击因不在地图容器内而被忽略；再次点击覆盖上一次落点；
+  // 落点定格后右键点击地图等效「取消」按钮——清除落点并恢复取点光标，可继续重新标点
   useEffect(() => {
     if (!tapReturnOpen) return
     const handleMapClick = (e: MouseEvent) => {
@@ -168,14 +169,28 @@ export function useFlightInteractions(
       }
       setTapReturnHover({ x: e.clientX, y: e.clientY })
     }
+    // 右键取消落点：落点定格后右键点击地图等效「取消」按钮——清除落点（含已生成
+    // 航线/循环飞行一并终止），光标恢复取点跟随图钉，可继续点选新落点；
+    // 面板保持打开；仅在地图上生效（点击 UI 不取消），取点阶段（未定格）右键不处理
+    const handleTapReturnContextMenu = (e: MouseEvent) => {
+      if (!adapter || !tapReturnPoint) return
+      const container = adapter.getContainer()
+      if (!container || !(e.target instanceof Node) || !container.contains(e.target)) return
+      e.preventDefault()
+      setTapReturnPoint(null)
+      setTapReturnPointConfirmed(false)
+      stopTapReturnFlight()
+    }
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('click', handleMapClick, true)
+    document.addEventListener('contextmenu', handleTapReturnContextMenu)
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('click', handleMapClick, true)
+      document.removeEventListener('contextmenu', handleTapReturnContextMenu)
       setTapReturnHover(null)
     }
-  }, [tapReturnOpen, adapter])
+  }, [tapReturnOpen, tapReturnPoint, adapter, stopTapReturnFlight])
 
   // 环绕飞行取点：面板打开期间鼠标在地图容器内移动时图钉实时跟随（钉尖对准鼠标，
   // 替代原生光标），鼠标移到面板/UI 上时隐藏跟随图钉；左键点击地图定格环绕中心
