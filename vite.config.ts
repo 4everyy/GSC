@@ -70,6 +70,12 @@ export default defineConfig({
   },
   server: {
     host: true,
+    port: 9090,
+    // 离线地图包体积大（数十~数百 MB），chokidar 监听复制中的大文件会 EBUSY 崩溃
+    // dev server；瓦片按需 fetch，无需热更新，直接忽略。
+    watch: {
+      ignored: ['**/maps/**/*.mbtiles'],
+    },
   },
   preview: {
     host: true,

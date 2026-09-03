@@ -4,17 +4,19 @@
  * 设计稿 box_6：414×632（1920×1080 基准），所有尺寸经 clamp(px, vw, px) 等比缩放
  * （414/1920 = 21.5625vw、632/1920 = 32.9vw、41/1920 = 2.135vw …）。
  *
- * 定位：相对 HomePage 的 .alarm-panels wrapper——top:100% 紧贴常驻告警框下缘 + 4px 间距。
+ * 定位：作为 HomePage 的 .alarm-panels wrapper 第二个 flex 项，位于常驻告警框正下方，
+ * 与其保持 4px 分隔间距（由 wrapper 的 gap 提供，1920 基准），两框互不重叠。
  * 色调（红/橙/蓝）与常驻告警框 AlarmInfoPanel 一致，由 alarmColor prop 驱动。
  */
 .alarm-detail-panel {
   position: relative;
   box-sizing: border-box;
   width: clamp(207px, 21.5625vw, 414px);
-  /* 仅详情部分高度：510 = 632（box_6 全高）- 122（box_3 复制区）。
-     作为 wrapper 第二个 flex 项允许收缩：视口高度不足时（wrapper max-height
-     已为右下控件带预留空间）按可用空间压缩高度，避免覆盖图层按钮 */
-  height: clamp(255px, 26.5625vw, 510px);
+  /* 高度上限 541（1920 基准）= 筛选条 41 + 下间距 16 + 卡片 5×84 + 卡间距 4×16。
+     不写死 height、由 max-height 封顶：面板作为 grid 拉伸项随外层轨道伸缩——
+     视口充足时为内容自然高度（5 卡全显），不足时随轨道压缩、底缘缺口保持可视，
+     超出卡片改由列表区内部滚动查看（wrapper 已为右下控件预留空间） */
+  max-height: clamp(270.5px, 28.177vw, 541px);
   min-height: 0;
   overflow: hidden;
   padding: 0;
@@ -27,11 +29,11 @@
 }
 
 /* ==================== 筛选条 ==================== */
+/* 背景条铺满面板整行（去除左边距，左缘与外围容器无空档） */
 .alarm-detail-panel__filter {
   position: relative;
   height: clamp(20px, 2.135vw, 41px);
   margin-bottom: clamp(8px, 0.83vw, 16px);
-  margin-left: clamp(14px, 1.458vw, 28px);
 }
 
 .alarm-detail-panel__filter-bg {
@@ -42,192 +44,241 @@
   object-fit: fill;
 }
 
+/* 纯白切图（alarm-detail-icon.png）作 alpha 遮罩，填色 #F32C30：
+   染色后与「紧急信息」文案同色，且保留原图抗锯齿边缘 */
 .alarm-detail-panel__filter-icon {
   position: absolute;
-  left: clamp(6px, 0.625vw, 12px);
+  /* 与下方列表区内容边距对齐（28px，1920 基准） */
+  left: clamp(14px, 1.458vw, 28px);
   top: 50%;
   transform: translateY(-50%);
   width: clamp(7px, 0.73vw, 14px);
   height: clamp(7px, 0.73vw, 14px);
+  background-color: #f32c30;
+  -webkit-mask: url('../../assets/images/home/alarm-detail-icon.png') center / contain no-repeat;
+  mask: url('../../assets/images/home/alarm-detail-icon.png') center / contain no-repeat;
 }
 
+/* 图标右缘（28+14=42px）+ 3px 间距 = 45px（1920 基准）；文字 16px */
 .alarm-detail-panel__filter-title {
   position: absolute;
-  left: clamp(24px, 2.5vw, 48px);
+  left: clamp(22.5px, 2.34vw, 45px);
   top: 50%;
   transform: translateY(-50%);
-  font-size: clamp(6px, 0.625vw, 12px);
-  color: #fff;
+  font-size: clamp(8px, 0.833vw, 16px);
+  color: #f32c30;
 }
 
+/* 「处理状态」：12px / MiSans（本地字体 public/fonts，断网可用）。
+   右缘 = 下拉框左缘（右边距 16px + 框宽 + 8px 间距，均 1920 基准等比 clamp） */
 .alarm-detail-panel__filter-status-label {
   position: absolute;
-  left: 55%;
+  right: calc(clamp(8px, 0.833vw, 16px) + clamp(48px, 5vw, 96px) + clamp(4px, 0.4167vw, 8px));
   top: 50%;
   transform: translateY(-50%);
+  font-family: MiSans, MiSans;
   font-size: clamp(6px, 0.625vw, 12px);
   color: #fff;
 }
 
+/* 原生下拉框：可见框体（半透明底 + 描边 + 圆角，与事件卡片同风格），
+   appearance 去原生箭头、右缘沿用箭头切图；空占位 option（disabled hidden）无文案 */
 .alarm-detail-panel__select {
   position: absolute;
-  left: 68%;
+  /* 距外容器右侧 16px（1920 基准，16/1920 = 0.833vw，半屏 960 时 8px） */
+  right: clamp(8px, 0.833vw, 16px);
   top: 50%;
   transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  gap: clamp(2px, 0.21vw, 4px);
-}
-
-.alarm-detail-panel__select-text {
+  box-sizing: border-box;
+  width: clamp(48px, 5vw, 96px);
+  height: clamp(13px, 1.35vw, 26px);
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #46dce7;
+  border-radius: clamp(1px, 0.104vw, 2px);
+  padding: 0 clamp(9px, 0.94vw, 18px) 0 clamp(2px, 0.21vw, 4px);
+  background: rgba(255, 255, 255, 0.08) url('../../assets/images/home/alarm-detail-select-arrow.png')
+    right center / clamp(8px, 0.833vw, 16px) clamp(8px, 0.833vw, 16px) no-repeat;
+  font-family: MiSans, MiSans;
   font-size: clamp(6px, 0.625vw, 12px);
   color: #fff;
+  cursor: pointer;
+  /* 原生控件整体按深色主题渲染：展开的选项弹层同步变深底，
+     白字选项可辨（Chrome/Edge on Windows 生效），配合下方 option 染色双保险 */
+  color-scheme: dark;
 }
 
-.alarm-detail-panel__select-arrow {
-  width: clamp(8px, 0.833vw, 16px);
-  height: clamp(8px, 0.833vw, 16px);
-  object-fit: contain;
+.alarm-detail-panel__select:focus {
+  outline: none;
 }
 
-/* ==================== 事件卡片列表 ==================== */
+/* 展开的选项弹层适配深色主题：原生弹层默认白底，白字选项不可辨。
+   深蓝底 + 白字（与面板青蓝色调一致）；Windows Chrome/Edge 完全生效，
+   hover 高亮沿用系统色，selected 项加青色描边提示当前值 */
+.alarm-detail-panel__select option {
+  background-color: #16294c;
+  color: #fff;
+  font-family: MiSans, MiSans;
+}
+
+/* ==================== 告警卡片列表（新版 box_7） ==================== */
+/* 设计稿：卡片宽 382 = 面板 414 - 左右各 16 内边距 */
 .alarm-detail-panel__events {
   position: relative;
   flex: 1;
-  padding-left: clamp(14px, 1.458vw, 28px);
-  padding-right: clamp(12px, 1.25vw, 24px);
-  overflow: hidden;
+  /* 视口高度不足、面板随外层轨道压缩时：第 5 张卡片经纵向滚动查看；
+     滚动条隐藏（滚轮/触摸仍可滚），滚动不穿透（contain）到底层地图。
+     overflow 非 visible 使 min-height:auto 归 0，flex:1 可收缩至剩余空间 */
+  min-height: 0;
+  padding-left: clamp(8px, 0.833vw, 16px);
+  padding-right: clamp(8px, 0.833vw, 16px);
+  /* 滚动到底时最后一行与面板底缘预留 16px（同卡片间距，1920 基准等比）：
+     padding-bottom 计入滚动内容高度，滚至尽头即呈现该底部间距 */
+  padding-bottom: clamp(8px, 0.83vw, 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* 旧版 Edge */
 }
 
-/* 右侧滚动条装饰（4×80，绝对定位右缘） */
-.alarm-detail-panel__scrollbar {
-  position: absolute;
-  right: clamp(6px, 0.625vw, 12px);
-  top: clamp(10px, 1.04vw, 20px);
-  width: clamp(2px, 0.21vw, 4px);
-  height: clamp(40px, 4.17vw, 80px);
-  background: url('../../assets/images/home/alarm-detail-scrollbar.png') center / contain no-repeat;
+/* Chrome / Edge / Safari：隐藏列表区滚动条 */
+.alarm-detail-panel__events::-webkit-scrollbar {
+  display: none;
 }
 
+
+/* 卡片 box_7（382×84）：青→蓝半透明横向渐变 + 2px 圆角。
+   设计稿 border: 1px gradient 为无效声明，意图即无边框纯渐变；
+   高度 84px 由 min-height 驱动（收起态内容行高合计恰为 84，视觉一致）；
+   展开态随详情区行数自然加高（滑动过渡见下方手风琴区） */
 .alarm-detail-panel__event {
-  display: flex;
-  align-items: flex-start;
-  gap: clamp(6px, 0.625vw, 12px);
+  box-sizing: border-box;
+  min-height: clamp(42px, 4.375vw, 84px);
+  background-image: linear-gradient(90deg, rgba(110, 254, 227, 0.3) 0, rgba(72, 112, 255, 0.2) 100%);
+  border-radius: clamp(1px, 0.104vw, 2px);
+  /* 与下方卡片间距 16px（1920 基准）；最后一张卡片由 :last-child 归零，
+     避免溢出滚动区底缘 */
   margin-bottom: clamp(8px, 0.83vw, 16px);
 }
 
-/* 时间轴节点（50×50 切图，精灵区取 35×35 圆环 + 3×3 白点居中） */
-.alarm-detail-panel__node {
-  position: relative;
-  width: clamp(18px, 1.82vw, 35px);
-  height: clamp(18px, 1.82vw, 35px);
-  flex-shrink: 0;
-  background: url('../../assets/images/home/alarm-detail-node.png') left top / clamp(26px, 2.6vw, 50px) clamp(26px, 2.6vw, 50px) no-repeat;
+.alarm-detail-panel__event:last-child {
+  margin-bottom: 0;
 }
 
-.alarm-detail-panel__node-dot {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: clamp(2px, 0.16vw, 3px);
-  height: clamp(2px, 0.16vw, 3px);
-  transform: translate(-50%, -50%);
-  background: #fff;
-  border-radius: 50%;
-}
-
-/* 卡片容器 */
-.alarm-detail-panel__card {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: clamp(2px, 0.21vw, 4px);
-  padding: clamp(4px, 0.417vw, 8px) clamp(6px, 0.625vw, 12px);
-}
-
-/* 卡片头部：标题 + 时间 + 状态徽章 */
-.alarm-detail-panel__card-head {
+/* 头部区（分隔线上方）：固定高 35px = 6(顶距) + 24(内容行) + 5(距分隔线) */
+.alarm-detail-panel__event-head {
   display: flex;
   align-items: center;
-  gap: clamp(4px, 0.417vw, 8px);
+  box-sizing: border-box;
+  height: clamp(17.5px, 1.823vw, 35px);
+  padding: 0 clamp(8px, 0.833vw, 16px);
 }
 
-.alarm-detail-panel__card-title {
-  font-size: clamp(6px, 0.625vw, 12px);
-  color: #fff;
-  font-weight: 500;
-}
-
-.alarm-detail-panel__card-time {
-  font-size: clamp(6px, 0.625vw, 12px);
-  color: rgba(255, 255, 255, 0.6);
-  margin-left: auto;
-}
-
-.alarm-detail-panel__card-status {
-  width: clamp(12px, 1.25vw, 24px);
-  height: clamp(12px, 1.25vw, 24px);
-  object-fit: contain;
-}
-
-/* 分隔线 */
-.alarm-detail-panel__card-divider {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.12);
-  margin: clamp(3px, 0.31vw, 6px) 0;
-}
-
-/* 卡片主体：无人机 + 告警文本 */
-.alarm-detail-panel__card-body {
-  display: flex;
-  align-items: center;
-  gap: clamp(4px, 0.417vw, 8px);
-}
-
-.alarm-detail-panel__card-drone-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(1px, 0.104vw, 2px);
-  flex-shrink: 0;
-}
-
-.alarm-detail-panel__card-drone {
-  width: clamp(13px, 1.35vw, 26px);
-  height: clamp(13px, 1.35vw, 26px);
-  object-fit: contain;
-}
-
-.alarm-detail-panel__card-drone-name {
-  font-size: clamp(5px, 0.52vw, 10px);
-  color: rgba(255, 255, 255, 0.6);
+/* 标题 text_7：14px MiSans-Regular */
+.alarm-detail-panel__event-title {
+  color: rgba(255, 255, 255, 1);
+  font-size: clamp(7px, 0.729vw, 14px);
+  font-family: MiSans-Regular;
+  line-height: clamp(7px, 0.729vw, 14px);
   white-space: nowrap;
 }
 
-.alarm-detail-panel__card-text {
-  flex: 1;
+/* 时间 text_8：12px 右对齐，margin-left:auto 推向右侧 */
+.alarm-detail-panel__event-time {
+  color: rgba(255, 255, 255, 1);
   font-size: clamp(6px, 0.625vw, 12px);
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.4;
+  font-family: MiSans-Regular;
+  line-height: clamp(6px, 0.625vw, 12px);
+  text-align: right;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+/* 状态徽章 label_15：24×24 */
+.alarm-detail-panel__event-status {
+  width: clamp(12px, 1.25vw, 24px);
+  height: clamp(12px, 1.25vw, 24px);
+  object-fit: contain;
+  margin-left: clamp(10.5px, 1.09375vw, 21px);
+}
+
+/* 青色分隔线 group_8：rgba(85,206,222,1) 1px，左缩 1px（上 35 / 下 48 分区分界） */
+.alarm-detail-panel__event-divider {
+  height: 1px;
+  background-color: rgba(85, 206, 222, 1);
+  margin: 0 0 0 1px;
+}
+
+/* 主体区（分隔线下方）：固定高 48px = 11(顶距) + 28(内容) + 9(底距) */
+.alarm-detail-panel__event-body {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: clamp(24px, 2.5vw, 48px);
+  padding: 0 clamp(8px, 0.833vw, 16px);
+  /* 聚合卡展开/收起时主体行高度收纳过渡（与详情滑出同步 0.35s） */
+  transition: height 0.35s ease, opacity 0.2s ease;
+}
+
+/* 聚合卡展开态：主体行（图标+首架无人机名）与展开区首条目重复，整行收纳 */
+.alarm-detail-panel__event-body--hidden {
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+/* 无人机图标 thumbnail_6：18×18，顶部下探 10px */
+.alarm-detail-panel__event-drone {
+  width: clamp(9px, 0.9375vw, 18px);
+  height: clamp(9px, 0.9375vw, 18px);
+  object-fit: contain;
+}
+
+/* 无人机名称 text_9：14px MiSans-Regular，与图标间距 12px */
+.alarm-detail-panel__event-drone-name {
+  color: rgba(255, 255, 255, 1);
+  font-size: clamp(7px, 0.729vw, 14px);
+  font-family: MiSans-Regular;
+  line-height: clamp(7px, 0.729vw, 14px);
+  white-space: nowrap;
+  margin-left: clamp(6px, 0.625vw, 12px);
+}
+
+/* 告警文本 text_10：14px MiSans-Medium，左距 16；
+   预设 max-width（容纳演示文案）+ overflow hidden，配合下方 --hidden
+   过渡实现展开/收起时的收纳淡出，无瞬跳 */
+.alarm-detail-panel__event-text {
+  color: rgba(255, 255, 255, 1);
+  font-size: clamp(7px, 0.729vw, 14px);
+  font-family: MiSans-Medium;
+  font-weight: 500;
+  line-height: clamp(7px, 0.729vw, 14px);
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: clamp(240px, 25vw, 480px);
+  margin-left: clamp(8px, 0.833vw, 16px);
+  transition: max-width 0.35s ease, opacity 0.35s ease, margin-left 0.35s ease;
+}
+
+/* 展开态：简要文案收纳淡出（与详情滑出同步过渡，内容改由 detail 承担） */
+.alarm-detail-panel__event-text--hidden {
+  max-width: 0;
+  opacity: 0;
+  margin-left: 0;
 }
 
 /* ==================== 色调变体 ====================
-   与常驻告警框 AlarmInfoPanel 同参数的 inset 内阴影（描边环线 + 内发光） */
-.alarm-detail-panel--red {
-  box-shadow: inset 0 0 0 1px rgba(243, 44, 48, 0.55),
-    inset 0 0 clamp(10px, 1.56vw, 30px) rgba(243, 44, 48, 0.2);
-}
-
-.alarm-detail-panel--orange {
-  box-shadow: inset 0 0 0 1px rgba(243, 194, 0, 0.55),
-    inset 0 0 clamp(10px, 1.56vw, 30px) rgba(243, 194, 0, 0.18);
-}
-
+   类名仅作状态标记（供选择器/JS 使用），不叠加任何视觉层：
+   inset 矩形描边会在背景切图（alarm-detail-bg.png）底部切角/圆角处
+   露出红色角线（左下/右下两条突兀线段），内辉光则呈现为整圈彩色阴影框，
+   与常驻告警框 AlarmInfoPanel 同步移除，保持背景切图原始外观 */
+.alarm-detail-panel--red,
+.alarm-detail-panel--orange,
 .alarm-detail-panel--blue {
-  box-shadow: inset 0 0 0 1px rgba(64, 158, 255, 0.55),
-    inset 0 0 clamp(10px, 1.56vw, 30px) rgba(64, 158, 255, 0.18);
+  /* 无任何 box-shadow */
 }
 
-/* 背景切图按 box_6 全高渲染、底缘锚定：满高 510px 时顶部 122px 复制区被面板顶边裁掉，
+/* 背景切图按 box_6 全高渲染、底缘锚定：满高 541px 时顶部 91px 复制区被面板顶边裁掉，
    与原「上移 -122px」效果完全一致；高度收缩时顶部动态多裁、底部圆角始终贴合面板底缘。
    独立伪元素层单独设透明度（与常驻告警框 ::before 的 0.8 一致，透出底层地图） */
 .alarm-detail-panel::before {
@@ -245,4 +296,166 @@
 .alarm-detail-panel > * {
   position: relative;
   z-index: 1;
+}
+
+/* ====== 告警级别变体：筛选条标题 + 左侧图标换色 ======
+   一级（红，默认）#F32C30 / 二级（橙）#F3C200 / 三级（蓝）#0EA7F9；
+   图标为纯白切图 mask 染色，改 background-color 即可 */
+.alarm-detail-panel--orange .alarm-detail-panel__filter-title {
+  color: #f3c200;
+}
+
+.alarm-detail-panel--orange .alarm-detail-panel__filter-icon {
+  background-color: #f3c200;
+}
+
+.alarm-detail-panel--blue .alarm-detail-panel__filter-title {
+  color: #0ea7f9;
+}
+
+.alarm-detail-panel--blue .alarm-detail-panel__filter-icon {
+  background-color: #0ea7f9;
+}
+/* ====== 卡片点击展开详情（手风琴 + 滑动过渡） ======
+   卡片整体可点击（收起/展开态均可点击切换）。详情区经 grid-template-rows
+   0fr→1fr 滑出/收回（与外层 alarm-panels 展开同一手法），opacity 同步
+   淡入淡出，时长 0.35s 与面板收起动画一致，过渡丝滑。
+   卡片高度由上方 min-height 驱动：收起态内容合计恰为基准高（35+1+48=84px），
+   展开时随详情行数自然加高，全程无高度跳变 */
+.alarm-detail-panel__event {
+  cursor: pointer;
+}
+
+/* 滑动展开容器：行高 0fr（收回）→ 1fr（展开） */
+.alarm-detail-panel__event-expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.35s ease, opacity 0.35s ease;
+}
+
+.alarm-detail-panel__event-expand--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* 内层：overflow hidden + min-height 0 使 0fr 行高生效（收回时裁切隐藏详情） */
+.alarm-detail-panel__event-expand-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* 展开后的详细文案：与上方「01无人机」行视觉间距 16px —— 主体行固定高
+   48px 垂直居中底部留白 15px + 此处 margin-top 1px；
+   多行文本随卡片宽度自动换行。
+   文字样式（设计稿）：MiSans / 500 / 14px / #FFFFFF / 左对齐 / normal / none */
+.alarm-detail-panel__event-detail {
+  box-sizing: border-box;
+  margin-top: clamp(0.5px, 0.052vw, 1px);
+  padding: 0 clamp(8px, 0.833vw, 16px) clamp(5.5px, 0.57vw, 11px);
+  font-family: MiSans, MiSans;
+  font-weight: 500;
+  font-size: clamp(7px, 0.729vw, 14px);
+  color: #ffffff;
+  text-align: left;
+  font-style: normal;
+  text-transform: none;
+  line-height: clamp(10px, 1.04vw, 20px);
+  white-space: normal;
+  word-break: break-all;
+}
+/* ====== 已读态卡片（点击展开过即已读，收起后保持） ======
+   整卡背景换灰调渐变 + 2px 圆角。
+   1px 左深右淡渐变描边：双层背景 + 1px 透明真实边框实现——
+   第一层 padding-box 填充内部灰调渐变，第二层 border-box 从边框区透出
+   形成渐变描边环。真实 border 与 border-radius 天然协同，圆角必定生效；
+   弃用前两版方案（border-image 会使圆角退化直角；mask 镂空方案在部分
+   Chromium 下 mask-composite 行为差异致圆角被矩形覆盖） */
+.alarm-detail-panel__event--read {
+  border: 1px solid transparent;
+  border-radius: clamp(1px, 0.104vw, 2px);
+  background-image:
+    linear-gradient(90deg, rgba(189, 189, 189, 0.3) 0%, rgba(240, 240, 240, 0.2) 100%),
+    linear-gradient(90deg, rgba(98, 98, 98, 0.4), rgba(108, 108, 108, 0));
+  background-clip: padding-box, border-box;
+  background-origin: padding-box, border-box;
+}
+
+/* 已读态分隔线：青色 → #B3B3B3（与灰调卡片配色统一） */
+.alarm-detail-panel__event--read .alarm-detail-panel__event-divider {
+  background-color: #b3b3b3;
+}
+/* ====== 聚合告警卡（多机相同告警聚合展示） ======
+   头部：标题后跟数量角标（带圈数字 ③ = 3 架）；
+   展开：逐架列出无人机（图标+名称+该机详细文案） */
+
+/* 数量角标：白色带圈数字，规格 18×18（字号=行高=18px），
+   与前面标题文案间距 4px，垂直居中 */
+.alarm-detail-panel__event-count {
+  margin-left: clamp(2px, 0.208vw, 4px);
+  color: rgba(255, 255, 255, 1);
+  font-size: clamp(9px, 0.9375vw, 18px);
+  font-family: MiSans-Regular;
+  line-height: clamp(9px, 0.9375vw, 18px);
+  align-self: center;
+}
+
+/* 聚合详情列表：纵向堆叠各无人机条目；
+   顶部 11px 与上方青色分隔线留距（主体行展开态已收纳，分隔线直接邻接首条目） */
+.alarm-detail-panel__event-drones {
+  padding: clamp(5.5px, 0.57vw, 11px) clamp(8px, 0.833vw, 16px) clamp(5.5px, 0.57vw, 11px);
+}
+
+/* 相邻条目间：间距 + 细分隔线。
+   分隔线贯穿至卡片左右边界：负 margin 抵消容器水平 padding，
+   条目内容再以等量 padding 补回缩进，仅线外扩；
+   与头部行分隔线统一实现（height:1px + background-color 伪元素），
+   避免 border 与 height 在 DPI 缩放下亚像素舍入差异导致粗细/颜色不一致，
+   未读青色 / 已读 #B3B3B3，两处分隔线渲染完全一致 */
+.alarm-detail-panel__event-drone-item + .alarm-detail-panel__event-drone-item {
+  position: relative;
+  margin-top: clamp(6px, 0.625vw, 12px);
+  margin-left: calc(clamp(8px, 0.833vw, 16px) * -1);
+  margin-right: calc(clamp(8px, 0.833vw, 16px) * -1);
+  padding-top: clamp(6px, 0.625vw, 12px);
+  padding-left: clamp(8px, 0.833vw, 16px);
+  padding-right: clamp(8px, 0.833vw, 16px);
+}
+
+.alarm-detail-panel__event-drone-item + .alarm-detail-panel__event-drone-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: rgba(85, 206, 222, 1);
+}
+
+/* 已读态条目分隔线：与头部行分隔线已读态同色 #B3B3B3 */
+.alarm-detail-panel__event--read
+  .alarm-detail-panel__event-drone-item
+  + .alarm-detail-panel__event-drone-item::before {
+  background-color: #b3b3b3;
+}
+
+/* 单架条目头：图标 + 无人机名称（复用主体行图标/名称规格） */
+.alarm-detail-panel__event-drone-item-head {
+  display: flex;
+  align-items: center;
+}
+
+/* 单架详细文案：与单卡详情同排版（MiSans/500/14px/#FFF） */
+.alarm-detail-panel__event-drone-item-detail {
+  margin-top: clamp(4px, 0.417vw, 8px);
+  font-family: MiSans, MiSans;
+  font-weight: 500;
+  font-size: clamp(7px, 0.729vw, 14px);
+  color: #ffffff;
+  text-align: left;
+  font-style: normal;
+  text-transform: none;
+  line-height: clamp(10px, 1.04vw, 20px);
+  white-space: normal;
+  word-break: break-all;
 }

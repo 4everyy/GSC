@@ -99,6 +99,11 @@ interface OfflineMapState {
   importPackage: (file: File, sourceKey?: string) => Promise<OfflinePackageMeta | null>
   /** 删除离线包（若删除的是激活包则清除激活） */
   removePackage: (id: string) => Promise<void>
+  /**
+   * 删除全部非卫星离线包（矢量/街道图等），仅保留离线卫星影像包（jpg/jpeg）。
+   * 应用启动时调用一次，确保地面站只渲染卫星底图。
+   */
+  pruneNonSatellitePackages: () => Promise<void>
   /** 切换激活包（null 表示回到占位底图） */
   setActivePackage: (id: string | null) => void
   /**
@@ -112,7 +117,7 @@ interface OfflineMapState {
   ensureCityPackage: (cityKey: string, opts?: { force?: boolean }) => Promise<string | null>
   /**
    * 强制更新指定城市的离线包：
-   * 删除 IndexedDB 中的旧包（含全部瓦片），再从 public/maps/{key}.mbtiles
+   * 删除 IndexedDB 中的旧包（含全部旧瓦片），再从 public/maps/{key}.mbtiles
    * 重新拉取导入并激活（带 cache-busting，避免浏览器 HTTP 缓存返回旧文件）。
    * 用于静态目录中的 mbtiles 更新后，让已导入的客户端升级到新版数据。
    * @returns 激活的包 id；失败返回 null
@@ -182,6 +187,24 @@ export const useOfflineMapStore = create<OfflineMapState>((set, get) => ({
         error: err instanceof Error ? err.message : '删除离线包失败',
       })
     }
+  },
+
+  pruneNonSatellitePackages: async () => {
+    // 卫星影像包为 jpg/jpeg 栅格；矢量/街道图包（png 等）一律删除
+    const nonSatellite = get().packages.filter(
+      (p) => p.format !== 'jpg' && p.format !== 'jpeg',
+    )
+    if (nonSatellite.length === 0) return
+    for (const pkg of nonSatellite) {
+      await removeMbtilesPackage(pkg.id)
+    }
+    const packages = await getAllPackages()
+    const activeDeleted = nonSatellite.some((p) => p.id === get().activePackageId)
+    set({
+      packages,
+      // 删除的是激活包时，若仍有其他包则自动切到第一个，否则回到占位底图
+      activePackageId: activeDeleted ? (packages[0]?.id ?? null) : get().activePackageId,
+    })
   },
 
   setActivePackage: (id) => set({ activePackageId: id }),

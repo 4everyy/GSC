@@ -4,7 +4,7 @@
 /* ====== 告警面板组（常驻告警框 + 详情弹层）======
    wrapper 承接原 .alarm-info-panel 的绝对定位（top:0 / right 对齐图层按钮），
    内部纵向 flex 顺接布局：常驻告警框在文档流中撑开 wrapper 高度，
-   详情面板作为后续 flex 项紧贴其下方（4px 间距），不再独立绝对定位 */
+   详情面板作为后续 flex 项紧贴其下方（gap=0），不再独立绝对定位 */
 .alarm-panels {
   position: absolute;
   top: 0;
@@ -18,6 +18,8 @@
   max-height: calc(100% - 368px);
   display: flex;
   flex-direction: column;
+  /* 两框上下边直接贴紧（gap=0）：色调 box-shadow 已移除，接缝处无描边叠加，
+     常驻框（box_3）与详情面板（box_6）在设计稿中即为一体的连续面板 */
   gap: 0;
   pointer-events: none;
 }
@@ -35,39 +37,59 @@
   right: auto;
 }
 
-/* 展开态（详情面板拼入）：常驻框底部改为完整长方向框（整条底边填充，取消中间缺口），
-   与详情面板无缝拼接成连续框体；关闭详情面板时 --expanded 类移除，
-   ::after 随之失效，常驻框自动恢复设计稿的圆角缺口样式 */
-.alarm-panels--expanded .alarm-info-panel::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: clamp(5px, 0.52vw, 10px);
-  /* 底边同源渐变（取样自切图底缘 #327da3→#2b6e8f），半透明与 ::before 背景层一致 */
-  background: linear-gradient(
-    180deg,
-    rgba(50, 125, 163, 0.85) 0%,
-    rgba(43, 110, 143, 0.85) 100%
-  );
-  z-index: 0;
-  pointer-events: none;
+/* ====== 展开态（详情面板拼入）======
+   详情面板紧贴常驻框正下方（gap=0）；常驻框背景层（::before，渐变矩形）移除
+   clip-path 切角，补齐底部两角 45° 缺口——同渐变同透明度（0.8），
+   底缘拉直后与详情面板顶边无缝衔接，呈现为 box_3 + box_6 的一体连续面板。
+   收起态（无 --expanded）恢复切角缺口，保持常驻框设计稿原始外观。
+   --expanded 同时供 JS 判断与后续扩展使用。 */
+/* 展开态：缺口补齐（两面板衔接连续） */
+.alarm-panels--expanded .alarm-info-panel::before {
+  clip-path: none;
 }
 
-/* 补角块随告警色调叠加内阴影（与常驻框本体 --red/--orange/--blue 同参数；
-   仅左/右/底三边环线，避免顶边在补角块内部画出横向细线） */
-.alarm-panels--expanded .alarm-info-panel--red::after {
-  box-shadow: inset 1px 0 0 rgba(243, 44, 48, 0.55), inset -1px 0 0 rgba(243, 44, 48, 0.55),
-    inset 0 -1px 0 rgba(243, 44, 48, 0.55), inset 0 0 clamp(10px, 1.56vw, 30px) rgba(243, 44, 48, 0.2);
+/* 收起衔接态（HomePage JS 驱动）：收起动画播放全程（ALARM_COLLAPSE_MS = 350ms）
+   保持缺口补齐，定时到点（动画完全播完）后移除本类、缺口恢复展示。
+   展开规则在前失配时由本规则兜底；与 --expanded 同时存在时同效果（双保险）。 */
+.alarm-panels--collapsing .alarm-info-panel::before {
+  clip-path: none;
+}
+/* ====== 详情面板展开/收起动画 ======
+   详情面板常驻挂载于 wrapper 第二个 flex 项（alarm-panels__detail），
+   由 --expanded 态驱动 grid-template-rows 0fr→1fr 过渡：轨道高度从 0 平滑
+   长至面板实际高度（等比 clamp 值），配合本容器 overflow:hidden 裁切，
+   呈现从常驻告警框下缘向下延伸滑出 / 向上收回的效果。
+   min-height:0 使本容器作为 flex 项可被压缩（承接原详情面板的收缩行为）。 */
+/* 默认（收起）态：轨道 0 高度 + visibility 隐藏——面板初始即收起，
+   且不可交互（键盘 Tab / 读屏均不可达）；visibility 延迟至收起动画播完后再隐藏 */
+.alarm-panels__detail {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  min-height: 0;
+  visibility: hidden;
+  /* 收起态：easeInCubic 加速曲线，利落收回；visibility 延时 = 收起动画时长 */
+  transition:
+    grid-template-rows 0.35s cubic-bezier(0.5, 0, 0.75, 0),
+    visibility 0s 0.35s;
 }
 
-.alarm-panels--expanded .alarm-info-panel--orange::after {
-  box-shadow: inset 1px 0 0 rgba(243, 194, 0, 0.55), inset -1px 0 0 rgba(243, 194, 0, 0.55),
-    inset 0 -1px 0 rgba(243, 194, 0, 0.55), inset 0 0 clamp(10px, 1.56vw, 30px) rgba(243, 194, 0, 0.18);
+.alarm-panels--expanded .alarm-panels__detail {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  /* 展开态：easeOutExpo 曲线起步极快、长尾减速，丝滑且从容 */
+  transition:
+    grid-template-rows 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s 0s;
 }
 
-.alarm-panels--expanded .alarm-info-panel--blue::after {
-  box-shadow: inset 1px 0 0 rgba(64, 158, 255, 0.55), inset -1px 0 0 rgba(64, 158, 255, 0.55),
-    inset 0 -1px 0 rgba(64, 158, 255, 0.55), inset 0 0 clamp(10px, 1.56vw, 30px) rgba(64, 158, 255, 0.18);
+/* 面板本体：随轨道等高拉伸（不写死 height，仅 max-height 封顶）——
+   展开时面板自常驻框下缘向下铺开：筛选条先现、卡片列表区（flex:1）逐张露出，
+   底缘背景缺口随面板底边同步下扫；收起时反向收回，两方向对称。
+   面板高度上限 = 5 卡内容自然高度（视口充足时全部直出）；
+   视口不足、轨道被 wrapper max-height 压缩时面板随之变矮，
+   底缘缺口始终可视，超出卡片由列表区内部滚动查看（滚动条隐藏）。
+   min-height:0 使面板在 0fr 轨道中可收缩为 0（visibility 兜底隐藏）。 */
+.alarm-panels__detail > .alarm-detail-panel {
+  min-height: 0;
 }
