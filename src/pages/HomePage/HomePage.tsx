@@ -44,6 +44,7 @@ import { useExclusivePanels } from './hooks/useExclusivePanels'
 import { useFlightAnimations } from './hooks/useFlightAnimations'
 import {
   ALARM_COLORS,
+  ALARM_COLLAPSE_MS,
   SHOW_PENDING_PANELS,
   AIRCRAFT_INITIAL_POSITIONS,
   INSPECTION_ZONE_INITIAL_POSITION,
@@ -60,8 +61,90 @@ import { BottomBar } from './components/bottom-bar/BottomBar'
 export function HomePage() {
   const [activeAlarm, setActiveAlarm] = useState<number | null>(null)
 
+  // 级别切换中转（先收起再打开）：已展开 A 级别时点击另一徽标，不直接换面板内容——
+  // 先置 activeAlarm=null 播放收起动画，同时记录 pendingAlarm=目标级别，
+  // ALARM_COLLAPSE_MS 后收起动画播完，再展开目标级别面板。
+  const [pendingAlarm, setPendingAlarm] = useState<number | null>(null)
+
   // 告警信息面板色调：当前激活徽标（红/橙/蓝）映射为面板边框色调
   const currentAlarmColor = activeAlarm !== null ? ALARM_COLORS[activeAlarm] : undefined
+
+  // 收起衔接状态机：activeAlarm 由非 null → null（开始收起）的瞬间挂 --collapsing，
+  // 常驻面板缺口在收起动画播放全程保持补齐（两面板视觉连续）；
+  // ALARM_COLLAPSE_MS（= 收起动画时长）后移除该类，缺口才恢复展示。
+  // 展开（activeAlarm 非 null）时立即清除，快速"收起→再展开"亦不受影响。
+  const prevActiveAlarmRef = useRef<number | null>(null)
+  const [alarmCollapsing, setAlarmCollapsing] = useState(false)
+  useEffect(() => {
+    const prev = prevActiveAlarmRef.current
+    prevActiveAlarmRef.current = activeAlarm
+    if (activeAlarm !== null) {
+      setAlarmCollapsing(false)
+      return
+    }
+    if (prev !== null) {
+      setAlarmCollapsing(true)
+      const timer = window.setTimeout(() => setAlarmCollapsing(false), ALARM_COLLAPSE_MS)
+      return () => window.clearTimeout(timer)
+    }
+  }, [activeAlarm])
+
+  // 待展开定时器：收起动画播完后展开目标级别面板（先收起再打开的后半程）。
+  // 收起期间用户可改点其他徽标（更新目标）或点回待展开徽标本身（取消，保持收起），
+  // pendingAlarm 变化即重挂定时器，始终以最新目标为准。
+  useEffect(() => {
+    if (pendingAlarm === null) return
+    const timer = window.setTimeout(() => {
+      setActiveAlarm(pendingAlarm)
+      setPendingAlarm(null)
+    }, ALARM_COLLAPSE_MS)
+    return () => window.clearTimeout(timer)
+  }, [pendingAlarm])
+
+  /** 顶栏徽标点击（先收起再打开的前半程在此触发）：
+   *  - 未展开时点击：直接展开该级别；
+   *  - 已展开同一徽标：toggle 收起；
+   *  - 已展开另一级别徽标：先置 activeAlarm=null 播放收起动画，记录 pendingAlarm=目标，
+   *    由上方定时器在收起动画播完后展开新级别面板（不直接换内容）；
+   *  - 收起动画期间点击：点待展开徽标本身＝取消（保持收起），点其他徽标＝改目标。 */
+  const handleAlarmClick = (index: number) => {
+    if (pendingAlarm !== null) {
+      setPendingAlarm((prev) => (prev === index ? null : index))
+      return
+    }
+    if (activeAlarm === index) {
+      setActiveAlarm(null)
+      return
+    }
+    if (activeAlarm !== null) {
+      setPendingAlarm(index)
+      setActiveAlarm(null)
+      return
+    }
+    setActiveAlarm(index)
+  }
+
+  // 详情面板收起：点击面板组外部区域时收起。顶栏告警徽标（.alarm）排除——
+  // 其点击由 StatusHeader onAlarmClick toggle 承担（展开/收起同一入口），
+  // 避免外部判定先收起、随后 click 又展开的双重切换。面板未展开时不挂监听。
+  const alarmPanelsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    // 展开中或切换收起中（存在待展开目标）均挂监听：点击外部即收起并取消待展开目标
+    if (activeAlarm === null && pendingAlarm === null) return
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node | null
+      if (!target) return
+      // 面板组内部（常驻告警框 + 详情面板）：不收起
+      if (alarmPanelsRef.current?.contains(target)) return
+      // 顶栏告警徽标及其子元素：交给徽标自身 toggle
+      if (target instanceof Element && target.closest('.alarm')) return
+      setActiveAlarm(null)
+      if (pendingAlarm !== null) setPendingAlarm(null) // 切换收起中点击外部：取消待展开目标
+    }
+    // 捕获阶段监听：不受子元素（地图画布等）stopPropagation 阻断
+    document.addEventListener('pointerdown', handlePointerDown, true)
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true)
+  }, [activeAlarm, pendingAlarm])
 
   // 聚焦视图：双击无人机图标后显示设备详情面板（存储聚焦的飞机索引）
   const [focusedAircraft, setFocusedAircraft] = useState<number | null>(null)
@@ -140,13 +223,18 @@ export function HomePage() {
   // 未导入 → 从同源静态目录拉取导入；已导入且未过期 → 直接激活。
   // 离线地图面板已隐藏，用户无手动切换入口，故每次启动都回到默认苏州。
   const ensureCityPackage = useOfflineMapStore((s) => s.ensureCityPackage)
+  const pruneNonSatellitePackages = useOfflineMapStore((s) => s.pruneNonSatellitePackages)
   const offlineStatus = useOfflineMapStore((s) => s.status)
   const defaultCityEnsuredRef = useRef(false)
   useEffect(() => {
     if (defaultCityEnsuredRef.current || offlineStatus !== 'ready') return
     defaultCityEnsuredRef.current = true
-    void ensureCityPackage('suzhou')
-  }, [offlineStatus, ensureCityPackage])
+    void (async () => {
+      // 仅保留卫星影像包：清理历史导入的矢量/街道图包（png 等），再激活默认城市
+      await pruneNonSatellitePackages()
+      await ensureCityPackage('suzhou')
+    })()
+  }, [offlineStatus, ensureCityPackage, pruneNonSatellitePackages])
 
   // 激活包变化时（导入新包 / 切换城市）平滑飞到包中心。
   useEffect(() => {
@@ -271,18 +359,26 @@ export function HomePage() {
 
         <StatusHeader
           activeAlarm={activeAlarm}
-          onAlarmClick={(index) => setActiveAlarm((prev) => (prev === index ? null : index))}
+          onAlarmClick={handleAlarmClick}
         />
 
         <section className="map-stage">
           <MapToolbar />
 
           {/* 告警信息面板：右上角常显，色调随顶栏激活的告警徽标切换。
-              详情面板（AlarmDetailPanel）：点击顶栏告警徽标展开、拼接到常驻框正下方，
-              再次点击同一徽标收起（toggle 由 StatusHeader onAlarmClick 承担） */}
-          <div className={`alarm-panels${activeAlarm !== null ? ' alarm-panels--expanded' : ''}`}>
+              详情面板（AlarmDetailPanel）：常驻挂载于详情 wrapper（alarm-panels__detail），
+              点击顶栏告警徽标时由 --expanded 态驱动 CSS 过渡（grid-template-rows 0fr→1fr）
+              从常驻框下缘向下延伸滑出，再次点击同一徽标收回（toggle 由 StatusHeader 承担）；
+              切换其他级别徽标时不直接换内容——先收起当前面板，收起动画播完后再展开
+              新级别面板（pendingAlarm 中转，见 handleAlarmClick） */}
+          <div
+            ref={alarmPanelsRef}
+            className={`alarm-panels${activeAlarm !== null ? ' alarm-panels--expanded' : ''}${alarmCollapsing ? ' alarm-panels--collapsing' : ''}`}
+          >
             <AlarmInfoPanel alarmColor={currentAlarmColor} />
-            {activeAlarm !== null && <AlarmDetailPanel alarmColor={currentAlarmColor} />}
+            <div className="alarm-panels__detail">
+              <AlarmDetailPanel alarmColor={currentAlarmColor} />
+            </div>
           </div>
           {/* 离线地图管理面板（导入 / 城市切换 / 包列表）暂隐藏——默认自动加载最新苏州包，
               需要手动管理时恢复下方注释即可（严格离线，仅读写本地 IndexedDB） */}

@@ -8,8 +8,8 @@ import './AlarmInfoPanel.css'
  *
  * 设计稿 box_3（414×122 @1920 基准）：
  * - 标题行：告警图标 + "告警信息"
- * - 红色告警行：左侧 "!" 标记 + 文本 + 行尾处理图标（叉号）
- * - 黄色提示行：文本 + 行尾处理图标（叉号）
+ * - 紧急信息行（一级，红 #F32C30）：左侧 "!" 标记 + 文本 + 行尾处理图标（叉号）
+ * - 警告信息行（二级，橙 #F3C200）：文本 + 行尾处理图标（叉号）
  *
  * 交互：
  * - 点击顶部告警徽标（红/橙/蓝）切换面板边框色调；
@@ -22,17 +22,27 @@ interface AlarmInfoPanelProps {
   alarmColor?: AlarmColor
 }
 
+/** 告警级别：一级 red（紧急信息）/ 二级 orange（警告信息）/ 三级 blue（提示信息），与顶栏三个告警徽标一一对应 */
+type AlarmTone = 'red' | 'orange' | 'blue'
+
 /** 面板展示的告警消息（示例数据，后续接入真实告警源） */
-const ALARM_MESSAGES = [
-  { id: 1, text: '告警信息提示文本告警信息提示文本告警信息提示', tone: 'red' as const },
-  { id: 2, text: '告警信息提示文本告警信息提示文最大文本最大文本...', tone: 'yellow' as const },
+interface AlarmMessage {
+  id: number
+  text: string
+  /** 告警级别：一级（紧急信息，红）/ 二级（警告信息，橙）/ 三级（提示信息，蓝） */
+  tone: AlarmTone
+}
+
+const ALARM_MESSAGES: AlarmMessage[] = [
+  { id: 1, text: '告警信息提示文本告警信息提示文本告警信息提示', tone: 'red' },
+  { id: 2, text: '告警信息提示文本告警信息提示文最大文本最大文本...', tone: 'orange' },
 ]
 
-type AlarmTone = (typeof ALARM_MESSAGES)[number]['tone']
-
+/** 告警级别文字色：一级（第一个徽标/红）#F32C30、二级（第二个徽标/橙）#F3C200、三级（第三个徽标/蓝）#0EA7F9 */
 const TONE_TEXT: Record<AlarmTone, string> = {
-  red: '#f32c30',
-  yellow: '#f3c200',
+  red: '#F32C30',
+  orange: '#F3C200',
+  blue: '#0EA7F9',
 }
 
 /** 行隐藏动画总时长（ms）＝淡出 260ms + 折叠收起 100ms，需与 CSS 中行 .is-leaving 的动画时长保持一致 */
@@ -117,7 +127,7 @@ export function AlarmInfoPanel({ alarmColor }: AlarmInfoPanelProps) {
                 <i className="alarm-info-panel__mark-arrow" />
               </i>
             )}
-            <span className="alarm-info-panel__text" style={{ color: TONE_TEXT[msg.tone] }} title={msg.text}>
+            <span className="alarm-info-panel__text" style={{ color: TONE_TEXT[msg.tone] ?? TONE_TEXT.orange }} title={msg.text}>
               {msg.text}
             </span>
             <img

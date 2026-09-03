@@ -1,4 +1,4 @@
-﻿/* ====== 告警信息面板（首页右上角） ======
+/* ====== 告警信息面板（首页右上角） ======
    设计稿 box_3：414×122（1920×1080 基准），随视口 clamp 等比缩放。
    背景为纯 CSS 绘制：127° 对角渐变 #4ca2cc→#21607e + 底部两角 45° 切角（约10px），像素级还原。
    右边距与右侧图层按钮（view-controls）一致：clamp(8px,.83vw,16px)。 */
@@ -68,19 +68,44 @@
 .alarm-info-panel__row {
   display: flex;
   align-items: center;
+  position: relative; /* hover 背景条 ::after 的定位基准 */
   /* 122px 高度反算：内容 94 = 标题 21 + 行 16×2 + 间距 20.6×2，
      仅用 margin-top（无 margin-bottom），否则 1920 视口内容溢出底 padding、header 被压缩 */
   margin-top: clamp(6px, 1.07vw, 20.5px);
   margin-bottom: 0;
   padding-left: clamp(12px, 1.25vw, 24px);
-  padding-right: clamp(12px, 1.41vw, 27px);
+  padding-right: clamp(8px, 0.833vw, 16px); /* 行尾图标距容器右缘 16px（1920 基准等比） */
   gap: clamp(3px, 0.31vw, 6px);
 }
 
 /* 红色告警行（含标记）：设计稿 section_4 左 27 / 右 16 */
 .alarm-info-panel__row--red {
   padding-left: clamp(13.5px, 1.41vw, 27px);
-  padding-right: clamp(12px, 1.41vw, 27px); /* 与普通行一致，行尾图标右缘对齐 */
+  padding-right: clamp(8px, 0.833vw, 16px); /* 与普通行一致：行尾图标距容器右缘 16px */
+}
+
+/* ====== 消息行 hover 背景条 ======
+   复用详情面板筛选条切图（alarm-detail-filter-bar.png）作整行 hover 高亮：
+   ::after 以 inset:0 铺满整行（宽度撑满，含左右内边距区），background-size
+   100% 100% 使切图高度随行内容自适应拉伸；淡入淡出过渡避免背景突变。
+   z-index:-1 置于行内容之下、面板背景层之上（行自身 z-index:1 隔离层叠上下文）。 */
+.alarm-info-panel__row::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0; /* 宽度撑满整行（含左右内边距区） */
+  top: 50%;
+  transform: translateY(-50%);
+  height: clamp(14px, 1.458vw, 28px); /* 固定高 28px（1920 基准等比），行内垂直居中 */
+  background: url('../../assets/images/home/alarm-detail-filter-bar.png') 0 0 / 100% 100% no-repeat;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.alarm-info-panel__row:hover::after {
+  opacity: 1;
 }
 
 /* 首行红色告警前的标记：红色横线 + 下方向上的箭头（设计稿 section_3/4/5，CSS 绘制） */

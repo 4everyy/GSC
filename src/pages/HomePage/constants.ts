@@ -22,6 +22,11 @@ export const SHOW_PENDING_PANELS = false
 // 告警信息面板色调映射：与顶栏告警徽标（红/橙/蓝，config/alarms.ts ALARM_BADGES 顺序）按下标一一对应
 export const ALARM_COLORS: AlarmColor[] = ['red', 'orange', 'blue']
 
+// 告警详情面板收起动画时长（ms）：须与 AlarmPanels.css 中收起过渡时长（0.35s）一致。
+// 收起动画播放期间常驻面板缺口保持补齐（HomePage 挂 --collapsing 类），
+// 定时到点（动画播完）后移除该类，缺口才恢复展示。
+export const ALARM_COLLAPSE_MS = 350
+
 // 底部功能面板类型：起飞（TakeoffPanel）/ 降落（LandingPanel）/ 返航（ReturnHomePanel）/ 指点返航（TapReturnPanel）/ 区域降落（AreaLandingPanel）/ 悬停（HoverPanel）/ 航点飞行（WaypointFlightPanel）/ 航线飞行（RouteFlightPanel）/ 环绕飞行（OrbitFlightPanel）/ 集结点（RallyPointPanel）/ 编队飞行（FormationFlightPanel）
 export type BottomBarPanel =
   | 'takeoff'
