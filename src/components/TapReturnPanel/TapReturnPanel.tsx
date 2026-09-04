@@ -67,12 +67,16 @@ export function TapReturnPanel({
   const [lat, setLat] = useState('000.00')
   const [lng, setLng] = useState('000.00')
 
-  // 地图取点回填：格式化为 6 位（xxx.xx，不足前补 0；N°/E° 单位语义下取绝对值）
-  useEffect(() => {
-    if (!waypoint) return
-    setLat(Math.abs(waypoint.lat).toFixed(2).padStart(6, '0'))
-    setLng(Math.abs(waypoint.lng).toFixed(2).padStart(6, '0'))
-  }, [waypoint])
+  // 地图取点回填：格式化为 6 位（xxx.xx，不足前补 0；N°/E° 单位语义下取绝对值）。
+  // 坐标在渲染期依据 waypoint 引用变化直接派生（避免 effect 内同步 setState）。
+  const [prevWaypoint, setPrevWaypoint] = useState(waypoint)
+  if (prevWaypoint !== waypoint) {
+    setPrevWaypoint(waypoint)
+    if (waypoint) {
+      setLat(Math.abs(waypoint.lat).toFixed(2).padStart(6, '0'))
+      setLng(Math.abs(waypoint.lng).toFixed(2).padStart(6, '0'))
+    }
+  }
 
   // 半径变化（−/+ 步进或手动输入）时通知页面联动地图盘旋圆
   useEffect(() => {

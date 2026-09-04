@@ -6,11 +6,8 @@
  * - 内部「飞机列表」区块复用 AircraftListSection（区块头 + 列表行 + 行删除）。
  */
 import { PanelShell } from '../PanelShell/PanelShell'
-import {
-  AircraftListSection,
-  DEFAULT_AIRCRAFT,
-  type AircraftListItem,
-} from './AircraftListSection'
+import { AircraftListSection, type AircraftListItem } from './AircraftListSection'
+import { DEFAULT_AIRCRAFT } from './defaultAircraft'
 import './AircraftListPanel.css'
 
 export type { AircraftListItem }

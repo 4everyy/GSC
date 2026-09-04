@@ -102,11 +102,13 @@ export function MapScale({ adapter }: MapScaleProps) {
 
   useEffect(() => {
     if (!adapter) return
-    update()
+    // 首次计算放入 rAF 异步执行：规避 effect 内同步 setState，并等待容器布局
+    const raf = window.requestAnimationFrame(() => update())
     // 适配器返回的是取消订阅函数，在 cleanup 中调用
     const offZoom = adapter.onZoomEnd(() => update())
     const offMove = adapter.onMoveEnd(() => update())
     return () => {
+      window.cancelAnimationFrame(raf)
       offZoom()
       offMove()
     }

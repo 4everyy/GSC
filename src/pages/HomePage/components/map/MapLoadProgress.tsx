@@ -112,8 +112,9 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
   // 挂载即显示：覆盖启动初期的黑底等待阶段
   const [phase, setPhase] = useState<Phase>('active')
 
-  const stRef = useRef<ProgressState>(null as unknown as ProgressState)
-  if (!stRef.current) stRef.current = makeState()
+  // 进度状态对象：ref 惰性初始化并持有：渲染期不读写，effect/事件回调内修改
+  //（重置 = Object.assign 覆写；ref 是可变逃生舱，不触发 immutability 规则）
+  const stRef = useRef<ProgressState | null>(null)
   const settleTimer = useRef(0)
   const fadeTimer = useRef(0)
   const hideTimer = useRef(0)
@@ -122,7 +123,7 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
 
   // 主流程：map / reloadKey 任一就绪或变化时推进
   useEffect(() => {
-    const s = stRef.current
+    const s = stRef.current ?? (stRef.current = makeState())
     const mlMap = (map ?? null) as MLMap | null
 
     // —— 热切换新一轮检测：reloadKey 引用变化（且非首轮注入）→ 全量重置 ——
@@ -134,16 +135,18 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
         window.clearTimeout(globalTimer.current)
         window.clearTimeout(safetyTimer.current)
         Object.assign(s, makeState())
-        setPercent(0)
-        setPhase('active')
+        // 显示归零走 microtask：effect 体内同步 setState 会级联渲染（react-hooks
+        // 规则禁止）。phase 无需同步恢复——新一轮 finished=false，上一轮的
+        // leaving/hidden 由微任务重置为 active（旧收尾定时器已清理，不会覆盖）
+        queueMicrotask(() => {
+          setPercent(0)
+          setPhase('active')
+        })
       }
       s.lastKey = reloadKey
       s.lastKeySet = true
     }
     if (s.finished) return
-
-    // 保证展示中（新一轮重置后 / 常规路径）
-    setPhase('active')
 
     /** 单调发布进度 */
     const publish = (p: number) => {
@@ -266,7 +269,6 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
       // 注意：settle/global/safety/fade/hide 属于流程状态，effect 重跑不清理
       // （保持进度连续），仅在新一轮重置或组件卸载时清理
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, reloadKey])
 
   // 组件卸载：清理所有挂起定时器

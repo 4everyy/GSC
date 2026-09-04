@@ -1,4 +1,4 @@
-/**
+﻿/**
  * HomePage —— 地面站主页面（编排层）。
  *
  * 地图引擎：MapLibre GL JS（严格离线，瓦片由本地 MBTiles 包经 IndexedDB 渲染）。
@@ -73,21 +73,20 @@ export function HomePage() {
   // 常驻面板缺口在收起动画播放全程保持补齐（两面板视觉连续）；
   // ALARM_COLLAPSE_MS（= 收起动画时长）后移除该类，缺口才恢复展示。
   // 展开（activeAlarm 非 null）时立即清除，快速"收起→再展开"亦不受影响。
-  const prevActiveAlarmRef = useRef<number | null>(null)
+  // 渲染期对比上次 activeAlarm 直接派生 collapsing 标记（避免 effect 内同步
+  // setState），ALARM_COLLAPSE_MS 后由 effect 定时器复位。
+  const [prevAlarm, setPrevAlarm] = useState<number | null>(null)
   const [alarmCollapsing, setAlarmCollapsing] = useState(false)
+  if (prevAlarm !== activeAlarm) {
+    setPrevAlarm(activeAlarm)
+    // 非 null → null 的瞬间挂 --collapsing；展开时立即清除
+    setAlarmCollapsing(activeAlarm === null && prevAlarm !== null)
+  }
   useEffect(() => {
-    const prev = prevActiveAlarmRef.current
-    prevActiveAlarmRef.current = activeAlarm
-    if (activeAlarm !== null) {
-      setAlarmCollapsing(false)
-      return
-    }
-    if (prev !== null) {
-      setAlarmCollapsing(true)
-      const timer = window.setTimeout(() => setAlarmCollapsing(false), ALARM_COLLAPSE_MS)
-      return () => window.clearTimeout(timer)
-    }
-  }, [activeAlarm])
+    if (!alarmCollapsing) return
+    const timer = window.setTimeout(() => setAlarmCollapsing(false), ALARM_COLLAPSE_MS)
+    return () => window.clearTimeout(timer)
+  }, [alarmCollapsing])
 
   // 待展开定时器：收起动画播完后展开目标级别面板（先收起再打开的后半程）。
   // 收起期间用户可改点其他徽标（更新目标）或点回待展开徽标本身（取消，保持收起），
@@ -251,13 +250,15 @@ export function HomePage() {
   const toggleDevice = useDeviceLinkStore((s) => s.toggleDevice)
   const requestOpenDevicePanel = useDeviceLinkStore((s) => s.requestOpenDevicePanel)
 
-  // 选中飞机列表：取「设备管理」选中集合对应的真实设备（名称对齐 devices.ts，
-  // 高度/电量先取配置遥测值作为 mock，后续接入实时遥测后替换数据源即可）
+  // 选中飞机列表：取「设备管理」选中集合对应的设备数据。
+  // 设备面板暂用本地 mock（config/devices.ts deviceList），此处同源取 mock 保证
+  // 下标联动一致；HTTP /control/queryPlaneStatus 与 WS 通道仍保留（App 层）
+  const planeDevices = deviceList
   const selectedAircraft: AircraftListItem[] = useMemo(() => {
     const indices = [...selectedDevices].sort((a, b) => a - b)
     return indices
       .map((index) => {
-        const device = deviceList[index]
+        const device = planeDevices[index]
         if (!device) return null
         return {
           id: String(index),
@@ -267,7 +268,7 @@ export function HomePage() {
         }
       })
       .filter((item): item is AircraftListItem => item !== null)
-  }, [selectedDevices])
+  }, [selectedDevices, planeDevices])
   // Aircraft row delete: deselect the device (id = device index string). Store update
   // syncs device panel checkboxes, home icons, and bottom bar button states.
   const handleRemoveAircraft = (id: string) => {

@@ -51,7 +51,8 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
   // 每次激活生成唯一 session，所有覆盖物 id 带该前缀：适配器按 id 索引覆盖物，
   // id 复用会让旧覆盖物残留且无法移除（故已「确定」的测距记录必须用不同 id）
   const sessionRef = useRef<string>(makeMeasureSessionId())
-  const polylineId = useRef<string>(`measure-polyline-${sessionRef.current}`)
+  // 初值不读 sessionRef（渲染期读 ref 违规）；toggle 激活时必先赋新值再使用
+  const polylineId = useRef<string>('')
   const markersRef = useRef<MarkerHandle[]>([])
   const polylineHandle = useRef<PolylineHandle | null>(null)
   // 分段距离标签：每段线段一个，显示该段距离，悬浮在线段中点上方
@@ -100,7 +101,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
    * 最新落点（终点）且已构成有效测距（≥2 点）时，在其图钉旁附加「完成测距」面板
    * （取消 / 确定 二选一），方便就近结束测距。
    */
-  function createMarkerElement(index: number, pointCount: number): HTMLElement {
+  const createMarkerElement = useCallback((index: number, pointCount: number): HTMLElement => {
     const el = index === 0 ? createStartMarkerElement() : createEndMarkerElement()
     const isLast = index === pointCount - 1
     if (isLast && index > 0 && pointCount >= 2) {
@@ -115,10 +116,11 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
       el.appendChild(panel)
     }
     return el
-  }
+    // 仅读取 DOM 工厂与 ref 镜像（toggleRef/finishRef 始终指向最新实现），无响应式依赖
+  }, [])
 
   /** 重绘所有标记（清除旧的，按 next 重建） */
-  function redrawMarkers(next: LngLat[]) {
+  const redrawMarkers = useCallback((next: LngLat[]) => {
     if (!adapter) return
     markersRef.current.forEach((m) => adapter.removeMarker(m.id))
     markersRef.current = []
@@ -132,10 +134,10 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
       })
       markersRef.current.push(handle)
     })
-  }
+  }, [adapter, createMarkerElement])
 
   /** 更新折线（如已有则更新坐标，否则新建） */
-  function redrawPolyline(next: LngLat[]) {
+  const redrawPolyline = useCallback((next: LngLat[]) => {
     if (!adapter) return
     if (next.length < 2) {
       if (polylineHandle.current) {
@@ -154,7 +156,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
     } else {
       adapter.setPolylinePoints(polylineHandle.current, next)
     }
-  }
+  }, [adapter])
 
   /**
    * 更新分段距离标签：每段线段一个标签，显示该段距离，
@@ -162,7 +164,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
    * 每次落点后重建所有标签（数量随段数变化，重建最简单可靠）。
    * 同时累计总距离，供提示条展示。
    */
-  function updateSegmentLabels(next: LngLat[]) {
+  const updateSegmentLabels = useCallback((next: LngLat[]) => {
     if (!adapter) return
 
     // 清除旧分段标签
@@ -186,7 +188,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
       segmentLabelElsRef.current.push(labelEl)
     }
     setTotalDistance(total)
-  }
+  }, [adapter])
 
   /** 添加一个测距点 */
   const addPoint = useCallback(
@@ -205,7 +207,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
         return next
       })
     },
-    [adapter], // eslint-disable-line react-hooks/exhaustive-deps
+    [adapter, redrawMarkers, redrawPolyline, updateSegmentLabels],
   )
 
   /** 清理所有测距覆盖物 */
@@ -224,7 +226,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
     getPreviewCtl().clear()
     setPoints([])
     setTotalDistance(0)
-  }, [adapter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [adapter])
 
   /**
    * 激活/退出测距模式。
@@ -277,13 +279,13 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
     setPoints([])
     setTotalDistance(0)
     setActive(false)
-  }, [adapter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [adapter])
 
   /** 清理所有覆盖物：进行中的测距 + 所有已「确定」的记录（卸载 / 引擎切换时调用） */
   const cleanupAll = useCallback(() => {
     cleanup()
     getCommittedCtl().clearAll()
-  }, [cleanup]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cleanup])
 
   /** 按地图容器边界重定位「完成测距」面板（避让裁切；实现见 dom.ts） */
   const repositionNow = useCallback(() => {
@@ -331,7 +333,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
       unbindZoomEnd()
       window.removeEventListener('resize', onResize)
     }
-  }, [adapter, active, addPoint, cleanup]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [adapter, active, addPoint, cleanup])
 
   // 同步 points → pointsRef，供 mousemove 闭包读取最新已落点
   useEffect(() => {
@@ -393,6 +395,6 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
         }
         return next
       })
-    }, [adapter]), // eslint-disable-line react-hooks/exhaustive-deps
+    }, [adapter, redrawMarkers, redrawPolyline, updateSegmentLabels]),
   }
 }

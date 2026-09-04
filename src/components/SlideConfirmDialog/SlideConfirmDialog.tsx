@@ -65,7 +65,9 @@ export function SlideConfirmDialog({
   const dragStart = useRef({ x: 0, left: 0 })
   const doneRef = useRef(false)
   const onConfirmRef = useRef(onConfirm)
-  onConfirmRef.current = onConfirm
+  useEffect(() => {
+    onConfirmRef.current = onConfirm
+  }, [onConfirm])
 
   /** 把滑块与进度层同步到指定位移（直改 DOM，不触发 React 渲染） */
   const applyLeft = (v: number) => {
@@ -73,19 +75,30 @@ export function SlideConfirmDialog({
     if (fillRef.current) fillRef.current.style.width = `${FILL_BASE + v}px`
   }
 
-  // 打开时重置滑块并测量滑轨行程；关闭/卸载时清理确认过渡定时器
+  // 打开时重置滑块并测量滑轨行程；关闭/卸载时清理确认过渡定时器。
+  // 状态重置在渲染期依据 open 变化派生；ref 重置与行程测量放入 rAF 异步执行
+  //（规避 effect 内同步 setState 与渲染期读 ref）。
+  const [wasOpen, setWasOpen] = useState(open)
+  if (wasOpen !== open) {
+    setWasOpen(open)
+    if (open) {
+      setLeft(0)
+      setDragging(false)
+      setDone(false)
+    }
+  }
+
   useEffect(() => {
     if (!open) return
-    leftRef.current = 0
-    doneRef.current = false
-    setLeft(0)
-    setDragging(false)
-    setDone(false)
-    requestAnimationFrame(() => applyLeft(0))
-    const width = trackRef.current?.clientWidth ?? 320
-    const t = Math.max(width - THUMB_WIDTH - THUMB_GAP * 2, 0)
-    travelRef.current = t
-    setTravel(t)
+    requestAnimationFrame(() => {
+      leftRef.current = 0
+      doneRef.current = false
+      applyLeft(0)
+      const width = trackRef.current?.clientWidth ?? 320
+      const t = Math.max(width - THUMB_WIDTH - THUMB_GAP * 2, 0)
+      travelRef.current = t
+      setTravel(t)
+    })
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
