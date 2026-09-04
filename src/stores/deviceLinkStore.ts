@@ -22,6 +22,13 @@ interface DeviceLinkState {
   toggleDevice: (index: number) => void
   /** 整体替换勾选集合（面板全选/全不选使用） */
   setSelectedDevices: (devices: Set<number>) => void
+  /** 地图聚焦请求（设备管理面板单行勾选时写入）：index=设备索引，seq 递增保证
+   *  重复勾选同一设备也能触发监听 effect；HomePage 消费后清除 */
+  mapFocusDeviceRequest: { index: number; seq: number } | null
+  /** 请求地图飞转聚焦指定设备（面板单行勾选时调用；全选走整体替换不触发） */
+  requestMapFocusDevice: (index: number) => void
+  /** 清除地图聚焦请求（HomePage 消费后调用，避免重复消费） */
+  clearMapFocusDeviceRequest: () => void
 }
 
 export const useDeviceLinkStore = create<DeviceLinkState>((set) => ({
@@ -42,4 +49,10 @@ export const useDeviceLinkStore = create<DeviceLinkState>((set) => ({
   setSelectedDevices: (devices) => set({ selectedDevices: devices }),
   requestOpenDevicePanel: () =>
     set((state) => ({ devicePanelOpenRequests: state.devicePanelOpenRequests + 1 })),
+  mapFocusDeviceRequest: null,
+  requestMapFocusDevice: (index) =>
+    set((state) => ({
+      mapFocusDeviceRequest: { index, seq: (state.mapFocusDeviceRequest?.seq ?? 0) + 1 },
+    })),
+  clearMapFocusDeviceRequest: () => set({ mapFocusDeviceRequest: null }),
 }))

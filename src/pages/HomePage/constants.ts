@@ -1,15 +1,35 @@
 import type { DragPosition } from '../../hooks/useDraggable'
 import { homeImages } from '../../assets/images/home'
 import type { AlarmColor } from '../../types'
+import type { LngLat } from '../../map-engines/types'
 
 // 飞机初始位置（百分比），与 HomePage.css 中 .aircraft--xxx 的 left/top 保持一致。
 // 拖拽后通过内联 style 覆盖 CSS 定位，实现自由拖动。
+// 仅作为引擎未就绪（无地理锚定）时的退化布局；启用锚定后由
+// AIRCRAFT_ANCHOR_OFFSETS 按离线包中心播种真实地理锚点。
 export const AIRCRAFT_INITIAL_POSITIONS: DragPosition[] = [
-  { x: 10.6, y: 6.8 }, // red (01设备)
-  { x: 68.8, y: 22 }, // orange (03设备)
-  { x: 44.6, y: 35.4 }, // blue (04设备)
-  { x: 56, y: 59 }, // gray (02设备·离线)
-  { x: 33.7, y: 71.5 }, // blue2 (05设备)
+  { x: 35, y: 22 }, // red (01设备)
+  { x: 50, y: 24 }, // orange (03设备)
+  { x: 33, y: 36 }, // blue (04设备)
+  { x: 48, y: 38 }, // gray (02设备·离线)
+  { x: 41, y: 30 }, // blue2 (05设备)
+]
+
+/**
+ * 飞机初始地理锚点相对「当前离线地图包中心」的偏移（度）。
+ *
+ * 偏移量由 AIRCRAFT_INITIAL_POSITIONS 的百分比布局按 zoom 14 视口尺度换算
+ * （1080p 下约 1% 宽 ≈ 0.00045° 经度、1% 高 ≈ 0.00035° 纬度；屏幕 y 向下为正，
+ * 纬度向北为正，故 y 偏移取反），保证锚定播种后的初始布局与原百分比布局观感
+ * 一致（无人机簇居中偏左上）；包中心必在瓦片 bounds 内，微小偏移不会越出
+ * 离线数据覆盖范围。顺序与 AIRCRAFT_INITIAL_POSITIONS / config/aircraft.ts 一一对应。
+ */
+export const AIRCRAFT_ANCHOR_OFFSETS: LngLat[] = [
+  { lng: -0.0068, lat: 0.0098 }, // red (01设备)：左上
+  { lng: 0, lat: 0.0091 }, // orange (03设备)：中上偏右
+  { lng: -0.0077, lat: 0.0049 }, // blue (04设备)：左中
+  { lng: -0.0009, lat: 0.0042 }, // gray (02设备·离线)：中上
+  { lng: -0.0041, lat: 0.007 }, // blue2 (05设备)：左上偏右
 ]
 
 // 巡检区域初始位置（百分比），与 HomePage.css 中 .inspection-zone 的 left/top 保持一致
@@ -185,3 +205,7 @@ export const BOTTOM_BAR_ITEMS: BottomBarItem[] = [
     width: 119,
   },
 ]
+/** 面板单选聚焦：设备/目标面板单行勾上时地图 flyTo 的最低层级（当前更低时放大） */
+export const MAP_FOCUS_ZOOM = 16
+/** 面板单选聚焦飞转动画时长（ms） */
+export const MAP_FOCUS_FLY_DURATION_MS = 1200

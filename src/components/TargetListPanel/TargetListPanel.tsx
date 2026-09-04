@@ -56,6 +56,8 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
   const selectedIds = useTargetLinkStore((s) => s.selectedTargetIds)
   const toggleTarget = useTargetLinkStore((s) => s.toggleTarget)
   const replaceSelectedIds = useTargetLinkStore((s) => s.setSelectedTargetIds)
+  // 地图聚焦请求：单行勾上时飞转地图到该目标（全选走整体替换不触发）
+  const requestMapFocusTarget = useTargetLinkStore((s) => s.requestMapFocusTarget)
   // 刷新流程状态：idle 无提示 / refreshing 刷新中 / done 刷新完成（列表顶部提示条）
   const [refreshStatus, setRefreshStatus] = useState<'idle' | 'refreshing' | 'done'>('idle')
   // 删除确认弹窗（设计稿 box_27）：点击底部「删除」或行内删除按钮时弹出
@@ -243,6 +245,8 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
 
   /** 切换行勾选（走 store，与地图图标单击共用同一入口，选中态双向同步） */
   const toggleSelect = (id: string) => {
+    // 勾上（原未选中）时请求地图飞转聚焦该目标；取消勾选不触发
+    if (!selectedIds.has(id)) requestMapFocusTarget(id)
     toggleTarget(id)
   }
 

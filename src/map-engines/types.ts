@@ -148,6 +148,8 @@ export interface MapAdapter {
   getContainer(): HTMLElement
   /** 容器像素坐标 → 经纬度（WGS84），用于屏幕选区换算地理坐标 */
   unproject(point: { x: number; y: number }): LngLat
+  /** 经纬度 → 容器像素坐标（与 unproject 互逆；供 DOM 覆盖物按地理坐标锚定到地图） */
+  project(lngLat: LngLat): { x: number; y: number }
 
   // ============ 覆盖物：标注 ============
   addMarker(id: string, lngLat: LngLat, opts?: MarkerOptions): MarkerHandle
@@ -183,6 +185,11 @@ export interface MapAdapter {
   // ============ 事件 ============
   /** 绑定地图点击事件，返回取消绑定函数 */
   onClick(handler: (lngLat: LngLat) => void): () => void
+  /**
+   * 绑定地图移动事件（拖动/缩放/惯性/飞行动画期间每渲染帧触发），返回取消绑定函数。
+   * 用于 DOM 覆盖物（飞机/目标图标等）按地理锚点实时跟随地图视口变化。
+   */
+  onMove(handler: () => void): () => void
   /** 绑定缩放结束事件 */
   onZoomEnd(handler: (zoom: number) => void): () => void
   /** 绑定平移结束事件 */

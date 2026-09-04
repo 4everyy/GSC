@@ -220,6 +220,11 @@ export class MapLibreAdapter implements MapAdapter {
     return { lng: ll.lng, lat: ll.lat }
   }
 
+  project(lngLat: LngLat): { x: number; y: number } {
+    const pt = this.map.project([lngLat.lng, lngLat.lat])
+    return { x: pt.x, y: pt.y }
+  }
+
   // ============ 覆盖物：标注 ============
 
   addMarker(id: string, lngLat: LngLat, opts?: MarkerOptions): MarkerHandle {
@@ -536,6 +541,11 @@ export class MapLibreAdapter implements MapAdapter {
     }
     this.map.on('click', fn)
     return () => this.map.off('click', fn)
+  }
+
+  onMove(handler: () => void): () => void {
+    this.map.on('move', handler)
+    return () => this.map.off('move', handler)
   }
 
   onZoomEnd(handler: (zoom: number) => void): () => void {

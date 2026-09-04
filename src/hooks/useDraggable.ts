@@ -65,15 +65,27 @@ export function useDraggable({
     }
     return initialPositions
   })
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
 
-  // 位置变化时持久化到 localStorage
+  // 位置变化时持久化到 localStorage（防抖 300ms）：
+  // 外部锚定跟随（地图 move 每渲染帧重投影）会高频更新 positions，
+  // 逐帧同步写 localStorage 既浪费也无必要，静默合并到停顿后一次写入
+  const persistTimer = useRef<number | null>(null)
   useEffect(() => {
     if (!storageKey) return
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(positions))
-    } catch {
-      // 存储失败（如隐私模式/配额满）：静默忽略，不影响拖拽功能
+    if (persistTimer.current !== null) window.clearTimeout(persistTimer.current)
+    persistTimer.current = window.setTimeout(() => {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(positions))
+      } catch {
+        // 存储失败（如隐私模式/配额满）：静默忽略，不影响拖拽功能
+      }
+    }, 300)
+    return () => {
+      if (persistTimer.current !== null) {
+        window.clearTimeout(persistTimer.current)
+        persistTimer.current = null
+      }
     }
   }, [positions, storageKey])
 
@@ -180,11 +192,22 @@ export function useDraggable({
     setPositions(initialPositions.map((p) => ({ ...p })))
   }, [initialPositions])
 
+  /**
+   * 外部整体替换位置数组（如地图移动后按地理锚点重投影舞台百分比）。
+   * 与拖拽共用同一状态源，二者天然互斥：拖拽期间 positions 由拖拽驱动，
+   * 地图并未移动，不会触发锚定同步；锚定同步仅在地图 move 时触发，
+   * 此时不在拖拽会话中。
+   */
+  const applyPositions = useCallback((next: DragPosition[]) => {
+    setPositions(next.map((p) => ({ ...p })))
+  }, [])
+
   return {
     positions,
     draggingIndex,
     onDragStart,
     resetPosition,
     resetAll,
+    applyPositions,
   }
 }

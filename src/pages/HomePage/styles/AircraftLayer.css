@@ -31,10 +31,65 @@
 
 /* 閫変腑楂樹寒锛氶潰鏉垮閫夋鍕鹃€夋垨棣栭〉鍥炬爣鍗曞嚮閫変腑鏃讹紝鍥炬爣甯镐寒鍏夊湀 + 鏍囩鍙橀潚鑹?*/
 .aircraft.aircraft--selected img {
-  filter: drop-shadow(0 0 6px rgba(135, 235, 255, 0.75));
+  filter:
+    drop-shadow(0 0 4px rgba(135, 235, 255, 1))
+    drop-shadow(0 0 12px rgba(64, 196, 255, 0.85));
 }
 .aircraft.aircraft--selected .aircraft-label {
   color: #87ebff;
+  text-shadow: 0 0 8px rgba(135, 235, 255, 0.9);
+}
+
+/* ===== 选中态增强（静态光晕 + 脉冲扩散环，雷达扫描式选中指示）=====
+   两个伪元素以图标中心（容器顶部起 24px）为圆心，绘制在图标背后
+   （z-index:-1）不遮挡图标本体，pointer-events:none 不拦截交互 */
+.aircraft.aircraft--selected::after {
+  content: '';
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(135, 235, 255, 0.3) 0%,
+    rgba(135, 235, 255, 0.1) 55%,
+    transparent 72%
+  );
+  box-shadow: 0 0 16px rgba(135, 235, 255, 0.35);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.aircraft.aircraft--selected::before {
+  content: '';
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  width: 68px;
+  height: 68px;
+  margin: -34px 0 0 -34px;
+  border-radius: 50%;
+  border: 2px solid rgba(135, 235, 255, 0.9);
+  box-shadow:
+    0 0 10px rgba(135, 235, 255, 0.5),
+    inset 0 0 10px rgba(135, 235, 255, 0.3);
+  animation: aircraft-selected-pulse 1.6s ease-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@keyframes aircraft-selected-pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
 }
 
 /* 鎵€鏈夐琛屽櫒鍐呴儴鐨?img 缁熶竴濉弧瀹瑰櫒骞朵繚鎸佹瘮渚嬶紝
