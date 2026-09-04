@@ -6,6 +6,10 @@
  * （与 deviceLinkStore 同模式，目标 id 对应 config/targets.ts targetList 的 id）：
  * - targets：当前会话的目标列表（含地图坐标 x/y 百分比）；
  *   由模块加载时从 mock 数据初始化，运行期间不物理移除；
+ * - targetAnchors：目标图标的地理锚点（id → WGS84 经纬度）。空对象 = 未初始化；
+ *   地图视图首次稳定（初始 flyTo 结束的 moveend）后由 useTargetMapAnchor 按
+ *   当前屏幕位置批量固化；此后地图 move 事件按锚点重投影 x/y（图标随地图移动），
+ *   图标拖拽结束后按新位置反算刷新对应锚点；
  * - deletedTargetIds：确认删除后的「假删除」（软删除）目标 id 集合：
  *   列表与地图图标层渲染时过滤集合内目标（表现上消失），
  *   targets 数组与 mock 源数据保留，面板「刷新」清空集合即恢复显示；
@@ -24,20 +28,52 @@
  */
 import { create } from 'zustand'
 import { targetList, type TargetItem } from '../config/targets'
+import type { LngLat } from '../map-engines/types'
 
-/** 目标地图图标坐标（map-stage 百分比），与飞机初始位置错开分散分布 */
+/** 目标地图图标坐标（map-stage 百分比），与飞机初始位置相对集中但不重叠：无人机簇居中偏左上，目标簇居中偏右下 */
 export const TARGET_MAP_POSITIONS: Record<string, { x: number; y: number }> = {
-  '01': { x: 21.5, y: 18.2 },
-  '02': { x: 76.4, y: 12.6 },
-  '03': { x: 60.2, y: 47.8 },
-  '04': { x: 15.8, y: 41.5 },
-  '05': { x: 47.3, y: 63.6 },
+  '01': { x: 53, y: 54 },
+  '02': { x: 65, y: 53 },
+  '03': { x: 66, y: 63 },
+  '04': { x: 54, y: 67 },
+  '05': { x: 60, y: 59 },
 }
 
 /** 地图图标层读取的目标数据（TargetItem + 地图坐标） */
 export interface TargetMarkerItem extends TargetItem {
   x: number
   y: number
+}
+
+/**
+ * 目标初始地理锚点相对「当前离线地图包中心」的偏移（度）。
+ *
+ * 由 TARGET_MAP_POSITIONS 的百分比布局按 zoom 14 视口尺度换算
+ * （1080p 下约 1% 宽 ≈ 0.00045° 经度、1% 高 ≈ 0.00035° 纬度，屏幕 y 向下
+ * 为正故纬度偏移取反），保证播种后布局与原百分比布局观感一致
+ * （目标簇居中偏右下）。key 与 config/targets.ts targetList 的 id 对应。
+ */
+export const TARGET_ANCHOR_OFFSETS: Record<string, LngLat> = {
+  '01': { lng: 0.0014, lat: -0.0039 },
+  '02': { lng: 0.0068, lat: -0.0046 },
+  '03': { lng: 0.0072, lat: -0.0081 },
+  '04': { lng: 0.0018, lat: -0.0126 },
+  '05': { lng: 0.0045, lat: -0.007 },
+}
+
+/**
+ * 按离线地图包中心派生全部目标的地理锚点（种子播种用）。
+ * targetList 中无偏移配置的目标回退到 (0,0)（包中心）。
+ */
+export function buildTargetAnchors(center: LngLat): Record<string, LngLat> {
+  const anchors: Record<string, LngLat> = {}
+  for (const t of targetList) {
+    const off = TARGET_ANCHOR_OFFSETS[t.id]
+    anchors[t.id] = off
+      ? { lng: center.lng + off.lng, lat: center.lat + off.lat }
+      : { lng: center.lng, lat: center.lat }
+  }
+  return anchors
 }
 
 interface TargetLinkState {
@@ -58,6 +94,9 @@ interface TargetLinkState {
   /** 列表聚焦请求：id 为目标 id，seq 递增保证重复点击同一目标也能触发监听 effect；
    *  expand=true 展开详情并居中，expand=false 收起详情（取消选中场景） */
   focusTargetRequest: { id: string; seq: number; expand: boolean } | null
+  /** 地图聚焦请求（目标列表面板单行勾选时写入）：id=目标 id，seq 递增保证
+   *  重复勾选同一目标也能触发监听 effect；HomePage 消费后清除 */
+  mapFocusTargetRequest: { id: string; seq: number } | null
   setTargets: (targets: TargetMarkerItem[]) => void
   setHoveredTargetId: (id: string | null) => void
   /** 点击目标（列表行/地图图标）：再次点击同一目标解除联动 */
@@ -79,6 +118,10 @@ interface TargetLinkState {
   requestFocusTarget: (id: string, expand: boolean) => void
   /** 清除聚焦请求（列表完成展开与滚动后调用，避免重复消费） */
   clearFocusTargetRequest: () => void
+  /** 请求地图飞转聚焦指定目标（面板单行勾选时调用；全选走整体替换不触发） */
+  requestMapFocusTarget: (id: string) => void
+  /** 清除地图聚焦请求（HomePage 消费后调用，避免重复消费） */
+  clearMapFocusTargetRequest: () => void
   /** 确认删除：目标「假删除」（仅打软删除标记不物理移除 mock 数据，刷新可恢复），
    *  并同步清理勾选/标记集合与点击联动态 */
   softDeleteTargets: (ids: string[]) => void
@@ -86,6 +129,16 @@ interface TargetLinkState {
   restoreTargets: () => void
   /** 拖拽更新目标图标坐标（map-stage 百分比，自动夹取到 0~100） */
   moveTarget: (id: string, x: number, y: number) => void
+  /** 目标地理锚点（id → WGS84）；空对象 = 尚未初始化（等首个 moveend 批量固化） */
+  targetAnchors: Record<string, LngLat>
+  /** 批量固化目标锚点（初始化时一次写入全部目标） */
+  setTargetAnchors: (anchors: Record<string, LngLat>) => void
+  /** 更新单个目标锚点（图标拖拽结束后按新屏幕位置反算） */
+  setTargetAnchor: (id: string, lngLat: LngLat) => void
+  /** 重置锚点为空（换包时清除旧包锚点，等新包种子播种） */
+  resetTargetAnchors: () => void
+  /** 地图移动批量重投影：整体替换各目标 x/y（单次 set，N 个图标只触发一次渲染） */
+  applyTargetPositions: (positions: Record<string, { x: number; y: number }>) => void
 }
 
 const initialTargets: TargetMarkerItem[] = targetList.map((t) => ({
@@ -102,6 +155,7 @@ export const useTargetLinkStore = create<TargetLinkState>((set) => ({
   deletedTargetIds: new Set(),
   targetPanelOpenRequests: 0,
   focusTargetRequest: null,
+  mapFocusTargetRequest: null,
   setTargets: (targets) => set({ targets }),
   setHoveredTargetId: (id) => set({ hoveredTargetId: id }),
   toggleClickedTarget: (id) =>
@@ -138,6 +192,11 @@ export const useTargetLinkStore = create<TargetLinkState>((set) => ({
       focusTargetRequest: { id, seq: (state.focusTargetRequest?.seq ?? 0) + 1, expand },
     })),
   clearFocusTargetRequest: () => set({ focusTargetRequest: null }),
+  requestMapFocusTarget: (id) =>
+    set((state) => ({
+      mapFocusTargetRequest: { id, seq: (state.mapFocusTargetRequest?.seq ?? 0) + 1 },
+    })),
+  clearMapFocusTargetRequest: () => set({ mapFocusTargetRequest: null }),
   softDeleteTargets: (ids) =>
     set((state) => ({
       deletedTargetIds: new Set([...state.deletedTargetIds, ...ids]),
@@ -156,8 +215,30 @@ export const useTargetLinkStore = create<TargetLinkState>((set) => ({
         state.focusTargetRequest !== null && ids.includes(state.focusTargetRequest.id)
           ? null
           : state.focusTargetRequest,
+      mapFocusTargetRequest:
+        state.mapFocusTargetRequest !== null && ids.includes(state.mapFocusTargetRequest.id)
+          ? null
+          : state.mapFocusTargetRequest,
     })),
   restoreTargets: () => set({ deletedTargetIds: new Set() }),
+  targetAnchors: {},
+  setTargetAnchors: (anchors) => set({ targetAnchors: anchors }),
+  setTargetAnchor: (id, lngLat) =>
+    set((state) => ({ targetAnchors: { ...state.targetAnchors, [id]: lngLat } })),
+  /** 重置锚点为空（换包时清除旧包锚点，等新包种子播种） */
+  resetTargetAnchors: () => set({ targetAnchors: {} }),
+  applyTargetPositions: (positions) =>
+    set((state) => ({
+      targets: state.targets.map((t) => {
+        const p = positions[t.id]
+        if (!p) return t
+        return {
+          ...t,
+          x: Math.min(100, Math.max(0, p.x)),
+          y: Math.min(100, Math.max(0, p.y)),
+        }
+      }),
+    })),
   moveTarget: (id, x, y) =>
     set((state) => ({
       targets: state.targets.map((t) =>

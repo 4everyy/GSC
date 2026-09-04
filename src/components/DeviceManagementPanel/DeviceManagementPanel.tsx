@@ -58,6 +58,8 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
   const setHoveredIndex = useDeviceLinkStore((s) => s.setHoveredDevice)
   const toggleDevice = useDeviceLinkStore((s) => s.toggleDevice)
   const replaceSelectedDevices = useDeviceLinkStore((s) => s.setSelectedDevices)
+  // 地图聚焦请求：单行勾上时飞转地图到该设备（全选走整体替换不触发）
+  const requestMapFocusDevice = useDeviceLinkStore((s) => s.requestMapFocusDevice)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [openDropdown, setOpenDropdown] = useState<'status' | 'type' | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('请选择')
@@ -162,6 +164,8 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
   }, [expandedIndex, measure])
 
   const toggleSelect = (index: number) => {
+    // 勾上（原未选中）时请求地图飞转聚焦该设备；取消勾选不触发
+    if (!selectedDevices.has(index)) requestMapFocusDevice(index)
     toggleDevice(index)
   }
 

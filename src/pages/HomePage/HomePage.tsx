@@ -21,6 +21,7 @@ import { type FormationFlightFormation } from '../../components/FormationFlightP
 import { useMapEngine } from '../../hooks/useMapEngine'
 import { aircraft } from '../../config/aircraft'
 import { useDraggable } from '../../hooks/useDraggable'
+import { useMapAnchorSync } from '../../hooks/useMapAnchorSync'
 import { AircraftFocusPanel } from '../../components/AircraftFocusPanel/AircraftFocusPanel'
 import { computePanelPlacement, placementToClasses } from '../../utils/panelPlacement'
 import { useLayerStore } from '../../stores/layerStore'
@@ -47,8 +48,14 @@ import {
   ALARM_COLLAPSE_MS,
   SHOW_PENDING_PANELS,
   AIRCRAFT_INITIAL_POSITIONS,
+  AIRCRAFT_ANCHOR_OFFSETS,
   INSPECTION_ZONE_INITIAL_POSITION,
+  MAP_FOCUS_ZOOM,
+  MAP_FOCUS_FLY_DURATION_MS,
 } from './constants'
+import { buildTargetAnchors, useTargetLinkStore } from '../../stores/targetLinkStore'
+import { loadScopedAnchors } from '../../utils/geoAnchor'
+import type { LngLat } from '../../map-engines/types'
 import {
   getAreaLandingSpots,
   getRallyPointSpots,
@@ -290,12 +297,73 @@ export function HomePage() {
   )
 
 
-  // 飞机图标拖拽：鼠标左键按住拖动图标+名称至首页任意位置
-  const { positions: aircraftPositions, onDragStart: onAircraftDragStart } = useDraggable({
+  // 飞机图标拖拽 + 地理锚定：手动拖动图标+名称至首页任意位置；地图拖动/缩放时
+  // 图标按地理锚点（LngLat）随地图一起移动（useMapAnchorSync，详见该 hook 注释）
+  // 种子锚点按当前离线地图包派生：localStorage 按包恢复优先（上次拖放位置），
+  // 无则包中心 + AIRCRAFT_ANCHOR_OFFSETS 播种（布局与原百分比布局观感一致）
+  const aircraftSeedAnchors = useMemo<LngLat[] | null>(() => {
+    if (!activePackage) return null
+    const ids = aircraft.map((_, i) => i)
+    const saved = loadScopedAnchors('gcs:aircraft-anchors', activePackage.id, ids)
+    // 全部索引都有持久化锚点才整体采用（loadScopedAnchors 部分缺失时返回 {}）
+    if (Object.keys(saved).length > 0) return ids.map((i) => saved[String(i)])
+    return AIRCRAFT_ANCHOR_OFFSETS.map((off) => ({
+      lng: activePackage.center.lng + off.lng,
+      lat: activePackage.center.lat + off.lat,
+    }))
+  }, [activePackage])
+  const {
+    positions: aircraftPositions,
+    onDragStart: onAircraftDragStart,
+    getAnchor: getAircraftAnchor,
+  } = useMapAnchorSync({
+    adapter,
     count: aircraft.length,
     initialPositions: AIRCRAFT_INITIAL_POSITIONS,
-    storageKey: 'gcs:aircraft-positions',
+    storageKey: 'gcs:aircraft-positions:v3',
+    initialAnchors: aircraftSeedAnchors,
+    anchorStorageKey: 'gcs:aircraft-anchors',
+    anchorScope: activePackage?.id ?? null,
   })
+
+  // ===== 面板单选聚焦：设备/目标面板单行勾上时地图平滑飞转到对应图标锚点 =====
+  // 全选/全不选走整体替换（setSelectedDevices / setSelectedTargetIds），不产生聚焦请求。
+  // 消费后立即清除请求；锚点未就绪（锚定未初始化）时仅清除不飞转。
+  const mapFocusDeviceRequest = useDeviceLinkStore((s) => s.mapFocusDeviceRequest)
+  const clearMapFocusDeviceRequest = useDeviceLinkStore((s) => s.clearMapFocusDeviceRequest)
+  useEffect(() => {
+    if (!adapter || !mapFocusDeviceRequest) return
+    const anchor = getAircraftAnchor(mapFocusDeviceRequest.index)
+    clearMapFocusDeviceRequest()
+    if (!anchor) return
+    adapter.flyTo(anchor, {
+      zoom: Math.max(adapter.getZoom(), MAP_FOCUS_ZOOM),
+      duration: MAP_FOCUS_FLY_DURATION_MS,
+    })
+  }, [adapter, mapFocusDeviceRequest, getAircraftAnchor, clearMapFocusDeviceRequest])
+
+  const mapFocusTargetRequest = useTargetLinkStore((s) => s.mapFocusTargetRequest)
+  const clearMapFocusTargetRequest = useTargetLinkStore((s) => s.clearMapFocusTargetRequest)
+  useEffect(() => {
+    if (!adapter || !mapFocusTargetRequest) return
+    // 目标锚点存于 store（TargetMarkerLayer 初始化/拖拽后更新），按 id 读取
+    const anchor = useTargetLinkStore.getState().targetAnchors[mapFocusTargetRequest.id]
+    clearMapFocusTargetRequest()
+    if (!anchor) return
+    adapter.flyTo(anchor, {
+      zoom: Math.max(adapter.getZoom(), MAP_FOCUS_ZOOM),
+      duration: MAP_FOCUS_FLY_DURATION_MS,
+    })
+  }, [adapter, mapFocusTargetRequest, clearMapFocusTargetRequest])
+
+  // 目标图标种子锚点（同飞机模式）：localStorage 按包恢复优先（上次拖放位置），
+  // 无则包中心 + TARGET_ANCHOR_OFFSETS 播种（目标簇居中偏右下，观感与原布局一致）
+  const targetSeedAnchors = useMemo<Record<string, LngLat> | null>(() => {
+    if (!activePackage) return null
+    const seeded = buildTargetAnchors(activePackage.center)
+    const saved = loadScopedAnchors('gcs:target-anchors', activePackage.id, Object.keys(seeded))
+    return Object.keys(saved).length > 0 ? saved : seeded
+  }, [activePackage])
 
   // 编队飞行航线几何（视口坐标）：以最左选中飞机图标正上方（水平对齐其中心、上移
   // 360px 且不越过视口上缘）为锚点，按当前队形布置降落点——目的地尽量贴近左侧
@@ -405,7 +473,11 @@ export function HomePage() {
           {/* 目标图标层：目标列表每行对应一个态势图图标（车辆 tank / 人员 people），
               三种状态背景（正常/hover·点击联动/标记重点），与 TargetListPanel
               经 targetLinkStore 双向联动（hover/点击行/标记重点/删除同步） */}
-          <TargetMarkerLayer />
+          <TargetMarkerLayer
+            adapter={adapter}
+            seedAnchors={targetSeedAnchors}
+            anchorScope={activePackage?.id ?? null}
+          />
           {/* 无人机图标：显隐由图层控制面板「设备标签」开关联动（layerStore），默认开 */}
           {deviceLabelsVisible && (
             <>
