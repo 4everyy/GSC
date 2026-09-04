@@ -11,7 +11,7 @@ export function StatusHeader({ activeAlarm, onAlarmClick }: StatusHeaderProps) {
   return (
     <header className="status-header">
       <div className="status-header__left">
-        <strong>无人机集群控制地面站</strong>
+        <strong>智能无人集群控制系统</strong>
         <div className="status-metric status-metric--online">
           <img src={homeImages.statusOnlineIcon} alt="" />
           <span>
