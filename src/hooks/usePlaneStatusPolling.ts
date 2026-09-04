@@ -8,12 +8,15 @@
  */
 import { useEffect } from 'react'
 import { usePlaneStatusStore } from '../stores/planeStatusStore'
+import { BACKEND_ENABLED } from '../config/backend'
 
 export function usePlaneStatusPolling() {
   const refresh = usePlaneStatusStore((s) => s.refresh)
   const lastUpdated = usePlaneStatusStore((s) => s.lastUpdated)
 
   useEffect(() => {
+    // 后端联调未开启时跳过，避免代理失败报错
+    if (!BACKEND_ENABLED) return
     // 已成功拉取过（含 StrictMode 重挂载/成功后的 effect 重跑）则不再请求；
     // 请求进行中时 refresh 内部的 inFlight 去重也会直接复用同一 Promise。
     if (lastUpdated !== null) return

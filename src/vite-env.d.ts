@@ -7,3 +7,7 @@
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+interface ImportMetaEnv {
+  /** 后端联调开关：开发模式需设为 true 才启用 HTTP/WS（生产构建始终启用） */
+  readonly VITE_BACKEND_ENABLED?: string
+}

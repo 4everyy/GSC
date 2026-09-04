@@ -15,6 +15,7 @@
 import { useEffect } from 'react'
 import { startRealtime } from './realtimeStore'
 import { wsClient } from './wsClient'
+import { BACKEND_ENABLED } from '../../config/backend'
 
 /** 模块级引用计数：StrictMode 双挂载/多组件复用时连接只建一次 */
 let refCount = 0
@@ -27,6 +28,8 @@ let teardown: (() => void) | null = null
  */
 export function useRealtimeConnection(): void {
   useEffect(() => {
+    // 未开启联调时跳过 WS 连接，避免代理失败重连刷屏
+    if (!BACKEND_ENABLED) return
     refCount += 1
     if (refCount === 1) {
       teardown = startRealtime()
