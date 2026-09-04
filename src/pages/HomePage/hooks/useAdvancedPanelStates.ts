@@ -183,7 +183,15 @@ export function useAdvancedPanelStates() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [areaSelectMode, areaSelectSource])
+  }, [
+    areaSelectMode,
+    areaSelectSource,
+    setAreaSelectMode,
+    setAreaSelectAnchor,
+    setAreaSelectEnd,
+    setRallyPointOpen,
+    setAreaLandingOpen,
+  ])
 
   return {
     ...prev,

@@ -1,4 +1,4 @@
-import { useState, useRef, useLayoutEffect, useCallback } from 'react'
+﻿import { useState, useRef, useLayoutEffect, useCallback } from 'react'
 import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
 import {
   deviceList,
@@ -49,6 +49,9 @@ const TELEMETRY_COL_RIGHT_2: { label: string; key: keyof DeviceTelemetry }[] = [
 ]
 
 export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagementPanelProps) {
+  // 设备列表：暂用本地 mock（config/devices.ts deviceList）。HTTP /control/queryPlaneStatus
+  // 请求与 WebSocket 通道仍保留在 App 层（usePlaneStatusPolling / features/realtime），
+  // 后续需要接回实时数据时改订阅 usePlaneStatusStore 即可
   // 选中/hover 状态迁移至全局 store，与首页飞机图标联动
   const selectedDevices = useDeviceLinkStore((s) => s.selectedDevices)
   const hoveredIndex = useDeviceLinkStore((s) => s.hoveredDevice)
@@ -521,7 +524,7 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                   {/* 行详情 */}
                   {isExpanded && (
                     <>
-                      {index === 1 ? (
+                      {device.status === 'offline' ? (
                         /* 第二行：加载详情失败占位状态 */
                         <div className="device-row__detail-failed">
                           <div className="device-row__detail-failed-content">
@@ -660,7 +663,7 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
       {focusIndex !== null && (
         <AircraftFocusPanel
           name={deviceList[focusIndex].name}
-          batteryLevel={parseInt(deviceList[focusIndex].batteryValue, 10)}
+          batteryLevel={Number(deviceList[focusIndex].batteryValue.replace(/[^\d.]/g, '')) || 0}
           visible={focusVisible}
           onClose={closeFocus}
           showHeaderIndicators={false}

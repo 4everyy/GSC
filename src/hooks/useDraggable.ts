@@ -79,7 +79,9 @@ export function useDraggable({
 
   // 用 ref 持有最新 positions，使 onDragStart 无需依赖 positions 从而保持稳定引用
   const positionsRef = useRef(positions)
-  positionsRef.current = positions
+  useEffect(() => {
+    positionsRef.current = positions
+  }, [positions])
 
   // 拖拽过程中的快照（非响应式，避免频繁触发重渲染）
   const dragState = useRef<{

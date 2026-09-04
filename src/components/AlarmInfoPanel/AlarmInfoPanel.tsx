@@ -73,18 +73,24 @@ export function AlarmInfoPanel({ alarmColor }: AlarmInfoPanelProps) {
 
   // 全部告警处理完成后播放面板隐藏动画并移除面板；
   // 若将来接入真实告警源、列表重新非空，则复位面板显示状态使其可再次出现。
-  useEffect(() => {
+  // 显示状态在渲染期依据消息数量直接派生（避免 effect 内同步 setState 级联），
+  // 隐藏动画定时器仍由 effect 异步启动。
+  const [prevMsgCount, setPrevMsgCount] = useState(messages.length)
+  if (prevMsgCount !== messages.length) {
+    setPrevMsgCount(messages.length)
     if (messages.length > 0) {
       setPanelLeaving(false)
       setPanelHidden(false)
-      return
-    }
-    if (!panelLeaving) {
+    } else {
       setPanelLeaving(true)
-      const timer = window.setTimeout(() => setPanelHidden(true), PANEL_HIDE_DURATION)
-      timersRef.current.push(timer)
     }
-  }, [messages, panelLeaving])
+  }
+
+  useEffect(() => {
+    if (messages.length > 0 || !panelLeaving || panelHidden) return
+    const timer = window.setTimeout(() => setPanelHidden(true), PANEL_HIDE_DURATION)
+    timersRef.current.push(timer)
+  }, [messages.length, panelLeaving, panelHidden])
 
   /** 点击叉号：该条告警默认处理完成，先播放行隐藏动画，动画结束后再从列表移除 */
   const handleDismiss = (id: number) => {

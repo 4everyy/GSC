@@ -125,12 +125,15 @@ export function useBasicPanelStates() {
   // 进入框选模式时清零上一轮遗留的选区状态（起点/终点/拖动标记），
   // 确保每次进入均为空白可绘制状态（兜底：任何退出路径未清干净也不影响再次绘制）
   useEffect(() => {
-    if (areaSelectMode) {
+    if (!areaSelectMode) return
+    // 进入框选：清零上一轮选区状态（rAF 异步执行，规避 effect 内同步 setState）
+    const raf = window.requestAnimationFrame(() => {
       setAreaSelectAnchor(null)
       setAreaSelectEnd(null)
       setAreaSelectDragging(false)
       setAreaSelectHover(null)
-    }
+    })
+    return () => window.cancelAnimationFrame(raf)
   }, [areaSelectMode])
   const [hoverOpen, setHoverOpen] = useState(false)
 

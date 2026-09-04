@@ -168,10 +168,14 @@ export function MapLibreContainer({
   const mapRef = useRef<MLMap | null>(null)
   const adapterRef = useRef<MapLibreAdapter | null>(null)
   const onReadyRef = useRef(onReady)
-  onReadyRef.current = onReady
+  useEffect(() => {
+    onReadyRef.current = onReady
+  }, [onReady])
   // 运行时样式覆盖的 ref 镜像：供 init 读取最新值，避免闭包陈旧
   const styleSpecRef = useRef<MapStyleSpec | null | undefined>(styleSpec)
-  styleSpecRef.current = styleSpec
+  useEffect(() => {
+    styleSpecRef.current = styleSpec
+  }, [styleSpec])
 
   const [status, setStatus] = useState<MapStatus>('loading')
   const [errorMsg, setErrorMsg] = useState('')
@@ -221,10 +225,14 @@ export function MapLibreContainer({
         })
       })
     } catch (err) {
-      setStatus('error')
-      setErrorMsg(
-        '地图初始化失败' + (err instanceof Error ? `：${err.message}` : ''),
-      )
+      // 异步上报错误状态：规避 effect 内同步 setState（React Compiler 规则）
+      const message =
+        '地图初始化失败' + (err instanceof Error ? `：${err.message}` : '')
+      queueMicrotask(() => {
+        if (cancelled) return
+        setStatus('error')
+        setErrorMsg(message)
+      })
     }
 
     return () => {

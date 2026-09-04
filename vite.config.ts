@@ -70,11 +70,29 @@ export default defineConfig({
   },
   server: {
     host: true,
-    port: 9090,
     // 离线地图包体积大（数十~数百 MB），chokidar 监听复制中的大文件会 EBUSY 崩溃
     // dev server；瓦片按需 fetch，无需热更新，直接忽略。
     watch: {
       ignored: ['**/maps/**/*.mbtiles'],
+    },
+    proxy: {
+      // WebSocket 开发代理：前端统一连同源 /ws 路径，由 dev server 转发到后端。
+      // 目标地址优先读环境变量 VITE_WS_PROXY_TARGET，默认指向联调后端。
+      // 后端地址变更时，在 .env.local 中设置：
+      //   VITE_WS_PROXY_TARGET=ws://<后端IP>:<端口>
+      '/ws': {
+        target: process.env.VITE_WS_PROXY_TARGET || 'ws://192.168.110.150:8765',
+        ws: true,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ws/, ''),
+      },
+      // HTTP API 开发代理：/api/* 转发至后端（默认 http://192.168.110.150:1111，
+      // 可用 .env.local 的 VITE_API_PROXY_TARGET 覆盖；生产环境由 nginx 反代）。
+      '/api': {
+        target: process.env.VITE_API_PROXY_TARGET || 'http://192.168.110.150:1111',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
     },
   },
   preview: {

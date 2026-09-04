@@ -86,7 +86,7 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
       }
       setHoveredId(null)
     }
-  }, [])
+  }, [setHoveredId])
 
   // 新增抽屉打开期间：点击面板外任意处或按 Escape 收起抽屉（按钮/选项自身事件已 stopPropagation，不会误触发）
   useEffect(() => {
@@ -114,6 +114,9 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
   useEffect(() => {
     if (!focusTargetRequest) return
     const { id, expand } = focusTargetRequest
+    // 整体处理放入 rAF 异步执行：规避 effect 内同步 setState（React Compiler 规则）
+    let raf = 0
+    const run = () => {
     // 取消选中：收起该行详情（仅当展开的正是该行），无需滚动，直接消费
     if (!expand) {
       setExpandedId((prev) => (prev === id ? null : prev))
@@ -133,7 +136,6 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     // 手风琴式展开：仅该行展开，其余行收起（已是该行则保持）
     setExpandedId(id)
     // rAF 重试循环：行进入 DOM 且几何位置连续两帧稳定后才计算居中滚动
-    let raf = 0
     let lastTop = Number.NaN
     let stableFrames = 0
     let attempts = 0
@@ -166,7 +168,9 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
       }
       raf = window.requestAnimationFrame(tick)
     }
-    raf = window.requestAnimationFrame(tick)
+      raf = window.requestAnimationFrame(tick)
+    }
+    raf = window.requestAnimationFrame(run)
     return () => window.cancelAnimationFrame(raf)
   }, [focusTargetRequest, targets, deletedIds, typeFilter, clearFocusTargetRequest])
 
