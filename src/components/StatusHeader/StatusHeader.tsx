@@ -1,13 +1,13 @@
 import { ALARM_BADGES } from '../../config/alarms'
 import { homeImages } from '../../assets/images/home'
+import { useAlarmPanelStore } from '../../stores/alarmPanelStore'
 import './StatusHeader.css'
 
-interface StatusHeaderProps {
-  activeAlarm: number | null
-  onAlarmClick: (index: number) => void
-}
-
-export function StatusHeader({ activeAlarm, onAlarmClick }: StatusHeaderProps) {
+/** 顶栏（WB-PF-002）：告警徽标状态自 alarmPanelStore 订阅（无 props），
+ *  徽标点击直接调 store action，HomePage 不参与告警交互渲染 */
+export function StatusHeader() {
+  const activeAlarm = useAlarmPanelStore((s) => s.activeAlarm)
+  const handleAlarmClick = useAlarmPanelStore((s) => s.handleAlarmClick)
   return (
     <header className="status-header">
       <div className="status-header__left">
@@ -38,7 +38,7 @@ export function StatusHeader({ activeAlarm, onAlarmClick }: StatusHeaderProps) {
           <span
             className={`alarm ${activeAlarm === index ? 'is-active' : ''}`}
             key={badge}
-            onClick={() => onAlarmClick(index)}
+            onClick={() => handleAlarmClick(index)}
             style={{ cursor: 'pointer' }}
           >
             <img src={badge} alt="告警" />

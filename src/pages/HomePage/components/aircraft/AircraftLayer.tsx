@@ -5,9 +5,10 @@
  * （在线蓝色 / 离线灰色，聚焦时隐藏），以及返航面板打开时选中飞机的 H 返航
  * 地面标记。图标显隐由图层控制面板「设备标签」开关联动。
  */
-import type { MouseEvent as ReactMouseEvent } from 'react'
+import { memo, type MouseEvent as ReactMouseEvent } from 'react'
 import { computePanelPlacement, placementToClasses } from '../../../../utils/panelPlacement'
 import batteryMidIcon from '../../../../assets/images/device/battery-mid.png'
+import { useDeviceLinkStore } from '../../../../stores/deviceLinkStore'
 
 export interface AircraftItem {
   label: string
@@ -20,7 +21,6 @@ export interface AircraftLayerProps {
   aircraft: AircraftItem[]
   aircraftPositions: { x: number; y: number }[]
   selectedDevices: Set<number>
-  hoveredDevice: number | null
   returnHomeOpen: boolean
   focusedAircraft: number | null
   onHoverDevice: (deviceIndex: number | null) => void
@@ -29,11 +29,14 @@ export interface AircraftLayerProps {
   onAircraftDoubleClick: (index: number) => void
 }
 
-export default function AircraftLayer({
+/**
+ * hover 状态经 deviceLinkStore 内部订阅：hover 变化只重渲染本组件（不冒泡到
+ * HomePage），HomePage 因无关状态重渲染时本组件经 React.memo 跳过。
+ */
+function AircraftLayerInner({
   aircraft,
   aircraftPositions,
   selectedDevices,
-  hoveredDevice,
   returnHomeOpen,
   focusedAircraft,
   onHoverDevice,
@@ -41,6 +44,7 @@ export default function AircraftLayer({
   onAircraftClick,
   onAircraftDoubleClick,
 }: AircraftLayerProps) {
+  const hoveredDevice = useDeviceLinkStore((s) => s.hoveredDevice)
   return (
     <>
       {aircraft.map((item, index) => {
@@ -167,3 +171,8 @@ export default function AircraftLayer({
     </>
   )
 }
+
+// props 均为稳定引用（store actions / useCallback / 模块常量）或不可变替换
+// （positions 数组 / Set），默认浅比较即可正确跳过无关重渲染
+const AircraftLayer = memo(AircraftLayerInner)
+export default AircraftLayer

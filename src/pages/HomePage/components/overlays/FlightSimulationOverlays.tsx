@@ -1,11 +1,13 @@
 /**
  * FlightSimulationOverlays —— 模拟飞行覆盖层：航点/航线模拟飞行、区域降落与集结点编队航线（自 FlightOverlays 拆出）。
- * 纯展示组件：状态经 props 分组传入，不含任何 hooks。
+ * 面板状态与启停函数经 props 传入；模拟飞行动画状态经 flightAnimStore 选择器订阅——
+ * rAF 每帧只重渲染本覆盖层，不再波及 HomePage 主体与各面板。
  */
 import type { FlightOverlaysProps } from './FlightOverlays'
 import { RoutePinMarker } from './RoutePinMarker'
 import { homeImages } from '../../../../assets/images/home'
 import { aircraft } from '../../../../config/aircraft'
+import { useFlightAnimStore } from '../../../../stores/flightAnimStore'
 
 export function FlightSimulationOverlays(props: FlightOverlaysProps) {
   const { panels, anims, aircraftPositions, selectedDevices, areaLandingSpots, rallyPointSpots, handleDeleteRoutePoint } = props
@@ -31,13 +33,13 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
     setAreaSelectMode,
     setAreaSelectSource,
   } = panels
-  const {
-    waypointFlight,
-    routeFlightFlight,
-    areaLandingFlights,
-    rallyPointFlights,
-    stopRallyPointFlights,
-  } = anims
+  // 模拟飞行动画状态（store 订阅）：本组件是动画 tick 的唯一重渲染面
+  const waypointFlight = useFlightAnimStore((s) => s.waypointFlight)
+  const routeFlightFlight = useFlightAnimStore((s) => s.routeFlightFlight)
+  const areaLandingFlights = useFlightAnimStore((s) => s.areaLandingFlights)
+  const rallyPointFlights = useFlightAnimStore((s) => s.rallyPointFlights)
+  // 集结点「删除重绘」按钮需要终止循环动画（事件期调用，稳定引用）
+  const stopRallyPointFlights = anims.stopRallyPointFlights
   return (
     <>
 

@@ -15,6 +15,7 @@ import type { useMapEngine } from '../../../../hooks/useMapEngine'
 import type { AircraftListItem } from '../../../../components/AircraftListPanel/AircraftListSection'
 import type { FormationFlightFormation } from '../../../../components/FormationFlightPanel/FormationFlightPanel'
 import { computeFormationFlightGeometry } from '../../formationLayout'
+import { useFlightAnimStore } from '../../../../stores/flightAnimStore'
 
 interface FlightMissionPanelsProps {
   panels: ReturnType<typeof useExclusivePanels>
@@ -82,7 +83,6 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
     setFormationFlightSlide,
   } = panels
   const {
-    formationFlightFlights,
     startRallyPointFlights,
     stopRallyPointFlights,
     startFormationFlightFlights,
@@ -361,7 +361,9 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
               onFormationChange={(f) => {
                 setFormationFlightFormation(f)
                 // 队形变更即时重排降落点；若模拟飞行进行中，则以新队形重启动画
-                if (formationFlightFlights.length === 0) return
+                // 事件期守卫（getState 不订阅）：编队模拟飞行未运行时无需重排，
+                // 避免 rAF tick 触发面板每帧重渲染
+                if (useFlightAnimStore.getState().formationFlightFlights.length === 0) return
                 const geo = getFormationFlightGeometry(f)
                 if (!geo) return
                 startFormationFlightFlights(

@@ -7,14 +7,13 @@
  * - useFlightAnimations / useFlightInteractions   模拟飞行动画与地图取点监听
  * - components/*   禁飞区/巡检区/飞机层/飞行覆盖层/功能面板组/底部按钮条等
  */
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { StatusHeader } from '../../components/StatusHeader/StatusHeader'
 import { MapToolbar } from '../../components/MapToolbar/MapToolbar'
 import { MissionPanel } from '../../components/MissionPanel/MissionPanel'
 import { MapControls } from '../../components/MapControls/MapControls'
 import { MapLoadProgress } from './components/map/MapLoadProgress'
-import { AlarmInfoPanel } from '../../components/AlarmInfoPanel/AlarmInfoPanel'
-import { AlarmDetailPanel } from '../../components/AlarmDetailPanel/AlarmDetailPanel'
+import { AlarmPanels } from './components/alarm/AlarmPanels'
 import { MapLibreContainer } from '../../components/MapLibreContainer/MapLibreContainer'
 import { MapScale } from '../../components/MapScale/MapScale'
 import { type FormationFlightFormation } from '../../components/FormationFlightPanel/FormationFlightPanel'
@@ -44,8 +43,6 @@ import { useFlightInteractions } from './hooks/useFlightInteractions'
 import { useExclusivePanels } from './hooks/useExclusivePanels'
 import { useFlightAnimations } from './hooks/useFlightAnimations'
 import {
-  ALARM_COLORS,
-  ALARM_COLLAPSE_MS,
   SHOW_PENDING_PANELS,
   AIRCRAFT_INITIAL_POSITIONS,
   AIRCRAFT_ANCHOR_OFFSETS,
@@ -66,91 +63,9 @@ import { AreaSelectOverlay } from './components/overlays/AreaSelectOverlay'
 import { BottomBar } from './components/bottom-bar/BottomBar'
 
 export function HomePage() {
-  const [activeAlarm, setActiveAlarm] = useState<number | null>(null)
-
-  // 级别切换中转（先收起再打开）：已展开 A 级别时点击另一徽标，不直接换面板内容——
-  // 先置 activeAlarm=null 播放收起动画，同时记录 pendingAlarm=目标级别，
-  // ALARM_COLLAPSE_MS 后收起动画播完，再展开目标级别面板。
-  const [pendingAlarm, setPendingAlarm] = useState<number | null>(null)
-
-  // 告警信息面板色调：当前激活徽标（红/橙/蓝）映射为面板边框色调
-  const currentAlarmColor = activeAlarm !== null ? ALARM_COLORS[activeAlarm] : undefined
-
-  // 收起衔接状态机：activeAlarm 由非 null → null（开始收起）的瞬间挂 --collapsing，
-  // 常驻面板缺口在收起动画播放全程保持补齐（两面板视觉连续）；
-  // ALARM_COLLAPSE_MS（= 收起动画时长）后移除该类，缺口才恢复展示。
-  // 展开（activeAlarm 非 null）时立即清除，快速"收起→再展开"亦不受影响。
-  // 渲染期对比上次 activeAlarm 直接派生 collapsing 标记（避免 effect 内同步
-  // setState），ALARM_COLLAPSE_MS 后由 effect 定时器复位。
-  const [prevAlarm, setPrevAlarm] = useState<number | null>(null)
-  const [alarmCollapsing, setAlarmCollapsing] = useState(false)
-  if (prevAlarm !== activeAlarm) {
-    setPrevAlarm(activeAlarm)
-    // 非 null → null 的瞬间挂 --collapsing；展开时立即清除
-    setAlarmCollapsing(activeAlarm === null && prevAlarm !== null)
-  }
-  useEffect(() => {
-    if (!alarmCollapsing) return
-    const timer = window.setTimeout(() => setAlarmCollapsing(false), ALARM_COLLAPSE_MS)
-    return () => window.clearTimeout(timer)
-  }, [alarmCollapsing])
-
-  // 待展开定时器：收起动画播完后展开目标级别面板（先收起再打开的后半程）。
-  // 收起期间用户可改点其他徽标（更新目标）或点回待展开徽标本身（取消，保持收起），
-  // pendingAlarm 变化即重挂定时器，始终以最新目标为准。
-  useEffect(() => {
-    if (pendingAlarm === null) return
-    const timer = window.setTimeout(() => {
-      setActiveAlarm(pendingAlarm)
-      setPendingAlarm(null)
-    }, ALARM_COLLAPSE_MS)
-    return () => window.clearTimeout(timer)
-  }, [pendingAlarm])
-
-  /** 顶栏徽标点击（先收起再打开的前半程在此触发）：
-   *  - 未展开时点击：直接展开该级别；
-   *  - 已展开同一徽标：toggle 收起；
-   *  - 已展开另一级别徽标：先置 activeAlarm=null 播放收起动画，记录 pendingAlarm=目标，
-   *    由上方定时器在收起动画播完后展开新级别面板（不直接换内容）；
-   *  - 收起动画期间点击：点待展开徽标本身＝取消（保持收起），点其他徽标＝改目标。 */
-  const handleAlarmClick = (index: number) => {
-    if (pendingAlarm !== null) {
-      setPendingAlarm((prev) => (prev === index ? null : index))
-      return
-    }
-    if (activeAlarm === index) {
-      setActiveAlarm(null)
-      return
-    }
-    if (activeAlarm !== null) {
-      setPendingAlarm(index)
-      setActiveAlarm(null)
-      return
-    }
-    setActiveAlarm(index)
-  }
-
-  // 详情面板收起：点击面板组外部区域时收起。顶栏告警徽标（.alarm）排除——
-  // 其点击由 StatusHeader onAlarmClick toggle 承担（展开/收起同一入口），
-  // 避免外部判定先收起、随后 click 又展开的双重切换。面板未展开时不挂监听。
-  const alarmPanelsRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    // 展开中或切换收起中（存在待展开目标）均挂监听：点击外部即收起并取消待展开目标
-    if (activeAlarm === null && pendingAlarm === null) return
-    const handlePointerDown = (e: PointerEvent) => {
-      const target = e.target as Node | null
-      if (!target) return
-      // 面板组内部（常驻告警框 + 详情面板）：不收起
-      if (alarmPanelsRef.current?.contains(target)) return
-      // 顶栏告警徽标及其子元素：交给徽标自身 toggle
-      if (target instanceof Element && target.closest('.alarm')) return
-      setActiveAlarm(null)
-      if (pendingAlarm !== null) setPendingAlarm(null) // 切换收起中点击外部：取消待展开目标
-    }
-    // 捕获阶段监听：不受子元素（地图画布等）stopPropagation 阻断
-    document.addEventListener('pointerdown', handlePointerDown, true)
-    return () => document.removeEventListener('pointerdown', handlePointerDown, true)
-  }, [activeAlarm, pendingAlarm])
+  // 告警面板状态机已抽离（WB-PF-002）：activeAlarm/pendingAlarm/alarmCollapsing 及
+  // 双定时器全部下沉 alarmPanelStore，由 StatusHeader（徽标点击）与 AlarmPanels
+  // （面板组渲染）各自按选择器订阅，告警交互不再重渲染 HomePage
 
   // 聚焦视图：双击无人机图标后显示设备详情面板（存储聚焦的飞机索引）
   const [focusedAircraft, setFocusedAircraft] = useState<number | null>(null)
@@ -205,11 +120,11 @@ export function HomePage() {
 
 
   // 模拟飞行动画（自 useFlightAnimations 拆出）：8 套 rAF 循环动画的飞行状态与启停
-  const handleAircraftDoubleClick = (index: number) => {
+  const handleAircraftDoubleClick = useCallback((index: number) => {
     // 双击同一架飞机时切换关闭，双击不同飞机时切换目标
     setFocusedAircraft((prev) => (prev === index ? null : index))
-  }
-  const handleCloseFocusPanel = () => setFocusedAircraft(null)
+  }, [])
+  const handleCloseFocusPanel = useCallback(() => setFocusedAircraft(null), [])
 
   // 地图引擎实例：MapLibreContainer 初始化后通过 onEngineReady 注入，
   // adapter 供业务组件（控件、比例尺等）引擎无关地操作地图。
@@ -250,12 +165,20 @@ export function HomePage() {
 
 
   // 设备联动：hover/选中状态与设备管理面板双向同步（全局 store 承载，
-  // deviceIndex 对应 config/devices.ts deviceList 下标）
-  const hoveredDevice = useDeviceLinkStore((s) => s.hoveredDevice)
+  // deviceIndex 对应 config/devices.ts deviceList 下标）。
+  // hoveredDevice 由 AircraftLayer 内部订阅（本组件不订阅，hover 变化不重渲染 HomePage）
   const selectedDevices = useDeviceLinkStore((s) => s.selectedDevices)
   const setHoveredDevice = useDeviceLinkStore((s) => s.setHoveredDevice)
   const toggleDevice = useDeviceLinkStore((s) => s.toggleDevice)
   const requestOpenDevicePanel = useDeviceLinkStore((s) => s.requestOpenDevicePanel)
+  // 单击图标：切换选中并请求展开设备面板（引用稳定，供 AircraftLayer memo 比较）
+  const handleAircraftClick = useCallback(
+    (deviceIndex: number) => {
+      toggleDevice(deviceIndex)
+      requestOpenDevicePanel()
+    },
+    [toggleDevice, requestOpenDevicePanel],
+  )
 
   // 选中飞机列表：取「设备管理」选中集合对应的设备数据。
   // 设备面板暂用本地 mock（config/devices.ts deviceList），此处同源取 mock 保证
@@ -278,9 +201,12 @@ export function HomePage() {
   }, [selectedDevices, planeDevices])
   // Aircraft row delete: deselect the device (id = device index string). Store update
   // syncs device panel checkboxes, home icons, and bottom bar button states.
-  const handleRemoveAircraft = (id: string) => {
-    toggleDevice(Number(id))
-  }
+  const handleRemoveAircraft = useCallback(
+    (id: string) => {
+      toggleDevice(Number(id))
+    },
+    [toggleDevice],
+  )
 
   // 区域降落降落坪排列：算法迁至 formationLayout.getAreaLandingSpots
   // （队形/选区/选中飞机数变化时联动重排）
@@ -369,13 +295,17 @@ export function HomePage() {
   // 360px 且不越过视口上缘）为锚点，按当前队形布置降落点——目的地尽量贴近左侧
   // 原始无人机图标，并给出各机图标中心起点；航线渲染（绿色实线 + 降落点图标）与
   // 模拟飞行（滑窗确认后启动）共用同一算法；可传入队形覆盖当前状态（队形变更重启动画时使用新队形）
-  const getFormationFlightGeometry = (formation?: FormationFlightFormation) =>
-    computeFormationFlightGeometry(
-      aircraft,
-      selectedDevices,
-      aircraftPositions,
-      formation ?? formationFlightFormation,
-    )
+  const getFormationFlightGeometry = useCallback(
+    (formation?: FormationFlightFormation) =>
+      computeFormationFlightGeometry(
+        aircraft,
+        selectedDevices,
+        aircraftPositions,
+        formation ?? formationFlightFormation,
+      ),
+    // aircraft 为模块常量；选中集合/拖拽坐标/队形变化时才重建（传递给 memo 子组件）
+    [selectedDevices, aircraftPositions, formationFlightFormation],
+  )
 
   // 巡检区域拖拽：鼠标左键按住拖动整个巡检区域（含轨迹线）至首页任意位置
   const { positions: inspectionZonePositions, onDragStart: onInspectionZoneDragStart } =
@@ -400,16 +330,28 @@ export function HomePage() {
   // hover 面板视口边缘平移修正（兜底）：测量实际矩形并注入 --clamp-x/--clamp-y，
   // 确保任何 hover 面板（飞机/巡检区域/禁飞区）在任意拖拽位置都不溢出视口。
   // 依赖宿主百分比坐标与聚焦索引：拖拽改变坐标时实时重新修正；聚焦切换时面板增删亦重算。
-  usePanelClamp({
-    deps: [
-      ...aircraftPositions.map((p) => `${p.x},${p.y}`),
-      `${inspectionZonePositions[0].x},${inspectionZonePositions[0].y}`,
+  // WB-PF-003：坐标序列化为单个 key 字符串（useMemo 缓存），仅在坐标/显隐/聚焦
+  // 变化时重新拼接，避免每渲染 N 次字符串分配 + 逐项比较；字符串按值比较语义不变。
+  const clampDepsKey = useMemo(
+    () =>
+      [
+        aircraftPositions.map((p) => `${p.x},${p.y}`).join(';'),
+        `${inspectionZonePositions[0].x},${inspectionZonePositions[0].y}`,
+        focusedAircraft,
+        noflyZoneVisible,
+        inspectionZoneVisible,
+        deviceLabelsVisible,
+      ].join('|'),
+    [
+      aircraftPositions,
+      inspectionZonePositions,
       focusedAircraft,
       noflyZoneVisible,
       inspectionZoneVisible,
       deviceLabelsVisible,
     ],
-  })
+  )
+  usePanelClamp({ deps: [clampDepsKey] })
 
   return (
     <main
@@ -426,29 +368,15 @@ export function HomePage() {
           autoLocate
         />
 
-        <StatusHeader
-          activeAlarm={activeAlarm}
-          onAlarmClick={handleAlarmClick}
-        />
+        <StatusHeader />
 
         <section className="map-stage">
           <MapToolbar />
 
-          {/* 告警信息面板：右上角常显，色调随顶栏激活的告警徽标切换。
-              详情面板（AlarmDetailPanel）：常驻挂载于详情 wrapper（alarm-panels__detail），
-              点击顶栏告警徽标时由 --expanded 态驱动 CSS 过渡（grid-template-rows 0fr→1fr）
-              从常驻框下缘向下延伸滑出，再次点击同一徽标收回（toggle 由 StatusHeader 承担）；
-              切换其他级别徽标时不直接换内容——先收起当前面板，收起动画播完后再展开
-              新级别面板（pendingAlarm 中转，见 handleAlarmClick） */}
-          <div
-            ref={alarmPanelsRef}
-            className={`alarm-panels${activeAlarm !== null ? ' alarm-panels--expanded' : ''}${alarmCollapsing ? ' alarm-panels--collapsing' : ''}`}
-          >
-            <AlarmInfoPanel alarmColor={currentAlarmColor} />
-            <div className="alarm-panels__detail">
-              <AlarmDetailPanel alarmColor={currentAlarmColor} />
-            </div>
-          </div>
+          {/* 告警面板组（WB-PF-002 抽离）：常驻告警框 + 详情弹层，状态机见
+              alarmPanelStore（activeAlarm/pendingAlarm/alarmCollapsing），
+              展开/收起/中转切换交互详见 AlarmPanels.tsx */}
+          <AlarmPanels />
           {/* 离线地图管理面板（导入 / 城市切换 / 包列表）暂隐藏——默认自动加载最新苏州包，
               需要手动管理时恢复下方注释即可（严格离线，仅读写本地 IndexedDB） */}
           {/* <OfflineMapPanel /> */}
@@ -485,15 +413,11 @@ export function HomePage() {
                 aircraft={aircraft}
                 aircraftPositions={aircraftPositions}
                 selectedDevices={selectedDevices}
-                hoveredDevice={hoveredDevice}
                 returnHomeOpen={returnHomeOpen}
                 focusedAircraft={focusedAircraft}
                 onHoverDevice={setHoveredDevice}
                 onDragStart={onAircraftDragStart}
-                onAircraftClick={(deviceIndex) => {
-                  toggleDevice(deviceIndex)
-                  requestOpenDevicePanel()
-                }}
+                onAircraftClick={handleAircraftClick}
                 onAircraftDoubleClick={handleAircraftDoubleClick}
               />
           {/* 聚焦视图面板：双击无人机图标后从图标右侧滑入，

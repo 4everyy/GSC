@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { BOTTOM_BAR_ITEMS, type BottomBarPanel } from '../../constants'
 
 /** 底部按钮条渲染 props：选中设备集合（禁用态判定）+ 各面板开合状态与互斥切换入口 */
@@ -12,7 +13,11 @@ interface BottomBarProps {
  * .bottom-bar__btn（72px 命中层：clip-path 并集轮廓，静止不动）>
  * .bottom-bar__visual（60px 视觉层：底部对齐，hover 弹性向上顶出）。
  * 命中层不动 + 视觉层上移，鼠标不会因按钮顶出而脱离 hover（避免抖动循环） */
-export function BottomBar({ selectedDevices, panelOpenState, panelHandlers }: BottomBarProps) {
+export const BottomBar = memo(function BottomBar({
+  selectedDevices,
+  panelOpenState,
+  panelHandlers,
+}: BottomBarProps) {
   return (
     <nav className="bottom-bar" aria-label="底部功能按钮条">
       {BOTTOM_BAR_ITEMS.map((item, index) => {
@@ -96,4 +101,4 @@ export function BottomBar({ selectedDevices, panelOpenState, panelHandlers }: Bo
       })}
     </nav>
   )
-}
+})

@@ -1,13 +1,15 @@
 /**
  * FlightMarkerOverlays —— 飞行标记覆盖层：返航航线/指点返航/编队飞行/环绕取点定格/航点取点（自 FlightOverlays 拆出）。
- * 纯展示组件：状态经 props 分组传入，不含任何 hooks。
+ * 面板/连线状态经 props 传入；模拟飞行动画状态经 flightAnimStore 选择器订阅——
+ * rAF 每帧只重渲染本覆盖层，不再波及 HomePage 主体与各面板。
  */
 import type { FlightOverlaysProps } from './FlightOverlays'
 import { homeImages } from '../../../../assets/images/home'
 import { aircraft } from '../../../../config/aircraft'
+import { useFlightAnimStore } from '../../../../stores/flightAnimStore'
 
 export function FlightMarkerOverlays(props: FlightOverlaysProps) {
-  const { panels, anims, adapter, aircraftPositions, selectedDevices, getFormationFlightGeometry } = props
+  const { panels, adapter, aircraftPositions, selectedDevices, getFormationFlightGeometry } = props
   const {
     tapReturnOpen,
     waypointFlightOpen,
@@ -35,12 +37,11 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
     formationFlightPoint,
     formationFlightRouteGenerated,
   } = panels
-  const {
-    tapReturnFlight,
-    returnHomeFlights,
-    orbitFlight,
-    formationFlightFlights,
-  } = anims
+  // 模拟飞行动画状态（store 订阅）：本组件是动画 tick 的唯一重渲染面
+  const tapReturnFlight = useFlightAnimStore((s) => s.tapReturnFlight)
+  const returnHomeFlights = useFlightAnimStore((s) => s.returnHomeFlights)
+  const orbitFlight = useFlightAnimStore((s) => s.orbitFlight)
+  const formationFlightFlights = useFlightAnimStore((s) => s.formationFlightFlights)
   return (
     <>
           {/* 已确认的区域降落范围：半透明紫色填充（rgba(113,96,242,0.3)）、直角，
