@@ -117,6 +117,55 @@ export const monitorTaskList: MonitorTaskItem[] = [
     progress: 8,
     devices: [{ id: 'd1', name: '01中科晶锐', status: '执行中', duration: '123min', detail: '执行详情' }],
   },
+  {
+    id: 'm4',
+    name: '02巡检任务',
+    type: '巡检任务',
+    status: '已暂停',
+    startedAt: '2026/07/28 13:05:41',
+    progress: 60,
+    devices: [
+      { id: 'd1', name: '01中科晶锐', status: '已暂停', duration: '88min', detail: '航线 5/8' },
+      { id: 'd2', name: '01中科晶锐', status: '已暂停', duration: '88min', detail: '航线 4/8' },
+    ],
+  },
+  {
+    id: 'm5',
+    name: '02打击任务',
+    type: '打击任务',
+    status: '已完成',
+    startedAt: '2026/07/28 09:12:30',
+    progress: 100,
+    devices: [
+      { id: 'd1', name: '01中科晶锐', status: '已完成', duration: '45min', detail: '目标 6/6' },
+      { id: 'd2', name: '01中科晶锐', status: '已完成', duration: '45min', detail: '目标 6/6' },
+      { id: 'd3', name: '01中科晶锐', status: '已完成', duration: '45min', detail: '目标 6/6' },
+    ],
+  },
+  {
+    id: 'm6',
+    name: '03巡检任务',
+    type: '巡检任务',
+    status: '异常中断',
+    startedAt: '2026/07/27 16:48:09',
+    progress: 30,
+    devices: [
+      { id: 'd1', name: '01中科晶锐', status: '异常中断', duration: '36min', detail: '航线 2/8' },
+      { id: 'd2', name: '01中科晶锐', status: '异常中断', duration: '36min', detail: '航线 1/8' },
+    ],
+  },
+  {
+    id: 'm7',
+    name: '04打击任务',
+    type: '打击任务',
+    status: '执行中',
+    startedAt: '2026/07/28 15:37:22',
+    progress: 15,
+    devices: [
+      { id: 'd1', name: '01中科晶锐', status: '执行中', duration: '12min', detail: '目标 1/4', active: true },
+      { id: 'd2', name: '01中科晶锐', status: '执行中', duration: '12min', detail: '目标 0/4' },
+    ],
+  },
 ]
 
 /** 初始任务列表：首个任务默认展开（设计稿 group_10 展开态），
