@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { monitorTaskList } from '../../config/tasks'
 import type { MonitorTaskItem } from '../../config/tasks'
 import { taskPanelImages } from '../../assets/images/task-panel'
+import iconFormation from '../../assets/images/home/icon-formation.png'
 import './TaskMonitorTab.css'
 
 /** 任务卡片行首图标：巡检 / 打击二选一 */
@@ -10,7 +11,7 @@ function rowIconOf(type: MonitorTaskItem['type']) {
 }
 
 /** 执行监控 tab（设计稿 section_6）：
- *  任务卡片列表（行内容 + 底部进度槽）+ 展开详情（时间轴 + 执行对象行） */
+ *  任务卡片列表（行内容 + 底部进度槽）+ 展开详情（执行对象行） */
 export function TaskMonitorTab() {
   // 首个任务默认展开
   const [expandedId, setExpandedId] = useState<string | null>(monitorTaskList[0]?.id ?? null)
@@ -51,10 +52,8 @@ export function TaskMonitorTab() {
                     <img className="task-monitor__type-icon" src={rowIconOf(task.type)} alt="" />
                     <span className="task-monitor__name">{task.name}</span>
                   </div>
-                  {/* 状态列（执行中-青绿 / 已完成-绿 / 异常中断-红 / 已暂停-黄） */}
-                  <span className={`task-monitor__status task-monitor__status--${task.status}`}>
-                    {task.status}
-                  </span>
+                  {/* 状态列（仅存在「执行中」状态） */}
+                  <span className="task-monitor__status">{task.status}</span>
                   {/* 开始时间列 */}
                   <span className="task-monitor__time">{task.startedAt}</span>
                   {/* 末列：停止图标 + 展开箭头 */}
@@ -77,23 +76,20 @@ export function TaskMonitorTab() {
                   </div>
                 </div>
 
-                {/* 底部进度槽（428x7）：执行中任务显示流动光带 */}
-                {task.status === '执行中' && (
-                  <div className="task-monitor__progress" aria-hidden="true">
-                    <img
-                      className="task-monitor__progress-bg"
-                      src={taskPanelImages.monitorConnectorBg}
-                      alt=""
-                    />
-                    <span className="task-monitor__progress-line" />
-                  </div>
-                )}
+                {/* 底部进度槽（428x7）：流动光带 */}
+                <div className="task-monitor__progress" aria-hidden="true">
+                  <img
+                    className="task-monitor__progress-bg"
+                    src={taskPanelImages.monitorConnectorBg}
+                    alt=""
+                  />
+                  <span className="task-monitor__progress-line" />
+                </div>
               </div>
 
-              {/* ====== 展开详情：时间轴贯穿竖线 + 执行对象行 + 底部装饰 ====== */}
+              {/* ====== 展开详情：执行对象行 + 底部装饰 ====== */}
               {expanded && (
                 <div className="task-monitor__detail">
-                  <span className="task-monitor__timeline" aria-hidden="true" />
                   {task.devices.map((dev) => (
                     <div
                       className={`task-monitor__device${
@@ -101,10 +97,7 @@ export function TaskMonitorTab() {
                       }`}
                       key={dev.id}
                     >
-                      <span className="task-monitor__node" aria-hidden="true">
-                        <img src={taskPanelImages.nodeRing} alt="" />
-                      </span>
-                      <img className="task-monitor__drone" src={taskPanelImages.droneBlue} alt="" />
+                      <img className="task-monitor__drone" src={iconFormation} alt="" />
                       <span className="task-monitor__device-name">{dev.name}</span>
                       <span className="task-monitor__device-status">{dev.status}</span>
                       <span className="task-monitor__device-duration">{dev.duration}</span>

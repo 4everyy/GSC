@@ -4,18 +4,38 @@
  * 尺寸基线（设计稿）：
  * - 任务卡片 434x60（含底部 428x7 进度槽），展开态与收起态背景切图不同
  * - 详情区 434x216：背景切图 monitor-detail-bg
- * - 执行对象行：时间轴节点位于左 11px（35x35 圆环），行内容距左 24px
- * - 时间轴贯穿竖线：青色渐变（8EFEF0 两端透明），距左 15px，宽 1px
+ * - 执行对象行：行内容距左 24px
  */
 
 .task-monitor {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
+/* 列表主体：撑满面板剩余高度，超出时纵向滚动；
+   滚动条样式隐藏但保留滚动功能（与任务规划 tab 一致） */
 .task-monitor__list {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* 隐藏滚动条但保留滚动功能 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.task-monitor__list::-webkit-scrollbar {
+  display: none;
+}
+
+/* 列表子项（卡片+展开详情组）不收缩：超高时触发滚动而非压缩卡片 */
+.task-monitor__list > * {
+  flex-shrink: 0;
 }
 
 /* ====== 任务卡片（434x60：行内容 53px + 底部 7px 进度槽） ====== */
@@ -78,7 +98,7 @@
 }
 
 /* 状态列：不伸缩，左右 auto margin 平分剩余空间（与时间列联动均匀分布）；
-   默认色与行内其他文案一致（白灰），不单独强调执行中 */
+    列表仅存在「执行中」状态，色与行内文案一致（白灰） */
 .task-monitor__status {
   flex: none;
   margin: 0 auto;
@@ -87,19 +107,6 @@
   font-family: MiSans-Regular, 'MiSans', sans-serif;
   line-height: 14px;
   white-space: nowrap;
-}
-
-/* 状态色变体：已完成-绿 / 异常-红 / 已暂停-黄 */
-.task-monitor__status--已完成 {
-  color: rgba(110, 234, 145, 1);
-}
-
-.task-monitor__status--异常中断 {
-  color: rgba(255, 99, 99, 1);
-}
-
-.task-monitor__status--已暂停 {
-  color: rgba(250, 204, 21, 1);
 }
 
 /* 时间列：固定内容宽 133px 不溢出，左右 auto margin 平分剩余空间 */
@@ -207,23 +214,9 @@
   overflow: hidden;
 }
 
-/* 时间轴贯穿竖线：青色渐变两端透明（设计稿 group_8），距左 15px */
-.task-monitor__timeline {
-  position: absolute;
-  left: 15px;
-  top: 36px;
-  bottom: 34px;
-  width: 1px;
-  background-image: linear-gradient(
-    180deg,
-    rgba(142, 254, 240, 0) 0%,
-    rgba(142, 254, 240, 1) 50%,
-    rgba(142, 254, 240, 0) 100%
-  );
-}
-
 /* ====== 执行对象行 ====== */
 
+/* 常规态：极淡白色玻璃底使行间视觉可分，背景色平滑过渡到 hover/active */
 .task-monitor__device {
   position: relative;
   display: flex;
@@ -232,27 +225,21 @@
   height: 48px;
   padding-left: 24px;
   box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.03);
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-/* 当前执行行：白色半透明高亮（设计稿 box_5，435x48） */
+/* hover 态：白色半透明加深，提示行可交互 */
+.task-monitor__device:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 当前执行行（设计稿 box_5，435x48）：仅左缘青色指示线标识，
+   不叠加固定背景色，背景沿用常规 / hover 态规则 */
 .task-monitor__device--active {
-  background-color: rgba(255, 255, 255, 0.16);
-}
-
-/* 时间轴节点：35x35 圆环切图，行左 11px（行内容距左 24px - 圆环半径补偿） */
-.task-monitor__node {
-  position: absolute;
-  left: 11px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 35px;
-  height: 35px;
-}
-
-.task-monitor__node img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  box-shadow: inset 3px 0 0 rgba(20, 251, 255, 0.9);
 }
 
 /* 无人机图标（18x18，蓝灰底切图） */

@@ -40,8 +40,8 @@ export const taskTypeOptions = ['巡检任务', '打击任务'] as const
 
 /* ====== 执行监控 tab ====== */
 
-/** 执行监控：任务执行状态（设计稿 text_5「执行中」） */
-export type MonitorTaskStatus = '执行中' | '已暂停' | '已完成' | '异常中断'
+/** 执行监控：任务执行状态——列表仅存在「执行中」状态 */
+export type MonitorTaskStatus = '执行中'
 
 /** 执行监控：任务内单个执行对象（无人机）的执行情况 */
 export interface MonitorDevice {
@@ -101,7 +101,7 @@ export const monitorTaskList: MonitorTaskItem[] = [
   },
   {
     id: 'm2',
-    name: '01巡检任务',
+    name: '02巡检任务',
     type: '巡检任务',
     status: '执行中',
     startedAt: '2026/07/28 14:24:56',
@@ -119,44 +119,7 @@ export const monitorTaskList: MonitorTaskItem[] = [
   },
   {
     id: 'm4',
-    name: '02巡检任务',
-    type: '巡检任务',
-    status: '已暂停',
-    startedAt: '2026/07/28 13:05:41',
-    progress: 60,
-    devices: [
-      { id: 'd1', name: '01中科晶锐', status: '已暂停', duration: '88min', detail: '航线 5/8' },
-      { id: 'd2', name: '01中科晶锐', status: '已暂停', duration: '88min', detail: '航线 4/8' },
-    ],
-  },
-  {
-    id: 'm5',
     name: '02打击任务',
-    type: '打击任务',
-    status: '已完成',
-    startedAt: '2026/07/28 09:12:30',
-    progress: 100,
-    devices: [
-      { id: 'd1', name: '01中科晶锐', status: '已完成', duration: '45min', detail: '目标 6/6' },
-      { id: 'd2', name: '01中科晶锐', status: '已完成', duration: '45min', detail: '目标 6/6' },
-      { id: 'd3', name: '01中科晶锐', status: '已完成', duration: '45min', detail: '目标 6/6' },
-    ],
-  },
-  {
-    id: 'm6',
-    name: '03巡检任务',
-    type: '巡检任务',
-    status: '异常中断',
-    startedAt: '2026/07/27 16:48:09',
-    progress: 30,
-    devices: [
-      { id: 'd1', name: '01中科晶锐', status: '异常中断', duration: '36min', detail: '航线 2/8' },
-      { id: 'd2', name: '01中科晶锐', status: '异常中断', duration: '36min', detail: '航线 1/8' },
-    ],
-  },
-  {
-    id: 'm7',
-    name: '04打击任务',
     type: '打击任务',
     status: '执行中',
     startedAt: '2026/07/28 15:37:22',

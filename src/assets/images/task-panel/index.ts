@@ -25,7 +25,6 @@ import monitorDetailBg from './monitor-detail-bg.png'
 import monitorProgressRing from './monitor-progress-ring.png'
 import monitorRowBg from './monitor-row-bg.png'
 import monitorRowBgActive from './monitor-row-bg-active.png'
-import nodeRing from './node-ring.png'
 import radarCircle from './radar-circle.png'
 import segmentActive from './segment-active.png'
 import separator from './separator.png'
@@ -63,7 +62,6 @@ export const taskPanelImages = {
   monitorProgressRing,
   monitorRowBg,
   monitorRowBgActive,
-  nodeRing,
   radarCircle,
   segmentActive,
   separator,
