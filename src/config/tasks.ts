@@ -14,8 +14,8 @@ export interface TaskDevice {
   /** 设备名称（如「01中科晶锐」） */
   name: string
   /** 卡片徽标类型：
-   *  online  绿色圆底 + 无人机图标（已接入的执行设备）
-   *  locate  蓝色圆底 + 定位图标（当前定位 / 执行中设备） */
+   *  online  绿色圆底 + 无人机图标 drone-white.png（代表该行已下发成功）
+   *  locate  蓝色圆底 + 定位图标（未下发成功的设备行） */
   badge: 'online' | 'locate'
 }
 
@@ -29,10 +29,10 @@ export interface TaskItem {
   status: TaskStatus
   /** 创建时间（YYYY/MM/DD HH:mm:ss） */
   createdAt: string
-  /** 详情展开后显示的执行设备卡片列表 */
+  /** 详情展开后显示的执行设备卡片列表
+   *  （左侧全部渲染，视口最多显示 4 行，超出下拉滚动查看；
+   *   右侧「下发进程」= 全部设备中 online 行数 / 设备总数，以 x/x 形式展示） */
   devices: TaskDevice[]
-  /** 下发进程（如 6/10） */
-  progress: { current: number; total: number }
 }
 
 /** 任务类型筛选选项 */
@@ -131,8 +131,9 @@ export const monitorTaskList: MonitorTaskItem[] = [
   },
 ]
 
-/** 初始任务列表：首个任务默认展开（设计稿 group_10 展开态），
- *  设备卡片 / 下发进程为 mock 占位值 */
+/** 初始任务列表：首个任务默认展开（设计稿 group_10 展开态）。
+ *  下发进程实时计算：全部设备中 online 行数（drone-white 图标）/ 设备总数，
+ *  以 x/x 形式展示 */
 export const taskList: TaskItem[] = [
   {
     id: '01',
@@ -140,13 +141,15 @@ export const taskList: TaskItem[] = [
     type: '巡检任务',
     status: '已下发',
     createdAt: '2026/07/28 14:24:56',
+    // 6 行设备：视口最多显示 4 行，d5/d6 下拉滚动查看，下发进程按全部 6 行计算
     devices: [
-      { id: 'd1', name: '01中科晶锐', badge: 'locate' },
-      { id: 'd2', name: '01中科晶锐', badge: 'online' },
-      { id: 'd3', name: '01中科晶锐', badge: 'online' },
-      { id: 'd4', name: '01中科晶锐', badge: 'online' },
+      { id: 'd1', name: '01中科晶锐', badge: 'online' },
+      { id: 'd2', name: '02中科晶锐', badge: 'online' },
+      { id: 'd3', name: '03中科晶锐', badge: 'online' },
+      { id: 'd4', name: '04中科晶锐', badge: 'online' },
+      { id: 'd5', name: '05中科晶锐', badge: 'locate' },
+      { id: 'd6', name: '06中科晶锐', badge: 'locate' },
     ],
-    progress: { current: 6, total: 10 },
   },
   {
     id: '02',
@@ -155,10 +158,13 @@ export const taskList: TaskItem[] = [
     status: '未下发',
     createdAt: '2026/07/28 14:24:56',
     devices: [
-      { id: 'd1', name: '01中科晶锐', badge: 'online' },
-      { id: 'd2', name: '01中科晶锐', badge: 'online' },
+      { id: 'd1', name: '01中科晶锐', badge: 'locate' },
+      { id: 'd2', name: '02中科晶锐', badge: 'locate' },
+      { id: 'd3', name: '03中科晶锐', badge: 'locate' },
+      { id: 'd4', name: '04中科晶锐', badge: 'locate' },
+      { id: 'd5', name: '05中科晶锐', badge: 'locate' },
+      { id: 'd6', name: '06中科晶锐', badge: 'locate' },
     ],
-    progress: { current: 0, total: 10 },
   },
   {
     id: '03',
@@ -167,11 +173,13 @@ export const taskList: TaskItem[] = [
     status: '已下发',
     createdAt: '2026/07/28 14:24:56',
     devices: [
-      { id: 'd1', name: '01中科晶锐', badge: 'locate' },
-      { id: 'd2', name: '01中科晶锐', badge: 'online' },
-      { id: 'd3', name: '01中科晶锐', badge: 'online' },
+      { id: 'd1', name: '01中科晶锐', badge: 'online' },
+      { id: 'd2', name: '02中科晶锐', badge: 'online' },
+      { id: 'd3', name: '03中科晶锐', badge: 'online' },
+      { id: 'd4', name: '04中科晶锐', badge: 'online' },
+      { id: 'd5', name: '05中科晶锐', badge: 'online' },
+      { id: 'd6', name: '06中科晶锐', badge: 'online' },
     ],
-    progress: { current: 3, total: 10 },
   },
   {
     id: '04',
@@ -180,9 +188,12 @@ export const taskList: TaskItem[] = [
     status: '未下发',
     createdAt: '2026/07/28 14:24:56',
     devices: [
-      { id: 'd1', name: '01中科晶锐', badge: 'online' },
-      { id: 'd2', name: '01中科晶锐', badge: 'online' },
+      { id: 'd1', name: '01中科晶锐', badge: 'locate' },
+      { id: 'd2', name: '02中科晶锐', badge: 'locate' },
+      { id: 'd3', name: '03中科晶锐', badge: 'locate' },
+      { id: 'd4', name: '04中科晶锐', badge: 'locate' },
+      { id: 'd5', name: '05中科晶锐', badge: 'locate' },
+      { id: 'd6', name: '06中科晶锐', badge: 'locate' },
     ],
-    progress: { current: 0, total: 10 },
   },
 ]

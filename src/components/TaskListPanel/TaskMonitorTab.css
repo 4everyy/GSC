@@ -86,7 +86,7 @@
 
 .task-monitor__name {
   flex: none;
-  width: 71px;
+  min-width: 71px;
   margin-left: 7px;
   color: rgba(255, 255, 255, 1);
   font-size: 14px;
@@ -164,35 +164,33 @@
   object-fit: fill;
 }
 
-/* 进度流动光带：全宽铺满 428px 进度槽，依附任务行底部。
-   四色渐变（青→绿→青→绿，设计稿 428x3 流动条），
-   渐变带取槽宽 2 倍并平铺，动画位移恰好一个渐变带宽度，
-   且相邻带首尾颜色衔接（绿→青），实现从左到右无缝循环流动 */
+/* 进度流动光带：依附任务行底部（428x3 进度槽内）。
+   渐变首尾同色（青→绿→青），单个渐变周期 = 槽宽 428px，相邻周期衔接无色差跳变；
+   元素宽度 200%（铺两组同周期渐变），动画每循环位移恰好一个周期（428px）：
+   亮带滑出右端的同一瞬间，下一组从左端滑入补位，
+   实现「右端滑出 ↔ 左端滑入」自然承接的连续无限流动 */
 .task-monitor__progress-line {
   position: absolute;
   left: 0;
   top: 2px;
-  width: 100%;
+  width: 200%;
   height: 3px;
-  background-image: linear-gradient(
-    90deg,
-    #14fbff 0%,
-    #2bbd0e 33.65%,
-    #14fbff 69.71%,
-    #2bbd0e 100%
-  );
-  background-size: 200% 100%;
-  background-repeat: repeat;
-  animation: task-monitor-flow 2.4s linear infinite;
+  background-image: linear-gradient(90deg, #14fbff 0%, #2bbd0e 50%, #14fbff 100%);
+  background-size: 50% 100%;
+  background-repeat: repeat-x;
+  transform: translateX(-50%);
+  animation: task-monitor-flow 1.2s linear infinite;
+  will-change: transform;
 }
 
-/* 流动方向：从左到右（背景位置 200% → 0%，位移 = 一个渐变带宽度，循环无缝） */
+/* 流动方向：从左到右（-50% → 0，位移 = 一个渐变周期 428px）。
+   首尾帧视觉完全一致（周期性平铺），循环点无任何跳变 */
 @keyframes task-monitor-flow {
   from {
-    background-position: 200% 0;
+    transform: translateX(-50%);
   }
   to {
-    background-position: 0% 0;
+    transform: translateX(0);
   }
 }
 
@@ -236,11 +234,7 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* 当前执行行（设计稿 box_5，435x48）：仅左缘青色指示线标识，
-   不叠加固定背景色，背景沿用常规 / hover 态规则 */
-.task-monitor__device--active {
-  box-shadow: inset 3px 0 0 rgba(20, 251, 255, 0.9);
-}
+
 
 /* 无人机图标（18x18，蓝灰底切图） */
 .task-monitor__drone {
@@ -251,7 +245,7 @@
 
 .task-monitor__device-name {
   flex: none;
-  width: 71px;
+  min-width: 71px;
   margin-left: 10px;
   color: rgba(255, 255, 255, 1);
   font-size: 14px;

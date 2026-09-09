@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   taskList as initialTaskList,
   taskTypeOptions,
@@ -52,6 +52,21 @@ type TabKey = 'monitor' | 'planning'
 
 const typeOptions: TaskType[] = [...taskTypeOptions]
 
+/** 行详情左侧行数据：全部设备均渲染（视口最多显示 4 行，超出下拉滚动查看，由 CSS 控制） */
+function buildDetailRows(devices: TaskItem['devices']) {
+  return devices.map((dev) => ({ dev }))
+}
+
+/** 下发进程：按全部设备中就绪（online，drone-white 图标）行数统计，
+ *  以 x/x（就绪行数/设备总数）形式展示 */
+function dispatchProgress(devices: TaskItem['devices']) {
+  const ready = devices.filter((d) => d.badge === 'online').length
+  return {
+    ready,
+    total: devices.length,
+  }
+}
+
 /** 当前时间格式化为 YYYY/MM/DD HH:mm:ss（与 mock 数据格式一致） */
 function formatNow(): string {
   const d = new Date()
@@ -66,7 +81,7 @@ interface TaskListPanelProps {
 
 export function TaskListPanel({ visible, onClose }: TaskListPanelProps) {
   const [tasks, setTasks] = useState<TaskItem[]>(initialTaskList)
-  const [activeTab, setActiveTab] = useState<TabKey>('planning')
+  const [activeTab, setActiveTab] = useState<TabKey>('monitor')
   const [typeFilter, setTypeFilter] = useState<TaskType | null>(null)
   const [typeOpen, setTypeOpen] = useState(false)
   // 首个任务默认展开（对应设计稿 group_10 展开态）
@@ -86,9 +101,19 @@ export function TaskListPanel({ visible, onClose }: TaskListPanelProps) {
 
   const toggleExpand = (id: string) => setExpandedId((cur) => (cur === id ? null : id))
 
-  /** 下发：状态置为已下发 */
+  /** 下发：状态置为已下发，设备行徽标全部置 online（drone-white 图标，下发进程走满） */
   const handleDispatch = (id: string) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: '已下发' } : t)))
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              status: '已下发',
+              devices: t.devices.map((d) => ({ ...d, badge: 'online' as const })),
+            }
+          : t,
+      ),
+    )
   }
 
   const confirmDelete = () => {
@@ -107,8 +132,7 @@ export function TaskListPanel({ visible, onClose }: TaskListPanelProps) {
       type: value.taskType,
       status: '未下发',
       createdAt: formatNow(),
-      devices: [{ id: `${id}-d1`, name: '01中科晶锐', badge: 'online' }],
-      progress: { current: 0, total: value.targetCount },
+      devices: [{ id: `${id}-d1`, name: '01中科晶锐', badge: 'locate' }],
     }
     setTasks((prev) => [...prev, task])
     setExpandedId(id)
@@ -210,6 +234,8 @@ export function TaskListPanel({ visible, onClose }: TaskListPanelProps) {
           <div className="task-panel__list">
             {filteredTasks.map((task) => {
               const expanded = expandedId === task.id
+              // 下发进程：全部设备中就绪（online）行数，以 x/x 形式展示
+              const progress = dispatchProgress(task.devices)
               return (
                 <div className="task-item" key={task.id}>
                   {/* 任务行：背景三态（展开蓝 > hover 橙 > 常规灰），绝对定位铺满整行 */}
@@ -260,47 +286,51 @@ export function TaskListPanel({ visible, onClose }: TaskListPanelProps) {
                       {/* 内容区与横向分割线包为一组：竖向分割线的定位锚点 */}
                       <div className="task-detail__main">
                         <div className="task-detail__top">
-                          {/* 左侧：时间轴 + 执行设备卡片 */}
+                          {/* 左侧：时间轴 + 执行设备卡片（全部渲染，视口最多 4 行，超出滚动查看） */}
                           <div className="task-detail__timeline">
-                            {task.devices.map((dev) => (
-                              <div className="task-detail__node" key={dev.id}>
-                                <div className="task-detail__card">
-                                  <span
-                                    className={`task-detail__badge task-detail__badge--${dev.badge}`}
+                            {buildDetailRows(task.devices).map((row) => {
+                              const dev = row.dev
+                              return (
+                                <div className="task-detail__node" key={dev.id}>
+                                  <div
+                                    className={`task-detail__card${dev.badge === 'online' ? ' task-detail__card--ready' : ''}`}
                                   >
-                                    {dev.badge === 'locate' ? (
-                                      <img
-                                        className="task-detail__locate"
-                                        src={IMAGES.locateIcon}
-                                        alt=""
-                                      />
-                                    ) : (
-                                      <img
-                                        className="task-detail__drone-white"
-                                        src={IMAGES.droneWhite}
-                                        alt=""
-                                      />
-                                    )}
-                                  </span>
-                                  <img
-                                    className="task-detail__drone-icon"
-                                    src={iconFormation}
-                                    alt=""
-                                  />
-                                  <span className="task-detail__device-name">{dev.name}</span>
+                                    <span
+                                      className={`task-detail__badge task-detail__badge--${dev.badge}`}
+                                    >
+                                      {dev.badge === 'locate' ? (
+                                        <img
+                                          className="task-detail__locate"
+                                          src={IMAGES.locateIcon}
+                                          alt=""
+                                        />
+                                      ) : (
+                                        <img
+                                          className="task-detail__drone-white"
+                                          src={IMAGES.droneWhite}
+                                          alt=""
+                                        />
+                                      )}
+                                    </span>
+                                    <img
+                                      className="task-detail__drone-icon"
+                                      src={iconFormation}
+                                      alt=""
+                                    />
+                                    <span className="task-detail__device-name">{dev.name}</span>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
 
-                          {/* 右侧：下发进程仪表（标签 + 数值 + 3D 圆环切图 + 底座辉光） */}
+                          {/* 右侧：下发进程仪表（标签 + x/x 数值 + 3D 圆环切图，整体带高亮底光） */}
                           <div className="task-detail__gauge">
                             <span className="task-detail__gauge-label">下发进程</span>
                             <span className="task-detail__gauge-value">
-                              {task.progress.current}/{task.progress.total}
+                              {progress.ready}/{progress.total}
                             </span>
                             <div className="task-detail__gauge-ring-wrap">
-                              <span className="task-detail__gauge-ring-glow" />
                               <img
                                 className="task-detail__gauge-ring"
                                 src={IMAGES.radarCircle}
@@ -311,7 +341,7 @@ export function TaskListPanel({ visible, onClose }: TaskListPanelProps) {
                         </div>
 
                         {/* 竖向分割线：设备卡片右侧 24px（设计稿 box_7），
-                          自内容区顶边起，止于横向分割线处，不向下超出 */}
+                           自内容区顶边起，止于横向分割线处，不向下超出 */}
                         <span className="task-detail__v-divider" aria-hidden="true" />
 
                         {/* 分割线：设备数据行与操作按钮之间（434x1） */}

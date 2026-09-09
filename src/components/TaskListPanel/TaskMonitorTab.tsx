@@ -92,9 +92,7 @@ export function TaskMonitorTab() {
                 <div className="task-monitor__detail">
                   {task.devices.map((dev) => (
                     <div
-                      className={`task-monitor__device${
-                        dev.active ? ' task-monitor__device--active' : ''
-                      }`}
+                      className="task-monitor__device"
                       key={dev.id}
                     >
                       <img className="task-monitor__drone" src={iconFormation} alt="" />
