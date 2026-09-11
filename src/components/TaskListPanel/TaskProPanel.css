@@ -1,0 +1,619 @@
+/* ====== 专业模式任务规划面板（设计稿 node 655-44315） ====== */
+/* 进入路径：任务管理 → 创建任务 → 专业模式。点击后任务面板组整体关闭，
+   专业模式作为独立工作区全屏居中展开。视觉复用创建任务面板（group_23）：
+   130° 蓝绿渐变底 + 右上角青色径向高光 + 渐变描边 + 16px 圆角。 */
+
+/* 全屏遮罩：承载居中的专业模式面板 */
+.task-pro-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 18, 26, 0.55);
+  /* 淡入/淡出 */
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.task-pro-mask--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 面板主体 */
+.task-pro {
+  display: flex;
+  flex-direction: column;
+  width: min(1200px, 92vw);
+  height: min(780px, 88vh);
+  box-sizing: border-box;
+  background:
+    radial-gradient(
+      37.56% 37.81% at 87.29% 4.44%,
+      #71d6e3 0%,
+      rgba(113, 214, 227, 0) 100%
+    )
+      padding-box,
+    linear-gradient(130deg, #2d6b73 0%, #4b78ca 60.48%) padding-box,
+    linear-gradient(
+      141deg,
+      rgba(255, 255, 255, 1),
+      rgba(255, 255, 255, 0.4),
+      rgba(255, 255, 255, 1),
+      rgba(145, 242, 255, 1)
+    )
+      border-box;
+  box-shadow: 0px 16px 48px 0px rgba(0, 0, 0, 0.4);
+  border: 2px solid transparent;
+  border-radius: 16px;
+  padding: 0;
+  color: #fff;
+  font-family: 'MiSans-Regular';
+  font-weight: 400;
+  overflow: hidden;
+  /* 入场：轻缩放，配合遮罩淡入 */
+  transform: scale(0.96);
+  transition: transform 0.3s ease;
+}
+
+.task-pro-mask--visible .task-pro {
+  transform: scale(1);
+}
+
+/* ====== 标题栏（与 task-create__header 同规格：56px 高 + 底部渐隐分割线） ====== */
+.task-pro__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  flex-shrink: 0;
+  padding: 0 32px;
+  box-sizing: border-box;
+}
+
+.task-pro__header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.5) 0.17%,
+    rgba(255, 255, 255, 0.8) 9.67%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  pointer-events: none;
+}
+
+.task-pro__title {
+  font-family: 'MiSans-Demibold';
+  font-size: 16px;
+  line-height: 16px;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 1);
+}
+
+/* 副标题徽标「专业模式」：青色描边胶囊 */
+.task-pro__badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 1px solid rgba(70, 220, 231, 0.8);
+  border-radius: 11px;
+  background: rgba(70, 220, 231, 0.12);
+  font-size: 12px;
+  line-height: 1;
+  color: rgba(145, 242, 255, 1);
+  white-space: nowrap;
+}
+
+.task-pro__close {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.task-pro__close:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.95);
+}
+
+.task-pro__close img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ====== 内容区：左任务参数 / 右航点编辑 ====== */
+.task-pro__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 24px;
+  margin: 16px 32px;
+  overflow: hidden;
+}
+
+/* 左栏：任务参数表单（可滚动） */
+.task-pro__form {
+  width: 296px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* 隐藏滚动条但保留滚动功能 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.task-pro__form::-webkit-scrollbar {
+  display: none;
+}
+
+/* 表单标签：与 task-create__label 同规格 */
+.task-pro__label {
+  display: block;
+  margin: 24px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 1);
+}
+
+.task-pro__form .task-pro__label:first-child {
+  margin-top: 0;
+}
+
+.task-pro__input {
+  display: block;
+  width: 100%;
+  height: 28px;
+  margin-top: 8px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  outline: none;
+  font-family: 'MiSans-Regular';
+  font-size: 14px;
+  line-height: 26px;
+  color: #fff;
+}
+
+.task-pro__input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.task-pro__input:focus-visible {
+  outline: 1px solid rgba(70, 220, 231, 0.8);
+  outline-offset: -1px;
+}
+
+/* 必填校验失败态（复用创建任务面板视觉） */
+.task-pro__input--error {
+  border-color: rgba(255, 96, 96, 1);
+  background-color: rgba(255, 96, 96, 0.12);
+}
+
+.task-pro__input-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 14px;
+  color: rgba(255, 96, 96, 1);
+}
+
+/* 右栏：航点编辑 */
+.task-pro__editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-pro__editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.task-pro__editor-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  line-height: 19px;
+  color: rgba(255, 255, 255, 1);
+}
+
+.task-pro__count {
+  font-size: 12px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+}
+
+/* 表格容器：表头固定 + 行区滚动 */
+.task-pro__table {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.task-pro__thead {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.75);
+  white-space: nowrap;
+}
+
+.task-pro__rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* 细滚动条（Chromium/Safari） */
+.task-pro__rows::-webkit-scrollbar {
+  width: 4px;
+}
+
+.task-pro__rows::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+}
+
+.task-pro__rows::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.task-pro__row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: 44px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 1);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* 列宽定义 */
+.task-pro__col--index {
+  width: 76px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.task-pro__col--lng,
+.task-pro__col--lat {
+  width: 144px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-pro__col--height,
+.task-pro__col--speed {
+  width: 132px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-pro__col--action {
+  width: 108px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-pro__col--op {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 16px;
+}
+
+/* 航点序号图标（与任务区序号同款蓝底方块） */
+.task-pro__wp-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  border-radius: 2px;
+  background-color: rgba(75, 163, 228, 1);
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 坐标输入框 */
+.task-pro__cell-input {
+  width: 120px;
+  height: 26px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+  font-family: 'MiSans-Regular';
+  font-size: 13px;
+  line-height: 24px;
+  color: #fff;
+}
+
+.task-pro__cell-input:focus-visible {
+  border-color: rgba(70, 220, 231, 0.9);
+}
+
+/* 紧凑步进（高度/速度）：− 值 +，复用步进图标切图 */
+.task-pro__cell-stepper {
+  display: flex;
+  align-items: center;
+  width: 116px;
+  height: 26px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.task-pro__cell-stepper button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.task-pro__cell-stepper button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.task-pro__cell-stepper button img {
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.task-pro__cell-stepper input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 2px;
+  box-sizing: border-box;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  background: transparent;
+  outline: none;
+  font-family: 'MiSans-Regular';
+  font-size: 13px;
+  line-height: 24px;
+  color: #fff;
+  text-align: center;
+}
+
+/* 动作按钮：点击循环切换（悬停 → 拍照 → 录像），描边按钮样式 */
+.task-pro__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 26px;
+  padding: 0;
+  box-sizing: border-box;
+  background: rgba(75, 188, 249, 0.1);
+  border: 1px solid rgba(14, 167, 249, 1);
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: 'MiSans-Regular';
+  font-size: 13px;
+  line-height: 1;
+  color: #fff;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.task-pro__action:hover {
+  background-color: rgba(75, 188, 249, 0.28);
+}
+
+/* 删除航点按钮：红色描边 × */
+.task-pro__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 96, 96, 0.6);
+  border-radius: 2px;
+  background: rgba(255, 96, 96, 0.08);
+  color: rgba(255, 120, 120, 1);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.task-pro__remove:hover {
+  background-color: rgba(255, 96, 96, 0.25);
+  border-color: rgba(255, 96, 96, 1);
+}
+
+/* 空态 */
+.task-pro__empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+/* 添加航点按钮（表格下方）：虚线描边通栏 */
+.task-pro__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  flex-shrink: 0;
+  margin-top: 8px;
+  padding: 0;
+  border: 1px dashed rgba(70, 220, 231, 0.6);
+  border-radius: 2px;
+  background: rgba(70, 220, 231, 0.06);
+  cursor: pointer;
+  font-family: 'MiSans-Regular';
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(145, 242, 255, 1);
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.task-pro__add:hover {
+  background-color: rgba(70, 220, 231, 0.16);
+}
+
+.task-pro__add img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ====== 底部操作区（与 task-create__footer 同规格：渐变底 + 渐隐顶线） ====== */
+.task-pro__footer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 72px;
+  flex-shrink: 0;
+  padding: 0 32px;
+  box-sizing: border-box;
+  background-image: linear-gradient(
+    360deg,
+    rgba(255, 255, 255, 0.3) 0,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.task-pro__footer::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.2) 0.17%,
+    rgba(255, 255, 255, 0.8) 50%,
+    rgba(255, 255, 255, 0.2) 100%
+  );
+  pointer-events: none;
+}
+
+.task-pro__btn {
+  height: 32px;
+  width: 120px;
+  padding: 0;
+  border-radius: 2px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  text-align: center;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: filter 0.15s ease, background-color 0.15s ease;
+}
+
+/* 生成任务：实心蓝（与一键创建同款） */
+.task-pro__btn--primary {
+  background: #0ea7f9;
+  border: none;
+  color: #ffffff;
+}
+
+.task-pro__btn--primary:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 0 10px 2px rgba(14, 167, 249, 0.4);
+}
+
+.task-pro__btn--primary:active {
+  filter: brightness(0.95);
+}
+
+/* 取消：蓝描边半透明底（与专业模式按钮同款） */
+.task-pro__btn--outline {
+  background: rgba(75, 188, 249, 0.1);
+  border: 1px solid #0ea7f9;
+  color: #ffffff;
+}
+
+.task-pro__btn--outline:hover {
+  background-color: rgba(75, 188, 249, 0.28);
+}
+
+.task-pro__btn--outline:active {
+  background-color: rgba(75, 188, 249, 0.4);
+}

@@ -101,9 +101,11 @@ function formatNow(): string {
 interface TaskListPanelProps {
   visible: boolean
   onClose: () => void
+  /** 专业模式：由创建任务弹层触发，父组件关闭任务面板组并打开专业模式面板 */
+  onProMode: () => void
 }
 
-export function TaskListPanel({ visible, onClose }: TaskListPanelProps) {
+export function TaskListPanel({ visible, onClose, onProMode }: TaskListPanelProps) {
   const [tasks, setTasks] = useState<TaskItem[]>(initialTaskList)
   const [activeTab, setActiveTab] = useState<TabKey>('monitor')
   const [typeFilter, setTypeFilter] = useState<TaskType | null>(null)
@@ -460,6 +462,7 @@ export function TaskListPanel({ visible, onClose }: TaskListPanelProps) {
         visible={createOpen}
         onClose={() => setCreateOpen(false)}
         onSubmit={handleSubmitCreate}
+        onProMode={onProMode}
       />
 
       {/* ====== 删除确认弹窗 ====== */}

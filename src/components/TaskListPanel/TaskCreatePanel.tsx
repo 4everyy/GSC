@@ -65,9 +65,11 @@ interface TaskCreatePanelProps {
   onClose: () => void
   /** 一键创建：携带表单值提交，由父组件追加任务 */
   onSubmit: (value: TaskCreateFormValue) => void
+  /** 专业模式：关闭当前面板组并打开专业模式任务规划面板 */
+  onProMode: () => void
 }
 
-export function TaskCreatePanel({ visible, onClose, onSubmit }: TaskCreatePanelProps) {
+export function TaskCreatePanel({ visible, onClose, onSubmit, onProMode }: TaskCreatePanelProps) {
   const [name, setName] = useState('')
   /** 任务名称必填校验：为空时在输入框下方显示提示 */
   const [nameError, setNameError] = useState('')
@@ -336,7 +338,7 @@ export function TaskCreatePanel({ visible, onClose, onSubmit }: TaskCreatePanelP
         <button type="button" className="task-create__btn task-create__btn--primary" onClick={handleSubmit}>
           一键创建
         </button>
-        <button type="button" className="task-create__btn task-create__btn--outline">
+        <button type="button" className="task-create__btn task-create__btn--outline" onClick={onProMode}>
           专业模式
         </button>
       </footer>
