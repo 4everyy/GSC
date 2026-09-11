@@ -97,7 +97,7 @@
   border: 1px solid #46dce7;
   border-radius: clamp(1px, 0.104vw, 2px);
   padding: 0 clamp(9px, 0.94vw, 18px) 0 clamp(2px, 0.21vw, 4px);
-  background: rgba(255, 255, 255, 0.08) url('../../assets/images/home/alarm-detail-select-arrow.png')
+  background: rgba(255, 255, 255, 0.08) url('../../assets/images/device/dropdown.png')
     right center / clamp(8px, 0.833vw, 16px) clamp(8px, 0.833vw, 16px) no-repeat;
   font-family: MiSans, MiSans;
   font-size: clamp(6px, 0.625vw, 12px);

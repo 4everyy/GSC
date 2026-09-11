@@ -1,0 +1,10 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 目标图标环绕按钮单段扇环：马蹄环（开口朝下，跨约 230°）按弧长三等份的通用段。
+       几何沿用原素材：环心 (80,80)、外径 78、内径 38，段中心朝上（正 -90°方向），跨 76.67°（230°/3），
+       即弧从 231.67° 到 308.33°（屏幕坐标系，y 向下）。三按钮共用本资源：
+       打击 rotate(-76.67deg) → 左上段、跟踪 rotate(0deg) → 正上段、跟随 rotate(76.67deg) → 右上段，
+       三段拼回完整马蹄（底部约 130° 开口朝下，避开 hover 提示浮层）。
+       样式照搬原素材：fill #4BBCF9 40% + 1.5px #4BBCF9 描边；投影不在 SVG 内做
+       （会随按钮旋转转向），改在 CSS ::before 上用 filter: drop-shadow 保持屏幕空间向下。 -->
+  <path d="M31.62 18.81A78 78 0 0 1 128.38 18.81L103.57 50.19A38 38 0 0 0 56.43 50.19Z" fill="#4BBCF9" fill-opacity="0.4" stroke="#4BBCF9" stroke-width="1.5" stroke-linejoin="round"/>
+</svg>
