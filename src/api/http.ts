@@ -1,13 +1,23 @@
 /**
- * HTTP API 基础层。
+ * HTTP API 基础层（后端路由保留 /api 前缀，如 /api/v1/control/...）。
  *
  * 所有请求走同源 /api 前缀：
- * - 开发环境由 Vite dev server 代理转发至后端（默认 http://192.168.110.26:1111，
+ * - 开发环境由 Vite dev server 代理转发至后端（默认 http://192.168.120.30:8080，
  *   见 vite.config.ts 的 server.proxy，可用 .env.local 覆盖）；
  * - 生产环境由 nginx 反代 /api 到后端。
  *
+ * 鉴权：请求前经 ensureAuthToken() 自动登录（POST /v1/iam/logon，见 auth.ts），
+ * 之后每个请求头携带 `token: <JWT>`。
+ *
  * 后端统一响应信封：{ code, data, message }，code === 0 表示成功。
  */
+import { ensureAuthToken } from './auth'
+
+/** 构造带鉴权的公共请求头：token 存在时注入 `token` 头（后端约定，非 Bearer） */
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await ensureAuthToken()
+  return token ? { token } : {}
+}
 
 /** 后端统一响应信封 */
 export interface ApiEnvelope<T> {
@@ -39,7 +49,7 @@ function buildQueryString(params?: Record<string, unknown>): string {
 export async function apiGet<T>(path: string, params?: Record<string, unknown>): Promise<T> {
   const res = await fetch(`/api${path}${buildQueryString(params)}`, {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...(await authHeaders()) },
   })
   if (!res.ok) {
     throw new ApiError(res.status, `HTTP ${res.status} ${res.statusText}`)
@@ -55,7 +65,7 @@ export async function apiGet<T>(path: string, params?: Record<string, unknown>):
 export async function apiPost<T, B = unknown>(path: string, body?: B): Promise<T> {
   const res = await fetch(`/api${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(await authHeaders()) },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   if (!res.ok) {

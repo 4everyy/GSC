@@ -12,7 +12,7 @@
  *    wsClient 单例；组件层通过 useRealtimeConnection Hook 消费。
  */
 import { isServerMessage, type ClientMessage, type ServerMessage } from './protocol'
-import { HANDSHAKE_TEXT, isBackendMessage, mapBackendMessage } from './backendAdapter'
+import { buildSubscribeFrame, isBackendMessage, mapBackendMessage } from './backendAdapter'
 import { logWsEvent, logWsMessage } from './wsLog'
 
 /** 连接状态机：初始 idle → connecting → open（正常收发）↔ reconnecting（重连中）→ closed */
@@ -122,9 +122,9 @@ class WsClient {
       // 应用层握手：连接建立后前端主动发送的第一条消息。
       // 页面刷新 → 重新连接 → hello → (welcome) → subscribe 的链路在日志中清晰可见；
       // 后端回不回 welcome 均可（宽容模式），详见 protocol.ts 的 HelloPayload 注释。
-      console.info('[ws] send handshake: client_UI')
-      logWsMessage('up', { type: 'handshake', payload: HANDSHAKE_TEXT, ts: Date.now() })
-      this.socket?.send(HANDSHAKE_TEXT)
+      console.info('[ws] send handshake: subscribe plane.swarmState')
+      logWsMessage('up', { type: 'handshake', payload: 'subscribe plane.swarmState', ts: Date.now() })
+this.socket?.send(buildSubscribeFrame())
       this.startHeartbeat()
     }
 

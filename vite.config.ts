@@ -82,17 +82,15 @@ export default defineConfig({
       // 后端地址变更时，在 .env.local 中设置：
       //   VITE_WS_PROXY_TARGET=ws://<后端IP>:<端口>
       '/ws': {
-        target: process.env.VITE_WS_PROXY_TARGET || 'ws://192.168.110.150:8765',
+        target: process.env.VITE_WS_PROXY_TARGET || 'ws://192.168.120.30:8080',
         ws: true,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/ws/, ''),
       },
-      // HTTP API 开发代理：/api/* 转发至后端（默认 http://192.168.110.150:1111，
+      // HTTP API 开发代理：/api/* 转发至后端（默认 http://192.168.120.30:8080，
       // 可用 .env.local 的 VITE_API_PROXY_TARGET 覆盖；生产环境由 nginx 反代）。
       '/api': {
-        target: process.env.VITE_API_PROXY_TARGET || 'http://192.168.110.150:1111',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://192.168.120.30:8080',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },

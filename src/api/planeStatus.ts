@@ -1,10 +1,10 @@
 ﻿/**
  * 设备（无人机）状态 HTTP API。
  *
- * GET /api/control/queryPlaneStatus  —— 设备管理面板数据源。
- * 后端地址：http://192.168.110.26:1111（开发环境经 Vite /api 代理）。
+ * POST /api/v1/control/queryPlaneStatus  —— 设备管理面板数据源。
+ * 后端地址：http://192.168.120.30:8080（开发环境经 Vite /api 代理）。
  */
-import { apiGet } from './http'
+import { apiPost } from './http'
 import type { BatteryLevel, Device, DeviceStatus } from '../config/devices'
 
 /** 单架无人机原始数据（后端字段，原样保留） */
@@ -61,7 +61,7 @@ export interface PlaneStatusData {
 
 /** 拉取无人机状态列表（请求参数为空对象） */
 export function fetchPlaneStatus(): Promise<PlaneStatusData> {
-  return apiGet<PlaneStatusData>('/control/queryPlaneStatus', {})
+  return apiPost<PlaneStatusData>('/v1/control/queryPlaneStatus', {})
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * HomePage —— 地面站主页面（编排层）。
  *
  * 地图引擎：MapLibre GL JS（严格离线，瓦片由本地 MBTiles 包经 IndexedDB 渲染）。
@@ -34,6 +34,7 @@ import './HomePage.css'
 import './styles/HoverPanelPlacement.css'
 import { NoflyZone } from './components/zones/NoflyZone'
 import { InspectionZone } from './components/zones/InspectionZone'
+import { TaskAreaLayer } from './components/zones/TaskAreaLayer'
 import AircraftLayer from './components/aircraft/AircraftLayer'
 import { TargetMarkerLayer } from './components/targets/TargetMarkerLayer'
 import { FlightCommandPanels } from './components/panels/FlightCommandPanels'
@@ -282,14 +283,30 @@ export function HomePage() {
     })
   }, [adapter, mapFocusTargetRequest, clearMapFocusTargetRequest])
 
-  // 目标图标种子锚点（同飞机模式）：localStorage 按包恢复优先（上次拖放位置），
-  // 无则包中心 + TARGET_ANCHOR_OFFSETS 播种（目标簇居中偏右下，观感与原布局一致）
+  // 目标真实经纬度签名（id+经纬度拼接字符串，按值比较）：
+  // 仅当接口装载/替换目标（id 或 lngLat 变化）时才变化。
+  // 不能直接依赖 targets 数组引用——地图移动时 applyTargetPositions 每帧更新
+  // x/y 都会创建新数组引用，若 seedAnchors 随之重算，将引发
+  // 「seedAnchors 变化 → effect 重投影 → targets 更新 → seedAnchors 变化」无限渲染循环
+  const targetLngLatKey = useTargetLinkStore((s) =>
+    s.targets
+      .map((t) => (t.lngLat ? `${t.id}@${t.lngLat.lng.toFixed(7)},${t.lngLat.lat.toFixed(7)}` : ''))
+      .join('|'),
+  )
+  // 目标图标种子锚点（同飞机模式）：接口目标（t.lngLat 真实经纬度）优先；
+  // mock 目标按包恢复 localStorage（上次拖放位置）→ 包中心 + TARGET_ANCHOR_OFFSETS 播种
   const targetSeedAnchors = useMemo<Record<string, LngLat> | null>(() => {
     if (!activePackage) return null
     const seeded = buildTargetAnchors(activePackage.center)
     const saved = loadScopedAnchors('gcs:target-anchors', activePackage.id, Object.keys(seeded))
-    return Object.keys(saved).length > 0 ? saved : seeded
-  }, [activePackage])
+    const fallback = Object.keys(saved).length > 0 ? saved : seeded
+    const anchors: Record<string, LngLat> = {}
+    // 经 getState 读取最新 targets（签名未变时引用可能更新，内容 x/y 无关锚点）
+    for (const t of useTargetLinkStore.getState().targets) {
+      anchors[t.id] = t.lngLat ?? fallback[t.id] ?? { ...activePackage.center }
+    }
+    return anchors
+  }, [activePackage, targetLngLatKey])
 
   // 编队飞行航线几何（视口坐标）：以最左选中飞机图标正上方（水平对齐其中心、上移
   // 360px 且不越过视口上缘）为锚点，按当前队形布置降落点——目的地尽量贴近左侧
@@ -315,10 +332,11 @@ export function HomePage() {
       storageKey: 'gcs:inspection-zone-position',
     })
 
-  // 图层显隐（图层控制面板开关联动）：禁飞区/巡检区默认关，设备标签默认开
+  // 图层显隐（图层控制面板开关联动）：禁飞区/巡检区/任务区域默认关，设备标签默认开
   const noflyZoneVisible = useLayerStore((s) => s.noflyZoneVisible)
   const inspectionZoneVisible = useLayerStore((s) => s.inspectionZoneVisible)
   const deviceLabelsVisible = useLayerStore((s) => s.deviceLabelsVisible)
+  const taskAreaVisible = useLayerStore((s) => s.taskAreaVisible)
 
   // hover 面板边缘自适应方向（巡检区域）
   const inspectionZonePlacement = computePanelPlacement(
@@ -388,6 +406,10 @@ export function HomePage() {
           {/* 红色禁飞区：左下角倾斜四边形，SVG 绘制边框 + 四角节点。
               显隐由图层控制面板「禁飞区」开关联动（layerStore），默认关 */}
           {noflyZoneVisible && <NoflyZone />}
+          {/* 任务区域图层（真实后端数据）：多边形 + 名称标签，
+              数据源 /api/v1/control/queryTaskAreaList（taskAreaStore 一次加载），
+              显隐由图层控制面板「任务区域」开关联动（layerStore），默认关 */}
+          {taskAreaVisible && <TaskAreaLayer adapter={adapter} />}
           {SHOW_PENDING_PANELS && <div className="restricted-zone restricted-zone--orange" />}
           {/* 巡检区域：包含1条蛇形巡检轨迹线，支持拖拽移动。
               显隐由图层控制面板「巡检区域」开关联动（layerStore），默认关 */}

@@ -61,6 +61,7 @@ const LAYER_ITEMS: LayerItem[] = [
   { key: 'trajectory', label: '轨迹', initialStatus: 'off' },
   { key: 'inspection', label: '巡检区域', initialStatus: 'off' },
   { key: 'nofly', label: '禁飞区', initialStatus: 'off' },
+  { key: 'taskArea', label: '任务区域', initialStatus: 'off' },
   { key: 'label', label: '设备标签', initialStatus: 'on' },
 ]
 
@@ -183,12 +184,14 @@ export function LayerControlPanel({ visible = true }: LayerControlPanelProps) {
   const setNoflyZoneVisible = useLayerStore((s) => s.setNoflyZoneVisible)
   const setInspectionZoneVisible = useLayerStore((s) => s.setInspectionZoneVisible)
   const setDeviceLabelsVisible = useLayerStore((s) => s.setDeviceLabelsVisible)
+  const setTaskAreaVisible = useLayerStore((s) => s.setTaskAreaVisible)
 
   /** 开关状态 → 首页元素显隐同步（track/trajectory 暂无对应元素，仅记录开关状态） */
   const applyVisibility = (key: string, on: boolean) => {
     if (key === 'nofly') setNoflyZoneVisible(on)
     else if (key === 'inspection') setInspectionZoneVisible(on)
     else if (key === 'label') setDeviceLabelsVisible(on)
+    else if (key === 'taskArea') setTaskAreaVisible(on)
   }
 
   // 防止竞态：记录正在加载的图层 key

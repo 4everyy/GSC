@@ -32,6 +32,7 @@ import type {
   PolylineHighlightOptions,
   PolylineInteractionOptions,
   PolylineOptions,
+  PolygonOptions,
 } from './types'
 
 /** 本地 GeoJSON 最小类型定义（避免依赖 @types/geojson） */
@@ -65,7 +66,7 @@ const EARTH_CIRCUMFERENCE = 40075016.686
 
 /** 内部覆盖物记录 */
 interface MapLibreOverlayEntry {
-  kind: 'marker' | 'polyline' | 'circle'
+  kind: 'marker' | 'polyline' | 'circle' | 'polygon'
   /** Marker 实例（marker 类型） */
   marker?: MLMarker
   /** source id（polyline/circle 类型） */
@@ -505,6 +506,66 @@ export class MapLibreAdapter implements MapAdapter {
   }
 
   removeCircle(id: string): void {
+    this.removeOverlay(id)
+  }
+
+  // ============ 覆盖物：多边形 ============
+
+  addPolygon(id: string, vertices: LngLat[], opts?: PolygonOptions): void {
+    if (vertices.length < 3) return
+    // GeoJSON Polygon 首尾坐标需闭合
+    const ring = vertices.map((v) => [v.lng, v.lat])
+    ring.push([ring[0][0], ring[0][1]])
+
+    const sourceId = nextId('polygon-src')
+    const fillLayerId = nextId('polygon-fill')
+
+    this.map.addSource(sourceId, {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: [ring] },
+            properties: {},
+          },
+        ],
+      },
+    })
+
+    this.map.addLayer({
+      id: fillLayerId,
+      type: 'fill',
+      source: sourceId,
+      layout: {},
+      paint: {
+        'fill-color': opts?.fillColor ?? '#40a9ff',
+        'fill-opacity': opts?.fillOpacity ?? 0.12,
+      },
+    })
+
+    const strokeLayerId = `${fillLayerId}-stroke`
+    this.map.addLayer({
+      id: strokeLayerId,
+      type: 'line',
+      source: sourceId,
+      layout: {},
+      paint: {
+        'line-color': opts?.strokeColor ?? opts?.fillColor ?? '#40a9ff',
+        'line-width': opts?.strokeWeight ?? 1.5,
+        'line-opacity': opts?.strokeOpacity ?? 0.9,
+      },
+    })
+
+    this.overlays.set(id, {
+      kind: 'polygon',
+      sourceId,
+      layerIds: [fillLayerId, strokeLayerId],
+    })
+  }
+
+  removePolygon(id: string): void {
     this.removeOverlay(id)
   }
 

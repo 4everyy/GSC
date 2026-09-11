@@ -96,6 +96,20 @@ export interface CircleOptions {
   fillOpacity?: number
 }
 
+/** 多边形（Polygon）创建选项 */
+export interface PolygonOptions {
+  /** 填充颜色（CSS 颜色字符串，如 `#40a9ff`） */
+  fillColor?: string
+  /** 填充透明度 0-1 */
+  fillOpacity?: number
+  /** 边线颜色 */
+  strokeColor?: string
+  /** 边线宽度（像素） */
+  strokeWeight?: number
+  /** 边线透明度 0-1 */
+  strokeOpacity?: number
+}
+
 /** 标注（Marker）的引擎句柄，创建后可用于更新位置/内容或移除 */
 export interface MarkerHandle {
   /** 引擎内部句柄（maplibregl.Marker 等） */
@@ -175,6 +189,11 @@ export interface MapAdapter {
   // ============ 覆盖物：圆形 ============
   addCircle(id: string, center: LngLat, radiusMeters: number, opts?: CircleOptions): void
   removeCircle(id: string): void
+
+  // ============ 覆盖物：多边形 ============
+  /** 添加多边形覆盖物（任务区域等）；顶点按顺序连线闭合，无需首尾重复 */
+  addPolygon(id: string, vertices: LngLat[], opts?: PolygonOptions): void
+  removePolygon(id: string): void
 
   // ============ 通用覆盖物清理 ============
   /** 按 id 移除任意覆盖物（marker/polyline/circle） */
