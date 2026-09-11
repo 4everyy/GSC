@@ -10,6 +10,11 @@
  * 与目标列表面板通过 targetLinkStore 双向联动：
  * - 列表行 hover / 点击 → 地图图标背景切换
  * - 地图图标 hover / 单击 → 列表行背景同步高亮（hover 橙 / 选中蓝）；
+ *   hover 时展开马蹄形环绕操作按钮（__actions）：orbit-segment.svg
+ *   单段扇环按弧长三等分，打击/跟踪/跟随各占一段（-76.67° / 0° / +76.67°，
+ *   段中心等距 76.67°，底部约 130° 开口朝下避开提示浮层），顺时针漩涡式
+ *   动画由圆心甩出；按钮事件不冒泡：点按不
+ *   触发图标的拖拽会话与单击勾选联动；
  *   单击行为与设备面板一致：切换该目标的勾选态并请求打开目标列表面板
  *   （勾选集合 selectedTargetIds 双向同步，列表勾选框同步勾上/取消），
  *   同时发出列表聚焦请求（requestFocusTarget）：目标列表对应行详情自动展开
@@ -35,7 +40,7 @@
  * - adapter 为 null（引擎未就绪）时退化为纯拖放，不随地图移动。
  */
 import { useEffect, useRef } from 'react'
-import type { PointerEvent as ReactPointerEvent } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { deviceImages } from '../../../../assets/images/device'
 import { useTargetLinkStore, type TargetMarkerItem } from '../../../../stores/targetLinkStore'
 import type { TargetType } from '../../../../config/targets'
@@ -55,6 +60,14 @@ const typeIcon: Record<TargetType, string> = {
 
 /** 按下后位移超过该像素数判定为拖拽（小于则视为单击） */
 const DRAG_THRESHOLD_PX = 4
+
+/** 目标 id → 0..3 稳定哈希：随机化运动轨迹朝向（右下/左下/左上/右上，
+ *  每档 90°）；确定性哈希保证同一目标重渲染/刷新后朝向不跳变 */
+const hashIdToTrailDir = (id: string): number => {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
+  return Math.abs(h) % 4
+}
 
 /** 目标锚点按包持久化的存储键前缀（最终键为 `前缀:包id`） */
 const TARGET_ANCHOR_STORAGE_KEY = 'gcs:target-anchors'
@@ -281,7 +294,6 @@ export function TargetMarkerLayer({
             onPointerCancel={handlePointerCancel}
             onMouseEnter={() => setHoveredTargetId(t.id)}
             onMouseLeave={() => setHoveredTargetId(null)}
-            title={t.name}
             role="button"
             tabIndex={0}
             aria-label={`${t.name}（${t.type}）`}
@@ -296,8 +308,76 @@ export function TargetMarkerLayer({
               }
             }}
           >
+            {/* 运动轨迹：target-trail.svg 三枚条纹箭头仅作 CSS mask 形状
+                模板，内部填充沿 135°（右下 45°，即箭头指向 = 目标运动
+                方向）流动的绿色光带渐变（见 CSS .target-marker__trail：
+                repeating-linear-gradient + background-position 无缝循环
+                动画），以"光带流向"指示目标运行线路；依附朝向按目标
+                id 哈希随机取四方向之一（右下/左下/左上/右上，每档 90°，
+                确定性哈希保证刷新后不跳变），贴身外挂、绘制在背景图
+                之下。位置依附：作为 .target-marker
+                子元素自动继承图标的全部位置更新——地理锚定每帧重投影、
+                拖拽 moveTarget、初始播种——轨迹随图标同步移动（保持
+                既定方位偏移），无需单独锚定。--trail-angle 暂由随机
+                哈希赋值，接入真实航向后替换为航向角 */}
+            <span
+              className="target-marker__trail"
+              style={{ '--trail-angle': `${hashIdToTrailDir(t.id) * 90}deg` } as CSSProperties}
+              aria-hidden="true"
+            />
             <img className="target-marker__bg" src={bgImage} alt="" draggable={false} />
             <img className="target-marker__icon" src={typeIcon[t.type]} alt={t.type} draggable={false} />
+            {/* hover 环绕操作按钮：orbit-segment.svg 单段扇环按弧长三等分，
+                打击/跟踪/跟随各占一段（-76.67°/0°/+76.67°，段中心等距
+                76.67°，三段拼回完整马蹄、底部开口朝下），顺时针漩涡式展开
+                （角度/延迟详见 CSS 变量；背景图 orbit-segment.svg + 楔形
+                clip-path 命中区）。事件在容器统一阻止冒泡——按钮的
+                pointerdown/up 不进入图标拖拽会话，click/keydown 也不触发图标的
+                单击勾选与键盘 Enter 联动 */}
+            <div
+              className="target-marker__actions"
+              role="toolbar"
+              aria-label={`${t.name}操作`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onPointerMove={(e) => e.stopPropagation()}
+              onPointerUp={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="target-marker__action target-marker__action--strike"
+                title="打击"
+              >
+                <span>打击</span>
+              </button>
+              <button
+                type="button"
+                className="target-marker__action target-marker__action--track"
+                title="跟踪"
+              >
+                <span>跟踪</span>
+              </button>
+              <button
+                type="button"
+                className="target-marker__action target-marker__action--follow"
+                title="跟随"
+              >
+                <span>跟随</span>
+              </button>
+            </div>
+
+            {/* hover 提示浮层：图标底部居中显示目标类型（白字 14px，
+                毛玻璃圆角浮层，不参与指针事件）；标记重点目标右侧附红色小旗 */}
+            <div className="target-marker__tip" role="tooltip">
+              <span className="target-marker__tip-text">目标类型：{t.type}</span>
+              {isMarked && (
+                <span className="target-marker__tip-flag" aria-hidden="true">
+                  <i />
+                  <i />
+                </span>
+              )}
+            </div>
           </div>
         )
       })}

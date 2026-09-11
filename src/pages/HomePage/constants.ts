@@ -84,7 +84,7 @@ export interface BottomBarItem {
 export const BOTTOM_BAR_ITEMS: BottomBarItem[] = [
   {
     background: homeImages.bottomBarSeg1,
-    // 禁用态切图（Rectangle 273.png）：未选中设备、全部功能按钮置灰时替换
+    // 禁用态切图（bottom-bar-seg-01-disabled.png）：未选中设备、全部功能按钮置灰时替换
     disabledBackground: homeImages.bottomBarSeg1Disabled,
     width: 119,
   },
@@ -200,7 +200,7 @@ export const BOTTOM_BAR_ITEMS: BottomBarItem[] = [
   },
   {
     background: homeImages.bottomBarSeg13,
-    // 禁用态切图（Rectangle 272.png）：未选中设备、全部功能按钮置灰时替换
+    // 禁用态切图（bottom-bar-seg-13-disabled.png）：未选中设备、全部功能按钮置灰时替换
     disabledBackground: homeImages.bottomBarSeg13Disabled,
     width: 119,
   },

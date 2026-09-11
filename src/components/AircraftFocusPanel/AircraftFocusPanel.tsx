@@ -18,6 +18,7 @@
 import { useState } from 'react'
 import { deviceImages } from '../../assets/images/device'
 import { homeImages } from '../../assets/images/home'
+import dronePreviewVideo from '../../assets/videos/drone-preview.mp4'
 import './AircraftFocusPanel.css'
 
 // 面板固定高度，用于计算垂直居中偏移
@@ -123,7 +124,7 @@ export function AircraftFocusPanel({
       <div className="aircraft-focus-panel__video">
         <video
           className="aircraft-focus-panel__video-stream"
-          src="/videos/drone-preview.mp4"
+          src={dronePreviewVideo}
           autoPlay
           loop
           muted

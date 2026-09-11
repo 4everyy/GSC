@@ -1,0 +1,20 @@
+<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Group 358">
+<mask id="mask0_731_44443" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="7" y="7" width="44" height="44">
+<path id="Union" d="M27.3746 27.0179C27.3645 27.2789 27.155 27.4885 26.894 27.4985L8.38282 28.2008C7.85848 28.2206 7.66163 27.5229 8.11904 27.2658L20.1758 20.4903C20.2556 20.4454 20.3214 20.3796 20.3663 20.2997L27.1419 8.24297C27.399 7.78544 28.0968 7.98232 28.0769 8.50676L27.3746 27.0179ZM38.5605 38.2052C38.5505 38.4663 38.341 38.6758 38.0799 38.6859L19.5688 39.3881C19.0444 39.408 18.8475 38.7102 19.305 38.4531L31.3624 31.6783C31.4421 31.6334 31.5081 31.5674 31.553 31.4877L38.3278 19.4303C38.5849 18.9728 39.2826 19.1697 39.2628 19.6941L38.5605 38.2052ZM49.7479 49.3926C49.7377 49.6535 49.5283 49.8632 49.2673 49.8732L30.7561 50.5755C30.2319 50.5952 30.0351 49.8976 30.4923 49.6405L42.5491 42.865C42.629 42.82 42.6954 42.7537 42.7403 42.6737L49.5152 30.6177C49.7722 30.1603 50.4703 30.3567 50.4508 30.8808L49.7479 49.3926Z" fill="#D79E00"/>
+</mask>
+<g mask="url(#mask0_731_44443)">
+<rect id="Rectangle 333" x="-132.77" y="-168.125" width="283" height="50" transform="rotate(45 -132.77 -168.125)" fill="url(#paint0_linear_731_44443)"/>
+</g>
+</g>
+<defs>
+<linearGradient id="paint0_linear_731_44443" x1="150.23" y1="-143.125" x2="-132.625" y2="-136.731" gradientUnits="userSpaceOnUse">
+<stop stop-color="#29A749" stop-opacity="0.9"/>
+<stop offset="0.2" stop-color="#29A749" stop-opacity="0.2"/>
+<stop offset="0.4" stop-color="#29A749" stop-opacity="0.9"/>
+<stop offset="0.6" stop-color="#29A749" stop-opacity="0.2"/>
+<stop offset="0.8" stop-color="#29A749" stop-opacity="0.9"/>
+<stop offset="1" stop-color="#29A749" stop-opacity="0.2"/>
+</linearGradient>
+</defs>
+</svg>

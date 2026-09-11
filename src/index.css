@@ -1,11 +1,11 @@
 /* ====== MiSans 字体（本地，断网可用） ======
    小米 MiSans，SIL OFL 1.1 免费商用（https://hyperos.mi.com/font）。
-   文件取自社区镜像 https://github.com/whjkd2005/MiSans-Fonts，已落库 public/fonts/。
+   文件取自社区镜像 https://github.com/whjkd2005/MiSans-Fonts，已落库 src/assets/fonts/。
    全站统一使用 'MiSans-Regular'（Regular / 400）。
    额外保留 family 别名 'MiSans' 指向同一文件，作为安全兜底（无额外开销）。 */
 @font-face {
   font-family: 'MiSans';
-  src: url('/fonts/MiSans-Regular.ttf') format('truetype');
+  src: url('./assets/fonts/MiSans-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -14,21 +14,21 @@
 /* Medium / Semibold：设计稿告警信息面板标题与正文使用 */
 @font-face {
   font-family: 'MiSans-Medium';
-  src: url('/fonts/MiSans-Medium.ttf') format('truetype');
+  src: url('./assets/fonts/MiSans-Medium.ttf') format('truetype');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'MiSans-Semibold';
-  src: url('/fonts/MiSans-Semibold.ttf') format('truetype');
+  src: url('./assets/fonts/MiSans-Semibold.ttf') format('truetype');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'MiSans-Regular';
-  src: url('/fonts/MiSans-Regular.ttf') format('truetype');
+  src: url('./assets/fonts/MiSans-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;

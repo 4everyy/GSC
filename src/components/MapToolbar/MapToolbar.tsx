@@ -4,6 +4,7 @@ import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
 import { useTargetLinkStore } from '../../stores/targetLinkStore'
 import { DeviceManagementPanel } from '../DeviceManagementPanel/DeviceManagementPanel'
 import { TargetListPanel } from '../TargetListPanel/TargetListPanel'
+import { TaskListPanel } from '../TaskListPanel/TaskListPanel'
 import './MapToolbar.css'
 
 const FADE_MS = 500
@@ -80,6 +81,7 @@ export function MapToolbar() {
 
   // 第 1 个按钮：设备管理面板；第 5 个按钮：目标列表面板
   const [deviceMounted, deviceVisible] = useFadeMount(active === 0)
+  const [taskMounted, taskVisible] = useFadeMount(active === 3)
   const [targetMounted, targetVisible] = useFadeMount(active === 4)
 
   return (
@@ -111,6 +113,9 @@ export function MapToolbar() {
       </aside>
       {deviceMounted && (
         <DeviceManagementPanel visible={deviceVisible} onClose={() => setActive(-1)} />
+      )}
+      {taskMounted && (
+        <TaskListPanel visible={taskVisible} onClose={() => setActive(-1)} />
       )}
       {targetMounted && (
         <TargetListPanel visible={targetVisible} onClose={() => setActive(-1)} />
