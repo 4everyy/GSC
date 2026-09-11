@@ -126,6 +126,9 @@ export async function fetchAndMapTargets(): Promise<MappedTarget[]> {
   for (const raw of rawList ?? []) {
     if (!raw || !raw.id || seen.has(raw.id)) continue
     seen.set(raw.id, mapTargetToItem(raw, fetchedAt))
+      // keep 5 targets like mock targetList
+      const MAX_TARGETS = 5
+      if (seen.size >= MAX_TARGETS) break
   }
   return [...seen.values()]
 }
