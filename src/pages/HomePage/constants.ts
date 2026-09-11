@@ -35,6 +35,43 @@ export const AIRCRAFT_ANCHOR_OFFSETS: LngLat[] = [
 // 巡检区域初始位置（百分比），与 HomePage.css 中 .inspection-zone 的 left/top 保持一致
 export const INSPECTION_ZONE_INITIAL_POSITION: DragPosition = { x: 38.75, y: 25.5 }
 
+/**
+ * 接口目标回退布局：无人机图标簇附近空白带的偏移池（相对当前离线地图包中心）。
+ *
+ * 接口目标携带的真实经纬度可能远离离线地图包（如后端测试数据落在其它城市），
+ * 直接锚定会把图标投影视口之外；此类目标按序取本池偏移播种到无人机簇
+ * （AIRCRAFT_ANCHOR_OFFSETS，簇中心约 (-0.0039, 0.007)，居中偏左上）右下侧
+ * 空白带——3 列网格（列距 0.003° ≈ 128px、行距 0.004° ≈ 123px@1080p），
+ * 与全部无人机锚点及目标彼此间均保持 ≥ 84px 图标直径 + 间隙不重叠，
+ * 且全部落在 zoom 14 初始视口内；超出池量的目标回退包中心。
+ */
+export const TARGET_NEAR_AIRCRAFT_OFFSETS: LngLat[] = [
+  { lng: 0.0021, lat: 0.004 },
+  { lng: 0.0051, lat: 0.004 },
+  { lng: 0.0081, lat: 0.004 },
+  { lng: 0.0021, lat: 0 },
+  { lng: 0.0051, lat: 0 },
+  { lng: 0.0081, lat: 0 },
+  { lng: 0.0021, lat: -0.004 },
+  { lng: 0.0051, lat: -0.004 },
+  { lng: 0.0081, lat: -0.004 },
+  { lng: 0.0021, lat: -0.008 },
+  { lng: 0.0051, lat: -0.008 },
+  { lng: 0.0081, lat: -0.008 },
+  { lng: 0.0021, lat: -0.012 },
+  { lng: 0.0051, lat: -0.012 },
+  { lng: 0.0081, lat: -0.012 },
+]
+
+/**
+ * 接口目标真实经纬度视为「当前视口可见」的最大偏移（相对包中心，度）。
+ *
+ * zoom 14 初始视口约覆盖包中心 ±0.0225° 经度 / ±0.0175° 纬度（1080p）；
+ * 超出该范围的 lngLat 即使在离线包 bounds 内也在视口之外，回退
+ * TARGET_NEAR_AIRCRAFT_OFFSETS 无人机附近布局，保证图标始终可见。
+ */
+export const TARGET_REAL_LNGLAT_MAX_OFFSET = { lng: 0.02, lat: 0.015 }
+
 // 待接入功能的临时显示开关（false = 隐藏）：
 // MissionPanel / 橙色禁飞区——功能就绪后置 true 或删除相关代码
 export const SHOW_PENDING_PANELS = false

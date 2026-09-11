@@ -545,8 +545,8 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                     <span className="target-row__name" title={t.name}>
                       {t.name}
                     </span>
-                    <span className="target-row__model" title={t.model}>
-                      {t.model}
+                    <span className="target-row__model" title={t.model ?? '—'}>
+                      {t.model ?? '—'}
                     </span>
                     <span className="target-row__value" title={t.value}>
                       {t.value}
@@ -609,7 +609,7 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                         <span className="target-row__detail-value">{t.strikeMode}</span>
                         <span className="target-row__detail-bar" />
                         <span className="target-row__detail-label">直角坐标系</span>
-                        <span className="target-row__detail-value">{t.coordinates}</span>
+                        <span className="target-row__detail-value">{t.coordinates ?? '—'}</span>
                       </div>
 
                       {/* 图片预览区：宽度与信息行一致、高 146px，四角放置角标图（原图为右上角预设，通过 rotate 旋转适配四角） */}

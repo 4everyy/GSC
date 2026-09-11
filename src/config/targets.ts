@@ -15,19 +15,23 @@ export interface TargetItem {
   /** 目标类型：车辆 → tank.png / 人员 → people.png */
   type: TargetType
   /** 目标型号（如「99式坦克」「武装人员」） */
-  model: string
+  model?: string
   /** 状态文字（如「移动」「静止」） */
   status: string
   /** 目标价值（如「高价值」「低价值」） */
   value: string
   /** 发现源（首次侦测到该目标的平台，如「无人机02」） */
   source: string
+  /** 威胁半径（接口目标字段，如「050m」；mock 数据无此字段） */
+  threatRadius?: string
+  /** 目标高度（接口目标字段，如「120m」；mock 数据无此字段） */
+  altitude?: string
   /** 打击方式（如「单向序贯」「同时齐射」） */
   strikeMode: string
   /** 目标位置经纬度（如「经度:120.456°, 纬度:30.123°」） */
   position: string
   /** 直角坐标系（如「X:120m, Y:200m」） */
-  coordinates: string
+  coordinates?: string
   /** 首次发现时间（YYYY/MM/DD HH:mm:ss） */
   firstSeenAt: string
   /** 最后更新时间（YYYY/MM/DD HH:mm:ss） */

@@ -48,6 +48,8 @@ import {
   AIRCRAFT_INITIAL_POSITIONS,
   AIRCRAFT_ANCHOR_OFFSETS,
   INSPECTION_ZONE_INITIAL_POSITION,
+  TARGET_NEAR_AIRCRAFT_OFFSETS,
+  TARGET_REAL_LNGLAT_MAX_OFFSET,
   MAP_FOCUS_ZOOM,
   MAP_FOCUS_FLY_DURATION_MS,
 } from './constants'
@@ -293,17 +295,37 @@ export function HomePage() {
       .map((t) => (t.lngLat ? `${t.id}@${t.lngLat.lng.toFixed(7)},${t.lngLat.lat.toFixed(7)}` : ''))
       .join('|'),
   )
-  // 目标图标种子锚点（同飞机模式）：接口目标（t.lngLat 真实经纬度）优先；
-  // mock 目标按包恢复 localStorage（上次拖放位置）→ 包中心 + TARGET_ANCHOR_OFFSETS 播种
+  // 目标图标种子锚点（同飞机模式）：接口目标（t.lngLat 真实经纬度）在初始视口内才
+  // 直接锚定；离线包/视口外的远方坐标（后端测试数据常在其它城市）会投影视口之外，
+  // 回退 TARGET_NEAR_AIRCRAFT_OFFSETS 无人机簇附近网格（可见且不重叠）；
+  // mock 目标按包恢复 localStorage（上次拖放位置）→ 默认播种（保持原行为）
   const targetSeedAnchors = useMemo<Record<string, LngLat> | null>(() => {
     if (!activePackage) return null
     const seeded = buildTargetAnchors(activePackage.center)
     const saved = loadScopedAnchors('gcs:target-anchors', activePackage.id, Object.keys(seeded))
     const fallback = Object.keys(saved).length > 0 ? saved : seeded
     const anchors: Record<string, LngLat> = {}
+    let overflowIndex = 0 // 视口外的接口目标按序取无人机附近网格偏移
     // 经 getState 读取最新 targets（签名未变时引用可能更新，内容 x/y 无关锚点）
     for (const t of useTargetLinkStore.getState().targets) {
-      anchors[t.id] = t.lngLat ?? fallback[t.id] ?? { ...activePackage.center }
+      const real = t.lngLat
+      if (real) {
+        const visible =
+          Math.abs(real.lng - activePackage.center.lng) <= TARGET_REAL_LNGLAT_MAX_OFFSET.lng &&
+          Math.abs(real.lat - activePackage.center.lat) <= TARGET_REAL_LNGLAT_MAX_OFFSET.lat
+        if (visible) {
+          anchors[t.id] = real
+          continue
+        }
+        // 远方坐标：无人机附近网格播种，池尽（目标数超 15）回退包中心
+        const off = TARGET_NEAR_AIRCRAFT_OFFSETS[overflowIndex++]
+        anchors[t.id] = off
+          ? { lng: activePackage.center.lng + off.lng, lat: activePackage.center.lat + off.lat }
+          : { ...activePackage.center }
+      } else {
+        // mock 目标：localStorage 恢复 → 默认播种
+        anchors[t.id] = fallback[t.id] ?? { ...activePackage.center }
+      }
     }
     return anchors
   }, [activePackage, targetLngLatKey])
