@@ -5,14 +5,7 @@ import aircraftRed from './aircraft-red.png'
 import alarmBadgeBlue from './alarm-badge-blue.png'
 import alarmBadgeOrange from './alarm-badge-orange.png'
 import alarmBadgeRed from './alarm-badge-red.png'
-import alarmDetailScrollbar from './alarm-detail-scrollbar.png'
-import alarmDetailNode from './alarm-detail-node.png'
-import alarmDetailDrone from '../task-panel/drone-blue.png'
-import alarmDetailStatus from '../task-panel/expand-arrow-active.png'
-import alarmDetailSelectArrow from '../device/dropdown.png'
-import alarmDetailIcon from './alarm-detail-icon.png'
 import alarmDetailFilterBar from './alarm-detail-filter-bar.png'
-import alarmDetailBg from './alarm-detail-bg.png'
 import alarmCloseIcon from './alarm-close-icon.png'
 import alarmInfoIcon from './alarm-info-icon.png'
 import alarmSymbol from './alarm-info-icon.png'
@@ -95,10 +88,10 @@ import bottomBarSeg9Disabled from './bottom-bar-seg-09-disabled.png'
 import bottomBarSeg10Disabled from './bottom-bar-seg-10-disabled.png'
 import bottomBarSeg11Disabled from './bottom-bar-seg-11-disabled.png'
 import bottomBarSeg12Disabled from './bottom-bar-seg-12-disabled.png'
-// 首尾装饰段（第 1 / 13 段）禁用态背景切图：设计稿导出文件 Rectangle 273/272.png
-// （273 = 左端段、272 = 右端段），未选中设备（全部功能按钮置灰）时同步替换默认背景
-import bottomBarSeg1Disabled from './Rectangle 273.png'
-import bottomBarSeg13Disabled from './Rectangle 272.png'
+// 首尾装饰段（第 1 / 13 段）禁用态背景切图
+// （01 = 左端段、13 = 右端段），未选中设备（全部功能按钮置灰）时同步替换默认背景
+import bottomBarSeg1Disabled from './bottom-bar-seg-01-disabled.png'
+import bottomBarSeg13Disabled from './bottom-bar-seg-13-disabled.png'
 
 export const homeImages = {
   aircraftBlue,
@@ -108,14 +101,7 @@ export const homeImages = {
   alarmBadgeBlue,
   alarmBadgeOrange,
   alarmBadgeRed,
-  alarmDetailScrollbar,
-  alarmDetailNode,
-  alarmDetailDrone,
-  alarmDetailStatus,
-  alarmDetailSelectArrow,
-  alarmDetailIcon,
   alarmDetailFilterBar,
-  alarmDetailBg,
   alarmCloseIcon,
   alarmInfoIcon,
   alarmSymbol,

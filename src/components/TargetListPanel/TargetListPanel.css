@@ -6,14 +6,14 @@
   z-index: 10;
   display: flex;
   flex-direction: column;
-  /* 设计稿定宽 465px */
-  width: 465px;
+  /* 设计稿定宽 466px：行宽 434 + 左右内边距 15 + 边框 1×2（行距面板外缘 16px） */
+  width: 466px;
   height: clamp(460px, 30vw, 560px);
   background: linear-gradient(180deg, rgba(36, 86, 107, 0.7) 0%, rgba(71, 167, 209, 0.4) 100%);
   box-shadow: 0px 5px 12px 0px rgba(12, 69, 79, 0.5);
   border: 1px solid;
   border-image: radial-gradient(circle, rgba(24, 134, 161, 1), rgba(24, 134, 161, 0)) 1 1;
-  padding: clamp(2px, 0.21vw, 4px) clamp(8px, 0.83vw, 16px) clamp(10px, 0.83vw, 16px);
+  padding: clamp(2px, 0.21vw, 4px) clamp(8px, 0.78vw, 15px) clamp(10px, 0.83vw, 16px);
   color: #fff;
   font-family: 'MiSans-Regular';
   opacity: 0;
@@ -177,6 +177,8 @@
    line-height 1.3：中文字体（MiSans 等）ascent+descent > 1em，
    line-height:1 会使文字光学中心偏上约 1~1.5px，1.3 使其在行内垂直居中 */
 .target-panel__filter-label {
+  /* 与 .target-row__icon 的 margin-left 一致：使「目标类型」文字与行内类型图标纵向对齐 */
+  margin-left: clamp(6px, 0.42vw, 8px);
   font-size: clamp(10px, 0.73vw, 14px);
   white-space: nowrap;
   line-height: 1.3;
@@ -290,7 +292,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 4px;
+  padding: 0;
   scrollbar-width: none;
 }
 
@@ -322,9 +324,9 @@
 }
 
 /* ====== 目标行 ======
-   结构：复选框 + 类型图标（tank/people）+ 名称 + 状态 + 定位/详情/更多三图标
-   布局模式与 .device-row 一致：名称弹性吸收剩余空间，
-   后续各列为固定宽度保证跨行对齐，行高与背景图(430×48)匹配设备行 */
+   结构（参考设计稿 434px 行基准）：复选框 + 类型图标（tank/people）+ 名称 + 型号 + 价值 + 状态 + 标记/删除/更多三图标
+   布局模式（与设备管理面板一致）：各数据列均为固定列宽保证跨行严格对齐，
+   剩余空间由 space-between 均分到所有列间隙，行尾操作图标右缘统一对齐 */
 .target-row {
   position: relative;
   display: flex;
@@ -389,46 +391,65 @@
 .target-row__icon {
   width: clamp(15px, 1.15vw, 21px);
   height: clamp(15px, 1.15vw, 21px);
+  min-width: clamp(15px, 1.15vw, 21px);
+  margin-left: clamp(6px, 0.42vw, 8px);
   object-fit: contain;
   flex-shrink: 0;
   -webkit-user-drag: none;
 }
 
-/* 目标名称：弹性宽度吸收剩余空间，使后续列推到右侧统一对齐 */
+/* 目标名称（"01目标车辆"）：固定列宽（设计稿 434px 基准 x=68~155 换算），
+   后续型号/价值/状态列才能跨行严格对齐 */
 .target-row__name {
   font-size: clamp(10px, 0.73vw, 14px);
   white-space: nowrap;
   line-height: 1;
   color: #fff;
-  flex: 0 1 auto;
+  flex: 0 0 clamp(58px, 4.22vw, 81px);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: left;
 }
 
-/* 价值列（"价值:高"）：固定宽度，各行严格对齐（列宽按 4 字内容，小于状态列） */
+/* 型号列（"99式坦克"）：固定列宽（设计稿 x=155~227 换算），各行严格对齐 */
+.target-row__model {
+  font-size: clamp(10px, 0.73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.85);
+  flex: 0 0 clamp(47px, 3.44vw, 66px);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+/* 价值列（"高价值"）：固定列宽（设计稿 x=227~285 换算），各行严格对齐 */
 .target-row__value {
   font-size: clamp(10px, 0.73vw, 14px);
   white-space: nowrap;
   line-height: 1;
   color: rgba(255, 255, 255, 0.85);
-  flex: 0 1 auto;
+  flex: 0 0 clamp(37px, 2.71vw, 52px);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
 }
 
-/* 状态列（"状态:默认侦查"）：固定宽度，各行严格对齐 */
+/* 状态列（"移动"）：固定列宽（与设备面板 device-row__status 同模式），
+   剩余空间交由行 space-between 均分到各列间隙，保证列间距与设备行一致 */
 .target-row__status {
   font-size: clamp(10px, 0.73vw, 14px);
   white-space: nowrap;
   line-height: 1;
   color: rgba(255, 255, 255, 0.85);
-  flex: 0 1 auto;
+  flex: 0 0 clamp(32px, 2.4vw, 46px);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
 }
 
 /* 三个操作图标（从左到右）：
@@ -464,7 +485,7 @@
   height: clamp(16px, 1.25vw, 24px);
 }
 
-/* ====== 行详情展开区（设计稿 group_9，434×334 基准，% 定位 + clamp 缩放） ====== */
+/* ====== 行详情展开区（设计稿 434×308 基准，% 定位 + clamp 缩放） ====== */
 /* 行容器：行 + 详情纵向排列，展开时不遮挡其他行（与 device-row-wrapper 同构） */
 .target-row-wrapper {
   position: relative;
@@ -500,17 +521,19 @@
   }
 }
 
-/* 信息行：10 轨 grid + nth-child 显式列位，精确复刻设计稿列坐标（434 基准）：
-   竖条x24(0.52%) / 隔4(1.04%) / 标签56(14.51%) / 隔16(4.15%) / 值域171(44.3%)
-   | 竖条x273(0.52%) / 隔4 / 标签56 / 隔16 / 值域(1fr)
-   保证行1「威胁半径」与行2「打击方式」竖条严格纵向对齐 */
+/* 信息行：10 轨 grid + nth-child 显式列位（434 基准）：标签轨道与标签同宽（em），间距为固定 px——
+   竖条x18(2px) / 隔4(4px) / 标签(4em)左缘x24 / 隔16px / 值域(22.31%)
+   | 竖条(2px) / 隔4(4px) / 标签(5em) / 隔12px / 值域(1fr)
+   保证行1「目标位置」与行2「直角坐标系」竖条严格纵向同列对齐 */
 .target-row__detail-row {
   display: grid;
-  grid-template-columns: 0.52% 1.04% 14.51% 4.15% 44.3% 0.52% 1.04% 14.51% 4.15% 1fr;
+  /* 行容器字号与标签一致：em 轨道按标签字号解析，与标签元素宽度严格相等，标签→值间距即纯 gap 轨道 */
+  font-size: var(--detail-time-fs);
+  grid-template-columns: 2px 4px 4em 16px 22.31% 2px 4px 5em 12px 1fr;
   align-items: center;
   width: 100%;
-  /* 设计稿首列竖条 x=24/434、内容右缘 x≈410/434 */
-  padding-left: 5.53%;
+  /* 标签（发现源/打击方式）距详情容器左缘 24px = padding18 + 竖条2 + 隔4；内容右缘 x≈410/434 */
+  padding-left: 18px;
   padding-right: 5.53%;
   box-sizing: border-box;
   height: clamp(14px, 0.99vw, 19px);
@@ -547,8 +570,14 @@
   color: #fff;
   text-align: justify;
   text-align-last: justify;
-  width: 100%;
+  /* 标签宽取 5 字（5em，含 0.15em 字间隙）：5 字标签零字距填满，4 字标签拉伸后字距≈0.33em，两组右缘对齐 */
+  width: 5em;
   min-width: 0;
+}
+
+/* 左组标签（发现源/打击方式）宽度取 4 字（4em）：4 字标签零字距填满，「发现源」3 字拉伸至同宽（字距≈0.5em）；右缘对齐，值列起点不变 */
+.target-row__detail-row > :nth-child(2) {
+  width: 4em;
 }
 
 .target-row__detail-value {
@@ -562,13 +591,14 @@
   justify-self: start;
 }
 
-
-/* ====== 图片预览区：目标位置行与分隔线之间，宽度与信息行一致、高 146px ====== */
+/* ====== 图片预览区：左缘与「发现源」标签对齐（24px），高 146px ====== */
 .target-row__detail-preview {
   position: relative;
-  width: 89.94%;
+  /* 图标区域（四角角标图标，30x30 无透明留白、left:0）左缘与上方「发现源/打击方式」文字左缘对齐：x=24；
+     右缘维持原 x≈410/434 不变；内部图片/虚线相应在图标内缘 x=52 起，保持角标-图片相对几何 */
+  width: calc(94.47% - 24px);
   height: 146px;
-  margin: 16px 5.53% 0 5.53%;
+  margin: 16px 5.53% 0 24px;
   flex-shrink: 0;
 }
 
@@ -608,9 +638,9 @@
   transform: rotate(90deg);
 }
 
-/* 预览图（preview-image.png：314㵱50）：
+/* 预览图（preview-image.png：314×50）：
    宽度=顶部虚线整体长度（容器宽 - 左右各 28px），
-   object-fit: contain 按比例自适应且垂直居中；图层在虚线/角标之下 */
+   object-fit: fill 拉伸铺满；图层在虚线/角标之下 */
 .target-row__detail-preview-img {
   position: absolute;
   z-index: 2;
@@ -628,7 +658,6 @@
 }
 
 /* 四角连接线（#8BF9EB）：取角标 45° 斜线的中点为起点，沿垂直于斜线的方向（135°）引 1px 实线连到预览图。
-   起点由角标像素扫描+旋转映射计算：斜线中点经旋转后位于容器各角约 (5,6)、(W-6,5)、(6,H-5)、(W-5,H-6)，
    线长 32px（22.5√2）恰好抵达预览图左右边缘（x=28 / W-28） */
 .target-row__detail-preview-link {
   position: absolute;
@@ -667,8 +696,7 @@
   transform: rotate(45deg);
 }
 
-/* 四边同色系虚线（颜色取角标实线采样色 #8BF9EB）：
-   各边从角标内缘（28px）起止与角标线条衔接，图层置于角标(z-index:2)之下，重叠处由实线覆盖 */
+/* 四边同色系虚线（颜色取角标实线采样色 #8BF9EB）：各边从角标内缘（28px）起止与角标线条衔接 */
 .target-row__detail-preview-edge {
   position: absolute;
   z-index: 1;
@@ -706,6 +734,7 @@
   width: 1px;
   background: repeating-linear-gradient(180deg, #8bf9eb 0 8px, transparent 8px 16px);
 }
+
 
 /* 分隔线（group_17：434×1，rgba 白 0.2，与装饰区间距 18） */
 .target-row__detail-divider {
@@ -767,9 +796,6 @@
   width: 100%;
   height: clamp(8px, 0.57vw, 11px);
   object-fit: fill;
-  /* deco 高度 + 本 margin ≡ 首行时间 margin-top clamp(8px, 0.65vw, 12px)，
-     使「分隔线下沿→首行时间盒顶」与「末行时间盒底→详情块底」在任意视口盒级等距
-     （原固定 1px 在非 1920 视口会与首行 clamp 间距失配，产生 0.2~0.3px 漂移） */
   margin-top: calc(clamp(8px, 0.65vw, 12px) - clamp(8px, 0.57vw, 11px));
   flex-shrink: 0;
   pointer-events: none;
@@ -861,7 +887,7 @@
   display: flex;
   align-items: center;
   height: clamp(26px, 1.8vw, 34px);
-  padding-left: calc(4px + clamp(8px, 0.63vw, 12px));
+  padding-left: clamp(8px, 0.63vw, 12px);
   margin-bottom: clamp(4px, 0.42vw, 8px);
   border-radius: 2px;
   background-image: linear-gradient(90deg, rgba(85, 206, 222, 0.4) 0, rgba(85, 206, 222, 0.08) 100%);
@@ -913,7 +939,8 @@
 /* 提示文字：字号固定 16px；margin-left = 行 gap + 类型图标 margin-left，
    使文字起点与下方行的第一列类型图标纵向对齐 */
 .target-panel__refresh-text {
-  margin-left: clamp(4px, 0.31vw, 6px);
+  /* 行 gap + 类型图标 margin-left：使文字起点与下方行的第一列类型图标纵向对齐 */
+  margin-left: calc(clamp(4px, 0.31vw, 6px) + clamp(6px, 0.42vw, 8px));
   font-size: 16px;
   line-height: 1.3;
   color: #fff;

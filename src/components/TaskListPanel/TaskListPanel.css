@@ -14,7 +14,7 @@
   border: 1px solid;
   border-image: radial-gradient(circle, rgba(24, 134, 161, 1), rgba(24, 134, 161, 0)) 1 1;
   padding: clamp(2px, 0.21vw, 4px) clamp(8px, 0.83vw, 16px) clamp(10px, 0.83vw, 16px);
-  color: #fff;
+  color: #fff; 
   font-family: 'MiSans-Regular';
   font-weight: 400;
   box-sizing: border-box;
@@ -676,7 +676,7 @@
   text-overflow: ellipsis;
 }
 
-/* ====== 下发进程仪表（标签 + 数值 + 3D 圆环切图 radar-circle.png） ====== */
+/* ====== 下发进程仪表（标签 + 数值 + 3D 圆环矢量图 radar-circle.svg） ====== */
 /* 容器占满竖向分割线右侧区域（左缘起于分割线，右缘止于内容区右缘），
    标签 / 数值 / 圆环图均通过 align-items: center 在该区域内水平居中 */
 .task-detail__gauge {
@@ -758,7 +758,7 @@
   content: '';
   position: absolute;
   left: 50%;
-  top: 38px;
+  top: 56px;
   transform: translateX(-50%);
   width: 118px;
   height: 51px;
@@ -777,7 +777,7 @@
   content: '';
   position: absolute;
   left: 50%;
-  top: 33px;
+  top: 51px;
   transform: translateX(-50%);
   width: 128px;
   height: 61px;
@@ -791,20 +791,34 @@
   pointer-events: none;
 }
 
-/* 3D 圆环切图（100x57，参考代码 image_7）：
+/* 3D 圆环（Figma「资源 423」官方导出 SVG，viewBox 106x75，
+   含 mask/clip 完整层间遮挡结构）：
    顶部距 x/x 数值文案 11px（设计稿标注）；悬浮于椭圆底座之上 —— 图底距椭圆底边 21px，
-   水平方向参考代码左偏 10px/右余 8px，近似居中，仍按中心对齐 */
+   按中心对齐。尺寸与 viewBox 严格等比（106:75），避免压缩变形。
+   结构为双层 image 同图叠加：底层暗态垫底，上层亮态经椭圆扇形
+   clipPath 按下发进程（ready/total）自 12 点方向顺时针逐段点亮 */
 .task-detail__gauge-ring {
   position: absolute;
   left: 50%;
   top: 11px;
   transform: translateX(-50%);
-  width: 100px;
-  height: 57px;
-  object-fit: contain;
+  width: 106px;
+  height: 75px;
   user-select: none;
   -webkit-user-drag: none;
   filter: drop-shadow(0 4px 8px rgba(60, 60, 160, 0.35));
+}
+
+/* 底层暗态：降饱和降亮度，作为未点亮部分的底图 */
+.task-detail__gauge-ring-base {
+  filter: saturate(0.3) brightness(0.55);
+  opacity: 0.65;
+}
+
+/* 上层亮态：原图全彩，叠加轻微青色辉光强化「点亮」感；
+   显示范围由 TSX 注入的椭圆扇形 clipPath 控制（随进度扩大） */
+.task-detail__gauge-ring-fill {
+  filter: drop-shadow(0 0 4px rgba(106, 240, 255, 0.45));
 }
 
 /* 分割线：最后一个设备数据行与操作按钮之间（设计稿 434x1）。

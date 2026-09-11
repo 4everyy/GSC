@@ -40,7 +40,7 @@ const IMAGES = {
   droneWhite: taskPanelImages.droneWhite,
   /** 定位图标（17x16，蓝圆底内） */
   locateIcon: taskPanelImages.locateIcon,
-  /** 下发进程 3D 圆环切图（100x57，兼作底座装饰） */
+  /** 下发进程 3D 圆环矢量图（106x75，双层叠加按进度扇形揭示） */
   radarCircle: taskPanelImages.radarCircle,
   /** 详情底部装饰图（434x11） */
   detailBottomDeco: taskPanelImages.detailBottomDeco,
@@ -65,6 +65,30 @@ function dispatchProgress(devices: TaskItem['devices']) {
     ready,
     total: devices.length,
   }
+}
+
+/** 下发进程圆环：生成以图面中心为圆心的椭圆扇形路径（顶部 12 点方向起顺时针），
+ *  作为上层亮态图的 clipPath —— 扫过角度 = 进度百分比 × 360°。
+ *  扇形半径取整个 viewBox（106x75），保证覆盖该角度范围内图面全部像素
+ *  （含 3D 环带侧壁），实现圆环按下发进度逐段点亮 */
+function ringSectorPath(pct: number): string {
+  const cx = 53
+  const cy = 37.5
+  const rx = 53
+  const ry = 37.5
+  const clamped = Math.min(1, Math.max(0, pct))
+  if (clamped <= 0) return ''
+  if (clamped >= 1) {
+    // 整椭圆：两段弧闭合，避免起点与终点重合的退化弧
+    return `M ${cx - rx} ${cy} A ${rx} ${ry} 0 1 1 ${cx + rx} ${cy} A ${rx} ${ry} 0 1 1 ${cx - rx} ${cy} Z`
+  }
+  const rad = (deg: number) => (deg * Math.PI) / 180
+  const pt = (deg: number) =>
+    `${(cx + rx * Math.cos(rad(deg))).toFixed(2)} ${(cy + ry * Math.sin(rad(deg))).toFixed(2)}`
+  const startDeg = -90
+  const endDeg = -90 + clamped * 360
+  const largeArc = clamped > 0.5 ? 1 : 0
+  return `M ${cx} ${cy} L ${pt(startDeg)} A ${rx} ${ry} 0 ${largeArc} 1 ${pt(endDeg)} Z`
 }
 
 /** 当前时间格式化为 YYYY/MM/DD HH:mm:ss（与 mock 数据格式一致） */
@@ -331,11 +355,39 @@ export function TaskListPanel({ visible, onClose }: TaskListPanelProps) {
                               {progress.ready}/{progress.total}
                             </span>
                             <div className="task-detail__gauge-ring-wrap">
-                              <img
+                              {/* 3D 圆环按进度揭示：底层暗态 + 上层亮态扇形裁剪 */}
+                              <svg
                                 className="task-detail__gauge-ring"
-                                src={IMAGES.radarCircle}
-                                alt=""
-                              />
+                                viewBox="0 0 106 75"
+                                aria-hidden="true"
+                              >
+                                <defs>
+                                  <clipPath id={`task-ring-clip-${task.id}`}>
+                                    <path
+                                      d={ringSectorPath(
+                                        progress.total > 0 ? progress.ready / progress.total : 0,
+                                      )}
+                                    />
+                                  </clipPath>
+                                </defs>
+                                <image
+                                  className="task-detail__gauge-ring-base"
+                                  href={IMAGES.radarCircle}
+                                  x="0"
+                                  y="0"
+                                  width="106"
+                                  height="75"
+                                />
+                                <image
+                                  className="task-detail__gauge-ring-fill"
+                                  href={IMAGES.radarCircle}
+                                  x="0"
+                                  y="0"
+                                  width="106"
+                                  height="75"
+                                  clipPath={`url(#task-ring-clip-${task.id})`}
+                                />
+                              </svg>
                             </div>
                           </div>
                         </div>
