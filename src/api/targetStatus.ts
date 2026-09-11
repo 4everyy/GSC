@@ -90,11 +90,19 @@ function formatTime(ms: number): string {
   )
 }
 
-/** 米数值 → '000m' 三位占位格式（PRD：目标高度 / 威胁半径 000m） */
-function fmtMeters(v: number | string | undefined): string {
-  const n = typeof v === 'string' ? Number(v) : v
-  if (n === undefined || n === null || Number.isNaN(n) || n < 0) return '000m'
-  return String(Math.round(n)).padStart(3, '0') + 'm'
+/** typeCode → 目标型号（与 mock targets.ts 展示口径一致的通用文案） */
+function mapModel(typeCode: string): string {
+  switch (typeCode) {
+    case 'person':
+      return '人员目标'
+    case 'fire':
+      return '火情目标'
+    case 'car':
+    case 'truck':
+      return '车辆目标'
+    default:
+      return '未知目标'
+  }
 }
 
 /** TargetRaw → 前端 TargetItem（详情字段已格式化，可直接用于面板展示） */
@@ -108,10 +116,10 @@ export function mapTargetToItem(raw: TargetRaw, fetchedAt: number): MappedTarget
     status: '默认侦察', // TODO: 后端状态字典补充后按 status 码映射文案
     value: mapWorth(raw.worth),
     source: planeNum ? `无人机${planeNum.padStart(2, '0')}` : '未知平台',
-    threatRadius: fmtMeters(raw.typeRadius),
-    altitude: fmtMeters(raw.height),
+    model: mapModel(raw.typeCode),
     strikeMode: raw.strikeMethodName?.trim() || '暂无',
-    position: `Lat:${raw.latitude}, Lon:${raw.longitude}`,
+    position: `经度:${raw.longitude}°, 纬度:${raw.latitude}°`,
+    coordinates: 'X:000m, Y:000m', // TODO: 后端暂无直角坐标字段，占位与 mock 格式一致
     firstSeenAt: formatTime(Number.isFinite(created) && created > 0 ? created : fetchedAt),
     lastUpdatedAt: formatTime(fetchedAt),
     lngLat: { lng: raw.longitude, lat: raw.latitude },

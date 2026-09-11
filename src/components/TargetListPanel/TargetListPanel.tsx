@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { fetchAndMapTargets } from '../../api/targetStatus'
 import { targetTypeOptions, type TargetItem } from '../../config/targets'
-import { BACKEND_ENABLED } from '../../config/backend'
 import { deviceImages } from '../../assets/images/device'
 import { homeImages } from '../../assets/images/home'
 import { useTargetLinkStore } from '../../stores/targetLinkStore'
@@ -27,9 +25,6 @@ const REFRESH_SPIN_MS = 1200
 /** 「刷新完成」提示停留时长（毫秒），到时后提示条自动消失 */
 const REFRESH_DONE_MS = 1600
 
-/** 「刷新失败」提示停留时长（毫秒），到时后提示条自动消失 */
-const REFRESH_FAIL_MS = 2500
-
 /** 聚焦滚动：行位置连续两帧位移小于该值视为布局已稳定 */
 const FOCUS_STABLE_DELTA_PX = 0.5
 
@@ -49,8 +44,6 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
   // 「假删除」（软删除）：确认删除仅打标记（mock 数据保留，刷新可恢复）
   const softDeleteTargets = useTargetLinkStore((s) => s.softDeleteTargets)
   const restoreTargets = useTargetLinkStore((s) => s.restoreTargets)
-  // 接口刷新装载：拉取 queryTargetStatus 成功后整体替换 targets（真实经纬度锚定）
-  const loadTargetsFromApi = useTargetLinkStore((s) => s.loadTargetsFromApi)
   const deletedIds = useTargetLinkStore((s) => s.deletedTargetIds)
   // hover 中的目标 id（行背景三态与设备管理面板一致：选中蓝 > hover 橙 > 普通灰）
   const hoveredId = useTargetLinkStore((s) => s.hoveredTargetId)
@@ -65,10 +58,8 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
   const replaceSelectedIds = useTargetLinkStore((s) => s.setSelectedTargetIds)
   // 地图聚焦请求：单行勾上时飞转地图到该目标（全选走整体替换不触发）
   const requestMapFocusTarget = useTargetLinkStore((s) => s.requestMapFocusTarget)
-  // 刷新流程状态：idle 无提示 / refreshing 刷新中 / done 刷新完成 / failed 刷新失败（列表顶部提示条）
-  const [refreshStatus, setRefreshStatus] = useState<
-    'idle' | 'refreshing' | 'done' | 'failed'
-  >('idle')
+  // 刷新流程状态：idle 无提示 / refreshing 刷新中 / done 刷新完成（列表顶部提示条）
+  const [refreshStatus, setRefreshStatus] = useState<'idle' | 'refreshing' | 'done'>('idle')
   // 删除确认弹窗（设计稿 box_27）：点击底部「删除」或行内删除按钮时弹出
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   // 待删除目标 id 集合：底部按钮为全部选中项；行内删除按钮仅该行目标
@@ -186,49 +177,24 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     return () => window.cancelAnimationFrame(raf)
   }, [focusTargetRequest, targets, deletedIds, typeFilter, clearFocusTargetRequest])
 
-  /** 刷新收尾：切「刷新完成/失败」提示，停留 REFRESH_DONE_MS/REFRESH_FAIL_MS 后自动消失 */
-  const finishRefresh = (status: 'done' | 'failed') => {
-    setRefreshStatus(status)
-    const stayMs = status === 'done' ? REFRESH_DONE_MS : REFRESH_FAIL_MS
-    if (refreshDoneTimer.current !== null) window.clearTimeout(refreshDoneTimer.current)
-    refreshDoneTimer.current = window.setTimeout(() => {
-      refreshDoneTimer.current = null
-      setRefreshStatus('idle')
-    }, stayMs)
-  }
-
-  /** 点击刷新：拉取 queryTargetStatus 装载最新目标（按 id 去重映射）；
-   *  按钮图标至少旋转 1.2 秒，之后提示「刷新完成/刷新失败」停留片刻自动消失；
-   *  后端未开启（BACKEND_ENABLED=false）时走 mock 刷新（仅恢复「假删除」目标） */
+  /** 点击刷新：按钮图标旋转 1.2 秒，列表顶部提示「刷新中」→「刷新完成」，停留 1.6 秒后自动消失 */
   const handleRefresh = () => {
     if (refreshStatus === 'refreshing') return
     if (refreshTimer.current !== null) window.clearTimeout(refreshTimer.current)
     if (refreshDoneTimer.current !== null) window.clearTimeout(refreshDoneTimer.current)
     // 刷新时取消所有行的选中状态（走 store，同步取消地图图标选中态）
     replaceSelectedIds(new Set())
-    // 恢复全部「假删除」的目标（接口成功装载时 loadTargetsFromApi 亦会清空，此处兜底失败场景）
+    // 刷新从 mock 态恢复全部「假删除」的目标（清空软删除标记，列表与地图图标重现）
     restoreTargets()
     setRefreshStatus('refreshing')
-    // 旋转动画结束后收尾（接口先返回也等满 1.2 秒，保证动画节奏一致）
-    const spinThen = (finish: () => void) => {
-      refreshTimer.current = window.setTimeout(() => {
-        refreshTimer.current = null
-        finish()
-      }, REFRESH_SPIN_MS)
-    }
-    if (!BACKEND_ENABLED) {
-      spinThen(() => finishRefresh('done'))
-      return
-    }
-    fetchAndMapTargets()
-      .then((items) => {
-        loadTargetsFromApi(items)
-        spinThen(() => finishRefresh('done'))
-      })
-      .catch((err) => {
-        console.warn('[TargetListPanel] 刷新失败，保留当前列表：', err)
-        spinThen(() => finishRefresh('failed'))
-      })
+    refreshTimer.current = window.setTimeout(() => {
+      refreshTimer.current = null
+      setRefreshStatus('done')
+      refreshDoneTimer.current = window.setTimeout(() => {
+        refreshDoneTimer.current = null
+        setRefreshStatus('idle')
+      }, REFRESH_DONE_MS)
+    }, REFRESH_SPIN_MS)
   }
 
   /** 打开删除确认弹窗：行内删除按钮传单个 id，底部按钮传全部选中 id */
@@ -427,7 +393,7 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
       {/* 刷新状态提示条：刷新中 → 刷新完成（参考设计稿 box_5：青色渐变条 + 圆形徽标） */}
       {refreshStatus !== 'idle' && (
         <div
-          className={`target-panel__refresh-bar${refreshStatus === 'refreshing' ? '' : ` target-panel__refresh-bar--${refreshStatus}`}`}
+          className={`target-panel__refresh-bar${refreshStatus === 'done' ? ' target-panel__refresh-bar--done' : ''}`}
         >
           <span className="target-panel__refresh-badge">
             {refreshStatus === 'refreshing' ? (
@@ -437,7 +403,7 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                 alt=""
                 draggable={false}
               />
-            ) : refreshStatus === 'done' ? (
+            ) : (
               <svg
                 viewBox="0 0 12 12"
                 width="12"
@@ -450,27 +416,10 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
               >
                 <polyline points="2,6.5 4.8,9.3 10,3.2" />
               </svg>
-            ) : (
-              <svg
-                viewBox="0 0 12 12"
-                width="12"
-                height="12"
-                fill="none"
-                stroke="#fff"
-                strokeWidth="2"
-                strokeLinecap="round"
-              >
-                <line x1="6" y1="2.6" x2="6" y2="7.2" />
-                <circle cx="6" cy="9.7" r="0.2" fill="#fff" stroke="none" />
-              </svg>
             )}
           </span>
           <span className="target-panel__refresh-text">
-            {refreshStatus === 'refreshing'
-              ? '刷新中'
-              : refreshStatus === 'failed'
-                ? '刷新失败'
-                : '刷新完成'}
+            {refreshStatus === 'refreshing' ? '刷新中' : '刷新完成'}
           </span>
         </div>
       )}

@@ -1034,8 +1034,3 @@
   border: 1px solid rgba(14, 167, 249, 1);
   box-sizing: border-box;
 }
-
-/* 刷新失败提示条：红色圆形徽标（与完成态绿色对应） */
-.target-panel__refresh-bar--failed .target-panel__refresh-badge {
-  background-color: rgba(255, 69, 58, 1);
-}
