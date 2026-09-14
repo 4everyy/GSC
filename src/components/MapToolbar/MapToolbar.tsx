@@ -3,6 +3,7 @@ import { toolbarItems } from '../../config/toolbar'
 import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
 import { useTargetLinkStore } from '../../stores/targetLinkStore'
 import { DeviceManagementPanel } from '../DeviceManagementPanel/DeviceManagementPanel'
+import { AreaListPanel } from '../AreaListPanel/AreaListPanel'
 import { TargetListPanel } from '../TargetListPanel/TargetListPanel'
 import { TaskListPanel } from '../TaskListPanel/TaskListPanel'
 import { TaskProPanel } from '../TaskListPanel/TaskProPanel'
@@ -83,8 +84,10 @@ export function MapToolbar() {
   // 专业模式面板：由创建任务弹层「专业模式」按钮触发，独立于任务面板组
   const [proOpen, setProOpen] = useState(false)
 
-  // 第 1 个按钮：设备管理面板；第 5 个按钮：目标列表面板
+  // 第 1 个按钮：设备管理面板；第 2 个按钮：区域列表面板；
+  // 第 4 个按钮：任务面板；第 5 个按钮：目标列表面板
   const [deviceMounted, deviceVisible] = useFadeMount(active === 0)
+  const [areaMounted, areaVisible] = useFadeMount(active === 1)
   const [taskMounted, taskVisible] = useFadeMount(active === 3)
   const [targetMounted, targetVisible] = useFadeMount(active === 4)
   const [proMounted, proVisible] = useFadeMount(proOpen)
@@ -119,6 +122,7 @@ export function MapToolbar() {
       {deviceMounted && (
         <DeviceManagementPanel visible={deviceVisible} onClose={() => setActive(-1)} />
       )}
+      {areaMounted && <AreaListPanel visible={areaVisible} onClose={() => setActive(-1)} />}
       {taskMounted && (
         <TaskListPanel
           visible={taskVisible}
