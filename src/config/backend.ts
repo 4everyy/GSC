@@ -9,3 +9,14 @@
  */
 export const BACKEND_ENABLED =
   import.meta.env.PROD || import.meta.env.VITE_BACKEND_ENABLED === 'true'
+
+/**
+ * 目标列表数据源开关（联调过渡期）。
+ *
+ * - false（当前）：queryTargetStatus 接口照常请求（保持联调链路可用、
+ *   便于观察后端数据），但列表/地图目标仍展示 mock 数据（config/targets.ts）；
+ * - true：接口映射结果整体装载 targetLinkStore，恢复真实数据展示。
+ *
+ * 置 true 即可恢复接口数据，无需改动其他代码。
+ */
+export const TARGET_API_DATA_ENABLED = false

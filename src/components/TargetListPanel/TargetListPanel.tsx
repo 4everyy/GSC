@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { fetchAndMapTargets } from '../../api/targetStatus'
 import { targetTypeOptions, type TargetItem } from '../../config/targets'
-import { BACKEND_ENABLED } from '../../config/backend'
+import { BACKEND_ENABLED, TARGET_API_DATA_ENABLED } from '../../config/backend'
 import { deviceImages } from '../../assets/images/device'
 import { homeImages } from '../../assets/images/home'
 import { useTargetLinkStore } from '../../stores/targetLinkStore'
@@ -222,6 +222,16 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     }
     fetchAndMapTargets()
       .then((items) => {
+        // 联调过渡期：接口照常请求验证链路，成功后暂不装载（保留 mock 展示）
+        if (!TARGET_API_DATA_ENABLED) {
+          console.info(
+            '[TargetListPanel] 刷新请求成功（联调验证），TARGET_API_DATA_ENABLED=false 暂保留 mock 数据：',
+            items.length,
+            '条',
+          )
+          spinThen(() => finishRefresh('done'))
+          return
+        }
         loadTargetsFromApi(items)
         spinThen(() => finishRefresh('done'))
       })

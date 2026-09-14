@@ -10,7 +10,7 @@
  * - 后端联调未开启（BACKEND_ENABLED=false）时完全跳过。
  */
 import { useEffect } from 'react'
-import { BACKEND_ENABLED } from '../config/backend'
+import { BACKEND_ENABLED, TARGET_API_DATA_ENABLED } from '../config/backend'
 import { fetchAndMapTargets } from '../api/targetStatus'
 import { useTargetLinkStore } from '../stores/targetLinkStore'
 
@@ -30,6 +30,16 @@ export function useTargetStatusInit() {
 
     inFlight = fetchAndMapTargets()
       .then((items) => {
+        // 联调过渡期：接口照常请求验证链路，但列表暂不装载接口数据（保留 mock 展示）
+        if (!TARGET_API_DATA_ENABLED) {
+          console.info(
+            '[targetStatus] 接口请求成功（联调验证），TARGET_API_DATA_ENABLED=false 暂保留 mock 数据：',
+            items.length,
+            '条',
+          )
+          loaded = true
+          return
+        }
         useTargetLinkStore.getState().loadTargetsFromApi(items)
         loaded = true
       })
