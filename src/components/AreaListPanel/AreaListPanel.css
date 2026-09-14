@@ -131,7 +131,7 @@
   border-radius: 1.5px;
 }
 
-/* ====== 筛选栏：区域类型下拉 ====== */
+/* ====== 筛选栏：全选复选框 ====== */
 .area-panel__filters {
   display: flex;
   align-items: center;
@@ -143,7 +143,6 @@
 }
 
 .area-panel__filter-label {
-  margin-left: clamp(6px, 0.42vw, 8px);
   font-size: clamp(10px, 0.73vw, 14px);
   white-space: nowrap;
   line-height: 1.3;
@@ -151,96 +150,34 @@
   flex-shrink: 0;
 }
 
-.area-panel__select {
-  position: relative;
+/* 全选复选框：与 .target-panel__checkbox / .device-panel__select-all 完全一致
+   （三态：全选显示白对勾 / 部分选中显示白横线 / 未选空框） */
+.area-panel__checkbox {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex: 1;
-  min-width: 0;
+  justify-content: center;
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
+  min-width: clamp(14px, 1.15vw, 20px);
+  border-radius: 2px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid #4b79e4;
   box-sizing: border-box;
-  height: clamp(20px, 1.25vw, 24px);
-  margin-left: clamp(6px, 0.42vw, 8px);
-  padding: 0 clamp(3px, 0.21vw, 4px);
-  background-color: rgba(217, 217, 217, 0.1);
-  border: 1px solid rgba(70, 220, 231, 1);
-  border-radius: 2px;
+  flex-shrink: 0;
   cursor: pointer;
+  transition: all 0.15s ease;
   user-select: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.area-panel__select:hover,
-.area-panel__select--open {
-  border-color: rgba(120, 240, 255, 0.95);
-  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.35);
+.area-panel__checkbox:hover {
+  background-color: rgba(75, 121, 228, 0.5);
+  border-color: rgba(75, 121, 228, 0.8);
 }
 
-.area-panel__select--open img {
-  transform: rotate(180deg);
-}
-
-.area-panel__select img {
-  width: clamp(11px, 0.83vw, 16px);
-  height: clamp(11px, 0.83vw, 16px);
-  object-fit: contain;
-  transition: transform 0.2s ease;
-}
-
-.area-panel__select span {
-  font-size: clamp(10px, 0.73vw, 14px);
-  white-space: nowrap;
-  line-height: 1.3;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.area-panel__select-placeholder {
-  color: rgba(255, 255, 255, 0.4) !important;
-}
-
-/* 下拉菜单 */
-.area-panel__dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 20;
-  background: rgba(18, 52, 72, 0.95);
-  border: 1px solid rgba(70, 220, 231, 0.6);
-  border-radius: 2px;
-  overflow: hidden;
-  animation: areaDropdownIn 0.15s ease;
-}
-
-@keyframes areaDropdownIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.area-panel__dropdown-item {
-  padding: clamp(4px, 0.31vw, 6px) clamp(6px, 0.42vw, 8px);
-  font-size: clamp(10px, 0.73vw, 14px);
-  line-height: 1;
-  color: rgba(255, 255, 255, 0.7);
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.area-panel__dropdown-item:hover {
-  background-color: rgba(70, 220, 231, 0.25);
-  color: #fff;
-}
-
-.area-panel__dropdown-item--active {
-  color: #fff;
-  background-color: rgba(70, 220, 231, 0.15);
+.area-panel__checkbox--checked,
+.area-panel__checkbox--indeterminate {
+  background: #4b79e4;
+  border-color: #4b79e4;
 }
 
 /* ====== 主体（列表滚动区） ====== */
@@ -319,7 +256,7 @@
 }
 
 /* ====== 区域行 ======
-   结构：名称 + 类型（彩点+文字）+ 面积 + 优先级 + 展开箭头
+   结构：复选框 + 名称 + 类型（彩点+文字）+ 面积 + 优先级 + 展开箭头
    固定列宽保证跨行严格对齐，剩余空间由 space-between 均分到列间隙 */
 .area-row {
   position: relative;
@@ -352,6 +289,34 @@
 .area-row > *:not(.area-row__bg) {
   position: relative;
   z-index: 1;
+}
+
+/* 行复选框：与 .target-row__checkbox / .device-row__checkbox 完全一致 */
+.area-row__checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
+  min-width: clamp(14px, 1.15vw, 20px);
+  border-radius: 2px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid #4b79e4;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.area-row__checkbox:hover {
+  background-color: rgba(75, 121, 228, 0.5);
+  border-color: rgba(75, 121, 228, 0.8);
+}
+
+.area-row__checkbox--checked {
+  background: #4b79e4;
+  border-color: #4b79e4;
 }
 
 /* 区域名称列：固定列宽，跨行严格对齐 */

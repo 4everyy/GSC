@@ -4,16 +4,17 @@
  * 数据源：taskAreaStore（/api/v1/control/queryTaskAreaList，与态势图
  * TaskAreaLayer 渲染的是同一份数据）——列表与地图多边形天然一致。
  * 交互：
- * - 区域类型下拉筛选（集群侦察 / 禁飞区 / 围困区 / 集结区，「请选择」显示全部）；
+ * - 筛选栏「全选」复选框（三态：全选/部分选中/未选，作用于当前列表全部区域）；
+ * - 行首复选框勾选区域（选中行背景变蓝，与设备/目标面板一致）；
  * - 行点击 / 行尾箭头展开详情（区域中心 / 顶点数量 / 创建时间，手风琴模式）；
  * - 底部「刷新」重拉区域列表（loading 期间按钮图标旋转）；
  * - 加载失败展示错误与「重试」，空数据展示「暂无区域」。
  * 外观与 TargetListPanel / DeviceManagementPanel 同一套视觉语言
- * （渐变底、切角装饰、行背景图 hover 橙 / 普通灰）。
+ * （渐变底、切角装饰、行背景图选中蓝 / hover 橙 / 普通灰）。
  */
 import { useEffect, useState } from 'react'
 import { useTaskAreaStore } from '../../stores/taskAreaStore'
-import { TASK_AREA_TYPE_META, taskAreaTypeMeta, type TaskArea } from '../../api/taskArea'
+import { taskAreaTypeMeta, type TaskArea } from '../../api/taskArea'
 import { deviceImages } from '../../assets/images/device'
 import './AreaListPanel.css'
 
@@ -21,9 +22,6 @@ interface AreaListPanelProps {
   onClose: () => void
   visible?: boolean
 }
-
-/** 区域类型筛选选项（「请选择」= 显示全部） */
-const typeOptions = ['请选择', ...Object.values(TASK_AREA_TYPE_META).map((m) => m.label)]
 
 /** epoch ms → YYYY/MM/DD HH:mm:ss（0/非法值返回 —） */
 function formatTime(ms: number): string {
@@ -48,8 +46,8 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
   const error = useTaskAreaStore((s) => s.error)
   const load = useTaskAreaStore((s) => s.load)
 
-  const [typeFilter, setTypeFilter] = useState('请选择')
-  const [openDropdown, setOpenDropdown] = useState(false)
+  // 勾选的区域 id 集合（面板内局部状态：区域暂无地图图标联动需求）
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   // 手风琴模式：同一时刻至多一行展开详情
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -60,20 +58,38 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
     if (useTaskAreaStore.getState().status === 'idle') void load()
   }, [load])
 
-  // 类型筛选（按类型中文名匹配；未知类型走兜底配置同样可筛）
-  const filteredAreas = areas.filter(
-    (a) => typeFilter === '请选择' || taskAreaTypeMeta(a.type).label === typeFilter,
-  )
+  /** 全选 / 全不选联动（作用于当前列表全部区域） */
+  const isAllSelected = areas.length > 0 && areas.every((a) => selectedIds.has(a.id))
+  const isIndeterminate = areas.some((a) => selectedIds.has(a.id)) && !isAllSelected
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (isAllSelected) {
+        areas.forEach((a) => next.delete(a.id))
+      } else {
+        areas.forEach((a) => next.add(a.id))
+      }
+      return next
+    })
+  }
+
+  /** 切换行勾选 */
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   /** 切换行内详情展开/收起（手风琴：展开新行自动收起其他行） */
   const toggleExpand = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
-  }
-
-  /** 清除类型筛选：恢复「请选择」占位（显示全部区域） */
-  const clearTypeFilter = () => {
-    setTypeFilter('请选择')
-    setOpenDropdown(false)
   }
 
   return (
@@ -100,61 +116,46 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
         <span className="area-panel__separator-line" />
       </div>
 
-      {/* 筛选栏：区域类型下拉（右侧对齐） */}
+      {/* 筛选栏：全选复选框（三态） */}
       <div className="area-panel__filters">
-        <span className="area-panel__filter-label">区域类型</span>
         <div
-          className={`area-panel__select${openDropdown ? ' area-panel__select--open' : ''}`}
-          onClick={() => setOpenDropdown((v) => !v)}
+          className={`area-panel__checkbox${isAllSelected ? ' area-panel__checkbox--checked' : ''}${isIndeterminate ? ' area-panel__checkbox--indeterminate' : ''}`}
+          onClick={toggleSelectAll}
+          role="checkbox"
+          aria-checked={isAllSelected ? 'true' : isIndeterminate ? 'mixed' : 'false'}
+          aria-label="全选区域"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === ' ' && (e.preventDefault(), toggleSelectAll())}
         >
-          <span className={typeFilter === '请选择' ? 'area-panel__select-placeholder' : ''}>
-            {typeFilter}
-          </span>
-          {/* × 快速清除按钮：已选类型时显示，一键恢复「请选择」（显示全部区域） */}
-          {typeFilter !== '请选择' && (
-            <button
-              type="button"
-              className="area-panel__select-clear"
-              aria-label="清除类型筛选"
-              title="清除类型筛选"
-              onClick={(e) => {
-                e.stopPropagation()
-                clearTypeFilter()
-              }}
+          {isAllSelected && (
+            <svg
+              viewBox="0 0 12 12"
+              width="10"
+              height="10"
+              fill="none"
+              stroke="#fff"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <svg
-                viewBox="0 0 12 12"
-                width="8"
-                height="8"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-              >
-                <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" />
-                <line x1="9.5" y1="2.5" x2="2.5" y2="9.5" />
-              </svg>
-            </button>
+              <polyline points="2,6 5,9 10,3" />
+            </svg>
           )}
-          <img src={deviceImages.dropdown} alt="" />
-          {openDropdown && (
-            <div className="area-panel__dropdown">
-              {typeOptions.map((opt) => (
-                <div
-                  key={opt}
-                  className={`area-panel__dropdown-item${typeFilter === opt ? ' area-panel__dropdown-item--active' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setTypeFilter(opt)
-                    setOpenDropdown(false)
-                  }}
-                >
-                  {opt}
-                </div>
-              ))}
-            </div>
+          {isIndeterminate && (
+            <svg
+              viewBox="0 0 12 12"
+              width="10"
+              height="10"
+              fill="none"
+              stroke="#fff"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            >
+              <line x1="2" y1="6" x2="10" y2="6" />
+            </svg>
           )}
         </div>
+        <span className="area-panel__filter-label">全选</span>
       </div>
 
       {/* 区域列表 */}
@@ -179,30 +180,61 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
                 重试
               </button>
             </div>
-          ) : filteredAreas.length === 0 ? (
-            /* 空列表 / 筛选无结果 */
+          ) : areas.length === 0 ? (
+            /* 空列表 */
             <div className="area-panel__state">
               <img src={deviceImages.noData} alt="暂无区域" draggable={false} />
               <span>暂无区域</span>
             </div>
           ) : (
-            filteredAreas.map((a) => {
+            areas.map((a) => {
               const meta = taskAreaTypeMeta(a.type)
               const isExpanded = expandedId === a.id
+              const isSelected = selectedIds.has(a.id)
+              // 行背景三态与设备/目标面板一致：选中蓝 > hover 橙 > 普通灰
+              const bgImage = isSelected
+                ? deviceImages.rowBgBlue
+                : hoveredId === a.id
+                  ? deviceImages.rowBgOrange
+                  : deviceImages.rowBgGray
               return (
                 <div className="area-row-wrapper" key={a.id}>
                   <div
-                    className="area-row"
+                    className={`area-row${isSelected ? ' area-row--selected' : ''}`}
                     onClick={() => toggleExpand(a.id)}
                     onMouseEnter={() => setHoveredId(a.id)}
                     onMouseLeave={() => setHoveredId(null)}
                   >
-                    <img
-                      className="area-row__bg"
-                      src={hoveredId === a.id ? deviceImages.rowBgOrange : deviceImages.rowBgGray}
-                      alt=""
-                      draggable={false}
-                    />
+                    <img className="area-row__bg" src={bgImage} alt="" draggable={false} />
+                    <div
+                      className={`area-row__checkbox${isSelected ? ' area-row__checkbox--checked' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleSelect(a.id)
+                      }}
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      aria-label={`勾选区域 ${a.name}`}
+                      tabIndex={0}
+                      onKeyDown={(e) =>
+                        e.key === ' ' && (e.preventDefault(), toggleSelect(a.id))
+                      }
+                    >
+                      {isSelected && (
+                        <svg
+                          viewBox="0 0 12 12"
+                          width="10"
+                          height="10"
+                          fill="none"
+                          stroke="#fff"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="2,6 5,9 10,3" />
+                        </svg>
+                      )}
+                    </div>
                     <span className="area-row__name" title={a.name}>
                       {a.name}
                     </span>
