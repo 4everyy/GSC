@@ -51,6 +51,7 @@ interface TaskAreaLayerProps {
 
 export function TaskAreaLayer({ adapter }: TaskAreaLayerProps) {
   const areas = useTaskAreaStore((s) => s.areas)
+  const hiddenIds = useTaskAreaStore((s) => s.hiddenIds)
   const status = useTaskAreaStore((s) => s.status)
   const load = useTaskAreaStore((s) => s.load)
 
@@ -88,6 +89,15 @@ export function TaskAreaLayer({ adapter }: TaskAreaLayerProps) {
       }
     }
   }, [adapter, areas, status])
+
+  // 本地隐藏的区域（区域列表面板「显示」图标）：从地图移除多边形与标签
+  useEffect(() => {
+    if (!adapter || status !== 'ready') return
+    for (const id of hiddenIds) {
+      adapter.removePolygon(`${POLYGON_ID_PREFIX}${id}`)
+      adapter.removeMarker(`${LABEL_ID_PREFIX}${id}`)
+    }
+  }, [adapter, hiddenIds, status])
 
   return null
 }

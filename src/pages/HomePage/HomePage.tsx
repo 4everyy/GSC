@@ -28,6 +28,7 @@ import { usePanelClamp } from '../../hooks/usePanelClamp'
 import { useOfflineMap } from '../../features/offline-map/useOfflineMap'
 import { useOfflineMapStore } from '../../features/offline-map/offlineMapStore'
 import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
+import { useTaskAreaStore } from '../../stores/taskAreaStore'
 import { deviceList } from '../../config/devices'
 import type { AircraftListItem } from '../../components/AircraftListPanel/AircraftListSection'
 import './HomePage.css'
@@ -121,6 +122,18 @@ export function HomePage() {
     stopRallyPointFlights,
   } = animations
 
+  // 区域列表「添加区域」跨层级信号：AreaListPanel 挂载于 MapToolbar 内（与本组件
+  // 平级，无法经 props 传递），按钮点击时 taskAreaStore.addAreaRequests 计数 +1；
+  // 此处监听计数变化进入 area-list 框选模式——与区域降落/集结点同款交互
+  // （停机坪图标光标 + 拖拽绘制紫色虚线框 + 确认/取消），确认后本地新增任务区域
+  const openAreaListSelect = panels.openAreaListSelect
+  const addAreaRequests = useTaskAreaStore((s) => s.addAreaRequests)
+  const addAreaRequestsRef = useRef(addAreaRequests)
+  useEffect(() => {
+    if (addAreaRequests === addAreaRequestsRef.current) return
+    addAreaRequestsRef.current = addAreaRequests
+    openAreaListSelect()
+  }, [addAreaRequests, openAreaListSelect])
 
   // 模拟飞行动画（自 useFlightAnimations 拆出）：8 套 rAF 循环动画的飞行状态与启停
   const handleAircraftDoubleClick = useCallback((index: number) => {
@@ -137,7 +150,7 @@ export function HomePage() {
   const { handleDeleteRoutePoint } = useFlightInteractions(panels, animations, adapter)
   // 离线地图：注册 gcs-pkg:// 协议 + 加载已导入包 + 派生活跃栅格样式。
   // 严格离线机制——地图容器不读取 navigator.onLine、无「在线/离线」分支；
-  // 尚未导入离线地图包时 activeStyle 为 null（渲染纯色占位底图），
+  // 尚未导入地图包时 activeStyle 为 null（渲染纯色占位底图），
   // 导入后由 gcs-pkg:// 协议从 IndexedDB 渲染。
   const { activeStyle, activePackage } = useOfflineMap()
 
@@ -286,7 +299,7 @@ export function HomePage() {
   }, [adapter, mapFocusTargetRequest, clearMapFocusTargetRequest])
 
   // 目标真实经纬度签名（id+经纬度拼接字符串，按值比较）：
-  // 仅当接口装载/替换目标（id 或 lngLat 变化）时才变化。
+  // 仅当接口装载/替换目标（id 或经纬度变化）时才变化。
   // 不能直接依赖 targets 数组引用——地图移动时 applyTargetPositions 每帧更新
   // x/y 都会创建新数组引用，若 seedAnchors 随之重算，将引发
   // 「seedAnchors 变化 → effect 重投影 → targets 更新 → seedAnchors 变化」无限渲染循环
@@ -434,7 +447,7 @@ export function HomePage() {
           {taskAreaVisible && <TaskAreaLayer adapter={adapter} />}
           {SHOW_PENDING_PANELS && <div className="restricted-zone restricted-zone--orange" />}
           {/* 巡检区域：包含1条蛇形巡检轨迹线，支持拖拽移动。
-              显隐由图层控制面板「巡检区域」开关联动（layerStore），默认关 */}
+              显隐由图层控制面板「巡检区」开关联动（layerStore），默认关 */}
           {inspectionZoneVisible && (
             <InspectionZone
               position={inspectionZonePositions[0]}
@@ -550,5 +563,3 @@ export function HomePage() {
     </main>
   )
 }
-
-

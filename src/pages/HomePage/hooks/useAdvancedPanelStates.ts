@@ -176,9 +176,10 @@ export function useAdvancedPanelStates() {
         setAreaSelectMode(false)
         setAreaSelectAnchor(null)
         setAreaSelectEnd(null)
-        // 取消绘制并重新展示对应面板（信息已提升保留）
+        // 取消绘制并重新展示对应面板（信息已提升保留）；
+        // 'area-list'（区域列表添加区域）无对应功能面板，直接退出即可
         if (areaSelectSource === 'rally-point') setRallyPointOpen(true)
-        else setAreaLandingOpen(true)
+        else if (areaSelectSource === 'area-landing') setAreaLandingOpen(true)
       }
     }
     window.addEventListener('keydown', handleKeyDown)

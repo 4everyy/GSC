@@ -271,6 +271,27 @@ export function useExclusivePanels() {
     setFormationFlightOpen((v) => !v)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  // 区域列表「添加区域」进入框选（area-list 来源）：与区域降落/集结点同款交互——
+  // 光标变停机坪图标、拖拽绘制紫色虚线框、松开定格「确认/取消」；区别在于确认后
+  // 按选区四角经纬度本地新增任务区域（无对应功能面板，Esc/右键直接退出不重开面板）。
+  // 由 HomePage 监听 taskAreaStore.addAreaRequests 计数器信号调用（跨层级接线）
+  const openAreaListSelect = useCallback(() => {
+    setTakeoffOpen(false)
+    setLandingOpen(false)
+    setReturnHomeOpen(false)
+    setTapReturnOpen(false)
+    setAreaLandingOpen(false)
+    setHoverOpen(false)
+    setWaypointFlightOpen(false)
+    setRouteFlightOpen(false)
+    setOrbitFlightOpen(false)
+    setRallyPointOpen(false)
+    setFormationFlightOpen(false)
+    setAreaSelectSource('area-list')
+    setAreaSelectMode(true)
+    // setState 引用稳定，无需依赖
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 各功能面板展开状态查询表：底部按钮「弹出 + 激活背景」统一由此判断，
   // 替代逐面板的 && 长链（第 2~12 段功能按钮均提供激活态背景切图）；
@@ -344,5 +365,6 @@ export function useExclusivePanels() {
     ...prev,
     panelOpenState,
     panelHandlers,
+    openAreaListSelect,
   }
 }

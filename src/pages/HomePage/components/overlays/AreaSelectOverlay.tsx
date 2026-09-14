@@ -8,6 +8,7 @@ import type { useExclusivePanels } from '../../hooks/useExclusivePanels'
 import type { useFlightAnimations } from '../../hooks/useFlightAnimations'
 import type { useMapEngine } from '../../../../hooks/useMapEngine'
 import { homeImages } from '../../../../assets/images/home'
+import { useTaskAreaStore } from '../../../../stores/taskAreaStore'
 import { createPortal } from 'react-dom'
 
 type Panels = ReturnType<typeof useExclusivePanels>
@@ -83,23 +84,24 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                     setAreaSelectAnchor(null)
                     setAreaSelectEnd(null)
                     setAreaSelectDragging(false)
-                    if (areaSelectSource === 'rally-point') {
-                      setRallyPointRect(null)
-                      setRallyPointRouteGenerated(false)
-                      stopRallyPointFlights()
-                    } else {
-                      setAreaLandingRect(null)
-                      setAreaLandingCorners(null)
-                      setAreaLandingRouteGenerated(false)
-                    }
-                    return
+                  if (areaSelectSource === 'rally-point') {
+                    setRallyPointRect(null)
+                    setRallyPointRouteGenerated(false)
+                    stopRallyPointFlights()
+                  } else if (areaSelectSource === 'area-landing') {
+                    setAreaLandingRect(null)
+                    setAreaLandingCorners(null)
+                    setAreaLandingRouteGenerated(false)
                   }
-                  // 绘制阶段（未定格）：右键退出框选模式并重新展示对应面板（信息已提升保留）
-                  setAreaSelectMode(false)
-                  setAreaSelectAnchor(null)
-                  setAreaSelectEnd(null)
-                  if (areaSelectSource === 'rally-point') setRallyPointOpen(true)
-                  else setAreaLandingOpen(true)
+                  return
+                }
+                // 绘制阶段（未定格）：右键退出框选模式并重新展示对应面板（信息已提升保留）；
+                // 'area-list'（区域列表添加区域）无对应功能面板，直接退出即可
+                setAreaSelectMode(false)
+                setAreaSelectAnchor(null)
+                setAreaSelectEnd(null)
+                if (areaSelectSource === 'rally-point') setRallyPointOpen(true)
+                else if (areaSelectSource === 'area-landing') setAreaLandingOpen(true)
                 }}
               >
                 {/* 框选模式全程跟随光标：停机坪图标图片（54×54，中心对准鼠标）替代原生
@@ -149,10 +151,10 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                                   setRallyPointRouteGenerated(false)
                                   stopRallyPointFlights()
                                 } else {
-                                  setAreaLandingRect({ left, top, width, height })
-                                  setAreaLandingRouteGenerated(false)
-                                  // 计算选区四角经纬度（视口坐标 → 地图容器坐标 → WGS84），
-                                  // 供区域降落面板「区域信息」实时显示
+                                  // 计算选区四角经纬度（视口坐标 → 地图容器坐标 → WGS84）：
+                                  // 区域降落供面板「区域信息」实时显示，
+                                  // 区域列表「添加区域」作为新区域顶点
+                                  let corners: { lat: number; lng: number }[] | null = null
                                   if (adapter) {
                                     const bounds = adapter
                                       .getContainer()
@@ -164,23 +166,41 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                                       })
                                       return { lat: ll.lat, lng: ll.lng }
                                     }
-                                    setAreaLandingCorners([
+                                    corners = [
                                       corner(left, top),
                                       corner(left + width, top),
                                       corner(left + width, top + height),
                                       corner(left, top + height),
-                                    ])
+                                    ]
+                                  }
+                                  if (areaSelectSource === 'area-list') {
+                                    // 区域列表「添加区域」：按四角经纬度本地新增区域
+                                    // （后端暂无接口），列表与态势图任务区域层即时同步展示
+                                    if (corners) {
+                                      useTaskAreaStore
+                                        .getState()
+                                        .addArea(
+                                          corners.map((c) => ({
+                                            latitude: c.lat,
+                                            longitude: c.lng,
+                                          })),
+                                        )
+                                    }
                                   } else {
-                                    setAreaLandingCorners(null)
+                                    setAreaLandingRect({ left, top, width, height })
+                                    setAreaLandingRouteGenerated(false)
+                                    setAreaLandingCorners(corners)
                                   }
                                 }
                                 // TODO: 接入航线生成业务
                                 setAreaSelectMode(false)
                                 setAreaSelectAnchor(null)
                                 setAreaSelectEnd(null)
-                                // 重新展示对应面板（信息已提升保留）
+                                // 重新展示对应面板（信息已提升保留）；
+                                // 'area-list' 无对应功能面板，直接退出即可
                                 if (areaSelectSource === 'rally-point') setRallyPointOpen(true)
-                                else setAreaLandingOpen(true)
+                                else if (areaSelectSource === 'area-landing')
+                                  setAreaLandingOpen(true)
                               }}
                             >
                               确认
@@ -198,7 +218,7 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                                   setRallyPointRect(null)
                                   setRallyPointRouteGenerated(false)
                                   stopRallyPointFlights()
-                                } else {
+                                } else if (areaSelectSource === 'area-landing') {
                                   setAreaLandingRect(null)
                                   setAreaLandingCorners(null)
                                   setAreaLandingRouteGenerated(false)

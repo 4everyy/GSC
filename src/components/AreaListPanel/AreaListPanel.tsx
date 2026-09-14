@@ -2,20 +2,30 @@
  * AreaListPanel —— 区域列表面板（工具栏「区域规划」按钮，index 1）。
  *
  * 数据源：taskAreaStore（/api/v1/control/queryTaskAreaList，与态势图
- * TaskAreaLayer 渲染的是同一份数据）——列表与地图多边形天然一致。
+ * TaskAreaLayer 渲染的是同一份数据）——列表与地图多边形天然一致；
+ * 后端未开启或接口失败时保留 mock 兜底（config/taskAreas.ts）。
  * 交互：
  * - 筛选栏「全选」复选框（三态：全选/部分选中/未选，作用于当前列表全部区域）；
- * - 行首复选框勾选区域（选中行背景变蓝，与设备/目标面板一致）；
- * - 行点击 / 行尾箭头展开详情（区域中心 / 顶点数量 / 创建时间，手风琴模式）；
- * - 底部「刷新」重拉区域列表（loading 期间按钮图标旋转）；
+ * - 行首复选框勾选区域；行常规(灰)/hover(橙)/选中(蓝) 三态背景图
+ *   与目标列表面板（TargetListPanel）完全一致；
+ * - 行尾操作图标组：编辑（后端暂无接口，占位）/ 显示（控制该区域在态势图上的
+ *   显隐，经 taskAreaStore.hiddenIds 与 TaskAreaLayer 联动；图标双态——
+ *   可见时睁眼 eyes.svg / 隐藏时闭眼斜杠 eyes-off.svg）/ 删除（本地移除，
+ *   后端暂无删除接口，刷新 load() 后恢复）；
+ * - 底部操作（按钮组布局同目标列表面板）：「添加区域」（主按钮：iconAdd 图标
+ *   + 实心蓝底 #0EA7F9，点击进入与区域降落同款地图框选）/「显示」批量显隐勾选区域
+ *   （图标双态由当前列表全部区域的显隐状态决定——存在可见→睁眼 / 全部隐藏→闭眼，
+ *   与按钮是否置灰、勾选了哪些行无关；点击时按图标方向对勾选区域统一显示/隐藏）
+ *   /「删除」批量删除勾选区域；
  * - 加载失败展示错误与「重试」，空数据展示「暂无区域」。
- * 外观与 TargetListPanel / DeviceManagementPanel 同一套视觉语言
- * （渐变底、切角装饰、行背景图选中蓝 / hover 橙 / 普通灰）。
+ * 外观与 TargetListPanel / DeviceManagementPanel 同一套视觉语言。
  */
 import { useEffect, useState } from 'react'
 import { useTaskAreaStore } from '../../stores/taskAreaStore'
-import { taskAreaTypeMeta, type TaskArea } from '../../api/taskArea'
+import { taskAreaTypeMeta } from '../../api/taskArea'
 import { deviceImages } from '../../assets/images/device'
+import { homeImages } from '../../assets/images/home'
+import { taskPanelImages } from '../../assets/images/task-panel'
 import './AreaListPanel.css'
 
 interface AreaListPanelProps {
@@ -23,33 +33,28 @@ interface AreaListPanelProps {
   visible?: boolean
 }
 
-/** epoch ms → YYYY/MM/DD HH:mm:ss（0/非法值返回 —） */
-function formatTime(ms: number): string {
-  if (!ms) return '—'
-  const d = new Date(ms)
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
-}
-
-/** 区域顶点经纬度均值（地理中心，展示用） */
-function formatCentroid(area: TaskArea): string {
-  if (area.vertices.length === 0) return '—'
-  const n = area.vertices.length
-  const lng = area.vertices.reduce((s, v) => s + v.longitude, 0) / n
-  const lat = area.vertices.reduce((s, v) => s + v.latitude, 0) / n
-  return `经度:${lng.toFixed(4)}°, 纬度:${lat.toFixed(4)}°`
+/** km² -> ㎡（1 km² = 1,000,000 ㎡），保留整数展示 */
+function formatAreaM2(areaKm2: number): string {
+  const m2 = Math.round(areaKm2 * 1_000_000)
+  return m2.toLocaleString('zh-CN')
 }
 
 export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
   const areas = useTaskAreaStore((s) => s.areas)
+  const hiddenIds = useTaskAreaStore((s) => s.hiddenIds)
+  const toggleHidden = useTaskAreaStore((s) => s.toggleHidden)
+  const removeArea = useTaskAreaStore((s) => s.removeArea)
   const status = useTaskAreaStore((s) => s.status)
   const error = useTaskAreaStore((s) => s.error)
   const load = useTaskAreaStore((s) => s.load)
+  // 「添加区域」进入地图框选的跨层级信号：面板经 MapToolbar 挂载、与 HomePage 平级，
+  // 无法经 props 传递，点击时计数 +1，HomePage 监听计数变化进入 area-list 框选模式
+  const requestAddArea = useTaskAreaStore((s) => s.requestAddArea)
 
-  // 勾选的区域 id 集合（面板内局部状态：区域暂无地图图标联动需求）
+  // 勾选的区域 id 集合（面板内局部状态）
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  // 手风琴模式：同一时刻至多一行展开详情
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  // hover 行 id：驱动行背景图切换为橙色 hover 态（与目标列表一致）
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   // 兜底加载：态势图区域层通常已触发过 load（store 内部 loading 防重入），
@@ -87,9 +92,25 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
     })
   }
 
-  /** 切换行内详情展开/收起（手风琴：展开新行自动收起其他行） */
-  const toggleExpand = (id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id))
+  /** 列表整体可见性：当前列表存在任一可见区域（未被隐藏）即为 true。
+      底部「显示」按钮的图标态完全由此决定（置灰/可点击均同源）——
+      存在可见→睁眼（下一步动作：隐藏）/ 全部隐藏→闭眼（下一步动作：显示） */
+  const listHasVisible = areas.some((a) => !hiddenIds.has(a.id))
+
+  /** 底部「显示」：按列表整体状态决定方向——存在可见区域则统一隐藏勾选行，
+      否则统一显示勾选行（与图标方向一致） */
+  const toggleShowSelected = () => {
+    const hide = listHasVisible
+    selectedIds.forEach((id) => {
+      if (hide === hiddenIds.has(id)) return // 已处于目标态则跳过
+      toggleHidden(id)
+    })
+  }
+
+  /** 底部「删除」：批量删除勾选区域并清空勾选 */
+  const deleteSelected = () => {
+    selectedIds.forEach((id) => removeArea(id))
+    setSelectedIds(new Set())
   }
 
   return (
@@ -189,108 +210,90 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
           ) : (
             areas.map((a) => {
               const meta = taskAreaTypeMeta(a.type)
-              const isExpanded = expandedId === a.id
               const isSelected = selectedIds.has(a.id)
-              // 行背景三态与设备/目标面板一致：选中蓝 > hover 橙 > 普通灰
+              const isHidden = hiddenIds.has(a.id)
+              // 行背景多态与目标列表面板一致：
+              // 选中(蓝) > hover(橙) > 普通(灰)
               const bgImage = isSelected
                 ? deviceImages.rowBgBlue
                 : hoveredId === a.id
                   ? deviceImages.rowBgOrange
                   : deviceImages.rowBgGray
               return (
-                <div className="area-row-wrapper" key={a.id}>
+                <div
+                  className={`area-row${isSelected ? ' area-row--selected' : ''}`}
+                  key={a.id}
+                  onMouseEnter={() => setHoveredId(a.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                >
+                  <img className="area-row__bg" src={bgImage} alt="" draggable={false} />
                   <div
-                    className={`area-row${isSelected ? ' area-row--selected' : ''}`}
-                    onClick={() => toggleExpand(a.id)}
-                    onMouseEnter={() => setHoveredId(a.id)}
-                    onMouseLeave={() => setHoveredId(null)}
+                    className={`area-row__checkbox${isSelected ? ' area-row__checkbox--checked' : ''}`}
+                    onClick={() => toggleSelect(a.id)}
+                    role="checkbox"
+                    aria-checked={isSelected}
+                    aria-label={`勾选区域 ${a.name}`}
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === ' ' && (e.preventDefault(), toggleSelect(a.id))}
                   >
-                    <img className="area-row__bg" src={bgImage} alt="" draggable={false} />
-                    <div
-                      className={`area-row__checkbox${isSelected ? ' area-row__checkbox--checked' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleSelect(a.id)
-                      }}
-                      role="checkbox"
-                      aria-checked={isSelected}
-                      aria-label={`勾选区域 ${a.name}`}
-                      tabIndex={0}
-                      onKeyDown={(e) =>
-                        e.key === ' ' && (e.preventDefault(), toggleSelect(a.id))
-                      }
-                    >
-                      {isSelected && (
-                        <svg
-                          viewBox="0 0 12 12"
-                          width="10"
-                          height="10"
-                          fill="none"
-                          stroke="#fff"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="2,6 5,9 10,3" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="area-row__name" title={a.name}>
-                      {a.name}
-                    </span>
-                    <span className="area-row__type" title={meta.label}>
-                      <span
-                        className="area-row__type-dot"
-                        style={{ backgroundColor: meta.color }}
-                      />
-                      {meta.label}
-                    </span>
-                    <span className="area-row__area" title={`${a.areaKm2} km²`}>
-                      {a.areaKm2} km²
-                    </span>
-                    <span className="area-row__priority" title={a.priority || '—'}>
-                      {a.priority || '—'}
-                    </span>
-                    <img
-                      className="area-row__expand"
-                      src={isExpanded ? deviceImages.upArrow : deviceImages.downArrow}
-                      alt={isExpanded ? '收起详情' : '展开详情'}
-                      title={isExpanded ? '收起详情' : '展开详情'}
-                      draggable={false}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleExpand(a.id)
-                      }}
-                    />
+                    {isSelected && (
+                      <svg
+                        viewBox="0 0 12 12"
+                        width="10"
+                        height="10"
+                        fill="none"
+                        stroke="#fff"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="2,6 5,9 10,3" />
+                      </svg>
+                    )}
                   </div>
-
-                  {/* 行内详情 */}
-                  {isExpanded && (
-                    <div className="area-row__detail">
-                      <div className="area-row__detail-row">
-                        <span className="area-row__detail-bar" />
-                        <span className="area-row__detail-label">区域中心</span>
-                        <span className="area-row__detail-value">{formatCentroid(a)}</span>
-                      </div>
-                      <div className="area-row__detail-row">
-                        <span className="area-row__detail-bar" />
-                        <span className="area-row__detail-label">顶点数量</span>
-                        <span className="area-row__detail-value">{a.vertices.length} 个</span>
-                      </div>
-                      <div className="area-row__detail-row">
-                        <span className="area-row__detail-bar" />
-                        <span className="area-row__detail-label">创建时间</span>
-                        <span className="area-row__detail-value">{formatTime(a.createTime)}</span>
-                      </div>
-                      <div className="area-row__detail-divider" />
+                  <span className="area-row__name" title="01区域名称">
+                    01区域名称
+                  </span>
+                  <span className="area-row__type" title={meta.label}>
+                    {meta.label}
+                  </span>
+                  <span className="area-row__area" title={`面积：${formatAreaM2(a.areaKm2)}㎡`}>
+                    面积：{formatAreaM2(a.areaKm2)}㎡
+                  </span>
+                  {/* 行尾操作：编辑 / 显示 / 删除（设计稿顺序，间距 8px） */}
+                  <div className="area-row__actions">
+                    <button
+                      type="button"
+                      className="area-row__icon-btn"
+                      title="编辑区域"
+                      aria-label={`编辑区域 ${a.name}`}
+                    >
+                      <img src={taskPanelImages.editIcon} alt="" draggable={false} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`area-row__icon-btn${isHidden ? ' area-row__icon-btn--off' : ''}`}
+                      onClick={() => toggleHidden(a.id)}
+                      title={isHidden ? '在地图上显示' : '在地图上隐藏'}
+                      aria-label={isHidden ? `在地图上显示区域 ${a.name}` : `在地图上隐藏区域 ${a.name}`}
+                    >
+                      {/* 图标双态：可见=睁眼 / 隐藏=闭眼斜杠 */}
                       <img
-                        className="area-row__detail-deco"
-                        src={deviceImages.detailDeco}
+                        src={isHidden ? taskPanelImages.eyesOffIcon : taskPanelImages.eyesIcon}
                         alt=""
                         draggable={false}
                       />
-                    </div>
-                  )}
+                    </button>
+                    <button
+                      type="button"
+                      className="area-row__icon-btn"
+                      onClick={() => removeArea(a.id)}
+                      title="删除区域"
+                      aria-label={`删除区域 ${a.name}`}
+                    >
+                      <img src={homeImages.iconDelete} alt="" draggable={false} />
+                    </button>
+                  </div>
                 </div>
               )
             })
@@ -298,21 +301,42 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
         </div>
       </div>
 
-      {/* 底部操作：刷新 */}
+      {/* 底部操作：添加区域 / 显示 / 删除（布局同目标列表面板） */}
       <div className="area-panel__actions">
+        {/* 添加区域（主按钮）：iconAdd 图标 + 实心蓝底 #0EA7F9；点击进入与区域降落
+            同款地图框选（停机坪图标光标 + 拖拽紫色虚线框），确认后按选区四角经纬度本地新增区域 */}
+        <button
+          className="area-panel__action-btn area-panel__action-btn--primary"
+          type="button"
+          onClick={requestAddArea}
+          title="添加区域：在地图上框选新增区域"
+        >
+          <img src={deviceImages.iconAdd} alt="" />
+          添加区域
+        </button>
+        {/* 显示：图标态由当前列表全部区域的显隐决定（存在可见→睁眼 / 全部隐藏→闭眼），
+            与置灰/可点击、勾选内容无关；未勾选时置灰（灰度滤镜），点击按图标方向批量处理勾选行 */}
         <button
           className="area-panel__action-btn"
           type="button"
-          disabled={status === 'loading'}
-          aria-disabled={status === 'loading'}
-          onClick={() => void load()}
+          disabled={selectedIds.size === 0}
+          aria-disabled={selectedIds.size === 0}
+          onClick={toggleShowSelected}
+          title="显示/隐藏勾选的区域"
         >
-          <img
-            src={deviceImages.iconRefresh}
-            alt=""
-            className={status === 'loading' ? 'area-panel__icon--spinning' : undefined}
-          />
-          刷新
+          <img src={listHasVisible ? taskPanelImages.eyesIcon : taskPanelImages.eyesOffIcon} alt="" />
+          显示
+        </button>
+        {/* 未选中任何行时置灰不可点击（disabled 阻断点击 + :disabled 样式置灰） */}
+        <button
+          className="area-panel__action-btn"
+          type="button"
+          disabled={selectedIds.size === 0}
+          aria-disabled={selectedIds.size === 0}
+          onClick={deleteSelected}
+        >
+          <img src={homeImages.iconDelete} alt="" />
+          删除
         </button>
       </div>
     </div>

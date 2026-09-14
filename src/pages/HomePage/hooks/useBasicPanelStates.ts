@@ -110,11 +110,12 @@ export function useBasicPanelStates() {
   // 图片中心（27,27）对准鼠标；框选模式全程保持（含选区定格后点「确认/取消」）
   const [areaSelectHover, setAreaSelectHover] = useState<{ x: number; y: number } | null>(null)
   // 框选模式归属：'area-landing' 区域降落（写入 areaLandingRect/corners，面板显示区域信息）/
-  // 'rally-point' 集结点（写入 rallyPointRect，绘制区域不带中心地面标记徽章）——
-  // Esc/右键/取消回到对应面板，确认写入对应选区并回到对应面板
-  const [areaSelectSource, setAreaSelectSource] = useState<'area-landing' | 'rally-point'>(
-    'area-landing',
-  )
+  // 'rally-point' 集结点（写入 rallyPointRect，绘制区域不带中心地面标记徽章）/
+  // 'area-list' 区域列表「添加区域」（确认后按选区四角经纬度本地新增区域，无对应功能面板）——
+  // Esc/右键/取消回到对应面板（area-list 无面板，直接退出），确认写入对应选区并回到对应面板
+  const [areaSelectSource, setAreaSelectSource] = useState<
+    'area-landing' | 'rally-point' | 'area-list'
+  >('area-landing')
   // 集结点已确认的框选区域（视口坐标）：与区域降落同款截图式矩形，但无中心徽章
   const [rallyPointRect, setRallyPointRect] = useState<{
     left: number

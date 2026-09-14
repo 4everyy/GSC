@@ -9,6 +9,9 @@ import detailBg from './detail-bg.png'
 import detailBottomDeco from './detail-bottom-deco.png'
 import droneWhite from './drone-white.png'
 import dropdownArrow from '../device/dropdown.png'
+import editIcon from './edit.svg'
+import eyesIcon from './eyes.svg'
+import eyesOffIcon from './eyes-off.svg'
 import expandArrowActive from './expand-arrow-active.png'
 import expandArrowNormal from './expand-arrow-normal.png'
 import headerIcon from '../device/header-icon.png'
@@ -41,6 +44,9 @@ export const taskPanelImages = {
   detailBottomDeco,
   droneWhite,
   dropdownArrow,
+  editIcon,
+  eyesIcon,
+  eyesOffIcon,
   expandArrowActive,
   expandArrowNormal,
   headerIcon,
