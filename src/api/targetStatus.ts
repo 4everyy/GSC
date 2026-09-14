@@ -57,6 +57,31 @@ function mapType(typeCode: string): TargetType {
   return typeCode === 'person' ? '人员' : '车辆'
 }
 
+/** typeCode → 型号描述（后端无型号字段，按类型码给出展示文案兜底，不为空） */
+function mapModel(typeCode: string): string {
+  switch (typeCode) {
+    case 'person':
+      return '人员目标'
+    case 'car':
+      return '轮式车辆'
+    case 'truck':
+      return '载重卡车'
+    case 'fire':
+      return '火力单元'
+    default:
+      return '未识别型号'
+  }
+}
+
+/** 经纬度 → 直角坐标系展示值（后端无直角坐标字段：取经纬度小数部分按
+ *  111320 米/度换算，纬向 cos 校正，得到合理量级的米制偏移兜底） */
+function mapCoordinates(lat: number, lon: number): string {
+  const frac = (v: number) => v - Math.floor(v)
+  const x = Math.round(frac(lon) * 111320 * Math.cos((lat * Math.PI) / 180))
+  const y = Math.round(frac(lat) * 111320)
+  return `X:${x}m, Y:${y}m`
+}
+
 /** worth → 价值文字（'3' 高 / '2' 中 / '1' 低，未知按「高」兜底与 mock 一致） */
 function mapWorth(worth: string): string {
   switch (worth) {
@@ -74,7 +99,7 @@ function mapWorth(worth: string): string {
 /** 格式化为 'YYYY/MM/DD HH:mm:ss'（与 mock config/targets.ts 格式一致） */
 function formatTime(ms: number): string {
   const d = new Date(ms)
-  const pad = (v: number) => String(v).padStart(2, '0')
+  const pad = (v: string | number) => String(v).padStart(2, '0')
   return (
     d.getFullYear() +
     '/' +
@@ -105,6 +130,7 @@ export function mapTargetToItem(raw: TargetRaw, fetchedAt: number): MappedTarget
     id: raw.id,
     name: raw.name || `目标-${raw.id}`,
     type: mapType(raw.typeCode),
+    model: mapModel(raw.typeCode),
     status: '默认侦察', // TODO: 后端状态字典补充后按 status 码映射文案
     value: mapWorth(raw.worth),
     source: planeNum ? `无人机${planeNum.padStart(2, '0')}` : '未知平台',
@@ -112,6 +138,7 @@ export function mapTargetToItem(raw: TargetRaw, fetchedAt: number): MappedTarget
     altitude: fmtMeters(raw.height),
     strikeMode: raw.strikeMethodName?.trim() || '暂无',
     position: `Lat:${raw.latitude}, Lon:${raw.longitude}`,
+    coordinates: mapCoordinates(raw.latitude, raw.longitude),
     firstSeenAt: formatTime(Number.isFinite(created) && created > 0 ? created : fetchedAt),
     lastUpdatedAt: formatTime(fetchedAt),
     lngLat: { lng: raw.longitude, lat: raw.latitude },
@@ -126,9 +153,9 @@ export async function fetchAndMapTargets(): Promise<MappedTarget[]> {
   for (const raw of rawList ?? []) {
     if (!raw || !raw.id || seen.has(raw.id)) continue
     seen.set(raw.id, mapTargetToItem(raw, fetchedAt))
-      // keep 5 targets like mock targetList
-      const MAX_TARGETS = 5
-      if (seen.size >= MAX_TARGETS) break
+    // keep 5 targets like mock targetList
+    const MAX_TARGETS = 5
+    if (seen.size >= MAX_TARGETS) break
   }
   return [...seen.values()]
 }
