@@ -1,0 +1,1836 @@
+/**
+ * LoginPage.css —— 登录页样式（深海军蓝 + 青色 HUD 科技风）。
+ *
+ * 设计语言对齐现有项目：#0a1a2f 底、rgba(135,235,255) 青色高光、MiSans 字体、
+ * 半透明深色面板与青色描边——见 HomePageLayout.css / BottomBar.css。
+ * 动效（页面无多余文案，纯氛围渲染）：
+ *   粒子星链（Canvas，随鼠标扩散/连线，见 TSX）、透视网格滚动、双辉光呼吸、
+ *   流星拖尾、扫描线、雷达扫描光环、卡片 3D 视差倾斜 + 镜面高光 + conic 流光描边、
+ *   标题流彩渐变、表单分级入场、成功径向扩散过渡。
+ */
+
+/* ====== 页面容器 ====== */
+.login-page {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% -20%, #12325c 0%, transparent 55%),
+    radial-gradient(ellipse 80% 60% at 85% 110%, #0d2c4e 0%, transparent 60%),
+    #0a1a2f;
+  color: #eafcff;
+  font-family: 'MiSans-Regular';
+  user-select: none;
+}
+
+/* ====== 背景层（自下而上：网格 → 粒子 → 辉光 → 流星 → 扫描线 → 暗角） ====== */
+
+/* 透视网格：背景网格 + 视差滚动，营造"数据空间"纵深感 */
+.login-grid {
+  position: absolute;
+  inset: -60%;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(135, 235, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(135, 235, 255, 0.06) 1px, transparent 1px);
+  background-size: 56px 56px;
+  transform: perspective(900px) rotateX(58deg) translateY(12%);
+  transform-origin: 50% 100%;
+  animation: login-grid-scroll 14s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes login-grid-scroll {
+  to {
+    background-position:
+      0 56px,
+      0 0;
+  }
+}
+
+.login-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* 双辉光斑：缓慢呼吸漂移，打破暗背景单调性 */
+.login-glow {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.login-glow--a {
+  width: 46vw;
+  height: 46vw;
+  left: -12vw;
+  top: -14vw;
+  background: #1e5f8f;
+  animation: login-glow-float 11s ease-in-out infinite alternate;
+}
+
+.login-glow--b {
+  width: 40vw;
+  height: 40vw;
+  right: -10vw;
+  bottom: -12vw;
+  background: #0f7d6c;
+  animation: login-glow-float 13s ease-in-out -6s infinite alternate-reverse;
+}
+
+@keyframes login-glow-float {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(5vw, 4vw, 0) scale(1.15);
+  }
+}
+
+/* 流星：三颗错峰划过，拖尾渐隐 */
+.login-meteor {
+  position: absolute;
+  z-index: 1;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #d9f9ff;
+  box-shadow: 0 0 8px 2px rgba(135, 235, 255, 0.8);
+  opacity: 0;
+  transform: rotate(-32deg);
+  pointer-events: none;
+}
+
+/* 拖尾：细长渐隐光带 */
+.login-meteor::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: clamp(120px, 16vw, 240px);
+  height: 1.5px;
+  transform-origin: 0 0;
+  transform: scaleX(1);
+  background: linear-gradient(90deg, rgba(135, 235, 255, 0.85), transparent 82%);
+}
+
+.login-meteor--a {
+  top: 6%;
+  left: 64%;
+  animation: login-meteor-fly 9s 2.2s ease-in infinite;
+}
+
+.login-meteor--b {
+  top: 22%;
+  left: 18%;
+  animation: login-meteor-fly 11.5s 6s ease-in infinite;
+}
+
+.login-meteor--c {
+  top: 2%;
+  left: 88%;
+  animation: login-meteor-fly 10s 8.6s ease-in infinite;
+}
+
+@keyframes login-meteor-fly {
+  0% {
+    opacity: 0;
+    transform: rotate(-32deg) translateX(0);
+  }
+  4% {
+    opacity: 1;
+  }
+  22% {
+    opacity: 0.9;
+  }
+  30%,
+  100% {
+    opacity: 0;
+    transform: rotate(-32deg) translateX(-46vw);
+  }
+}
+
+/* 扫描线：一条青色光带周期性掠过全屏 */
+.login-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -10%;
+  height: 26vh;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(135, 235, 255, 0.05) 45%,
+    rgba(135, 235, 255, 0.12) 50%,
+    rgba(135, 235, 255, 0.05) 55%,
+    transparent
+  );
+  animation: login-scan 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes login-scan {
+  0% {
+    transform: translateY(-30vh);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(130vh);
+    opacity: 0;
+  }
+}
+
+/* 暗角：聚焦中心，压暗四角 */
+.login-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(ellipse 90% 80% at 50% 45%, transparent 55%, rgba(3, 12, 24, 0.55) 100%);
+  pointer-events: none;
+}
+
+/* 漂浮六边形线框：四个不同尺寸/位置，缓慢漂浮 + 自转 */
+.login-hex {
+  position: absolute;
+  z-index: 1;
+  color: rgba(135, 235, 255, 0.16);
+  filter: drop-shadow(0 0 8px rgba(135, 235, 255, 0.25));
+  animation: login-hex-float 16s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.login-hex--1 {
+  width: 140px;
+  left: 12%;
+  top: 16%;
+  animation-duration: 13s;
+}
+
+.login-hex--2 {
+  width: 90px;
+  right: 16%;
+  top: 24%;
+  animation-duration: 17s;
+  animation-delay: -5s;
+}
+
+.login-hex--3 {
+  width: 200px;
+  left: 6%;
+  bottom: 10%;
+  color: rgba(135, 235, 255, 0.1);
+  animation-duration: 21s;
+  animation-delay: -9s;
+}
+
+.login-hex--4 {
+  width: 64px;
+  right: 9%;
+  bottom: 18%;
+  animation-duration: 12s;
+  animation-delay: -3s;
+}
+
+@keyframes login-hex-float {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    transform: translateY(-26px) rotate(60deg);
+  }
+}
+
+/* 垂直光柱：屏幕两侧自下而上的能量光束，顶端带发光光点 */
+.login-beam-v {
+  position: absolute;
+  bottom: -12%;
+  width: 2px;
+  height: 62vh;
+  z-index: 1;
+  background: linear-gradient(to top, rgba(135, 235, 255, 0.65), rgba(135, 235, 255, 0.08) 75%, transparent);
+  filter: blur(0.5px);
+  opacity: 0;
+  animation: login-beam-rise 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.login-beam-v::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(160, 245, 255, 0.9);
+  box-shadow: 0 0 14px 4px rgba(135, 235, 255, 0.6);
+}
+
+.login-beam-v--l {
+  left: 26%;
+}
+
+.login-beam-v--r {
+  right: 28%;
+  animation-delay: 3.2s;
+}
+
+@keyframes login-beam-rise {
+  0% {
+    transform: translateY(36vh);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.85;
+  }
+  70% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-66vh);
+    opacity: 0;
+  }
+}
+
+/* 数据刻度：屏幕左右两侧细刻度线向上流动（仪表感） */
+.login-ticks {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  z-index: 2;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(135, 235, 255, 0.4) 0 8px,
+    transparent 8px 26px
+  );
+  background-size: 10px 26px;
+  background-repeat: repeat-y;
+  opacity: 0.28;
+  mask: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent);
+  -webkit-mask: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent);
+  animation: login-ticks-flow 2.6s linear infinite;
+  pointer-events: none;
+}
+
+.login-ticks--l {
+  left: clamp(40px, 5vw, 72px);
+}
+
+.login-ticks--r {
+  right: clamp(40px, 5vw, 72px);
+  animation-direction: reverse;
+}
+
+@keyframes login-ticks-flow {
+  to {
+    background-position-y: 26px;
+  }
+}
+
+/* 点击涟漪：JS 动态插入，扩散光环 + 淡出 */
+.login-ripple {
+  position: absolute;
+  z-index: 30;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(135, 235, 255, 0.9);
+  box-shadow:
+    0 0 16px rgba(135, 235, 255, 0.55),
+    inset 0 0 8px rgba(135, 235, 255, 0.4);
+  pointer-events: none;
+  animation: login-ripple-burst 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes login-ripple-burst {
+  from {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  to {
+    transform: scale(11);
+    opacity: 0;
+  }
+}
+
+/* ====== HUD 四角角标 ====== */
+.login-corner {
+  position: absolute;
+  width: clamp(28px, 3.2vw, 52px);
+  height: clamp(28px, 3.2vw, 52px);
+  z-index: 4;
+  border: 2px solid rgba(135, 235, 255, 0.5);
+  pointer-events: none;
+}
+
+.login-corner--tl {
+  left: clamp(10px, 1.4vw, 22px);
+  top: clamp(10px, 1.4vw, 22px);
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.login-corner--tr {
+  right: clamp(10px, 1.4vw, 22px);
+  top: clamp(10px, 1.4vw, 22px);
+  border-left: 0;
+  border-bottom: 0;
+}
+
+.login-corner--bl {
+  left: clamp(10px, 1.4vw, 22px);
+  bottom: clamp(10px, 1.4vw, 22px);
+  border-right: 0;
+  border-top: 0;
+}
+
+.login-corner--br {
+  right: clamp(10px, 1.4vw, 22px);
+  bottom: clamp(10px, 1.4vw, 22px);
+  border-left: 0;
+  border-top: 0;
+}
+
+/* ====== 登录舞台：雷达光环 + 卡片居中 ====== */
+.login-stage {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 3vh 16px;
+  perspective: 1100px; /* 卡片 3D 视差透视 */
+}
+
+/* 雷达：卡片背后缓慢旋转的扫描扇形 + 扩散圆环 */
+.login-radar {
+  position: absolute;
+  width: min(560px, 88vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: login-radar-in 1.2s ease both;
+}
+
+@keyframes login-radar-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 扫描扇形：conic 渐变旋转，像雷达扫掠 */
+.login-radar__sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(135, 235, 255, 0.22) 0deg,
+    rgba(135, 235, 255, 0.07) 38deg,
+    transparent 80deg,
+    transparent 360deg
+  );
+  mask: radial-gradient(circle, transparent 30%, #000 34%, #000 72%, transparent 76%);
+  -webkit-mask: radial-gradient(circle, transparent 30%, #000 34%, #000 72%, transparent 76%);
+  animation: login-radar-sweep 6.5s linear infinite;
+}
+
+@keyframes login-radar-sweep {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* 三层同心圆环：淡青描边，交替呼吸 */
+.login-radar__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed rgba(135, 235, 255, 0.22);
+}
+
+.login-radar__ring--1 {
+  inset: 4%;
+  animation: login-radar-pulse 4s ease-in-out infinite;
+}
+
+.login-radar__ring--2 {
+  inset: 16%;
+  border-style: solid;
+  border-color: rgba(135, 235, 255, 0.16);
+  animation: login-radar-pulse 4s 1.3s ease-in-out infinite;
+}
+
+.login-radar__ring--3 {
+  inset: 30%;
+  animation: login-radar-pulse 4s 2.6s ease-in-out infinite;
+}
+
+@keyframes login-radar-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.012);
+  }
+}
+
+/* 轨道环：两条不同倾角的椭圆轨道 + 发光卫星点绕行 */
+.login-orbits {
+  position: absolute;
+  width: min(680px, 96vw);
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+
+.login-orbit {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(135, 235, 255, 0.14);
+}
+
+/* 轨道一：水平扁椭圆，顺时针绕行 */
+.login-orbit--1 {
+  animation: login-orbit-spin-1 12s linear infinite;
+}
+
+@keyframes login-orbit-spin-1 {
+  from {
+    transform: rotateX(68deg) rotateZ(-14deg) rotate(0deg);
+  }
+  to {
+    transform: rotateX(68deg) rotateZ(-14deg) rotate(1turn);
+  }
+}
+
+/* 轨道二：更内收的窄椭圆，反向绕行 */
+.login-orbit--2 {
+  inset: 11%;
+  border-color: rgba(135, 235, 255, 0.1);
+  animation: login-orbit-spin-2 9s linear infinite reverse;
+}
+
+@keyframes login-orbit-spin-2 {
+  from {
+    transform: rotateX(72deg) rotateZ(28deg) rotate(0deg);
+  }
+  to {
+    transform: rotateX(72deg) rotateZ(28deg) rotate(-1turn);
+  }
+}
+
+/* 卫星点：沿轨道运行的发光小球 */
+.login-orbit__sat {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: #a0f5ff;
+  box-shadow:
+    0 0 12px 3px rgba(135, 235, 255, 0.8),
+    0 0 30px 8px rgba(135, 235, 255, 0.3);
+}
+
+/* ====== 3D 视差容器：JS 写入 --tilt-x/--tilt-y/--gx/--gy ====== */
+.login-tilt {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform 0.25s ease-out;
+  will-change: transform;
+}
+
+/* 鼠标悬停时收紧过渡（跟随更跟手），移出时放缓回弹 */
+.login-tilt:hover {
+  transition: transform 0.08s ease-out;
+}
+
+/* ====== 登录卡片 ====== */
+.login-card {
+  position: relative;
+  width: min(400px, 92vw);
+  padding: 2px; /* 流光描边厚度 */
+  border-radius: 10px;
+  background: rgba(135, 235, 255, 0.14);
+  clip-path: polygon(
+    18px 0,
+    calc(100% - 18px) 0,
+    100% 18px,
+    100% calc(100% - 18px),
+    calc(100% - 18px) 100%,
+    18px 100%,
+    0 calc(100% - 18px),
+    0 18px
+  );
+  animation: login-card-in 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+
+/* 流光描边：conic 渐变旋转，透过 2px padding 形成"呼吸描边" */
+.login-card__beam {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(135, 235, 255, 0.9) 40deg,
+    transparent 90deg,
+    transparent 220deg,
+    rgba(64, 199, 255, 0.7) 260deg,
+    transparent 310deg
+  );
+  animation: login-beam-rotate 5s linear infinite;
+}
+
+@keyframes login-beam-rotate {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.login-card__inner {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(30px, 4.4vh, 44px) clamp(26px, 3vw, 40px) clamp(26px, 3.6vh, 36px);
+  border-radius: 9px;
+  background:
+    linear-gradient(160deg, rgba(17, 48, 78, 0.92), rgba(8, 26, 47, 0.95) 55%, rgba(6, 20, 38, 0.97));
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(135, 235, 255, 0.16);
+  clip-path: polygon(
+    17px 0,
+    calc(100% - 17px) 0,
+    100% 17px,
+    100% calc(100% - 17px),
+    calc(100% - 17px) 100%,
+    17px 100%,
+    0 calc(100% - 17px),
+    0 17px
+  );
+}
+
+/* 镜面高光：跟随光标的柔和光斑（--gx/--gy 由 JS 更新） */
+.login-card__inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    420px circle at var(--gx, 50%) var(--gy, 32%),
+    rgba(135, 235, 255, 0.14),
+    transparent 45%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.login-tilt:hover .login-card__inner::after {
+  opacity: 1;
+}
+
+/* 卡片内 HUD 角标：四角短线 + 微光，错相呼吸 */
+.login-card__hud {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid rgba(135, 235, 255, 0.75);
+  filter: drop-shadow(0 0 5px rgba(135, 235, 255, 0.6));
+  animation: login-hud-blink 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.login-card__hud--tl {
+  left: 10px;
+  top: 10px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.login-card__hud--tr {
+  right: 10px;
+  top: 10px;
+  border-left: 0;
+  border-bottom: 0;
+  animation-delay: 0.8s;
+}
+
+.login-card__hud--bl {
+  left: 10px;
+  bottom: 10px;
+  border-right: 0;
+  border-top: 0;
+  animation-delay: 1.6s;
+}
+
+.login-card__hud--br {
+  right: 10px;
+  bottom: 10px;
+  border-left: 0;
+  border-top: 0;
+  animation-delay: 2.4s;
+}
+
+@keyframes login-hud-blink {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* 卡片入场扫描线：加载时从上到下掠过两次 */
+.login-card__inner::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 34%;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(135, 235, 255, 0.16) 45%,
+    rgba(135, 235, 255, 0.4) 50%,
+    rgba(135, 235, 255, 0.16) 55%,
+    transparent
+  );
+  animation: login-card-scan 1.4s 0.5s ease-in-out 2;
+  pointer-events: none;
+}
+
+@keyframes login-card-scan {
+  from {
+    transform: translateY(-120%);
+  }
+  to {
+    transform: translateY(420%);
+  }
+}
+
+@keyframes login-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(34px) scale(0.96);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* ====== 卡片头部：logo + 标题 ====== */
+.login-head {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin-bottom: clamp(22px, 3.4vh, 32px);
+}
+
+.login-logo {
+  position: relative;
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  color: #87ebff;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 12px rgba(135, 235, 255, 0.65));
+}
+
+.login-logo__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(135, 235, 255, 0.6);
+}
+
+.login-logo__ring--outer {
+  inset: 0;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  animation: login-ring-spin 7s linear infinite;
+}
+
+.login-logo__ring--inner {
+  inset: 9px;
+  border-left-color: transparent;
+  border-right-color: transparent;
+  opacity: 0.7;
+  animation: login-ring-spin 5s linear infinite reverse;
+}
+
+@keyframes login-ring-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.login-logo__drone {
+  width: 40px;
+  height: 40px;
+  animation: login-drone-hover 3.2s ease-in-out infinite;
+}
+
+@keyframes login-drone-hover {
+  0%,
+  100% {
+    transform: translateY(-2px);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+/* 标题：青→白→青流彩渐变滚动 */
+.login-title {
+  font-family: 'MiSans-Semibold';
+  font-size: clamp(18px, 1.5vw, 22px);
+  letter-spacing: 0.16em;
+  margin-right: -0.16em; /* 抵消末字间距，保证视觉居中 */
+  background: linear-gradient(
+    100deg,
+    #9feaff 0%,
+    #f2fdff 28%,
+    #6fe3ff 55%,
+    #f2fdff 82%,
+    #9feaff 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: login-title-flow 5.5s linear infinite;
+}
+
+@keyframes login-title-flow {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+/* glitch 残影：cyan / magenta 双色错位抖动，每 4s 闪现一次 */
+.login-title::before,
+.login-title::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.login-title::before {
+  color: #46f0ff;
+  animation: login-title-glitch-a 4s steps(1) infinite;
+}
+
+.login-title::after {
+  color: #ff5ce1;
+  animation: login-title-glitch-b 4s steps(1) infinite;
+}
+
+@keyframes login-title-glitch-a {
+  0%,
+  88%,
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+  89% {
+    opacity: 0.75;
+    transform: translate(-2.5px, 1.5px);
+    clip-path: inset(12% 0 58% 0);
+  }
+  91% {
+    opacity: 0.75;
+    transform: translate(2px, -1px);
+    clip-path: inset(62% 0 8% 0);
+  }
+  93% {
+    opacity: 0.75;
+    transform: translate(-1.5px, 0);
+    clip-path: inset(38% 0 34% 0);
+  }
+  94% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes login-title-glitch-b {
+  0%,
+  88%,
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+  90% {
+    opacity: 0.6;
+    transform: translate(2.5px, -1.5px);
+    clip-path: inset(52% 0 22% 0);
+  }
+  92% {
+    opacity: 0.6;
+    transform: translate(-2px, 1px);
+    clip-path: inset(8% 0 72% 0);
+  }
+  93.5% {
+    opacity: 0.6;
+    transform: translate(1.5px, 0);
+    clip-path: inset(70% 0 6% 0);
+  }
+  94.5% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+/* ====== 表单 ====== */
+.login-form {
+  display: grid;
+  gap: 16px;
+}
+
+/* 分级入场：配合 --stagger-delay 逐个上浮 */
+.login-stagger {
+  opacity: 0;
+  animation: login-stagger-in 0.55s ease both;
+  animation-delay: var(--stagger-delay, 0s);
+}
+
+.login-stagger--1 { --stagger-delay: 0.15s; }
+.login-stagger--2 { --stagger-delay: 0.28s; }
+.login-stagger--3 { --stagger-delay: 0.4s; }
+.login-stagger--4 { --stagger-delay: 0.52s; }
+.login-stagger--5 { --stagger-delay: 0.64s; }
+
+@keyframes login-stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ----- 输入框 ----- */
+.login-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(6, 22, 40, 0.65);
+  border: 1px solid rgba(135, 235, 255, 0.22);
+  border-radius: 4px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.25s ease,
+    background-color 0.2s ease;
+}
+
+/* 聚焦光线：底部青色光线从中心展开 */
+.login-field::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, transparent, #6fe3ff, transparent);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+  pointer-events: none;
+}
+
+.login-field:focus-within::after {
+  transform: scaleX(1);
+}
+
+.login-field:hover {
+  border-color: rgba(135, 235, 255, 0.4);
+}
+
+.login-field:focus-within {
+  border-color: rgba(135, 235, 255, 0.85);
+  background: rgba(9, 32, 56, 0.8);
+  box-shadow:
+    0 0 0 1px rgba(135, 235, 255, 0.35),
+    0 0 18px rgba(135, 235, 255, 0.18),
+    inset 0 0 14px rgba(135, 235, 255, 0.06);
+}
+
+.login-field__icon {
+  width: 19px;
+  height: 19px;
+  margin-left: 14px;
+  flex: none;
+  color: rgba(135, 235, 255, 0.65);
+  transition: color 0.2s ease;
+}
+
+.login-field:focus-within .login-field__icon {
+  color: #87ebff;
+  filter: drop-shadow(0 0 6px rgba(135, 235, 255, 0.8));
+}
+
+.login-field__input {
+  flex: 1;
+  min-width: 0;
+  padding: 13px 14px 13px 12px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #eafcff;
+  font-size: clamp(13px, 1vw, 15px);
+  letter-spacing: 0.06em;
+  caret-color: #87ebff;
+  user-select: text;
+}
+
+.login-field__input::placeholder {
+  color: rgba(191, 234, 255, 0.38);
+}
+
+.login-field__input:disabled {
+  opacity: 0.55;
+}
+
+/* 自动填充时避免蓝色系统底色（Chrome/Edge） */
+.login-field__input:-webkit-autofill {
+  -webkit-text-fill-color: #eafcff;
+  -webkit-box-shadow: 0 0 0 1000px #0a2038 inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* ----- 密码可见性切换 ----- */
+.login-eye {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-right: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(135, 235, 255, 0.6);
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.login-eye svg {
+  width: 18px;
+  height: 18px;
+}
+
+.login-eye:hover {
+  color: #87ebff;
+  transform: scale(1.1);
+}
+
+.login-eye:disabled {
+  cursor: default;
+  opacity: 0.5;
+  transform: none;
+}
+
+/* ----- 记住用户名 / 记住密码（两个独立选项） ----- */
+.login-options {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  margin-top: -2px;
+}
+
+.login-remember {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: clamp(12px, 0.9vw, 13.5px);
+  color: #bfeaff;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.login-remember input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* 自绘科技感复选框：方角 + 青色内发光 */
+.login-checkbox {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid rgba(135, 235, 255, 0.45);
+  border-radius: 3px;
+  background: rgba(6, 22, 40, 0.7);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.2s ease,
+    background-color 0.18s ease;
+}
+
+.login-checkbox svg {
+  width: 11px;
+  height: 11px;
+  color: #061828;
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 0.16s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.login-remember:hover .login-checkbox {
+  border-color: rgba(135, 235, 255, 0.8);
+}
+
+.login-remember input:checked + .login-checkbox {
+  background: #87ebff;
+  border-color: #87ebff;
+  box-shadow:
+    0 0 10px rgba(135, 235, 255, 0.55),
+    inset 0 0 4px rgba(255, 255, 255, 0.4);
+}
+
+.login-remember input:checked + .login-checkbox svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.login-remember input:focus-visible + .login-checkbox {
+  outline: 2px solid rgba(135, 235, 255, 0.6);
+  outline-offset: 2px;
+}
+
+.login-remember:has(input:disabled) {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* ----- 错误提示 ----- */
+.login-error {
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 120, 110, 0.45);
+  border-left: 3px solid #ff786e;
+  border-radius: 3px;
+  background: rgba(90, 20, 18, 0.35);
+  color: #ffd9d5;
+  font-size: clamp(12px, 0.85vw, 13px);
+  line-height: 1.5;
+  animation: login-shake 0.4s ease;
+}
+
+@keyframes login-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-7px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+/* ----- 登录按钮 ----- */
+.login-submit {
+  position: relative;
+  overflow: hidden;
+  margin-top: 4px;
+  display: grid;
+  place-items: center;
+  min-height: 46px;
+  padding: 13px 0;
+  border: 0;
+  border-radius: 4px;
+  font-family: 'MiSans-Medium';
+  font-size: clamp(14px, 1.05vw, 16px);
+  letter-spacing: 0.5em;
+  text-indent: 0.5em; /* 抵消末字间距 */
+  color: #062033;
+  background: linear-gradient(135deg, #6fe3ff 0%, #38b6ff 55%, #2ee6c5 100%);
+  background-size: 200% 100%;
+  cursor: pointer;
+  box-shadow:
+    0 6px 22px rgba(56, 182, 255, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.25s ease,
+    filter 0.2s ease,
+    background-position 0.5s ease;
+}
+
+/* 按钮表面掠光 */
+.login-submit::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  animation: login-btn-shine 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes login-btn-shine {
+  0%,
+  55% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+
+.login-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  background-position: 100% 0;
+  box-shadow:
+    0 10px 30px rgba(56, 182, 255, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.login-submit:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+  filter: brightness(0.96);
+}
+
+.login-submit:disabled {
+  cursor: default;
+  filter: saturate(0.85);
+}
+
+.login-submit:focus-visible {
+  outline: 2px solid rgba(135, 235, 255, 0.8);
+  outline-offset: 3px;
+}
+
+/* 按钮 loading / success 图标 */
+.login-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid rgba(6, 32, 51, 0.3);
+  border-top-color: #062033;
+  border-radius: 50%;
+  animation: login-spin 0.7s linear infinite;
+}
+
+@keyframes login-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.login-submit__ok-icon {
+  width: 17px;
+  height: 17px;
+  animation: login-check-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes login-check-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ====== 登录成功过渡遮罩（无文字，仅扩散徽标） ====== */
+.login-success-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 20, 38, 0.88);
+  backdrop-filter: blur(6px);
+  border-radius: 9px;
+  animation: login-overlay-in 0.3s ease both;
+}
+
+@keyframes login-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.login-success-overlay__badge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  color: #2ee6c5;
+  filter: drop-shadow(0 0 14px rgba(46, 230, 197, 0.7));
+}
+
+/* 双圈错相扩散 */
+.login-success-overlay__ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(46, 230, 197, 0.8);
+  border-radius: 50%;
+  animation: login-ring-burst 1s ease-out infinite;
+}
+
+.login-success-overlay__ring:nth-child(2) {
+  animation-delay: 0.33s;
+}
+
+@keyframes login-ring-burst {
+  from {
+    transform: scale(0.55);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.login-success-overlay__check {
+  width: 34px;
+  height: 34px;
+  animation: login-check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* 成功后卡片轻微上浮 + 发光增强 */
+.login-card--success {
+  animation: login-card-success 0.6s ease both;
+}
+
+@keyframes login-card-success {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-6px);
+  }
+}
+
+/* ====== 窄屏适配（收缩雷达与卡片间距） ====== */
+@media (max-width: 720px) {
+  .login-radar {
+    width: min(420px, 94vw);
+  }
+
+  .login-card__inner {
+    padding: 26px 20px 22px;
+  }
+
+  .login-options {
+    gap: 18px;
+  }
+}
+
+/* ====== 系统"减少动态效果"偏好：停用装饰性动画 ====== */
+@media (prefers-reduced-motion: reduce) {
+  .login-grid,
+  .login-glow,
+  .login-scanline,
+  .login-meteor,
+  .login-hex,
+  .login-beam-v,
+  .login-ticks,
+  .login-radar__sweep,
+  .login-radar__ring,
+  .login-orbit,
+  .login-card__beam,
+  .login-card__hud,
+  .login-card__inner::before,
+  .login-logo__ring--outer,
+  .login-logo__ring--inner,
+  .login-logo__drone,
+  .login-title,
+  .login-title::before,
+  .login-title::after,
+  .login-submit::after,
+  .login-success-overlay__ring {
+    animation: none;
+  }
+
+  .login-stagger {
+    animation-duration: 0.01s;
+    animation-delay: 0s;
+  }
+
+  .login-tilt {
+    transform: none;
+  }
+}
+
+/* ============================================================
+ * LoginPage 附加样式（HUD/准星/罗盘/电路/浮动标签/充能/冲击波）
+ * 由脚本追加至 LoginPage.css 末尾；reduced-motion 覆盖块自成一体。
+ * 说明：#login-username / #login-password 仅为无障碍/自动填充锚点，无需样式。
+ * ============================================================ */
+
+/* 打字机光标 */
+.login-title__cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 4px;
+  vertical-align: -0.12em;
+  background: #87ebff;
+  box-shadow: 0 0 10px rgba(135, 235, 255, 0.9);
+  animation: login-caret-blink 0.85s steps(1) infinite;
+}
+
+.login-title__cursor.is-done {
+  animation: login-caret-fade 0.7s 1.1s ease forwards;
+}
+
+@keyframes login-caret-blink {
+  0%,
+  55% {
+    opacity: 1;
+  }
+
+  56%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes login-caret-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+/* 输入框浮动标签（placeholder=" " + :placeholder-shown 方案） */
+.login-field__label {
+  position: absolute;
+  left: 45px;
+  top: 50%;
+  padding: 0 4px;
+  transform: translateY(-50%);
+  color: rgba(191, 234, 255, 0.45);
+  font-size: clamp(13px, 1vw, 15px);
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  transition:
+    top 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    font-size 0.22s ease,
+    color 0.2s ease;
+}
+
+.login-field:focus-within .login-field__label,
+.login-field__input:not(:placeholder-shown) ~ .login-field__label {
+  top: 0;
+  transform: translateY(-50%);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: #87ebff;
+  background: linear-gradient(
+    to bottom,
+    rgba(6, 22, 40, 0),
+    rgba(9, 34, 60, 0.98) 24%,
+    rgba(9, 34, 60, 0.98) 76%,
+    rgba(6, 22, 40, 0)
+  );
+}
+
+/* 顶部 HUD 状态栏 */
+.login-hud-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: clamp(14px, 2.2vh, 24px) clamp(28px, 4.5vw, 64px) 0;
+  font-size: clamp(10px, 0.78vw, 12px);
+  letter-spacing: 0.18em;
+  color: rgba(191, 234, 255, 0.7);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: login-hud-drop 1s 0.25s ease both;
+}
+
+.login-hud-top__clock {
+  font-variant-numeric: tabular-nums;
+  color: rgba(191, 234, 255, 0.85);
+}
+
+.login-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.login-dot--ok {
+  background: #2ee6c5;
+  box-shadow: 0 0 10px rgba(46, 230, 197, 0.9);
+  animation: login-dot-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes login-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes login-hud-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 鼠标准星（延迟跟随，transform 由 JS 驱动） */
+.login-crosshair {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.login-crosshair__h,
+.login-crosshair__v {
+  position: absolute;
+  background: rgba(135, 235, 255, 0.55);
+  box-shadow: 0 0 6px rgba(135, 235, 255, 0.5);
+}
+
+.login-crosshair__h {
+  width: 28px;
+  height: 1px;
+  margin: -0.5px 0 0 -14px;
+}
+
+.login-crosshair__v {
+  width: 1px;
+  height: 28px;
+  margin: -14px 0 0 -0.5px;
+}
+
+.login-crosshair__ring {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 1px solid rgba(135, 235, 255, 0.5);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: login-cross-spin 3.2s linear infinite;
+}
+
+.login-crosshair__dot {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+  border-radius: 50%;
+  background: #a0f5ff;
+  box-shadow: 0 0 9px rgba(135, 235, 255, 0.95);
+}
+
+@keyframes login-cross-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* 刻度罗盘（卡片背后：conic 刻度环 + 双环反向旋转） */
+.login-dial {
+  position: absolute;
+  width: min(620px, 90vw);
+  aspect-ratio: 1;
+  pointer-events: none;
+  animation: login-radar-in 1.1s ease both;
+}
+
+.login-dial__ticks {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    rgba(135, 235, 255, 0.3) 0deg 0.6deg,
+    transparent 0.6deg 6deg
+  );
+  mask: radial-gradient(circle, transparent 0 47%, #000 47.4% 49.6%, transparent 50%);
+  -webkit-mask: radial-gradient(circle, transparent 0 47%, #000 47.4% 49.6%, transparent 50%);
+  animation: login-dial-spin 28s linear infinite;
+}
+
+.login-dial__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed rgba(135, 235, 255, 0.22);
+}
+
+.login-dial__ring--1 {
+  inset: 3%;
+  animation: login-dial-spin 18s linear infinite;
+}
+
+.login-dial__ring--2 {
+  inset: 10%;
+  border-style: solid;
+  border-color: rgba(135, 235, 255, 0.12);
+  animation: login-dial-spin 24s linear infinite reverse;
+}
+
+@keyframes login-dial-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* 双侧电路走线（基础线 + 流光沿路径巡行） */
+.login-circuit {
+  position: absolute;
+  top: 50%;
+  width: clamp(180px, 24vw, 320px);
+  height: auto;
+  opacity: 0;
+  pointer-events: none;
+  animation: login-circuit-in 1.2s 0.5s ease both;
+}
+
+.login-circuit--l {
+  left: clamp(20px, 5vw, 84px);
+  transform: translateY(-50%);
+}
+
+.login-circuit--r {
+  right: clamp(20px, 5vw, 84px);
+  transform: translateY(-50%) scaleX(-1);
+}
+
+.login-circuit__base {
+  fill: none;
+  stroke: rgba(135, 235, 255, 0.16);
+  stroke-width: 1.2;
+}
+
+.login-circuit__flow {
+  fill: none;
+  stroke: rgba(160, 245, 255, 0.9);
+  stroke-width: 1.6;
+  stroke-dasharray: 20 340;
+  filter: drop-shadow(0 0 4px rgba(135, 235, 255, 0.8));
+  animation: login-circuit-flow 3.4s linear infinite;
+}
+
+.login-circuit__flow--slow {
+  stroke: rgba(46, 230, 197, 0.85);
+  stroke-dasharray: 14 346;
+  filter: drop-shadow(0 0 4px rgba(46, 230, 197, 0.7));
+  animation-duration: 4.8s;
+  animation-delay: 1.3s;
+}
+
+@keyframes login-circuit-flow {
+  to {
+    stroke-dashoffset: -360;
+  }
+}
+
+@keyframes login-circuit-in {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* 登录按钮充能条 */
+.login-submit__charge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+  animation: login-charge 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes login-charge {
+  0%,
+  100% {
+    transform: scaleX(0.12);
+    opacity: 0.35;
+  }
+
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+/* 登录成功：全屏冲击波（双环错相扩散） */
+.login-shockwave {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.login-shockwave__ring {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  border: 2px solid rgba(135, 235, 255, 0.85);
+  border-radius: 50%;
+  box-shadow:
+    0 0 26px rgba(135, 235, 255, 0.55),
+    inset 0 0 18px rgba(135, 235, 255, 0.35);
+  animation: login-shockwave-out 0.95s cubic-bezier(0.16, 0.6, 0.3, 1) forwards;
+}
+
+.login-shockwave__ring--2 {
+  border-color: rgba(46, 230, 197, 0.7);
+  animation-delay: 0.15s;
+}
+
+@keyframes login-shockwave-out {
+  from {
+    transform: scale(0.2);
+    opacity: 1;
+  }
+
+  to {
+    transform: scale(17);
+    opacity: 0;
+  }
+}
+
+/* 页面级微调：准星系统光标 + 标题 glitch 定位基准 */
+.login-page {
+  cursor: crosshair;
+}
+
+.login-title {
+  position: relative;
+}
+
+/* 窄屏：收缩罗盘、隐藏侧边装饰 */
+@media (max-width: 720px) {
+  .login-dial {
+    width: min(460px, 96vw);
+  }
+
+  .login-circuit,
+  .login-crosshair {
+    display: none;
+  }
+}
+
+/* 附加模块的 reduced-motion 覆盖（追加于主覆盖块之后，保证生效） */
+@media (prefers-reduced-motion: reduce) {
+  .login-hud-top,
+  .login-shockwave__ring,
+  .login-title__cursor,
+  .login-dot--ok,
+  .login-submit__charge,
+  .login-circuit__flow,
+  .login-dial,
+  .login-dial__ticks,
+  .login-dial__ring,
+  .login-crosshair__ring {
+    animation: none;
+  }
+
+  .login-circuit {
+    animation: none;
+    opacity: 1;
+  }
+
+  .login-crosshair {
+    display: none;
+  }
+}
