@@ -33,7 +33,7 @@
  * 编辑态（taskAreaStore.editingAreaId 指向本图层某区域时）：本图层整体跳过
  * 该区域（多边形/标签/斜线一律不画），改由绘制遮罩（HexagonAreaOverlay）的
  * SVG 层绘制编辑视觉——去填充、rgba(255,255,255,0.60) 6px 白描边 + 中央
- * 2px #7160F2 虚线、顶点 Ellipse 59.svg / 边中点 Ellipse 64.svg 节点手柄
+ * 2px #7160F2 虚线、顶点 vertex-handle.svg / 边中点 midpoint-handle.svg 节点手柄
  *（支持拖拽改变绘制区域：顶点拖拽移动角点、中点拖拽插入新顶点，蒙层高亮
  * 每帧跟随）；退出编辑后本图层恢复该区域持久样式。
  */

@@ -10,8 +10,8 @@ import detailBottomDeco from './detail-bottom-deco.png'
 import droneWhite from './drone-white.png'
 import dropdownArrow from '../device/dropdown.png'
 import editIcon from './edit.svg'
-import ellipse59 from './Ellipse 59.svg'
-import ellipse64 from './Ellipse 64.svg'
+import vertexHandle from './vertex-handle.svg'
+import midpointHandle from './midpoint-handle.svg'
 import eyesIcon from './eyes.svg'
 import eyesOffIcon from './eyes-off.svg'
 import expandArrowActive from './expand-arrow-active.png'
@@ -32,8 +32,8 @@ import stepperPlus from './stepper-plus.png'
 import stopIcon from './stop-icon.png'
 import strikeIcon from './strike-icon.png'
 import targetRightIcon from './target-right-icon.png'
-// target-trail.svg（三枚条纹箭头）现由 TargetMarkerLayer.css 以 CSS mask
-// url() 直接引用（作流动渐变的形状模板），不再经此桶文件导出
+// target-trail.svg锛堜笁鏋氭潯绾圭澶达級鐜扮敱 TargetMarkerLayer.css 浠?CSS mask
+// url() 鐩存帴寮曠敤锛堜綔娴佸姩娓愬彉鐨勫舰鐘舵ā鏉匡級锛屼笉鍐嶇粡姝ゆ《鏂囦欢瀵煎嚭
 
 export const taskPanelImages = {
   addAreaIcon,
@@ -48,8 +48,8 @@ export const taskPanelImages = {
   droneWhite,
   dropdownArrow,
   editIcon,
-  ellipse59,
-  ellipse64,
+  vertexHandle,
+  midpointHandle,
   eyesIcon,
   eyesOffIcon,
   expandArrowActive,

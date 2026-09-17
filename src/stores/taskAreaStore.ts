@@ -48,7 +48,7 @@ interface TaskAreaState {
   /**
    * 编辑中的区域 id（绘制遮罩「编辑 | 删除」面板点「编辑」时写入；null 表示无）。
    * TaskAreaLayer 读取后对编辑中区域切换专属视觉：去填充、白描边 6px、
-   * 顶点/边中点挂图标（Ellipse 59/64.svg）；退出编辑（确定/取消/删除/退出
+   * 顶点/边中点挂图标（vertex-handle / midpoint-handle.svg）；退出编辑（确定/取消/删除/退出
    * 绘制模式）时置回 null 恢复持久样式。
    */
   editingAreaId: string | null

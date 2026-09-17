@@ -27,7 +27,7 @@
  * - 「编辑」开启编辑态：写入 taskAreaStore.editingAreaId——TaskAreaLayer 整体
  *   跳过该区域，编辑视觉全部由本遮罩 SVG 层绘制：去填充、
  *   rgba(255,255,255,0.60) 6px 白描边 + 中央 2px #7160F2 虚线、顶点
- *   Ellipse 59 / 边中点 Ellipse 64 节点手柄；同时展示截图式变暗蒙版
+ *   顶点 vertex-handle / 边中点 midpoint-handle 节点手柄；同时展示截图式变暗蒙版
  *   （SVG mask 并集镂空：区域多边形（边法线外扩 3px 盖住描边外半）+
  *   顶点/中点圆形，区域外蒙层变暗、边框与节点镂空高亮）；
  * - 编辑态节点手柄可拖拽改变绘制区域：拖顶点手柄移动对应角点、按住中点
@@ -99,9 +99,9 @@ const EDIT_DASH_COLOR = '#7160F2'
 const EDIT_DASH_WIDTH = 2
 /** 蒙层镂空沿边法线外扩量（px）：编辑描边 6px 的外半（见 padPolygon） */
 const EDIT_AREA_PAD = 3
-/** 顶点镂空圆半径（Ellipse 59.svg 20×20 的一半） */
+/** 顶点镂空圆半径（vertex-handle.svg 20×20 的一半） */
 const EDIT_VERTEX_HOLE_R = 10
-/** 边中点镂空圆半径（Ellipse 64.svg 12×12 的一半） */
+/** 边中点镂空圆半径（midpoint-handle.svg 12×12 的一半） */
 const EDIT_MID_HOLE_R = 6
 /** 「删除锚点」按钮底边距顶点手柄上缘间隙（px）：默认悬挂于顶点正上方，
  *  视口顶部空间不足时翻转到下方 */
@@ -227,8 +227,8 @@ function pointInPolygon(px: number, py: number, vs: { x: number; y: number }[]) 
 /** SVG 命名空间（命令式创建 mask 镂空圆用） */
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
-/** 构建编辑节点手柄 DOM：顶点手柄 20×20（Ellipse 59.svg，grab 光标）、
- *  中点手柄 12×12（Ellipse 64.svg，copy 光标暗示可拖出新增点）。手柄自身
+/** 构建编辑节点手柄 DOM：顶点手柄 20×20（vertex-handle.svg，grab 光标）、
+ *  中点手柄 12×12（midpoint-handle.svg，copy 光标暗示可拖出新增点）。手柄自身
  *  pointer-events auto 接收按下（容器 none 不挡地图平移），命中后经容器
  *  mousedown 委托开启拖拽；数量/位置由 updateConfirmedFrame 每帧同步 */
 function buildEditHandleElement(kind: 'vertex' | 'mid'): HTMLDivElement {
@@ -245,7 +245,7 @@ function buildEditHandleElement(kind: 'vertex' | 'mid'): HTMLDivElement {
     'line-height: 0',
   ].join('; ')
   const img = document.createElement('img')
-  img.src = kind === 'vertex' ? taskPanelImages.ellipse59 : taskPanelImages.ellipse64
+  img.src = kind === 'vertex' ? taskPanelImages.vertexHandle : taskPanelImages.midpointHandle
   img.style.cssText = 'width: 100%; height: 100%; display: block'
   img.draggable = false
   img.alt = ''
@@ -1290,7 +1290,7 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
           法线外扩 3px 盖住 6px 描边外半）+ 顶点圆（r10）+ 边中点圆（r6），
           高亮恰好只比绘制区域多出边框与节点，其余蒙层变暗；②编辑边框双层
           ——白 6px 实线 + 中央 2px #7160F2 虚线（同路径闭环）；③节点手柄
-          容器——顶点 Ellipse 59（20×20）/边中点 Ellipse 64（12×12），数量随
+          容器——顶点 vertex-handle（20×20）/边中点 midpoint-handle（12×12），数量随
           顶点数动态增删、可拖拽改区。全部几何由 onMove/拖拽 mousemove 每帧
           命令式更新（updateConfirmedFrame），蒙层 SVG pointer-events none
           （CSS）不拦截地图交互，手柄自身 auto 接收按下 */}
