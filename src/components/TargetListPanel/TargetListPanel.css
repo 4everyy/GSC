@@ -519,7 +519,7 @@
 .target-row__detail {
   position: relative;
   /* 时间行字号变量：分隔线光学补偿需随字号等比缩放（中段视口布局按 vw 缩放，固定像素补偿会失配） */
-  --detail-time-fs: 14px;
+  --detail-time-fs: 12px;
   width: 100%;
   display: flex;
   flex-direction: column;

@@ -271,9 +271,10 @@ export function useExclusivePanels() {
     setFormationFlightOpen((v) => !v)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  // 区域列表「添加区域」进入框选（area-list 来源）：与区域降落/集结点同款交互——
-  // 光标变停机坪图标、拖拽绘制紫色虚线框、松开定格「确认/取消」；区别在于确认后
-  // 按选区四角经纬度本地新增任务区域（无对应功能面板，Esc/右键直接退出不重开面板）。
+  // 区域列表「添加区域」进入绘制（area-list 来源）：六边形绘制交互——进入仅图标光标
+  // 跟随，按下左键自光标点拉出对称正六边形（按住拖动放大/缩小），松开定格
+  // 「确认/取消」；确认后按六边形 6 顶点经纬度本地新增任务区域
+  // （无对应功能面板，Esc/绘制阶段右键直接退出不重开面板）。
   // 由 HomePage 监听 taskAreaStore.addAreaRequests 计数器信号调用（跨层级接线）
   const openAreaListSelect = useCallback(() => {
     setTakeoffOpen(false)

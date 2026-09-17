@@ -13,7 +13,7 @@
  *   可见时睁眼 eyes.svg / 隐藏时闭眼斜杠 eyes-off.svg）/ 删除（本地移除，
  *   后端暂无删除接口，刷新 load() 后恢复）；
  * - 底部操作（按钮组布局同目标列表面板）：「添加区域」（主按钮：iconAdd 图标
- *   + 实心蓝底 #0EA7F9，点击进入与区域降落同款地图框选）/「显示」批量显隐勾选区域
+ *   + 实心蓝底 #0EA7F9，点击进入六边形地图绘制——按下左键自光标点拉出）/「显示」批量显隐勾选区域
  *   （图标双态由当前列表全部区域的显隐状态决定——存在可见→睁眼 / 全部隐藏→闭眼，
  *   与按钮是否置灰、勾选了哪些行无关；点击时按图标方向对勾选区域统一显示/隐藏）
  *   /「删除」批量删除勾选区域；
@@ -22,6 +22,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useTaskAreaStore } from '../../stores/taskAreaStore'
+import { useLayerStore } from '../../stores/layerStore'
 import { taskAreaTypeMeta } from '../../api/taskArea'
 import { deviceImages } from '../../assets/images/device'
 import { homeImages } from '../../assets/images/home'
@@ -47,9 +48,11 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
   const status = useTaskAreaStore((s) => s.status)
   const error = useTaskAreaStore((s) => s.error)
   const load = useTaskAreaStore((s) => s.load)
-  // 「添加区域」进入地图框选的跨层级信号：面板经 MapToolbar 挂载、与 HomePage 平级，
-  // 无法经 props 传递，点击时计数 +1，HomePage 监听计数变化进入 area-list 框选模式
+  // 「添加区域」进入地图六边形绘制的跨层级信号：面板经 MapToolbar 挂载、与 HomePage 平级，
+  // 无法经 props 传递，点击时计数 +1，HomePage 监听计数变化进入 area-list 绘制模式
   const requestAddArea = useTaskAreaStore((s) => s.requestAddArea)
+  // 行内「编辑」同款跨层级信号：携带目标区域 id，遮罩挂载后直接进入该区域编辑态
+  const requestEditArea = useTaskAreaStore((s) => s.requestEditArea)
 
   // 勾选的区域 id 集合（面板内局部状态）
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -98,13 +101,26 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
   const listHasVisible = areas.some((a) => !hiddenIds.has(a.id))
 
   /** 底部「显示」：按列表整体状态决定方向——存在可见区域则统一隐藏勾选行，
-      否则统一显示勾选行（与图标方向一致） */
+      否则统一显示勾选行（与图标方向一致）；方向为「显示」时自动开启
+      「任务区域」图层（图层开关默认关，否则态势图无任何变化形同虚设） */
   const toggleShowSelected = () => {
     const hide = listHasVisible
+    if (!hide && !useLayerStore.getState().taskAreaVisible) {
+      useLayerStore.getState().setTaskAreaVisible(true)
+    }
     selectedIds.forEach((id) => {
       if (hide === hiddenIds.has(id)) return // 已处于目标态则跳过
       toggleHidden(id)
     })
+  }
+
+  /** 行内眼睛图标：隐藏→显示时自动开启「任务区域」图层（与批量显示同款联动，
+      显隐操作立即在态势图可见；隐藏方向不动图层开关——由图层控制面板管理） */
+  const toggleAreaVisible = (id: string, isHidden: boolean) => {
+    if (isHidden && !useLayerStore.getState().taskAreaVisible) {
+      useLayerStore.getState().setTaskAreaVisible(true)
+    }
+    toggleHidden(id)
   }
 
   /** 底部「删除」：批量删除勾选区域并清空勾选 */
@@ -265,6 +281,7 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
                     <button
                       type="button"
                       className="area-row__icon-btn"
+                      onClick={() => requestEditArea(a.id)}
                       title="编辑区域"
                       aria-label={`编辑区域 ${a.name}`}
                     >
@@ -273,7 +290,7 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
                     <button
                       type="button"
                       className={`area-row__icon-btn${isHidden ? ' area-row__icon-btn--off' : ''}`}
-                      onClick={() => toggleHidden(a.id)}
+                      onClick={() => toggleAreaVisible(a.id, isHidden)}
                       title={isHidden ? '在地图上显示' : '在地图上隐藏'}
                       aria-label={isHidden ? `在地图上显示区域 ${a.name}` : `在地图上隐藏区域 ${a.name}`}
                     >
@@ -304,12 +321,12 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
       {/* 底部操作：添加区域 / 显示 / 删除（布局同目标列表面板） */}
       <div className="area-panel__actions">
         {/* 添加区域（主按钮）：iconAdd 图标 + 实心蓝底 #0EA7F9；点击进入与区域降落
-            同款地图框选（停机坪图标光标 + 拖拽紫色虚线框），确认后按选区四角经纬度本地新增区域 */}
+            地图六边形绘制（按下左键自光标点拉出对称六边形 + 按住拖动放大/缩小），确认后按六边形 6 顶点经纬度本地新增区域 */}
         <button
           className="area-panel__action-btn area-panel__action-btn--primary"
           type="button"
           onClick={requestAddArea}
-          title="添加区域：在地图上框选新增区域"
+          title="添加区域：在地图上绘制六边形新增区域"
         >
           <img src={deviceImages.iconAdd} alt="" />
           添加区域

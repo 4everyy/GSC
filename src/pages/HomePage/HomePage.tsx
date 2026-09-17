@@ -124,8 +124,8 @@ export function HomePage() {
 
   // 区域列表「添加区域」跨层级信号：AreaListPanel 挂载于 MapToolbar 内（与本组件
   // 平级，无法经 props 传递），按钮点击时 taskAreaStore.addAreaRequests 计数 +1；
-  // 此处监听计数变化进入 area-list 框选模式——与区域降落/集结点同款交互
-  // （停机坪图标光标 + 拖拽绘制紫色虚线框 + 确认/取消），确认后本地新增任务区域
+  // 此处监听计数变化进入 area-list 绘制模式——六边形绘制交互
+  // （按下左键自光标点拉出对称六边形 + 按住拖动放大/缩小 + 确认/取消），确认后本地新增任务区域
   const openAreaListSelect = panels.openAreaListSelect
   const addAreaRequests = useTaskAreaStore((s) => s.addAreaRequests)
   const addAreaRequestsRef = useRef(addAreaRequests)
@@ -134,6 +134,18 @@ export function HomePage() {
     addAreaRequestsRef.current = addAreaRequests
     openAreaListSelect()
   }, [addAreaRequests, openAreaListSelect])
+
+  // 区域列表行内「编辑区域」跨层级信号：同样经 taskAreaStore（面板与 HomePage
+  // 平级无法经 props 传递）——监听 editAreaRequest 变化进入 area-list 绘制
+  // 模式挂载 HexagonAreaOverlay；遮罩挂载后自行消费请求进入该区域的
+  // 确认+编辑态（无需在此转发目标 id，避免 props 链路穿透）
+  const editAreaRequest = useTaskAreaStore((s) => s.editAreaRequest)
+  const editAreaRequestRef = useRef(editAreaRequest)
+  useEffect(() => {
+    if (editAreaRequest === editAreaRequestRef.current) return
+    editAreaRequestRef.current = editAreaRequest
+    if (editAreaRequest) openAreaListSelect()
+  }, [editAreaRequest, openAreaListSelect])
 
   // 模拟飞行动画（自 useFlightAnimations 拆出）：8 套 rAF 循环动画的飞行状态与启停
   const handleAircraftDoubleClick = useCallback((index: number) => {
@@ -443,8 +455,10 @@ export function HomePage() {
           {noflyZoneVisible && <NoflyZone />}
           {/* 任务区域图层（真实后端数据）：多边形 + 名称标签，
               数据源 /api/v1/control/queryTaskAreaList（taskAreaStore 一次加载），
-              显隐由图层控制面板「任务区域」开关联动（layerStore），默认关 */}
-          {taskAreaVisible && <TaskAreaLayer adapter={adapter} />}
+              显隐由图层控制面板「任务区域」开关联动（layerStore），默认关。
+              areaSelectActive：任意绘制/框选遮罩激活时抑制图层自带的常态
+              hover「编辑 | 删除」面板（避免与遮罩确认态面板叠加/干扰取点） */}
+          {taskAreaVisible && <TaskAreaLayer adapter={adapter} areaSelectActive={areaSelectMode} />}
           {SHOW_PENDING_PANELS && <div className="restricted-zone restricted-zone--orange" />}
           {/* 巡检区域：包含1条蛇形巡检轨迹线，支持拖拽移动。
               显隐由图层控制面板「巡检区」开关联动（layerStore），默认关 */}

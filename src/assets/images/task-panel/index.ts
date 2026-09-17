@@ -10,6 +10,8 @@ import detailBottomDeco from './detail-bottom-deco.png'
 import droneWhite from './drone-white.png'
 import dropdownArrow from '../device/dropdown.png'
 import editIcon from './edit.svg'
+import ellipse59 from './Ellipse 59.svg'
+import ellipse64 from './Ellipse 64.svg'
 import eyesIcon from './eyes.svg'
 import eyesOffIcon from './eyes-off.svg'
 import expandArrowActive from './expand-arrow-active.png'
@@ -23,6 +25,7 @@ import monitorConnectorBg from './monitor-connector-bg.png'
 import monitorRowBg from './monitor-row-bg.png'
 import monitorRowBgActive from './monitor-row-bg-active.png'
 import radarCircle from './radar-circle.svg'
+import radioChecked from './radio.svg'
 import separator from './separator.png'
 import stepperMinus from './stepper-minus.png'
 import stepperPlus from './stepper-plus.png'
@@ -45,6 +48,8 @@ export const taskPanelImages = {
   droneWhite,
   dropdownArrow,
   editIcon,
+  ellipse59,
+  ellipse64,
   eyesIcon,
   eyesOffIcon,
   expandArrowActive,
@@ -58,6 +63,7 @@ export const taskPanelImages = {
   monitorRowBg,
   monitorRowBgActive,
   radarCircle,
+  radioChecked,
   separator,
   stepperMinus,
   stepperPlus,

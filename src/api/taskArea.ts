@@ -18,7 +18,6 @@ export interface TaskAreaRaw {
   name: string
   /** 面积（平方千米，字符串数值） */
   area: string
-  /** 优先级 */
   priority: string
   /** 形状字典（目前均为 square，即多边形顶点序列） */
   shapeDict: string
@@ -87,9 +86,13 @@ export interface TaskAreaTypeMeta {
 
 export const TASK_AREA_TYPE_META: Record<string, TaskAreaTypeMeta> = {
   TeamReconnaissance: { label: '集群侦察', color: '#40a9ff' },
-  NoFlyArea: { label: '禁飞区', color: '#ff4d4f' },
+  // 禁飞区/集结区色与「选择区域类型」面板设计稿色块（HexagonAreaOverlay
+  // AREA_TYPE_OPTIONS）对齐，确认前后颜色一致（地图多边形/列表色点/面板三处统一）
+  NoFlyArea: { label: '禁飞区', color: '#f32c30' },
   enclosureArea: { label: '围困区', color: '#ffa940' },
-  assembleArea: { label: '集结区', color: '#73d13d' },
+  assembleArea: { label: '集结区', color: '#7160f2' },
+  taskArea: { label: '任务区', color: '#2084ba' },
+  landingArea: { label: '降落区', color: '#7bff00' },
 }
 
 /** 未知类型兜底配置 */

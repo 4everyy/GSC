@@ -3,12 +3,14 @@
  *
  * 纯展示组件：所有状态经 props 传入（Panels/Anims 字段类型直接取自对应 hook 的 ReturnType，
  * 与 HomePage 内联实现完全同源）；不含任何 hooks，便于独立维护。
+ * 'area-list' 来源（区域列表「添加区域」）改走六边形绘制交互，本组件挂载时已路由到
+ * HexagonAreaOverlay，矩形框选仅服务区域降落/集结点。
  */
 import type { useExclusivePanels } from '../../hooks/useExclusivePanels'
 import type { useFlightAnimations } from '../../hooks/useFlightAnimations'
 import type { useMapEngine } from '../../../../hooks/useMapEngine'
 import { homeImages } from '../../../../assets/images/home'
-import { useTaskAreaStore } from '../../../../stores/taskAreaStore'
+import { HexagonAreaOverlay } from './HexagonAreaOverlay'
 import { createPortal } from 'react-dom'
 
 type Panels = ReturnType<typeof useExclusivePanels>
@@ -43,9 +45,29 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
     stopRallyPointFlights,
     adapter,
   } = props
+
+  // 区域列表「添加区域」：六边形绘制交互——进入仅停机坪图标光标，按下左键自光标
+  // 点拉出对称正六边形（按住拖动放大/缩小），松开定格「确认/取消」，确认后按 6 顶点
+  // 经纬度本地新增区域；Esc/绘制阶段右键直接退出（无对应功能面板）
+  if (areaSelectSource === 'area-list') {
+    return (
+      areaSelectMode && (
+        <HexagonAreaOverlay
+          adapter={adapter}
+          onExit={() => {
+            setAreaSelectMode(false)
+            setAreaSelectAnchor(null)
+            setAreaSelectEnd(null)
+            setAreaSelectDragging(false)
+          }}
+        />
+      )
+    )
+  }
+
   return (
     <>
-          {/* 区域降落框选模式（航线生成）：截图式拖拽选区——按下左键确定起点，
+          {/* 区域降落/集结点框选模式（航线生成）：截图式拖拽选区——按下左键确定起点，
               按住拖动实时拉伸出自定义大小的矩形（框内清晰、框外遮罩变暗），
               松开定格；定格后右键等效「取消」回到绘制态，绘制阶段右键/Esc 退出 */}
           {areaSelectMode &&
@@ -95,8 +117,7 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                   }
                   return
                 }
-                // 绘制阶段（未定格）：右键退出框选模式并重新展示对应面板（信息已提升保留）；
-                // 'area-list'（区域列表添加区域）无对应功能面板，直接退出即可
+                // 绘制阶段（未定格）：右键退出框选模式并重新展示对应面板（信息已提升保留）
                 setAreaSelectMode(false)
                 setAreaSelectAnchor(null)
                 setAreaSelectEnd(null)
@@ -155,52 +176,38 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                                   // 区域降落供面板「区域信息」实时显示，
                                   // 区域列表「添加区域」作为新区域顶点
                                   let corners: { lat: number; lng: number }[] | null = null
-                                  if (adapter) {
-                                    const bounds = adapter
-                                      .getContainer()
-                                      .getBoundingClientRect()
-                                    const corner = (x: number, y: number) => {
-                                      const ll = adapter.unproject({
-                                        x: x - bounds.left,
-                                        y: y - bounds.top,
-                                      })
-                                      return { lat: ll.lat, lng: ll.lng }
-                                    }
-                                    corners = [
-                                      corner(left, top),
-                                      corner(left + width, top),
-                                      corner(left + width, top + height),
-                                      corner(left, top + height),
-                                    ]
-                                  }
-                                  if (areaSelectSource === 'area-list') {
-                                    // 区域列表「添加区域」：按四角经纬度本地新增区域
-                                    // （后端暂无接口），列表与态势图任务区域层即时同步展示
-                                    if (corners) {
-                                      useTaskAreaStore
-                                        .getState()
-                                        .addArea(
-                                          corners.map((c) => ({
-                                            latitude: c.lat,
-                                            longitude: c.lng,
-                                          })),
-                                        )
-                                    }
-                                  } else {
-                                    setAreaLandingRect({ left, top, width, height })
-                                    setAreaLandingRouteGenerated(false)
-                                    setAreaLandingCorners(corners)
-                                  }
-                                }
-                                // TODO: 接入航线生成业务
-                                setAreaSelectMode(false)
-                                setAreaSelectAnchor(null)
-                                setAreaSelectEnd(null)
-                                // 重新展示对应面板（信息已提升保留）；
-                                // 'area-list' 无对应功能面板，直接退出即可
-                                if (areaSelectSource === 'rally-point') setRallyPointOpen(true)
-                                else if (areaSelectSource === 'area-landing')
-                                  setAreaLandingOpen(true)
+                                   if (adapter) {
+                                     const bounds = adapter
+                                       .getContainer()
+                                       .getBoundingClientRect()
+                                     const corner = (x: number, y: number) => {
+                                       const ll = adapter.unproject({
+                                         x: x - bounds.left,
+                                         y: y - bounds.top,
+                                       })
+                                       return { lat: ll.lat, lng: ll.lng }
+                                     }
+                                     corners = [
+                                       corner(left, top),
+                                       corner(left + width, top),
+                                       corner(left + width, top + height),
+                                       corner(left, top + height),
+                                     ]
+                                   }
+                                   // 选区四角经纬度（区域降落专用）：
+                                   // 供面板「区域信息」实时显示
+                                   setAreaLandingRect({ left, top, width, height })
+                                   setAreaLandingRouteGenerated(false)
+                                   setAreaLandingCorners(corners)
+                                 }
+                                 // TODO: 接入航线生成业务
+                                 setAreaSelectMode(false)
+                                 setAreaSelectAnchor(null)
+                                 setAreaSelectEnd(null)
+                                 // 重新展示对应面板（信息已提升保留）
+                                 if (areaSelectSource === 'rally-point') setRallyPointOpen(true)
+                                 else if (areaSelectSource === 'area-landing')
+                                   setAreaLandingOpen(true)
                               }}
                             >
                               确认

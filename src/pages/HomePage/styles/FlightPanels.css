@@ -287,9 +287,259 @@
   background-color: rgba(75, 188, 249, 1);
 }
 
+/* ===== 区域列表「添加区域」六边形绘制遮罩（area-list 专用） =====
+   与 .area-select-overlay 同层（fixed 全屏 z-index 2000）；
+   截图式变暗蒙版由内层 SVG evenodd 路径实现（外矩形 + 六边形镂空） */
+.hexagon-area-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background-color: transparent;
+}
+
+/* 全幅 SVG 画布：蒙版/六边形/顶点节点均绘制其上；pointer-events none 放行鼠标事件
+   到遮罩 div（拖拽缩放/右键/确认取消交互均由遮罩统一处理） */
+.hexagon-area-overlay__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 /* 框选模式全程隐藏原生光标（选区定格后也保持标记光标跟随）：
    遮罩内的「确认/取消」标签覆盖为 cursor:none，避免悬停时露出系统箭头；
 
 /* ============ 鎸囩偣杩旇埅鍙栫偣妯″紡 ============ */
 /* 闈㈡澘鎵撳紑鏈熼棿鍦板浘鍖哄煙鏄剧ず鑷畾涔夊彇鐐瑰厜鏍凤紙澶嶇敤鍖哄煙闄嶈惤鍙栫偣鍏夋爣鍒囧浘锛岀儹鐐?27 27 灞呬腑锛夛紱
    MapLibre 浜や簰鐢诲竷榛樿 grab 鍏夋爣锛岄渶涓€骞惰鐩?*/
+/* 六边形绘制定格后右下顶点信息卡：经纬度 + 面积（设计稿：12px MiSans 330 白色） */
+.hexagon-area-overlay__info {
+  position: absolute;
+  color: #fff;
+  font-size: 12px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+  line-height: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ===== 六边形绘制定格后「选择区域类型」面板（设计稿 228×167 毛玻璃卡片） ===== */
+.hexagon-area-type-panel {
+  position: absolute;
+  width: 228px;
+  height: 167px;
+  box-sizing: border-box;
+  background: rgba(75, 188, 249, 0.4);
+  border: 1px solid #4bbcf9;
+  border-radius: 4px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: auto;
+  user-select: none;
+  z-index: 2;
+}
+
+/* 标题「选择区域类型」：14px MiSans 520 白色 */
+.hexagon-area-type-panel__title {
+  position: absolute;
+  left: 16px;
+  top: 10px;
+  color: #fff;
+  font-size: 14px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 520;
+  word-wrap: break-word;
+  line-height: 14px;
+}
+
+/* 类型单选项：flex 行布局，单选图标/色块/标签沿同一垂直中轴自动居中对齐；
+   行高 20px = 单选图标高，整行（图标+色块+文字）均为可点击热区 */
+.hexagon-area-type-panel__option {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  height: 20px;
+  cursor: pointer;
+}
+
+/* 单选指示：off 半透明白圆 + 灰描边；on 态由 radio.svg 图片呈现（见 __radio-img） */
+.hexagon-area-type-panel__radio {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid #bebebe;
+  border-radius: 9999px;
+}
+
+/* 选中态单选图标：设计稿 radio.svg（白 0.8 底圆 + #0EA7F9 蓝环，20×20） */
+.hexagon-area-type-panel__radio-img {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: block;
+  pointer-events: none;
+}
+
+/* 类型色块：12×12、2px 圆角（距单选图标右 8px，行内垂直居中） */
+.hexagon-area-type-panel__swatch {
+  flex: none;
+  margin-left: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* 类型标签：14px MiSans 330 白色（色块右侧 4px，行内垂直居中） */
+.hexagon-area-type-panel__label {
+  flex: none;
+  margin-left: 4px;
+  color: #fff;
+  font-size: 14px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* 底部按钮（确定/取消）：90×32、2px 圆角、浅蓝底 + #0EA7F9 描边、文字居中 */
+.hexagon-area-type-panel__btn {
+  position: absolute;
+  top: 125px;
+  width: 90px;
+  height: 32px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(75, 188, 249, 0.1);
+  border: 1px solid #0ea7f9;
+  border-radius: 2px;
+  color: #fff;
+  font-size: 14px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+  cursor: pointer;
+}
+
+.hexagon-area-type-panel__btn--ok {
+  left: 16px;
+}
+
+.hexagon-area-type-panel__btn--cancel {
+  left: 122px;
+}
+/* 降落区中心地面图标（定格且选中「降落区」时）：与指点返航落点圆圈
+   （tap-return-zone，设计稿 image-wrapper_4）同款视觉——48×48、
+   rgba(255,255,255,0.2) 填充、2px 白描边圆形，flex 居中 20×24 停机坪
+   图标；居中于六边形中心（left/top 内联注入，translate(-50%,-50%)） */
+.hexagon-area-overlay__landing-center {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 1);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hexagon-area-overlay__landing-center img {
+  width: 20px;
+  height: 24px;
+}/* ===== 鍏竟褰㈢粯鍒堵风‘璁ゆ€併€岀紪杈?| 鍒犻櫎銆嶉潰鏉匡紙璁捐绋?121脳32 姣涚幓鐠冿級 ===== */
+/* 鍙充笅椤剁偣鍙充晶 8px 鎮寕锛坙eft/top 鐢遍伄缃?onMove 鎶曞奖鍛戒护寮忔洿鏂帮紝闅忓湴鍥捐窡闅忥級锛?
+   閬僵纭鎬佹牴鑺傜偣 pointer-events:none 鏀捐鍦板浘浜や簰锛屾湰闈㈡澘 auto 鎭㈠鍙偣 */
+.hexagon-area-edit-panel {
+  position: fixed;
+  box-sizing: border-box;
+  width: 121px;
+  height: 32px;
+  padding: 5px 0;
+  display: flex;
+  align-items: center;
+  background: rgba(75, 188, 249, 0.4);
+  border: 1px solid #4bbcf9;
+  border-radius: 4px;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  user-select: none;
+  z-index: 2;
+}
+
+/* 宸﹀彸涓や釜绛夊鎸夐挳锛堢紪杈?| 鍒犻櫎锛夛紝涓紳 1px 绔栫嚎鍒嗛殧 */
+.hexagon-area-edit-panel__btn {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  font-weight: 330;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hexagon-area-edit-panel__divider {
+  flex: none;
+  width: 1px;
+  height: 100%;
+  background: #4bbcf9;
+  opacity: 0.6;
+}
+
+/* 编辑态节点手柄容器：全幅 fixed（手柄 left/top 为视口坐标），容器自身
+   pointer-events none 放行地图交互；顶点/中点手柄子元素 inline 样式
+   pointer-events auto 接收 mousedown（经容器委托开启拖拽） */
+.hexagon-area-overlay__edit-handles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 编辑态「删除锚点」按钮：hover 顶点手柄时浮现于该顶点正上方（顶部空间
+   不足时由 TSX 翻转到下方）；left/top/transform 命令式注入（默认
+   translate(-50%,-100%) 悬挂于手柄上缘 4px），显隐由 display 切换；
+   确认态遮罩根 pointer-events:none，故自身需 auto 接收点击 */
+.hexagon-area-overlay__delete-anchor {
+  position: fixed;
+  box-sizing: border-box;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  height: 28px;
+  background: rgba(75, 188, 249, 0.4);
+  border: 1px solid #4bbcf9;
+  border-radius: 4px;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  font-weight: 330;
+  line-height: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  pointer-events: auto;
+  z-index: 3;
+}
