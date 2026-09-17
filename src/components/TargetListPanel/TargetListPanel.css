@@ -172,15 +172,15 @@
   border-color: #4b79e4;
 }
 
-/* 筛选标签靠左：margin-left 与 .target-row__icon 的 margin-left 一致，
-   使「目标类型」文字起点与每行第一列类型图标（tank/people）纵向对齐。
+/* 筛选标签靠左：复选框→标签总间距补足 8px（扣掉筛选行自身 gap），
+   使「目标类型」文字起点与行首组内类型图标（tank/people，复选框后固定 8px）纵向对齐。
    line-height 1.3：中文字体（MiSans 等）ascent+descent > 1em，
    line-height:1 会使文字光学中心偏上约 1~1.5px，1.3 使其在行内垂直居中 */
 .target-panel__filter-label {
-  /* 与 .target-row__icon 的 margin-left 一致：使「目标类型」文字与行内类型图标纵向对齐 */
-  margin-left: clamp(6px, 0.42vw, 8px);
+  /* 补足筛选行 gap 后总间距 = 8px，与 .target-row__lead 组内复选框→图标间距一致 */
+  margin-left: calc(8px - clamp(4px, 0.31vw, 6px));
   color: #fff;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -228,7 +228,7 @@
 
 .target-panel__select span {
   color: #fff;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -268,7 +268,7 @@
 .target-panel__dropdown-item {
   padding: clamp(4px, 0.31vw, 6px) clamp(6px, 0.42vw, 8px);
   color: #fff;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -326,7 +326,7 @@
 
 .target-panel__list-empty span {
   color: #fff;
-  font-size: 14px;
+  font-size: clamp(12px, 1vw, 16px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -397,12 +397,22 @@
   border-color: #4b79e4;
 }
 
-/* 目标类型图标：车辆 tank.png / 人员 people.png，尺寸与间距对齐设备行类型图标 */
+/* 行首三列组（复选框/类型图标/名称）：整组作为行 flex 布局的单一子项，
+   组内间距固定 8px（不随视口缩放），组与型号列等后续列的间距仍由行 space-between 均分 */
+.target-row__lead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+/* 目标类型图标：车辆 tank.png / 人员 people.png，尺寸对齐设备行类型图标
+   （与复选框/名称的间距由 .target-row__lead 的 gap 统一固定 8px） */
 .target-row__icon {
   width: clamp(15px, 1.15vw, 21px);
   height: clamp(15px, 1.15vw, 21px);
   min-width: clamp(15px, 1.15vw, 21px);
-  margin-left: clamp(6px, 0.42vw, 8px);
   object-fit: contain;
   flex-shrink: 0;
   -webkit-user-drag: none;
@@ -412,7 +422,7 @@
    后续型号/价值/状态列才能跨行严格对齐 */
 .target-row__name {
   color: #fff;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -428,7 +438,7 @@
 /* 型号列（"99式坦克"）：固定列宽（设计稿 x=155~227 换算），各行严格对齐 */
 .target-row__model {
   color: #fff;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -444,7 +454,7 @@
 /* 价值列（"高价值"）：固定列宽（设计稿 x=227~285 换算），各行严格对齐 */
 .target-row__value {
   color: #fff;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -461,7 +471,7 @@
    剩余空间交由行 space-between 均分到各列间隙，保证列间距与设备行一致 */
 .target-row__status {
   color: #fff;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -472,6 +482,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: left;
+}
+
+/* 行尾操作图标组：三个图标（标记/删除/展开详情）作为整组参与行 flex 布局，
+   组内间距固定 8px（不随视口缩放），整组与状态列等其余列的间距仍由行 space-between 均分 */
+.target-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 /* 三个操作图标（从左到右）：
@@ -519,7 +538,7 @@
 .target-row__detail {
   position: relative;
   /* 时间行字号变量：分隔线光学补偿需随字号等比缩放（中段视口布局按 vw 缩放，固定像素补偿会失配） */
-  --detail-time-fs: 12px;
+  --detail-time-fs: clamp(10px, 0.73vw, 14px);
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -856,7 +875,7 @@
   border: 1px solid rgba(14, 167, 249, 1);
   border-radius: 2px;
   color: #fff;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -969,13 +988,13 @@
   animation: targetRefreshSpin 1.2s linear infinite;
 }
 
-/* 提示文字：字号固定 16px；margin-left = 行 gap + 类型图标 margin-left，
-   使文字起点与下方行的第一列类型图标纵向对齐 */
+/* 提示文字：徽标与行内复选框左缘对齐，margin-left = 复选框→图标固定间距，
+   使文字起点与下方行首组内类型图标纵向对齐 */
 .target-panel__refresh-text {
-  /* 行 gap + 类型图标 margin-left：使文字起点与下方行的第一列类型图标纵向对齐 */
-  margin-left: calc(clamp(4px, 0.31vw, 6px) + clamp(6px, 0.42vw, 8px));
+  /* 8px = .target-row__lead 组内复选框→类型图标的固定间距 */
+  margin-left: 8px;
   color: #fff;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -1018,7 +1037,7 @@
 /* 标题（text_33：20px Medium 居中） */
 .target-panel__delete-dialog-title {
   margin-top: 14px;
-  font-size: 20px;
+  font-size: clamp(12px, 1.25vw, 20px);
   font-weight: 500;
   line-height: 20px;
   color: rgba(255, 255, 255, 1);
@@ -1029,7 +1048,7 @@
 .target-panel__delete-dialog-message {
   margin-top: 36px;
   color: #fff;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -1052,7 +1071,7 @@
   border: 0;
   border-radius: 2px;
   color: #fff;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;

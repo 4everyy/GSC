@@ -519,42 +519,45 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                     onClick={() => toggleClickedTarget(t.id)}
                   >
                     <img className="target-row__bg" src={bgImage} alt="" draggable={false} />
-                    <div
-                      className={`target-row__checkbox${isSelected ? ' target-row__checkbox--checked' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleSelect(t.id)
-                      }}
-                      role="checkbox"
-                      aria-checked={isSelected}
-                      tabIndex={0}
-                      onKeyDown={(e) => e.key === ' ' && (e.preventDefault(), toggleSelect(t.id))}
-                    >
-                      {isSelected && (
-                        <svg
-                          viewBox="0 0 12 12"
-                          width="10"
-                          height="10"
-                          fill="none"
-                          stroke="#fff"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="2,6 5,9 10,3" />
-                        </svg>
-                      )}
+                    {/* 行首三列组（复选框/类型图标/名称）：组内间距固定 8px，整组作为行内单一 flex 项 */}
+                    <div className="target-row__lead">
+                      <div
+                        className={`target-row__checkbox${isSelected ? ' target-row__checkbox--checked' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleSelect(t.id)
+                        }}
+                        role="checkbox"
+                        aria-checked={isSelected}
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === ' ' && (e.preventDefault(), toggleSelect(t.id))}
+                      >
+                        {isSelected && (
+                          <svg
+                            viewBox="0 0 12 12"
+                            width="10"
+                            height="10"
+                            fill="none"
+                            stroke="#fff"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="2,6 5,9 10,3" />
+                          </svg>
+                        )}
+                      </div>
+                      <img
+                        className="target-row__icon"
+                        src={typeIcon[t.type]}
+                        alt={t.type}
+                        title={t.type}
+                        draggable={false}
+                      />
+                      <span className="target-row__name" title={t.name}>
+                        {t.name}
+                      </span>
                     </div>
-                    <img
-                      className="target-row__icon"
-                      src={typeIcon[t.type]}
-                      alt={t.type}
-                      title={t.type}
-                      draggable={false}
-                    />
-                    <span className="target-row__name" title={t.name}>
-                      {t.name}
-                    </span>
                     <span className="target-row__model" title={t.model ?? '—'}>
                       {t.model ?? '—'}
                     </span>
@@ -564,39 +567,42 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                     <span className="target-row__status" title={t.status}>
                       {t.status}
                     </span>
-                    <img
-                      className="target-row__action target-row__action--locate"
-                      src={markedIds.has(t.id) ? deviceImages.flagMarked : deviceImages.flag}
-                      alt={markedIds.has(t.id) ? '取消重点标记' : '标记为重点'}
-                      title={markedIds.has(t.id) ? '取消重点标记' : '标记为重点'}
-                      draggable={false}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleMark(t.id)
-                      }}
-                    />
-                    <img
-                      className="target-row__action target-row__action--delete"
-                      src={homeImages.iconDelete}
-                      alt="删除"
-                      title="删除"
-                      draggable={false}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        openDeleteDialog([t.id])
-                      }}
-                    />
-                    <img
-                      className="target-row__action target-row__action--more"
-                      src={isExpanded ? deviceImages.upArrow : deviceImages.downArrow}
-                      alt={isExpanded ? '收起详情' : '展开详情'}
-                      title={isExpanded ? '收起详情' : '展开详情'}
-                      draggable={false}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleExpand(t.id)
-                      }}
-                    />
+                    {/* 行尾操作图标组（标记/删除/展开详情）：组内间距固定 8px，整组作为行内单一 flex 项 */}
+                    <div className="target-row__actions">
+                      <img
+                        className="target-row__action target-row__action--locate"
+                        src={markedIds.has(t.id) ? deviceImages.flagMarked : deviceImages.flag}
+                        alt={markedIds.has(t.id) ? '取消重点标记' : '标记为重点'}
+                        title={markedIds.has(t.id) ? '取消重点标记' : '标记为重点'}
+                        draggable={false}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleMark(t.id)
+                        }}
+                      />
+                      <img
+                        className="target-row__action target-row__action--delete"
+                        src={homeImages.iconDelete}
+                        alt="删除"
+                        title="删除"
+                        draggable={false}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openDeleteDialog([t.id])
+                        }}
+                      />
+                      <img
+                        className="target-row__action target-row__action--more"
+                        src={isExpanded ? deviceImages.upArrow : deviceImages.downArrow}
+                        alt={isExpanded ? '收起详情' : '展开详情'}
+                        title={isExpanded ? '收起详情' : '展开详情'}
+                        draggable={false}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleExpand(t.id)
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {/* ====== 行内目标详情（设计稿 434×308 基准） ====== */}

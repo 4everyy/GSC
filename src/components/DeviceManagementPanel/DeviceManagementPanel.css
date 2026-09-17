@@ -438,10 +438,10 @@
   overflow: hidden;
   box-sizing: border-box;
   flex-shrink: 0;
-  /* 等间距：space-between 将行内剩余空间均分到所有列间隙，
-     gap 仅作最小间距保底，保证任意视口下各列间距完全相等 */
+  /* 列左对齐：各列为固定宽度（列内内容左对齐），所有行同列左边缘垂直对齐；
+     剩余空间由 space-between 均分到列间隙，gap 8px 保底与组内间距一致 */
   justify-content: space-between;
-  gap: clamp(4px, .31vw, 6px);
+  gap: 8px;
 }
 
 .device-row__bg {
@@ -456,6 +456,19 @@
   -webkit-user-drag: none;
   display: block;
   z-index: 0;
+}
+
+/* 行首组：复选框 + 编队图标 + 设备名称（组内固定 8px 间距，不随视口缩放）。
+   允许整组收缩（压缩量由组内设备名列吸收），避免行内容总宽溢出后
+   最后一列（查看详情箭头）被推出右边距、贴到容器边缘 */
+.device-row__lead {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .device-row__checkbox {
@@ -504,8 +517,9 @@
   -webkit-user-drag: none;
 }
 
-/* 设备名：固定列宽，不再用 flex:1 吸收剩余空间（否则其余列间隙无法均分）；
-     固定宽度同时保证跨行各列位置对齐，超长名称以省略号截断 */
+/* 设备名：固定宽度，使后续状态列起始位置行行对齐（列左对齐）；
+   空间不足时允许收缩（超出以省略号截断），作为整行唯一的弹性列
+   吸收宽度缺口，防止行内容溢出把最后一列（查看详情）顶出右边距 */
 .device-row__name {
   position: relative;
   z-index: 1;
@@ -513,15 +527,14 @@
   white-space: nowrap;
   line-height: 1;
   color: #fff;
-  flex: 0 0 clamp(80px, 6vw, 110px);
+  flex: 0 1 clamp(80px, 6vw, 110px);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: left;
 }
 
-/* 状态文字（任务中/待命/离线）
-   宽度需容纳3个中文("任务中")在80%-125%浏览器缩放下完整显示 */
+/* 状态文字（任务中/待命/离线）：内容自适应宽度、内容左对齐 */
 .device-row__status {
   /* 状态文字固定白色，圆点颜色由内联样式（状态色）控制 */
   color: #fff;
@@ -533,9 +546,9 @@
   font-size: clamp(10px, .73vw, 14px);
   white-space: nowrap;
   line-height: 1;
-  /* 圆点8px+间距2-4px+3个中文约42-52px：合计约52-64px */
-  flex: 0 0 clamp(48px, 3.9vw, 66px);
-  min-width: 0;
+  /* 列宽随内容自适应：列内不再保留尾部空白，剩余空间全部进入行间隙，
+     由 space-between 均分，使本列两侧及相邻列间隙相等 */
+  flex: 0 0 auto;
   overflow: hidden;
   text-align: left;
 }
@@ -559,9 +572,9 @@
   align-items: center;
   justify-content: flex-start;
   gap: clamp(2px, .21vw, 4px);
-  /* 固定宽度：需容纳图标+"100%"等最长内容，适配不同屏幕 */
-  flex: 0 0 clamp(44px, 3.5vw, 60px);
-  min-width: 0;
+  /* 列宽随内容自适应：列内不再保留尾部空白，剩余空间全部进入行间隙，
+     由 space-between 均分，使高度/电量列两侧间隙相等 */
+  flex: 0 0 auto;
   overflow: hidden;
 }
 
@@ -583,7 +596,20 @@
   color: #fff;
 }
 
-/* 信号图标：不再单独设置与展开箭头的额外间距，统一由 space-between 等间距分配 */
+/* 尾部组：信号图标（打开云台）+ 展开箭头（查看详情），组内固定 8px 间距 */
+.device-row__tail {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  /* 间距对齐区域列表面板行尾图标（可见间距 = 32px - 图标尺寸clamp(14~20px)，1920屏约12px）：
+     区域面板倒数两列可见间距 = 8px盒间距 + 图标在24px盒内居中两侧留白(24-图标)；
+     此处用等效表达式作为 gap（箭头PNG左留白已由 .device-row__expand 负margin补偿） */
+  gap: calc(32px - clamp(14px, 1.15vw, 20px));
+  flex-shrink: 0;
+}
+
+/* 信号图标：与展开箭头同属尾部组，组内固定 8px 间距 */
 .device-row__signal {
   position: relative;
   z-index: 1;
@@ -637,6 +663,10 @@
   border: none;
   background: transparent;
   cursor: pointer;
+  /* 箭头 PNG（24×24）内部左侧约 4px 透明留白（占宽度 1/6），按按钮宽度等比负 margin-left 补偿，
+     使与信号图标的视觉间距保持 8px；右侧不做负补偿，保留 PNG 自带右留白叠加行右 padding，
+     确保最后一列（查看详情）与行/面板右缘始终有可见边距 */
+  margin-left: calc(clamp(15px, 1.15vw, 21px) / -6);
   flex-shrink: 0;
   transition: filter 0.2s ease;
 }

@@ -247,12 +247,21 @@ export function MapLibreContainer({
   }, [retryKey])
 
   // ============ Effect 1.5：运行时样式热切换（离线地图包切换） ============
-  // styleSpec 变化时调用 map.setStyle，不重建实例，保留视图与业务 DOM 覆盖物。
+  // styleSpec 变化时切换样式，不重建实例，保留视图与业务 DOM 覆盖物。
   // 首次加载（map 未就绪）由 Effect 1 的初始化直接使用 styleSpecRef。
+  // adapter 就绪后经 adapter.setStyle：setStyle 会清空运行期动态添加的
+  // source/layer（任务区域多边形、定位精度圈等——启动期在占位样式上先行
+  // 渲染的覆盖物），adapter 内部在新样式数据就绪后按创建参数重放恢复；
+  // adapter 未就绪（load 未完成）时此时尚无业务覆盖物，直接切换即可。
   useEffect(() => {
     const map = mapRef.current
     if (!map || !styleSpec) return
-    map.setStyle(styleSpec as StyleSpecification)
+    const adapter = adapterRef.current
+    if (adapter) {
+      adapter.setStyle(styleSpec)
+    } else {
+      map.setStyle(styleSpec as StyleSpecification)
+    }
   }, [styleSpec])
 
   // ============ Effect 2：自动定位（受控，可取消） ============

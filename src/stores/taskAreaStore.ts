@@ -39,9 +39,8 @@ interface TaskAreaState {
   isMockFallback: boolean
   /**
    * 本地隐藏的区域 id 集合（区域列表面板「显示」图标维护，TaskAreaLayer 渲染时过滤）。
-   * 产品约定：列表区域默认不在态势图上显示——mock 初始化与接口加载成功均默认
-   * 全部隐藏（id 全量入集合），用户经行内眼睛/底部批量「显示」逐个放出
-   * （显示方向自动开启「任务区域」图层，见 AreaListPanel）；本地新增（addArea）
+   * 区域默认显示：mock 初始化与接口加载成功均默认全部显示（集合为空），
+   * 用户经行内眼睛/底部批量「显示」逐个隐藏；本地新增（addArea）
    * 的区域不进集合——刚绘制完立即以持久样式可见。
    */
   hiddenIds: Set<string>
@@ -54,7 +53,7 @@ interface TaskAreaState {
   editingAreaId: string | null
   /** 进入/退出某区域的编辑态（绘制遮罩编辑按钮联动 TaskAreaLayer 编辑视觉） */
   setEditingArea: (id: string | null) => void
-  /** 拉取并解析任务区域列表（loading 防重入；成功/失败均收敛状态；成功时默认全部隐藏） */
+  /** 拉取并解析任务区域列表（loading 防重入；成功/失败均收敛状态；成功时默认全部显示） */
   load: () => Promise<void>
   /** 切换单个区域在态势图上的显隐（区域列表面板「显示」图标） */
   toggleHidden: (id: string) => void
@@ -97,6 +96,17 @@ interface TaskAreaState {
   requestEditArea: (id: string) => void
   /** 消费完毕清除「编辑区域」请求（HexagonAreaOverlay 进入编辑态后调用） */
   clearEditAreaRequest: () => void
+   /**
+    * 「区域聚焦」跨层级请求：区域列表面板行复选框勾选时触发（面板挂载于
+    * MapToolbar 内、与 HomePage 平级无法经 props 传递）；HomePage 监听变化后
+    * 将地图平滑飞转、完整框入该区域包围盒，随后 clearAreaFocusRequest 置回
+    * null。nonce 每次自增，保证连续勾选同一区域也能触发订阅者（对象引用必然变化）。
+    */
+   areaFocusRequest: { id: string; nonce: number } | null
+  /** 请求地图聚焦到指定区域（AreaListPanel 行复选框勾选触发，仅显示中的区域） */
+  requestFocusArea: (id: string) => void
+  /** 消费完毕清除「区域聚焦」请求（HomePage flyTo 后调用） */
+  clearAreaFocusRequest: () => void
 }
 
 export const useTaskAreaStore = create<TaskAreaState>((set, get) => ({
@@ -105,8 +115,8 @@ export const useTaskAreaStore = create<TaskAreaState>((set, get) => ({
   status: 'idle',
   error: null,
   isMockFallback: true,
-  // mock 兜底数据同样默认全部隐藏（列表显隐按钮控制放出）
-  hiddenIds: new Set(MOCK_TASK_AREAS.map((a) => a.id)),
+  // mock 兜底数据同样默认全部显示（列表显隐按钮控制隐藏）
+  hiddenIds: new Set<string>(),
   editingAreaId: null,
   setEditingArea: (id) => set({ editingAreaId: id }),
   updateAreaType: (id, type) =>
@@ -142,8 +152,8 @@ export const useTaskAreaStore = create<TaskAreaState>((set, get) => ({
         areas,
         status: 'ready',
         error: null,
-        // 接口数据默认全部隐藏：显隐由区域列表逐个控制（与 mock 初始化同款约定）
-        hiddenIds: new Set(areas.map((a) => a.id)),
+        // 接口数据默认全部显示：显隐由区域列表逐个控制（与 mock 初始化同款约定）
+        hiddenIds: new Set<string>(),
         isMockFallback: false,
       })
     } catch (err) {
@@ -180,6 +190,12 @@ export const useTaskAreaStore = create<TaskAreaState>((set, get) => ({
   requestEditArea: (id) =>
     set({ editAreaRequest: { id, nonce: (get().editAreaRequest?.nonce ?? 0) + 1 } }),
   clearEditAreaRequest: () => set({ editAreaRequest: null }),
+  // 「区域聚焦」跨层级请求信号（与 editAreaRequest 同款方案）：AreaListPanel
+  // 行复选框勾选（区域处于显示态时）-> HomePage 监听 fitBounds 框入区域后清除
+  areaFocusRequest: null,
+  requestFocusArea: (id) =>
+    set({ areaFocusRequest: { id, nonce: (get().areaFocusRequest?.nonce ?? 0) + 1 } }),
+  clearAreaFocusRequest: () => set({ areaFocusRequest: null }),
   addArea: (vertices, type) => {
     // 在 set 闭包外捕获新建 id，返回给调用方（绘制遮罩记录为确认态区域）
     let createdId: string | null = null

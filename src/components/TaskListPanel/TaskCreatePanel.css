@@ -87,8 +87,9 @@
 .task-create__title {
   margin-left: 0;
   font-family: 'MiSans-Demibold';
-  font-size: 16px;
-  line-height: 16px;
+  /* 字号对齐设备管理面板次级标题量级 */
+  font-size: clamp(12px, 1vw, 16px);
+  line-height: 1;
   white-space: nowrap;
   color: rgba(255, 255, 255, 1);
 }
@@ -152,7 +153,8 @@
 .task-create__label {
   display: block;
   margin: 24px 0 0;
-  font-size: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   line-height: 19px;
   white-space: nowrap;
   color: rgba(255, 255, 255, 1);
@@ -170,7 +172,8 @@
   border: 1px solid rgba(255, 255, 255, 0.6);
   outline: none;
   font-family: 'MiSans-Regular';
-  font-size: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   line-height: 26px;
   color: #fff;
 }
@@ -183,8 +186,8 @@
 .task-create__required-mark {
   margin-right: 2px;
   color: rgba(255, 96, 96, 1);
-  /* 星号放大加粗：比正文 label 更醒目 */
-  font-size: 18px;
+  /* 星号放大加粗：比正文 label 更醒目；字号随视口等比缩放 */
+  font-size: clamp(13px, 0.94vw, 18px);
   font-weight: 600;
   line-height: 1;
   /* 与 label 文字顶部对齐：inline-block 后按顶线对齐，星号向下延伸 */
@@ -204,7 +207,8 @@
 .task-create__input-error {
   display: block;
   margin-top: 4px;
-  font-size: 12px;
+  /* 辅助文案：小一号量级随视口缩放 */
+  font-size: clamp(10px, 0.63vw, 12px);
   line-height: 14px;
   color: rgba(255, 96, 96, 1);
 }
@@ -299,7 +303,8 @@
   outline: none;
   background: transparent;
   font-family: 'MiSans-Regular';
-  font-size: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   line-height: 26px;
   color: #fff;
   text-align: left;
@@ -360,8 +365,9 @@
   background: transparent;
   cursor: pointer;
   font-family: 'MiSans-Regular';
-  font-size: 14px;
-  line-height: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
+  line-height: 1;
   white-space: nowrap;
   color: rgba(255, 255, 255, 0.4);
   transition: color 0.2s ease;
@@ -444,7 +450,8 @@
   background: transparent;
   cursor: pointer;
   font-family: 'MiSans-Regular';
-  font-size: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   line-height: 1;
   color: rgba(255, 255, 255, 1);
   white-space: nowrap;
@@ -499,7 +506,8 @@
 
 .task-create__add-area-inner span {
   font-family: 'MiSans-Regular';
-  font-size: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   font-weight: normal;
   line-height: 20px;
   white-space: nowrap;
@@ -518,7 +526,8 @@
 
 .task-create__area-header .task-create__area-col,
 .task-create__area-item .task-create__area-col {
-  font-size: 14px;
+  /* 字号对齐设备管理面板行数据标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   line-height: 19px;
   white-space: nowrap;
   color: rgba(255, 255, 255, 1);
@@ -736,7 +745,8 @@
   border-radius: 2px 2px 2px 2px;
   font-family: 'MiSans', 'MiSans-Regular', sans-serif;
   font-weight: 400;
-  font-size: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   font-style: normal;
   text-transform: none;
   text-align: center;

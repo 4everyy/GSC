@@ -93,8 +93,9 @@
 
 .task-pro__title {
   font-family: 'MiSans-Demibold';
-  font-size: 16px;
-  line-height: 16px;
+  /* 字号对齐设备管理面板次级标题量级 */
+  font-size: clamp(12px, 1vw, 16px);
+  line-height: 1;
   white-space: nowrap;
   color: rgba(255, 255, 255, 1);
 }
@@ -109,7 +110,8 @@
   border: 1px solid rgba(70, 220, 231, 0.8);
   border-radius: 11px;
   background: rgba(70, 220, 231, 0.12);
-  font-size: 12px;
+  /* 辅助文案：小一号量级随视口缩放 */
+  font-size: clamp(10px, 0.63vw, 12px);
   line-height: 1;
   color: rgba(145, 242, 255, 1);
   white-space: nowrap;
@@ -174,7 +176,8 @@
 .task-pro__label {
   display: block;
   margin: 24px 0 0;
-  font-size: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   line-height: 19px;
   white-space: nowrap;
   color: rgba(255, 255, 255, 1);
@@ -195,7 +198,8 @@
   border: 1px solid rgba(255, 255, 255, 0.6);
   outline: none;
   font-family: 'MiSans-Regular';
-  font-size: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   line-height: 26px;
   color: #fff;
 }
@@ -218,7 +222,8 @@
 .task-pro__input-error {
   display: block;
   margin-top: 4px;
-  font-size: 12px;
+  /* 辅助文案：小一号量级随视口缩放 */
+  font-size: clamp(10px, 0.63vw, 12px);
   line-height: 14px;
   color: rgba(255, 96, 96, 1);
 }
@@ -242,13 +247,13 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   line-height: 19px;
   color: rgba(255, 255, 255, 1);
 }
 
 .task-pro__count {
-  font-size: 12px;
+  font-size: clamp(10px, 0.63vw, 12px);
   line-height: 1;
   color: rgba(255, 255, 255, 0.6);
   white-space: nowrap;
@@ -272,7 +277,7 @@
   height: 36px;
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.1);
-  font-size: 13px;
+  font-size: clamp(10px, 0.68vw, 13px);
   line-height: 1;
   color: rgba(255, 255, 255, 0.75);
   white-space: nowrap;
@@ -304,7 +309,7 @@
   align-items: center;
   flex-shrink: 0;
   min-height: 44px;
-  font-size: 13px;
+  font-size: clamp(10px, 0.68vw, 13px);
   color: rgba(255, 255, 255, 1);
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
@@ -376,7 +381,7 @@
   background: rgba(255, 255, 255, 0.12);
   outline: none;
   font-family: 'MiSans-Regular';
-  font-size: 13px;
+  font-size: clamp(10px, 0.68vw, 13px);
   line-height: 24px;
   color: #fff;
 }
@@ -435,7 +440,7 @@
   background: transparent;
   outline: none;
   font-family: 'MiSans-Regular';
-  font-size: 13px;
+  font-size: clamp(10px, 0.68vw, 13px);
   line-height: 24px;
   color: #fff;
   text-align: center;
@@ -455,7 +460,7 @@
   border-radius: 2px;
   cursor: pointer;
   font-family: 'MiSans-Regular';
-  font-size: 13px;
+  font-size: clamp(10px, 0.68vw, 13px);
   line-height: 1;
   color: #fff;
   white-space: nowrap;
@@ -479,7 +484,7 @@
   border-radius: 2px;
   background: rgba(255, 96, 96, 0.08);
   color: rgba(255, 120, 120, 1);
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
@@ -497,7 +502,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: clamp(10px, 0.68vw, 13px);
   color: rgba(255, 255, 255, 0.5);
   white-space: nowrap;
 }
@@ -517,7 +522,7 @@
   background: rgba(70, 220, 231, 0.06);
   cursor: pointer;
   font-family: 'MiSans-Regular';
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   line-height: 1;
   color: rgba(145, 242, 255, 1);
   white-space: nowrap;
@@ -578,7 +583,7 @@
   border-radius: 2px;
   font-family: 'MiSans', 'MiSans-Regular', sans-serif;
   font-weight: 400;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   text-align: center;
   line-height: 1;
   white-space: nowrap;

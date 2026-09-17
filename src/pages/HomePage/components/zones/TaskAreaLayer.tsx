@@ -39,7 +39,7 @@
  */
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import type { MapAdapter } from '../../../../map-engines/types'
+import type { LngLatBounds, MapAdapter } from '../../../../map-engines/types'
 import { useTaskAreaStore } from '../../../../stores/taskAreaStore'
 import { taskAreaTypeMeta, type TaskArea } from '../../../../api/taskArea'
 import { homeImages } from '../../../../assets/images/home'
@@ -63,7 +63,8 @@ const EDIT_PANEL_HEIGHT = 32
 /** SVG 命名空间（document.createElementNS 用） */
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
-/** 多边形质心（顶点均值；任务区域范围小，均值近似即可） */
+/** 多边形质心（顶点均值；任务区域范围小，均值近似即可）。
+ *  区域名称标签/降落图标锚点定位用 */
 function polygonCentroid(area: TaskArea): { lng: number; lat: number } {
   let lng = 0
   let lat = 0
@@ -73,6 +74,23 @@ function polygonCentroid(area: TaskArea): { lng: number; lat: number } {
   }
   const n = area.vertices.length
   return { lng: lng / n, lat: lat / n }
+}
+
+/** 区域顶点的外包包围盒（WGS84）。
+ *  导出供 HomePage 区域聚焦（AreaListPanel 行 hover → fitBounds 完整框入区域）
+ *  复用，与引擎 fitBounds 的输入口径一致 */
+export function getAreaBounds(area: TaskArea): LngLatBounds {
+  let west = Infinity
+  let south = Infinity
+  let east = -Infinity
+  let north = -Infinity
+  for (const v of area.vertices) {
+    west = Math.min(west, v.longitude)
+    south = Math.min(south, v.latitude)
+    east = Math.max(east, v.longitude)
+    north = Math.max(north, v.latitude)
+  }
+  return { west, south, east, north }
 }
 
 /** 射线法点在多边形内判定：区域多边形渲染在引擎层（本组件无 DOM hover），
@@ -411,6 +429,14 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
       hidePanel()
       return
     }
+    // hover 中的区域被隐藏/移除（区域列表操作）时立即收起面板：鼠标未移动
+    // 不触发 mousemove 重判，不校验会残留可点的「编辑 | 删除」按钮作用于
+    // 已隐藏区域（hiddenIds 入依赖即在本 effect 重跑时兜底校验）
+    const hoveredId = hoverAreaIdRef.current
+    if (hoveredId) {
+      const s = useTaskAreaStore.getState()
+      if (s.hiddenIds.has(hoveredId) || !s.areas.some((a) => a.id === hoveredId)) hidePanel()
+    }
     const projectArea = (area: TaskArea) => {
       const bounds = adapter.getContainer().getBoundingClientRect()
       return area.vertices.map((v) => {
@@ -460,13 +486,27 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
         e.clientX <= box.left + EDIT_PANEL_WIDTH + 8 &&
         e.clientY >= box.top - 8 &&
         e.clientY <= box.top + EDIT_PANEL_HEIGHT + 8
-      if (!nearPanel) hoverAreaIdRef.current = null
+      // 面板隐藏时同步作废定位矩形：nearPanel 仅凭几何矩形判定、不校验区域
+      // 可见性，box 残留旧坐标会让鼠标移到面板原位置（即使对应区域已隐藏/
+      // 已移除）时凭空复现面板——矩形作废后，复现面板的唯一入口是重新命中
+      // 可见区域（pickAreaAt 已过滤隐藏区域）
+      if (!nearPanel) {
+        hoverAreaIdRef.current = null
+        hoverPanelBoxRef.current = null
+      }
       panel.style.display = nearPanel ? '' : 'none'
     }
     const offMapMove = adapter.onMove(() => {
       const id = hoverAreaIdRef.current
       if (!id) return
-      const area = useTaskAreaStore.getState().areas.find((a) => a.id === id)
+      const s = useTaskAreaStore.getState()
+      // 跟随前校验隐藏/移除：隐藏区域不得再展示面板（平移地图时同步收起，
+      // 与 mousemove 命中判定同口径）
+      if (s.hiddenIds.has(id) || !s.areas.some((a) => a.id === id)) {
+        hidePanel()
+        return
+      }
+      const area = s.areas.find((a) => a.id === id)
       if (!area) return
       positionPanel(projectArea(area)[2])
     })
@@ -475,7 +515,7 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
       window.removeEventListener('mousemove', onHoverMove)
       offMapMove()
     }
-  }, [adapter, areaSelectActive, editingAreaId])
+  }, [adapter, areaSelectActive, editingAreaId, hiddenIds])
 
   return createPortal(
     <div ref={hoverPanelRef} className="hexagon-area-edit-panel" style={{ display: 'none' }}>

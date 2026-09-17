@@ -146,7 +146,8 @@
 
 .area-panel__filter-label {
   color: #fff;
-  font-size: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -228,7 +229,8 @@
 
 .area-panel__state span {
   color: #fff;
-  font-size: 14px;
+  /* 空态文案：对齐设备管理面板空列表文案字号 */
+  font-size: clamp(12px, 1vw, 16px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -248,7 +250,8 @@
 .area-panel__retry {
   padding: clamp(4px, 0.42vw, 8px) clamp(12px, 1vw, 20px);
   color: #fff;
-  font-size: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -335,12 +338,23 @@
   border-color: #4b79e4;
 }
 
-/* 三列文字：14px / MiSans / 字重 330 / 白色，行 flex 布局垂直居中，统一左对齐 */
+/* 行首两列组（复选框/区域名称）：整组作为行 flex 布局的单一子项并吸收剩余宽度
+   （原名称列 flex-grow 职责上移至组容器），组内间距固定 8px（不随视口缩放） */
+.area-row__lead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 三列文字：字号对齐设备管理面板行数据（响应式 10~14px）/ MiSans / 字重 330 / 白色，
+   行 flex 布局垂直居中，统一左对齐 */
 .area-row__name,
 .area-row__type,
 .area-row__area {
   min-width: 0;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;
@@ -352,10 +366,10 @@
   text-overflow: ellipsis;
 }
 
-/* 名称列（第2列）：吸收行内剩余宽度（flex-grow）把类型/面积/图标组推向右侧，
-   文字左对齐紧贴复选框 8px；超长省略截断 */
+/* 名称列（第2列）：组内自然伸展（组容器 .area-row__lead 已 flex-grow 吸收剩余宽度），
+   与复选框间距固定 8px（组 gap）；超长省略截断 */
 .area-row__name {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   text-align: left;
 }
 
@@ -397,12 +411,12 @@
   transition: opacity 0.15s ease;
 }
 
-/* 图标切图（edit.svg / eyes.svg 24×24、icon-delete.png 18×18）铺满 24×24 按钮：
+/* 图标切图（edit.svg / eyes.svg 24×24、icon-delete.png 18×18）居中渲染于 24×24 按钮（尺寸 14~20px 随视口）：
    此前 16×16 居中渲染导致每侧 4px 透明留白，图标间可见间距达 16px；
    铺满后图标盒之间（及与面积列之间）可见间距即精确 8px（行 gap / 组内 8px） */
 .area-row__icon-btn img {
-  width: 100%;
-  height: 100%;
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
   object-fit: contain;
   pointer-events: none;
   -webkit-user-drag: none;
@@ -444,7 +458,8 @@
   border: 1px solid rgba(14, 167, 249, 1);
   border-radius: 2px;
   color: #fff;
-  font-size: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   font-family: 'MiSans';
   font-weight: 330;
   word-wrap: break-word;

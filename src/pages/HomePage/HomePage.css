@@ -4,9 +4,7 @@
  * 修饰类规则，仍保持在所有基础样式之后导入。
  */
 @import './styles/HomePageLayout.css';
-@import './styles/NoflyZone.css';
 @import './styles/AircraftLayer.css';
-@import './styles/InspectionZone.css';
 @import './styles/BottomBar.css';
 @import './styles/FlightPanels.css';
 @import './styles/FlightMarkers.css';

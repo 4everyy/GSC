@@ -37,7 +37,7 @@ export function TaskMonitorTab() {
                     if (e.key === 'Enter' || e.key === ' ') toggle(task.id)
                   }}
                 >
-                  {/* 行背景切图（双态：常规 / 展开-蓝），铺满 60px 全高 */}
+                  {/* 行背景切图（双态：常规 / 展开-蓝），铺满卡片全高 */}
                   <img
                     className="task-monitor__row-bg"
                     src={

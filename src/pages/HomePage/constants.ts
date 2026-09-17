@@ -32,9 +32,6 @@ export const AIRCRAFT_ANCHOR_OFFSETS: LngLat[] = [
   { lng: -0.0041, lat: 0.007 }, // blue2 (05设备)：左上偏右
 ]
 
-// 巡检区域初始位置（百分比），与 HomePage.css 中 .inspection-zone 的 left/top 保持一致
-export const INSPECTION_ZONE_INITIAL_POSITION: DragPosition = { x: 38.75, y: 25.5 }
-
 /**
  * 接口目标回退布局：无人机图标簇附近空白带的偏移池（相对当前离线地图包中心）。
  *
@@ -246,3 +243,16 @@ export const BOTTOM_BAR_ITEMS: BottomBarItem[] = [
 export const MAP_FOCUS_ZOOM = 16
 /** 面板单选聚焦飞转动画时长（ms） */
 export const MAP_FOCUS_FLY_DURATION_MS = 1200
+/**
+ * 区域列表行 hover 聚焦（fitBounds）视口边距：左 = 地图工具栏(64) +
+ * 区域列表面板(466) + 间隙；右 = 任务/目标列表面板(466) + 间隙；
+ * 上下避开状态栏与底部按钮条。让区域完整落在左右悬浮面板之间的中央可视带。
+ */
+export const AREA_FOCUS_PADDING = {
+  left: 560,
+  right: 510,
+  top: 80,
+  bottom: 80,
+} as const
+/** 区域聚焦 zoom 上限（小区域避免过度放大，fitBounds 自动钳制） */
+export const AREA_FOCUS_MAX_ZOOM = 16

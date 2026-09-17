@@ -2,8 +2,10 @@
  * 执行监控 tab 样式（设计稿 section_6 / box_2 / box_3 / box_13 / box_16）
  *
  * 尺寸基线（设计稿）：
- * - 任务卡片 434x60（含底部 428x7 进度槽），展开态与收起态背景切图不同
- * - 详情区 434x216：背景切图 monitor-detail-bg
+ * - 任务卡片：行内容高度与任务规划 tab（.task-item__row）一致 clamp(36px, 2.6vw, 48px)，
+ *   底部另含 428x7 进度槽，展开态与收起态背景切图不同
+ * - 详情区：宽度 434，高度随执行对象行数自适应（行数 × 48px + 底部装饰 11px），
+ *   背景切图 monitor-detail-bg 随高度整体缩放，避免行数不足时残留空白
  * - 执行对象行：行内容距左 24px
  */
 
@@ -20,7 +22,8 @@
 .task-monitor__list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  /* 行间距与任务规划 tab（.task-panel__list）一致，随视口缩放 */
+  gap: clamp(4px, 0.42vw, 8px);
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -38,29 +41,30 @@
   flex-shrink: 0;
 }
 
-/* ====== 任务卡片（434x60：行内容 53px + 底部 7px 进度槽） ====== */
+/* ====== 任务卡片（行内容 + 底部 7px 进度槽） ====== */
 
 .task-monitor__card {
   position: relative;
   width: 434px;
-  height: 60px;
+  /* 行内容高度与任务规划 tab 行高一致 + 底部 7px 进度槽 */
+  height: calc(clamp(36px, 2.6vw, 48px) + 7px);
 }
 
-/* 任务行：与卡片同高 60px 垂直居中；gap 保底间距，
+/* 任务行：行高与其他面板列表行一致（同 .task-item__row），垂直居中；gap 保底间距，
    中间两列 margin:0 auto 平分剩余空间，所有列间隙严格均匀 */
 .task-monitor__row {
   display: flex;
   align-items: center;
   gap: 16px;
   width: 434px;
-  height: 60px;
+  height: clamp(36px, 2.6vw, 48px);
   padding: 0 11px;
   box-sizing: border-box;
   cursor: pointer;
   outline: none;
 }
 
-/* 行背景切图锚定卡片铺满 60px 全高（双态：常规 / 展开-蓝）。
+/* 行背景切图锚定卡片铺满全高（双态：常规 / 展开-蓝）。
    切图自带底部轨道凹槽，与进度槽同一坐标系，视觉上与行融为一体 */
 .task-monitor__row-bg {
   position: absolute;
@@ -201,12 +205,15 @@
   }
 }
 
-/* ====== 展开详情区（434x216） ====== */
+/* ====== 展开详情区（宽度 434，高度随行数自适应裁剪） ====== */
 
 .task-monitor__detail {
   position: relative;
   width: 434px;
-  height: 216px;
+  /* 不再固定 216px：高度 = 执行对象行数 × 48px + 底部装饰预留 11px，
+     行数不足 4 时自动裁掉残留的空白背景 */
+  padding-bottom: 11px;
+  box-sizing: border-box;
   background: url('../../assets/images/task-panel/monitor-detail-bg.png') 100% no-repeat;
   background-size: 100% 100%;
   overflow: hidden;

@@ -5,7 +5,7 @@
  * 页面按模块拆分（均 <500 行）：
  * - useExclusivePanels（内部 useBasicPanelStates/useAdvancedPanelStates）功能面板互斥状态机
  * - useFlightAnimations / useFlightInteractions   模拟飞行动画与地图取点监听
- * - components/*   禁飞区/巡检区/飞机层/飞行覆盖层/功能面板组/底部按钮条等
+ * - components/*   飞机层/飞行覆盖层/功能面板组/底部按钮条等
  */
 import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { StatusHeader } from '../../components/StatusHeader/StatusHeader'
@@ -19,10 +19,8 @@ import { MapScale } from '../../components/MapScale/MapScale'
 import { type FormationFlightFormation } from '../../components/FormationFlightPanel/FormationFlightPanel'
 import { useMapEngine } from '../../hooks/useMapEngine'
 import { aircraft } from '../../config/aircraft'
-import { useDraggable } from '../../hooks/useDraggable'
 import { useMapAnchorSync } from '../../hooks/useMapAnchorSync'
 import { AircraftFocusPanel } from '../../components/AircraftFocusPanel/AircraftFocusPanel'
-import { computePanelPlacement, placementToClasses } from '../../utils/panelPlacement'
 import { useLayerStore } from '../../stores/layerStore'
 import { usePanelClamp } from '../../hooks/usePanelClamp'
 import { useOfflineMap } from '../../features/offline-map/useOfflineMap'
@@ -33,9 +31,7 @@ import { deviceList } from '../../config/devices'
 import type { AircraftListItem } from '../../components/AircraftListPanel/AircraftListSection'
 import './HomePage.css'
 import './styles/HoverPanelPlacement.css'
-import { NoflyZone } from './components/zones/NoflyZone'
-import { InspectionZone } from './components/zones/InspectionZone'
-import { TaskAreaLayer } from './components/zones/TaskAreaLayer'
+import { TaskAreaLayer, getAreaBounds } from './components/zones/TaskAreaLayer'
 import AircraftLayer from './components/aircraft/AircraftLayer'
 import { TargetMarkerLayer } from './components/targets/TargetMarkerLayer'
 import { FlightCommandPanels } from './components/panels/FlightCommandPanels'
@@ -48,11 +44,12 @@ import {
   SHOW_PENDING_PANELS,
   AIRCRAFT_INITIAL_POSITIONS,
   AIRCRAFT_ANCHOR_OFFSETS,
-  INSPECTION_ZONE_INITIAL_POSITION,
   TARGET_NEAR_AIRCRAFT_OFFSETS,
   TARGET_REAL_LNGLAT_MAX_OFFSET,
   MAP_FOCUS_ZOOM,
   MAP_FOCUS_FLY_DURATION_MS,
+  AREA_FOCUS_PADDING,
+  AREA_FOCUS_MAX_ZOOM,
 } from './constants'
 import { buildTargetAnchors, useTargetLinkStore } from '../../stores/targetLinkStore'
 import { loadScopedAnchors } from '../../utils/geoAnchor'
@@ -310,6 +307,32 @@ export function HomePage() {
     })
   }, [adapter, mapFocusTargetRequest, clearMapFocusTargetRequest])
 
+  // 区域列表行复选框勾选联动聚焦：区域处于显示状态（「任务区域」图层开启 且
+  // 未被行内眼睛/批量显示隐藏）时，态势图平滑飞转、完整框入该区域包围盒。
+  // 视角换算交给引擎原生 fitBounds（MapLibre 按 512px 世界精确计算中心/缩放，
+  // 上层手算米/像素易出常数口径偏差——曾因 256 瓦片常数导致 zoom 偏大一级、
+  // 区域被放大出屏）；padding 让区域落在左右悬浮面板之间的中央可视带，
+  // maxZoom 防止小区域过度放大；动画时长与设备/目标面板单行聚焦一致。
+  // 发起端（AreaListPanel.toggleSelect）已做过显示状态判断，此处消费时
+  // 再校验一次（请求间隙图层开关/区域隐藏状态可能变化）；消费后立即清除。
+  const areaFocusRequest = useTaskAreaStore((s) => s.areaFocusRequest)
+  const clearAreaFocusRequest = useTaskAreaStore((s) => s.clearAreaFocusRequest)
+  useEffect(() => {
+    if (!adapter || !areaFocusRequest) return
+    const { id } = areaFocusRequest
+    clearAreaFocusRequest()
+    // 双重校验：请求发出后图层关闭/区域隐藏/被删则放弃聚焦（态势图无对应渲染）
+    if (!useLayerStore.getState().taskAreaVisible) return
+    const s = useTaskAreaStore.getState()
+    const area = s.areas.find((a) => a.id === id)
+    if (!area || s.hiddenIds.has(id)) return
+    adapter.fitBounds(getAreaBounds(area), {
+      padding: AREA_FOCUS_PADDING,
+      maxZoom: AREA_FOCUS_MAX_ZOOM,
+      duration: MAP_FOCUS_FLY_DURATION_MS,
+    })
+  }, [adapter, areaFocusRequest, clearAreaFocusRequest])
+
   // 目标真实经纬度签名（id+经纬度拼接字符串，按值比较）：
   // 仅当接口装载/替换目标（id 或经纬度变化）时才变化。
   // 不能直接依赖 targets 数组引用——地图移动时 applyTargetPositions 每帧更新
@@ -371,50 +394,23 @@ export function HomePage() {
     [selectedDevices, aircraftPositions, formationFlightFormation],
   )
 
-  // 巡检区域拖拽：鼠标左键按住拖动整个巡检区域（含轨迹线）至首页任意位置
-  const { positions: inspectionZonePositions, onDragStart: onInspectionZoneDragStart } =
-    useDraggable({
-      count: 1,
-      initialPositions: [INSPECTION_ZONE_INITIAL_POSITION],
-      storageKey: 'gcs:inspection-zone-position',
-    })
-
-  // 图层显隐（图层控制面板开关联动）：禁飞区/巡检区/任务区域默认关，设备标签默认开
-  const noflyZoneVisible = useLayerStore((s) => s.noflyZoneVisible)
-  const inspectionZoneVisible = useLayerStore((s) => s.inspectionZoneVisible)
+  // 图层显隐（图层控制面板开关联动）：任务区域默认开（区域默认显示），设备标签默认开。
+  // 「禁飞区」「巡检区域」旧静态演示图层已删除（由 TaskAreaLayer 真实数据区域
+  // 统一承载），面板开关仍保留，仅记录状态、不再渲染任何地图元素。
   const deviceLabelsVisible = useLayerStore((s) => s.deviceLabelsVisible)
   const taskAreaVisible = useLayerStore((s) => s.taskAreaVisible)
 
-  // hover 面板边缘自适应方向（巡检区域）
-  const inspectionZonePlacement = computePanelPlacement(
-    inspectionZonePositions[0].x,
-    inspectionZonePositions[0].y,
-  )
-  const inspectionZonePanelClasses = placementToClasses(inspectionZonePlacement)
-
   // hover 面板视口边缘平移修正（兜底）：测量实际矩形并注入 --clamp-x/--clamp-y，
-  // 确保任何 hover 面板（飞机/巡检区域/禁飞区）在任意拖拽位置都不溢出视口。
+  // 确保任何 hover 面板（飞机等）在任意拖拽位置都不溢出视口。
   // 依赖宿主百分比坐标与聚焦索引：拖拽改变坐标时实时重新修正；聚焦切换时面板增删亦重算。
   // WB-PF-003：坐标序列化为单个 key 字符串（useMemo 缓存），仅在坐标/显隐/聚焦
   // 变化时重新拼接，避免每渲染 N 次字符串分配 + 逐项比较；字符串按值比较语义不变。
   const clampDepsKey = useMemo(
     () =>
-      [
-        aircraftPositions.map((p) => `${p.x},${p.y}`).join(';'),
-        `${inspectionZonePositions[0].x},${inspectionZonePositions[0].y}`,
-        focusedAircraft,
-        noflyZoneVisible,
-        inspectionZoneVisible,
-        deviceLabelsVisible,
-      ].join('|'),
-    [
-      aircraftPositions,
-      inspectionZonePositions,
-      focusedAircraft,
-      noflyZoneVisible,
-      inspectionZoneVisible,
-      deviceLabelsVisible,
-    ],
+      [aircraftPositions.map((p) => `${p.x},${p.y}`).join(';'), focusedAircraft, deviceLabelsVisible].join(
+        '|',
+      ),
+    [aircraftPositions, focusedAircraft, deviceLabelsVisible],
   )
   usePanelClamp({ deps: [clampDepsKey] })
 
@@ -450,25 +446,14 @@ export function HomePage() {
               尚未导入地图包时渲染纯色占位底图。导入/切换入口由离线地图管理模块提供（P1+）。 */}
           {/* MissionPanel 暂时隐藏，待后续功能接入时恢复 */}
           {SHOW_PENDING_PANELS && <MissionPanel />}
-          {/* 红色禁飞区：左下角倾斜四边形，SVG 绘制边框 + 四角节点。
-              显隐由图层控制面板「禁飞区」开关联动（layerStore），默认关 */}
-          {noflyZoneVisible && <NoflyZone />}
           {/* 任务区域图层（真实后端数据）：多边形 + 名称标签，
               数据源 /api/v1/control/queryTaskAreaList（taskAreaStore 一次加载），
-              显隐由图层控制面板「任务区域」开关联动（layerStore），默认关。
+              显隐由图层控制面板「任务区域」开关联动（layerStore），默认开。
               areaSelectActive：任意绘制/框选遮罩激活时抑制图层自带的常态
               hover「编辑 | 删除」面板（避免与遮罩确认态面板叠加/干扰取点） */}
           {taskAreaVisible && <TaskAreaLayer adapter={adapter} areaSelectActive={areaSelectMode} />}
+          {/* 橙色禁飞区：待接入功能（SHOW_PENDING_PANELS=false 暂隐藏，非开关图层） */}
           {SHOW_PENDING_PANELS && <div className="restricted-zone restricted-zone--orange" />}
-          {/* 巡检区域：包含1条蛇形巡检轨迹线，支持拖拽移动。
-              显隐由图层控制面板「巡检区」开关联动（layerStore），默认关 */}
-          {inspectionZoneVisible && (
-            <InspectionZone
-              position={inspectionZonePositions[0]}
-              onDragStart={(e) => onInspectionZoneDragStart(0, e)}
-              panelClasses={inspectionZonePanelClasses}
-            />
-          )}
           {/* 目标图标层：目标列表每行对应一个态势图图标（车辆 tank / 人员 people），
               三种状态背景（正常/hover·点击联动/标记重点），与 TargetListPanel
               经 targetLinkStore 双向联动（hover/点击行/标记重点/删除同步） */}

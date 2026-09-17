@@ -189,8 +189,9 @@
   cursor: pointer;
   font-family: 'MiSans-Regular';
   font-weight: normal;
-  font-size: 14px;
-  line-height: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
+  line-height: 1;
   color: rgba(255, 255, 255, 1);
   white-space: nowrap;
   transition: color 0.3s ease;
@@ -430,7 +431,8 @@
 
 /* 任务名 */
 .task-item__name {
-  font-size: 14px;
+  /* 字号对齐设备管理面板行数据标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   white-space: nowrap;
   line-height: 1;
   color: #fff;
@@ -466,7 +468,8 @@
 }
 
 .task-item__status {
-  font-size: 14px;
+  /* 字号对齐设备管理面板行数据标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   white-space: nowrap;
   line-height: 1;
   color: #fff;
@@ -477,7 +480,8 @@
 .task-item__time {
   flex: 0 1 auto;
   text-align: center;
-  font-size: 14px;
+  /* 字号对齐设备管理面板行数据标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   white-space: nowrap;
   line-height: 1;
   color: rgba(255, 255, 255, 0.75);
@@ -665,7 +669,8 @@
   margin-left: clamp(5px, 0.42vw, 8px);
   font-family: MiSans, MiSans;
   font-weight: 400;
-  font-size: 14px;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
   font-style: normal;
   text-transform: none;
   color: #ffffff;
@@ -928,10 +933,10 @@
   border: none;
   border-radius: 2px;
   background-color: rgba(14, 167, 249, 1);
-  /* 字体样式（设计稿标注）：MiSans 400 / 14px / 白色 */
+  /* 字体样式：字号对齐设备管理面板正文标准（MiSans 400 / 白色） */
   font-family: MiSans, MiSans;
   font-weight: 400;
-  font-size: 14px;
+  font-size: clamp(10px, 0.73vw, 14px);
   font-style: normal;
   text-transform: none;
   text-align: left;

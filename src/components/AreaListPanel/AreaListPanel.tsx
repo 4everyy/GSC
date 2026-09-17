@@ -6,7 +6,8 @@
  * 后端未开启或接口失败时保留 mock 兜底（config/taskAreas.ts）。
  * 交互：
  * - 筛选栏「全选」复选框（三态：全选/部分选中/未选，作用于当前列表全部区域）；
- * - 行首复选框勾选区域；行常规(灰)/hover(橙)/选中(蓝) 三态背景图
+ * - 行首复选框勾选区域（勾上且区域处于显示状态时联动聚焦态势图，
+ *   取消勾选不触发）；行常规(灰)/hover(橙)/选中(蓝) 三态背景图
  *   与目标列表面板（TargetListPanel）完全一致；
  * - 行尾操作图标组：编辑（后端暂无接口，占位）/ 显示（控制该区域在态势图上的
  *   显隐，经 taskAreaStore.hiddenIds 与 TaskAreaLayer 联动；图标双态——
@@ -53,6 +54,8 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
   const requestAddArea = useTaskAreaStore((s) => s.requestAddArea)
   // 行内「编辑」同款跨层级信号：携带目标区域 id，遮罩挂载后直接进入该区域编辑态
   const requestEditArea = useTaskAreaStore((s) => s.requestEditArea)
+  // 行复选框勾选区域聚焦联动信号：HomePage 监听后将地图平滑飞转、框入该区域
+  const requestFocusArea = useTaskAreaStore((s) => s.requestFocusArea)
 
   // 勾选的区域 id 集合（面板内局部状态）
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -82,8 +85,21 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
     })
   }
 
-  /** 切换行勾选 */
+  /** 勾选联动聚焦：区域处于「显示状态」（「任务区域」图层开启 且 未被行内眼睛/
+   *  批量显示隐藏）时，请求态势图平滑聚焦到该区域（HomePage 监听
+   *  areaFocusRequest fitBounds 完整框入）；隐藏或图层关闭的区域不触发——
+   *  态势图上无对应渲染，聚焦无意义 */
+  const focusIfVisible = (id: string) => {
+    const s = useTaskAreaStore.getState()
+    if (!useLayerStore.getState().taskAreaVisible) return
+    if (s.hiddenIds.has(id)) return
+    requestFocusArea(id)
+  }
+
+  /** 切换行勾选：勾上（原未选中）时按显示状态联动聚焦态势图；取消勾选不触发
+   *  （与设备/目标面板单行勾选聚焦同款约定，「全选」批量勾选亦不产生聚焦请求） */
   const toggleSelect = (id: string) => {
+    if (!selectedIds.has(id)) focusIfVisible(id)
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
@@ -102,7 +118,7 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
 
   /** 底部「显示」：按列表整体状态决定方向——存在可见区域则统一隐藏勾选行，
       否则统一显示勾选行（与图标方向一致）；方向为「显示」时自动开启
-      「任务区域」图层（图层开关默认关，否则态势图无任何变化形同虚设） */
+      「任务区域」图层（开关可能已被用户手动关闭，自动开启保证显示立即可见） */
   const toggleShowSelected = () => {
     const hide = listHasVisible
     if (!hide && !useLayerStore.getState().taskAreaVisible) {
@@ -243,33 +259,36 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
                   onMouseLeave={() => setHoveredId(null)}
                 >
                   <img className="area-row__bg" src={bgImage} alt="" draggable={false} />
-                  <div
-                    className={`area-row__checkbox${isSelected ? ' area-row__checkbox--checked' : ''}`}
-                    onClick={() => toggleSelect(a.id)}
-                    role="checkbox"
-                    aria-checked={isSelected}
-                    aria-label={`勾选区域 ${a.name}`}
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === ' ' && (e.preventDefault(), toggleSelect(a.id))}
-                  >
-                    {isSelected && (
-                      <svg
-                        viewBox="0 0 12 12"
-                        width="10"
-                        height="10"
-                        fill="none"
-                        stroke="#fff"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="2,6 5,9 10,3" />
-                      </svg>
-                    )}
+                  {/* 行首两列组（复选框/区域名称）：组内间距固定 8px，整组作为行内单一 flex 项并吸收剩余宽度 */}
+                  <div className="area-row__lead">
+                    <div
+                      className={`area-row__checkbox${isSelected ? ' area-row__checkbox--checked' : ''}`}
+                      onClick={() => toggleSelect(a.id)}
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      aria-label={`勾选区域 ${a.name}`}
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === ' ' && (e.preventDefault(), toggleSelect(a.id))}
+                    >
+                      {isSelected && (
+                        <svg
+                          viewBox="0 0 12 12"
+                          width="10"
+                          height="10"
+                          fill="none"
+                          stroke="#fff"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="2,6 5,9 10,3" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="area-row__name" title="01区域名称">
+                      01区域名称
+                    </span>
                   </div>
-                  <span className="area-row__name" title="01区域名称">
-                    01区域名称
-                  </span>
                   <span className="area-row__type" title={meta.label}>
                     {meta.label}
                   </span>

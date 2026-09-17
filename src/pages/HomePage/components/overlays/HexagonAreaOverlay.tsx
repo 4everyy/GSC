@@ -464,13 +464,18 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
   )
 
   /** 确认态命中测试：光标落在哪个区域多边形内（返回该区域 id + 投影顶点，
-   *  无命中 null）——多区域重叠时后加入者（数组靠后）优先 */
+   *  无命中 null）——多区域重叠时后加入者（数组靠后）优先；已隐藏区域不在
+   *  地图上渲染（TaskAreaLayer 过滤 hiddenIds），此处同样跳过——hover 隐藏
+   *  区域不得弹「编辑 | 删除」面板（与 TaskAreaLayer 常态 hover 面板同款
+   *  过滤），编辑中区域一并跳过（面板已卸载，防御性兜底） */
   const pickAreaAt = useCallback(
     (cx: number, cy: number) => {
-      const areas = useTaskAreaStore.getState().areas
-      for (let i = areas.length - 1; i >= 0; i--) {
-        const vs = projectVertices(areas[i].vertices)
-        if (vs && pointInPolygon(cx, cy, vs)) return { id: areas[i].id, vs }
+      const s = useTaskAreaStore.getState()
+      for (let i = s.areas.length - 1; i >= 0; i--) {
+        const a = s.areas[i]
+        if (s.hiddenIds.has(a.id) || a.id === s.editingAreaId) continue
+        const vs = projectVertices(a.vertices)
+        if (vs && pointInPolygon(cx, cy, vs)) return { id: a.id, vs }
       }
       return null
     },
@@ -488,12 +493,21 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
    */
   const updateConfirmedFrame = useCallback(() => {
     if (!adapterRef.current) return
-    // ①面板跟随：按 hover 区域 id 从 store 取最新顶点重投影重定位
+    // ①面板跟随：按 hover 区域 id 从 store 取最新顶点重投影重定位；hover 中
+    // 的区域被隐藏/移除（列表操作）时立即收起面板——鼠标未移动不会触发
+    // mousemove 重判，不校验会残留可点的「编辑 | 删除」按钮作用于隐藏区域
     const hovId = hoverAreaIdRef.current
     if (editPanelRef.current && hovId) {
-      const hovArea = useTaskAreaStore.getState().areas.find((a) => a.id === hovId)
-      const hvs = hovArea ? projectVertices(hovArea.vertices) : null
-      if (hvs) positionEditPanel(hvs[2])
+      const s = useTaskAreaStore.getState()
+      const hovArea = s.areas.find((a) => a.id === hovId)
+      if (!hovArea || s.hiddenIds.has(hovId)) {
+        hoverAreaIdRef.current = null
+        lastPanelBoxRef.current = null
+        editPanelRef.current.style.display = 'none'
+      } else {
+        const hvs = projectVertices(hovArea.vertices)
+        if (hvs) positionEditPanel(hvs[2])
+      }
     }
     // ②编辑视觉基于当前编辑目标顶点（vsLL）；非编辑且无编辑目标则到此为止
     const vsLL = confirmedVerticesLLRef.current
@@ -956,12 +970,35 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
         e.clientX <= box.left + EDIT_PANEL_WIDTH + 8 &&
         e.clientY >= box.top - 8 &&
         e.clientY <= box.top + EDIT_PANEL_HEIGHT + 8
-      if (!nearPanel) hoverAreaIdRef.current = null
+      // 面板隐藏时同步作废定位矩形：nearPanel 仅凭几何矩形判定、不校验区域
+      // 可见性，box 残留旧坐标会让鼠标移到面板原位置（即使对应区域已隐藏/
+      // 已移除）时凭空复现面板——矩形作废后，复现面板的唯一入口是重新命中
+      // 可见区域（pickAreaAt 已过滤 hiddenIds/editingAreaId）
+      if (!nearPanel) {
+        hoverAreaIdRef.current = null
+        lastPanelBoxRef.current = null
+      }
       panel.style.display = nearPanel ? '' : 'none'
     }
     window.addEventListener('mousemove', onHoverMove)
     return () => window.removeEventListener('mousemove', onHoverMove)
   }, [confirmedPhase, pickAreaAt, positionEditPanel])
+
+  // hover 中的区域被隐藏/移除（区域列表操作）时立即收起面板：鼠标未动不触发
+  // mousemove 重判，无此兜底面板会残留可点（toggleHidden 每次新建 Set，订阅
+  // hiddenIds 引用变化即重跑）；收起同时作废定位矩形（防鼠标移到面板原位置
+  // 凭空复现，见上 onHoverMove）
+  const hiddenIds = useTaskAreaStore((s) => s.hiddenIds)
+  useEffect(() => {
+    const id = hoverAreaIdRef.current
+    if (!id) return
+    const s = useTaskAreaStore.getState()
+    if (s.hiddenIds.has(id) || !s.areas.some((a) => a.id === id)) {
+      hoverAreaIdRef.current = null
+      lastPanelBoxRef.current = null
+      if (editPanelRef.current) editPanelRef.current.style.display = 'none'
+    }
+  }, [hiddenIds])
 
   /**
    * 确定（定格态）：按六边形 6 顶点经纬度 + 所选类型本地新增任务区域；

@@ -16,7 +16,7 @@ interface LayerState {
   inspectionZoneVisible: boolean
   /** 无人机图标显隐（图层控制面板「设备标签」开关，默认开） */
   deviceLabelsVisible: boolean
-  /** 任务区域显隐（图层控制面板「任务区域」开关，默认关；后端 queryTaskAreaList） */
+  /** 任务区域显隐（图层控制面板「任务区域」开关，默认开；后端 queryTaskAreaList） */
   taskAreaVisible: boolean
   setNoflyZoneVisible: (visible: boolean) => void
   setInspectionZoneVisible: (visible: boolean) => void
@@ -28,7 +28,7 @@ export const useLayerStore = create<LayerState>((set) => ({
   noflyZoneVisible: false,
   inspectionZoneVisible: false,
   deviceLabelsVisible: true,
-  taskAreaVisible: false,
+  taskAreaVisible: true,
   setNoflyZoneVisible: (visible) => set({ noflyZoneVisible: visible }),
   setInspectionZoneVisible: (visible) => set({ inspectionZoneVisible: visible }),
   setDeviceLabelsVisible: (visible) => set({ deviceLabelsVisible: visible }),

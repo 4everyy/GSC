@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useLayoutEffect, useCallback } from 'react'
+import { useState, useRef, useLayoutEffect, useCallback } from 'react'
 import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
 import {
   deviceList,
@@ -431,6 +431,8 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                   >
                     <img className="device-row__bg" src={bgImage} alt="" draggable={false} />
 
+                    {/* 行首组：复选框 + 设备图标 + 设备名称（组内固定 8px 间距） */}
+                    <div className="device-row__lead">
                     {/* 勾选框 */}
                     <div
                       className={`device-row__checkbox${isSelected ? ' device-row__checkbox--checked' : ''}`}
@@ -468,6 +470,7 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                     <span className="device-row__name" title={device.name}>
                       {device.name}
                     </span>
+                    </div>
 
                     {/* 状态文字 */}
                     <span className="device-row__status">
@@ -490,6 +493,8 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                       <span className="device-row__metric-value">{device.batteryValue}</span>
                     </div>
 
+                    {/* 尾部组：信号图标（打开云台）+ 展开箭头（查看详情），组内固定 8px 间距 */}
+                    <div className="device-row__tail">
                     {/* 信号图标：点击显示该无人机的聚焦视图面板 */}
                     <img
                       className="device-row__signal device-row__signal--clickable"
@@ -523,6 +528,7 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                     >
                       <img src={isExpanded ? deviceImages.upArrow : deviceImages.downArrow} alt="" />
                     </button>
+                    </div>
                   </div>
 
                   {/* 行详情 */}

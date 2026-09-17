@@ -16,6 +16,7 @@
 import {
   Map as MLMap,
   Marker as MLMarker,
+  LngLatBounds as MLLngLatBounds,
   type MarkerOptions as MLMarkerOptions,
   type MapMouseEvent as MLMapMouseEvent,
   type GeoJSONSource as MLGeoJSONSource,
@@ -23,7 +24,9 @@ import {
 } from 'maplibre-gl'
 import type {
   CircleOptions,
+  FitBoundsOptions,
   LngLat,
+  LngLatBounds,
   MapAdapter,
   MapStyleSpec,
   MarkerHandle,
@@ -79,6 +82,10 @@ interface MapLibreOverlayEntry {
   baseLineWidth?: number
   /** 高亮前的原始线色（setPolylineHighlight 缓存，用于恢复） */
   baseLineColor?: string
+  /** 创建参数重放闭包：setStyle 整体替换 style 会清空动态 source/layer
+   *  （DOM marker 不受影响），新样式数据就绪后按原参数重建该覆盖物；
+   *  marker 为 DOM 覆盖物无需重放（无此闭包） */
+  recreate?: () => void
 }
 
 /** 生成带前缀的唯一 id（用于 source/layer 命名） */
@@ -199,6 +206,27 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.flyTo({
       center: [lngLat.lng, lngLat.lat],
       ...(options?.zoom !== undefined ? { zoom: options.zoom } : {}),
+      ...(options?.duration !== undefined ? { duration: options.duration } : {}),
+    })
+  }
+
+  fitBounds(bounds: LngLatBounds, options?: FitBoundsOptions): void {
+    // 原生 fitBounds 按 512px 世界精确换算中心/缩放（MapLibre z0 世界 512px，
+    // 手算若用 256 瓦片常数会得到偏大约一级的 zoom——区域出屏/被面板遮挡的根源）
+    const mlBounds = new MLLngLatBounds([bounds.west, bounds.south], [bounds.east, bounds.north])
+    this.map.fitBounds(mlBounds, {
+      ...(options?.padding
+        ? {
+            // MapLibre PaddingOptions 各字段必填：未指定的边按 0（无边距）补齐
+            padding: {
+              top: options.padding.top ?? 0,
+              bottom: options.padding.bottom ?? 0,
+              left: options.padding.left ?? 0,
+              right: options.padding.right ?? 0,
+            },
+          }
+        : {}),
+      ...(options?.maxZoom !== undefined ? { maxZoom: options.maxZoom } : {}),
       ...(options?.duration !== undefined ? { duration: options.duration } : {}),
     })
   }
@@ -346,7 +374,12 @@ export class MapLibreAdapter implements MapAdapter {
       },
     })
 
-    this.overlays.set(id, { kind: 'polyline', sourceId, layerIds })
+    this.overlays.set(id, {
+      kind: 'polyline',
+      sourceId,
+      layerIds,
+      recreate: () => this.addPolyline(id, points, opts),
+    })
     return { raw: { sourceId, layerIds }, id, engine: 'maplibre' }
   }
 
@@ -502,7 +535,12 @@ export class MapLibreAdapter implements MapAdapter {
       },
     })
 
-    this.overlays.set(id, { kind: 'circle', sourceId, layerIds: [layerId, strokeLayerId] })
+    this.overlays.set(id, {
+      kind: 'circle',
+      sourceId,
+      layerIds: [layerId, strokeLayerId],
+      recreate: () => this.addCircle(id, center, radiusMeters, opts),
+    })
   }
 
   removeCircle(id: string): void {
@@ -562,6 +600,7 @@ export class MapLibreAdapter implements MapAdapter {
       kind: 'polygon',
       sourceId,
       layerIds: [fillLayerId, strokeLayerId],
+      recreate: () => this.addPolygon(id, vertices, opts),
     })
   }
 
@@ -660,6 +699,43 @@ export class MapLibreAdapter implements MapAdapter {
 
   setStyle(style: MapStyleSpec): void {
     this.map.setStyle(style as MLStyleSpecification)
+    this.replayEngineOverlays()
+  }
+
+  /**
+   * setStyle 后重放引擎层覆盖物。
+   *
+   * setStyle 整体替换 style：运行期动态添加的 source/layer 全部被清空
+   * （DOM marker 挂在地图容器 DOM 上不受影响——「区域只剩名称标签、多边形
+   * 消失」缺陷的根因）。挂在 styledata 上逐次尝试按创建参数重建（recreate）：
+   * 新样式数据未就绪时 addSource/addLayer 抛「Style is not done loading」，
+   * 捕获后等待下一个 styledata 再试；已无引擎层覆盖物或全部处理完后解绑。
+   * 典型链路：启动期占位样式 → 离线包样式热切换（TaskAreaLayer 多边形、
+   * 自动定位精度圈等均经此恢复）。
+   * 注：setPolylineInteractive/setPolylineHighlight 的交互/高亮态不随重放
+   * 恢复——样式热切换仅发生在启动期，彼时尚无此类覆盖物。
+   */
+  private replayEngineOverlays(): void {
+    const replay = () => {
+      const entries = Array.from(this.overlays.entries())
+      if (entries.length === 0) {
+        this.map.off('styledata', replay)
+        return
+      }
+      try {
+        for (const [id, entry] of entries) {
+          // 等待期间被移除/已重建（entry 引用失效）的覆盖物跳过
+          if (this.overlays.get(id) !== entry) continue
+          // source 仍在当前 style（未被清空）则无需重建，防止重复添加
+          if (entry.sourceId && this.map.getSource(entry.sourceId)) continue
+          entry.recreate?.()
+        }
+        this.map.off('styledata', replay)
+      } catch {
+        // 新样式数据尚未就绪，等待下一个 styledata 再试
+      }
+    }
+    this.map.on('styledata', replay)
   }
 
   // ============ 生命周期 ============
