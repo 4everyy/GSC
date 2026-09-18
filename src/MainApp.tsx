@@ -7,12 +7,15 @@
  */
 import { HomePage } from './pages/HomePage/HomePage'
 import { useRealtimeConnection } from './features/realtime/useRealtimeConnection'
+import { usePlaneStatusInit } from './hooks/usePlaneStatusInit'
 
 export default function MainApp() {
   // 全局唯一挂载点：登录成功拿到 token 后建立 WebSocket 连接，
   // 连接建立即订阅 cmd/task/device/telemetry/alert 五个频道，
   // 每次通信结果（上行/下行/连接事件）打印到控制台（见 wsClient/wsLog）
   useRealtimeConnection()
+  // 设备状态首帧：首页加载时请求一次 /api/v1/control/queryPlaneStatus 写入 planeStatusStore
+  usePlaneStatusInit()
 
   return <HomePage />
 }

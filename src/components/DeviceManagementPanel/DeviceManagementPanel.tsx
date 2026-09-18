@@ -1,11 +1,7 @@
 import { useState, useRef, useLayoutEffect, useCallback } from 'react'
 import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
-import {
-  deviceList,
-  getBatteryIcon,
-  getStatusColor,
-  type DeviceTelemetry,
-} from '../../config/devices'
+import { getBatteryIcon, getStatusColor, type DeviceTelemetry } from '../../config/devices'
+import { usePlaneStatusStore } from '../../stores/planeStatusStore'
 import { deviceImages } from '../../assets/images/device'
 import { homeImages } from '../../assets/images/home'
 import { AircraftFocusPanel } from '../AircraftFocusPanel/AircraftFocusPanel'
@@ -49,9 +45,10 @@ const TELEMETRY_COL_RIGHT_2: { label: string; key: keyof DeviceTelemetry }[] = [
 ]
 
 export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagementPanelProps) {
-  // 设备列表：暂用本地 mock（config/devices.ts deviceList）。HTTP /control/queryPlaneStatus
-  // 请求与 WebSocket 通道仍保留在 App 层（usePlaneStatusPolling / features/realtime），
-  // 后续需要接回实时数据时改订阅 usePlaneStatusStore 即可
+  // 设备列表：订阅 planeStatusStore。store 初始值取 config/devices 的 mock 数据，
+  // MainApp 的 usePlaneStatusInit 在首页加载时请求一次 /api/v1/control/queryPlaneStatus，
+  // 成功后整体覆盖为真实数据；接口未就绪/失败时继续展示 mock。
+  const deviceList = usePlaneStatusStore((s) => s.devices)
   // 选中/hover 状态迁移至全局 store，与首页飞机图标联动
   const selectedDevices = useDeviceLinkStore((s) => s.selectedDevices)
   const hoveredIndex = useDeviceLinkStore((s) => s.hoveredDevice)
@@ -670,7 +667,7 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
         </div>
       </div>
       {/* 聚焦视图面板：位于设备管理面板右侧、间距 8px（定位见 CSS） */}
-      {focusIndex !== null && (
+      {focusIndex !== null && deviceList[focusIndex] && (
         <AircraftFocusPanel
           name={deviceList[focusIndex].name}
           batteryLevel={Number(deviceList[focusIndex].batteryValue.replace(/[^\d.]/g, '')) || 0}

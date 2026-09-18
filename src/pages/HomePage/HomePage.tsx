@@ -27,7 +27,7 @@ import { useOfflineMap } from '../../features/offline-map/useOfflineMap'
 import { useOfflineMapStore } from '../../features/offline-map/offlineMapStore'
 import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
 import { useTaskAreaStore } from '../../stores/taskAreaStore'
-import { deviceList } from '../../config/devices'
+import { usePlaneStatusStore } from '../../stores/planeStatusStore'
 import type { AircraftListItem } from '../../components/AircraftListPanel/AircraftListSection'
 import './HomePage.css'
 import './styles/HoverPanelPlacement.css'
@@ -206,9 +206,9 @@ export function HomePage() {
   )
 
   // 选中飞机列表：取「设备管理」选中集合对应的设备数据。
-  // 设备面板暂用本地 mock（config/devices.ts deviceList），此处同源取 mock 保证
-  // 下标联动一致；HTTP /control/queryPlaneStatus 与 WS 通道仍保留（App 层）
-  const planeDevices = deviceList
+  // 数据源与设备管理面板同源：planeStatusStore（MainApp 首页加载时请求一次
+  // /api/v1/control/queryPlaneStatus 写入；接口未就绪/失败时展示 mock 兜底。
+  const planeDevices = usePlaneStatusStore((s) => s.devices)
   const selectedAircraft: AircraftListItem[] = useMemo(() => {
     const indices = [...selectedDevices].sort((a, b) => a - b)
     return indices
