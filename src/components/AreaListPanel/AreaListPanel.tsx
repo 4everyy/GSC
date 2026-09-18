@@ -1,27 +1,26 @@
 /**
  * AreaListPanel —— 区域列表面板（工具栏「区域规划」按钮，index 1）。
  *
- * 数据源：taskAreaStore（/api/v1/control/queryTaskAreaList，与态势图
- * TaskAreaLayer 渲染的是同一份数据）——列表与地图多边形天然一致；
- * 后端未开启或接口失败时保留 mock 兜底（config/taskAreas.ts）。
+ * 数据源：taskAreaStore（与态势图 TaskAreaLayer 渲染的是同一份数据）——
+ * 列表与地图多边形天然一致；初始为本地 mock 数据（config/taskAreas.ts），
+ * 支持绘制新增与编辑（纯前端，无 HTTP 请求）。
  * 交互：
  * - 筛选栏「全选」复选框（三态：全选/部分选中/未选，作用于当前列表全部区域）；
  * - 行首复选框勾选区域（勾上且区域处于显示状态时联动聚焦态势图，
  *   取消勾选不触发）；行常规(灰)/hover(橙)/选中(蓝) 三态背景图
  *   与目标列表面板（TargetListPanel）完全一致；
- * - 行尾操作图标组：编辑（后端暂无接口，占位）/ 显示（控制该区域在态势图上的
+ * - 行尾操作图标组：编辑（进入地图绘制编辑态）/ 显示（控制该区域在态势图上的
  *   显隐，经 taskAreaStore.hiddenIds 与 TaskAreaLayer 联动；图标双态——
- *   可见时睁眼 eyes.svg / 隐藏时闭眼斜杠 eyes-off.svg）/ 删除（本地移除，
- *   后端暂无删除接口，刷新 load() 后恢复）；
+ *   可见时睁眼 eyes.svg / 隐藏时闭眼斜杠 eyes-off.svg）/ 删除（本地移除）；
  * - 底部操作（按钮组布局同目标列表面板）：「添加区域」（主按钮：iconAdd 图标
  *   + 实心蓝底 #0EA7F9，点击进入六边形地图绘制——按下左键自光标点拉出）/「显示」批量显隐勾选区域
  *   （图标双态由当前列表全部区域的显隐状态决定——存在可见→睁眼 / 全部隐藏→闭眼，
  *   与按钮是否置灰、勾选了哪些行无关；点击时按图标方向对勾选区域统一显示/隐藏）
  *   /「删除」批量删除勾选区域；
- * - 加载失败展示错误与「重试」，空数据展示「暂无区域」。
+ * - 空数据展示「暂无区域」。
  * 外观与 TargetListPanel / DeviceManagementPanel 同一套视觉语言。
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTaskAreaStore } from '../../stores/taskAreaStore'
 import { useLayerStore } from '../../stores/layerStore'
 import { taskAreaTypeMeta } from '../../api/taskArea'
@@ -46,9 +45,6 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
   const hiddenIds = useTaskAreaStore((s) => s.hiddenIds)
   const toggleHidden = useTaskAreaStore((s) => s.toggleHidden)
   const removeArea = useTaskAreaStore((s) => s.removeArea)
-  const status = useTaskAreaStore((s) => s.status)
-  const error = useTaskAreaStore((s) => s.error)
-  const load = useTaskAreaStore((s) => s.load)
   // 「添加区域」进入地图六边形绘制的跨层级信号：面板经 MapToolbar 挂载、与 HomePage 平级，
   // 无法经 props 传递，点击时计数 +1，HomePage 监听计数变化进入 area-list 绘制模式
   const requestAddArea = useTaskAreaStore((s) => s.requestAddArea)
@@ -62,12 +58,6 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
 
   // hover 行 id：驱动行背景图切换为橙色 hover 态（与目标列表一致）
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-
-  // 兜底加载：态势图区域层通常已触发过 load（store 内部 loading 防重入），
-  // 地图层未挂载场景下直接打开面板也能拉到数据
-  useEffect(() => {
-    if (useTaskAreaStore.getState().status === 'idle') void load()
-  }, [load])
 
   /** 全选 / 全不选联动（作用于当前列表全部区域） */
   const isAllSelected = areas.length > 0 && areas.every((a) => selectedIds.has(a.id))
@@ -214,26 +204,7 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
       {/* 区域列表 */}
       <div className="area-panel__body">
         <div className="area-panel__list">
-          {status === 'loading' && areas.length === 0 ? (
-            /* 首次加载中 */
-            <div className="area-panel__state">
-              <img
-                className="area-panel__state-spinner"
-                src={deviceImages.iconRefresh}
-                alt=""
-                draggable={false}
-              />
-              <span>正在加载区域</span>
-            </div>
-          ) : status === 'error' && areas.length === 0 ? (
-            /* 加载失败（无缓存数据）：错误提示 + 重试 */
-            <div className="area-panel__state area-panel__state--error">
-              <span title={error ?? undefined}>区域加载失败</span>
-              <button type="button" className="area-panel__retry" onClick={() => void load()}>
-                重试
-              </button>
-            </div>
-          ) : areas.length === 0 ? (
+          {areas.length === 0 ? (
             /* 空列表 */
             <div className="area-panel__state">
               <img src={deviceImages.noData} alt="暂无区域" draggable={false} />

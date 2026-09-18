@@ -4,9 +4,8 @@
  * TargetListPanel 挂载于 MapToolbar 内部，与 HomePage 平级，无法通过 props 传递
  * hover/点击联动/标记重点/删除等状态，故用 zustand 全局 store 承载
  * （与 deviceLinkStore 同模式，目标 id 对应 config/targets.ts targetList 的 id）：
- * - targets：当前会话的目标列表（含地图坐标 x/y 百分比）；
- *   初始由 mock 数据填充，接口（queryTargetStatus）就绪后经 loadTargetsFromApi
- *   整体替换为真实数据（t.lngLat 携带后端经纬度供地图锚定）；
+ * - targets：当前会话的目标列表（含地图坐标 x/y 百分比），
+ *   由本地 mock 数据填充（config/targets.ts，纯前端无接口）；
  * - targetAnchors：目标图标的地理锚点（id → WGS84 经纬度）。空对象 = 未初始化；
  *   地图视图首次稳定（初始 flyTo 结束的 moveend）后由 useTargetMapAnchor 按
  *   当前屏幕位置批量固化；此后地图 move 事件按锚点重投影 x/y（图标随地图移动），
@@ -29,7 +28,6 @@
  */
 import { create } from 'zustand'
 import { targetList, type TargetItem } from '../config/targets'
-import type { MappedTarget } from '../api/targetStatus'
 import type { LngLat } from '../map-engines/types'
 
 /** 目标地图图标坐标（map-stage 百分比），与飞机初始位置相对集中但不重叠：无人机簇居中偏左上，目标簇居中偏右下 */
@@ -143,10 +141,6 @@ interface TargetLinkState {
   resetTargetAnchors: () => void
   /** 地图移动批量重投影：整体替换各目标 x/y（单次 set，N 个图标只触发一次渲染） */
   applyTargetPositions: (positions: Record<string, { x: number; y: number }>) => void
-  /** 接口数据整体装载（queryTargetStatus 映射结果）：替换 targets 并把勾选/标记/
-   *  软删除集合清理到新列表仍存在的 id；已有目标的屏幕坐标保留（新目标回退
-   *  TARGET_MAP_POSITIONS / 居中），真实经纬度写入 t.lngLat 供种子锚定优先使用 */
-  loadTargetsFromApi: (items: MappedTarget[]) => void
 }
 
 const initialTargets: TargetMarkerItem[] = targetList.map((t) => ({
@@ -259,34 +253,4 @@ export const useTargetLinkStore = create<TargetLinkState>((set) => ({
           : t,
       ),
     })),
-  loadTargetsFromApi: (items) =>
-    set((state) => {
-      const ids = new Set(items.map((t) => t.id))
-      const prevById = new Map(state.targets.map((t) => [t.id, t]))
-      const targets: TargetMarkerItem[] = items.map((m) => ({
-        ...m,
-        x: prevById.get(m.id)?.x ?? TARGET_MAP_POSITIONS[m.id]?.x ?? 50,
-        y: prevById.get(m.id)?.y ?? TARGET_MAP_POSITIONS[m.id]?.y ?? 50,
-      }))
-      return {
-        targets,
-        // 软删除整体清空（接口列表即最新全集，刷新语义与 restoreTargets 一致）
-        deletedTargetIds: new Set<string>(),
-        // 勾选/标记集合过滤到仍存在的目标，避免残留指向已消失目标
-        selectedTargetIds: new Set([...state.selectedTargetIds].filter((id) => ids.has(id))),
-        markedIds: new Set([...state.markedIds].filter((id) => ids.has(id))),
-        clickedTargetId:
-          state.clickedTargetId !== null && ids.has(state.clickedTargetId)
-            ? state.clickedTargetId
-            : null,
-        focusTargetRequest:
-          state.focusTargetRequest !== null && ids.has(state.focusTargetRequest.id)
-            ? state.focusTargetRequest
-            : null,
-        mapFocusTargetRequest:
-          state.mapFocusTargetRequest !== null && ids.has(state.mapFocusTargetRequest.id)
-            ? state.mapFocusTargetRequest
-            : null,
-      }
-    }),
 }))

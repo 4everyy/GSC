@@ -1,7 +1,7 @@
 /**
  * TaskAreaLayer —— 任务区域图层（真实后端数据）。
  *
- * 数据源：POST /api/v1/control/queryTaskAreaList（taskAreaStore 一次加载）。
+ * 数据源：taskAreaStore（初始 mock 数据 + 用户本地绘制/编辑，纯前端）。
  * 渲染：每个区域一个多边形（类型主题色填充+描边）+ 质心名称标签（胶囊样式）。
  * 降落区（landingArea）额外在质心渲染地面图标标记（48×48 白描边半透明圆 +
  * 20×24 H 停机坪图标，与绘制遮罩/指点返航落点圆圈同款视觉），
@@ -14,15 +14,13 @@
  * （SVG 之上）：引擎 marker 挂在 canvas 容器内、层叠低于覆盖层会被斜线盖住。
  *
  * 渲染时机与更新策略（增量同步，避免两类渲染缺陷）：
- * - 任意 store 状态即时渲染：store 的 areas 始终持有 mock 兜底/上次成功数据/
- *   本地新增，loading 期间也直接渲染——否则后端接口慢时 mock 区域迟迟不显示
- *   （首屏延迟）。
+ * - store 状态即时渲染：mock/本地数据变化即刻反映到地图。
  * - 按 id 增量 diff：areas/hiddenIds/editingAreaId 变化时只增删/重建「变化了」
  *   的区域覆盖物，其余区域原样保留——否则隐藏单个区域会触发全量重绘
  *   （先删光全部再重建），其余可见区域闪动一下。
  * - 禁飞区斜线覆盖层持久挂载（首个禁飞区出现时创建），按区域增量增删
  *   pattern/polygon/label；全部禁飞区移除后整层销毁。
- * 挂载即触发 load()（status='idle' 时）；卸载清理全部覆盖物。
+ * 卸载清理全部覆盖物。
  * 显隐由 layerStore.taskAreaVisible 控制（HomePage 条件渲染，本组件不感知）。
  * 常态 hover「编辑 | 删除」面板（本组件自带，与绘制遮罩确认态同款交互）：
  * 任何时刻（不限于绘制流程中）hover 任一已保存区域即在地图上浮现面板——
@@ -291,8 +289,6 @@ interface TaskAreaLayerProps {
 export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLayerProps) {
   const areas = useTaskAreaStore((s) => s.areas)
   const hiddenIds = useTaskAreaStore((s) => s.hiddenIds)
-  const status = useTaskAreaStore((s) => s.status)
-  const load = useTaskAreaStore((s) => s.load)
   // 编辑中的区域 id（绘制遮罩「编辑」按钮写入）：编辑态专属视觉，见组件头注释
   const editingAreaId = useTaskAreaStore((s) => s.editingAreaId)
   // hover 面板动作：编辑走 requestEditArea 跨层级信号（与区域列表行内编辑
@@ -300,19 +296,13 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
   const requestEditArea = useTaskAreaStore((s) => s.requestEditArea)
   const removeArea = useTaskAreaStore((s) => s.removeArea)
 
-  // 首次挂载触发拉取（store 已 ready 时不重复请求）
-  useEffect(() => {
-    if (status === 'idle') void load()
-  }, [status, load])
-
-  // ===== 增量同步渲染（按 id diff，不感知 status）=====
+  // ===== 增量同步渲染（按 id diff）=====
   // renderedRef 记录「当前已挂到地图上的区域」及其数据签名（type/name/vertices）：
   // - 不再可见（隐藏/删除/进入编辑态）→ 移除其覆盖物；
   // - 可见但签名变化（编辑确认/类型变更）→ 先移除再重建（引擎层 addPolygon
   //   同 id 直接添加会泄漏旧 source/layer，必须先删后建）；
   // - 新可见 → 绘制。其余区域覆盖物原样保留——隐藏某个区域时其余可见区域
-  //   不闪动。任意 status 均执行：store 的 areas 始终有值（mock 兜底/上次
-  //   成功数据/本地新增），loading 期间即时渲染 mock，消除首屏延迟。
+  //   不闪动。
   const renderedRef = useRef(new Map<string, { sig: string }>())
   const hatchRef = useRef<HatchLayer | null>(null)
   useEffect(() => {

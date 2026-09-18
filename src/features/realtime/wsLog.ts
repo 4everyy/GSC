@@ -132,7 +132,7 @@ function loadFromStorage(): void {
 
 /** 控制台镜像：高频帧默认静默，其余以 [ws-log] 前缀打印 */
 function mirror(dir: WsLogDirection, kind: string, detail?: string): void {
-  if (!isVerbose() && dir !== 'event' && QUIET_KINDS.has(kind)) return
+  if (!isVerbose() && dir === 'up' && QUIET_KINDS.has(kind)) return
   const arrow = dir === 'up' ? '↑' : dir === 'down' ? '↓' : '·'
   console.info(`[ws-log] ${arrow} ${kind}${detail ? ` ${detail}` : ''}`)
 }

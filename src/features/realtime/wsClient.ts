@@ -12,8 +12,9 @@
  *    wsClient 单例；组件层通过 useRealtimeConnection Hook 消费。
  */
 import { isServerMessage, type ClientMessage, type ServerMessage } from './protocol'
-import { buildSubscribeFrame, isBackendMessage, mapBackendMessage } from './backendAdapter'
+import { buildSubscribeFrame, isBackendMessage, mapBackendMessage, SUBSCRIBE_CHANNELS } from './backendAdapter'
 import { logWsEvent, logWsMessage } from './wsLog'
+import { ensureAuthToken } from '../../api/auth'
 
 /** 连接状态机：初始 idle → connecting → open（正常收发）↔ reconnecting（重连中）→ closed */
 export type WsStatus = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed'
@@ -52,6 +53,33 @@ function resolveWsUrl(): string {
   return `${protocol}://${window.location.host}/ws`
 }
 
+/**
+ * 在连接 URL 上追加登录 token 查询参数（后端约定：ws://ip:port/ws?token=xxx）。
+ * JWT 含 '.' 等字符需 encodeURIComponent；兼容已含 ? 的自定义地址。
+ */
+function appendTokenParam(url: string, token?: string | null): string {
+  if (!token) return url
+  const sep = url.includes('?') ? '&' : '?'
+  return `${url}${sep}token=${encodeURIComponent(token)}`
+}
+
+
+/**
+ * 打印后端推送的下行帧：时间戳 + 解析后的 JSON（美化），解析失败则原样输出。
+ * 联调期用于在控制台直观查看后端推送了什么消息。
+ */
+function logDownlinkFrame(raw: unknown): void {
+  const ts = new Date().toLocaleTimeString()
+  if (typeof raw === 'string') {
+    try {
+      console.log(`[ws ↓ ${ts}]`, JSON.parse(raw))
+    } catch {
+      console.log(`[ws ↓ ${ts}]`, raw)
+    }
+  } else {
+    console.log(`[ws ↓ ${ts}]`, raw)
+  }
+}
 /** 计算第 attempt 次重连的延迟：指数退避 + 抖动，避免服务端恢复瞬间被齐刷刷重连打挂 */
 function backoffDelay(attempt: number): number {
   const exp = Math.min(RECONNECT_BASE_DELAY_MS * 2 ** attempt, RECONNECT_MAX_DELAY_MS)
@@ -102,14 +130,25 @@ class WsClient {
    * 建立连接（幂等）：已连接/连接中时直接返回。
    * 内部监听 onopen/onmessage/onclose/onerror，异常关闭时自动调度重连。
    */
-  connect(): void {
+  async connect(): Promise<void> {
     if (this.socket && (this.status === 'open' || this.status === 'connecting')) return
     this.manualClose = false
     this.clearTimers()
     this.setStatus(this.reconnectAttempt > 0 ? 'reconnecting' : 'connecting')
     logWsEvent(this.reconnectAttempt > 0 ? 'reconnect' : 'connecting', resolveWsUrl())
 
-    const url = resolveWsUrl()
+    // 后端约定：连接 URL 必须携带登录 token（ws://ip:port/ws?token=xxx）
+    let token: string | null = null
+    try {
+      token = await ensureAuthToken()
+    } catch (err) {
+      console.warn('[ws] 获取登录 token 失败，尝试无 token 连接:', err)
+    }
+
+    // await 间隙内状态可能变化（并发 connect / 手动 close），重新校验避免重复建连
+    if (this.manualClose || this.status === 'open' || this.status === 'connecting') return
+
+    const url = appendTokenParam(resolveWsUrl(), token)
     const socket = new WebSocket(url)
     this.socket = socket
 
@@ -122,15 +161,22 @@ class WsClient {
       // 应用层握手：连接建立后前端主动发送的第一条消息。
       // 页面刷新 → 重新连接 → hello → (welcome) → subscribe 的链路在日志中清晰可见；
       // 后端回不回 welcome 均可（宽容模式），详见 protocol.ts 的 HelloPayload 注释。
-      console.info('[ws] send handshake: subscribe plane.swarmState')
-      logWsMessage('up', { type: 'handshake', payload: 'subscribe plane.swarmState', ts: Date.now() })
-this.socket?.send(buildSubscribeFrame())
+      // 新版订阅协议（2026-09-18）：连接后按频道逐一发送 {"op":"sub","ch":"<频道>"} 订阅帧
+      // cmd=指令下发与回执  task=任务状态与进度  device=设备上下线与状态
+      // telemetry=遥测推送（1~2Hz 降采样）  alert=告警事件
+      for (const ch of SUBSCRIBE_CHANNELS) {
+        const frame = buildSubscribeFrame(ch)
+        console.info(`[ws] send subscribe: ${frame}`)
+        logWsMessage('up', { type: 'handshake', payload: `sub ${ch}`, ts: Date.now() })
+        this.socket?.send(frame)
+      }
       this.startHeartbeat()
     }
 
     socket.onmessage = (event: MessageEvent) => {
       this.lastMessageAt = Date.now()
-      console.log('[ws recv]', event.data); this.dispatch(event.data)
+      logDownlinkFrame(event.data)
+      this.dispatch(event.data)
     }
 
     socket.onclose = (event: CloseEvent) => {
@@ -258,7 +304,9 @@ this.socket?.send(buildSubscribeFrame())
       return
     }
     if (isBackendMessage(parsed)) {
-      logWsMessage('down', { type: parsed.action, payload: parsed.data, ts: Date.now() })
+      // 新版 op/ch 信封（ack/pub）取 op#ch 作类型；旧版取 action/topic
+      const kind = parsed.op ? `${parsed.op}#${parsed.ch ?? ''}` : (parsed.action ?? parsed.topic)
+      logWsMessage('down', { type: kind, payload: parsed.data ?? parsed.ch, ts: Date.now() })
       const mapped = mapBackendMessage(parsed)
       mapped.forEach((m) => this.messageHandlers.forEach((h) => h(m)))
       return

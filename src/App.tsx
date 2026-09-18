@@ -1,49 +1,76 @@
 /**
  * App —— 登录门控 + 主应用。
  *
- * 门控逻辑：未登录（无 token）→ LoginPage；登录成功（loginWithCredentials 缓存
+ * 门控逻辑：启动始终先展示 LoginPage；登录成功（loginWithCredentials 缓存
  * token 后回调）→ 挂载 MainApp（所有业务 Hooks 仅在登录后才挂载，保证登录
  * 是首个网络请求，业务请求发出时 token 已就绪，见 api/auth.ts / api/http.ts）。
- * 刷新免登录：初始状态读取已缓存 token，有效会话直接进入主应用（登录页保留
- * 用于首次访问 / token 失效场景）。
+ * 每次访问（含刷新）均从登录页开始，登录成功后再跳转首页。
  *
- * Hooks 拆分说明：App 自身仅维护登录态（Hooks 顺序恒定）；useRealtimeConnection /
- * usePlaneStatusPolling / useTargetStatusInit / useTaskAreaInit 均移入 MainApp，
- * 避免「登录前后 Hooks 数量不一致」违反 Hooks 规则。
+ * 性能（2026-09-18 卡顿优化）：
+ * - MainApp 拆分为独立模块（./MainApp，承载全部业务初始化 Hooks）并由
+ *   React.lazy 懒加载：登录页刷新 / 首屏只解析登录相关代码，主应用（首页、
+ *   地图引擎、业务 Hooks）独立分包，消除整包一次性解析执行导致的刷新卡顿；
+ * - 登录页挂载且浏览器空闲（requestIdleCallback / setTimeout 兜底）时预取
+ *   主应用 chunk：点击登录时通常已下载完成，切换无感；
+ * - 预取不阻塞登录页动画与交互。
  */
-import { useState } from 'react'
-import { getAuthToken } from './api/auth'
-import { HomePage } from './pages/HomePage/HomePage'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { LoginPage } from './pages/LoginPage/LoginPage'
 import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary'
-import { useRealtimeConnection } from './features/realtime/useRealtimeConnection'
-import { usePlaneStatusPolling } from './hooks/usePlaneStatusPolling'
-import { useTargetStatusInit } from './hooks/useTargetStatusInit'
-import { useTaskAreaInit } from './hooks/useTaskAreaInit'
 
-/** 主应用：登录成功后挂载，承载全部业务初始化 Hooks */
-function MainApp() {
-  // 全局唯一挂载点：建立 WebSocket 连接（含重连/心跳/消息分发到 realtimeStore），
-  // 登录完成后（拿到 token）再建立连接，未开启联调时跳过
-  useRealtimeConnection()
-  // 设备状态 HTTP：首页加载仅请求一次（/api/control/queryPlaneStatus），后续由 WS 推送
-  usePlaneStatusPolling()
-  // 目标状态 HTTP：首页加载仅请求一次（queryTargetStatus），装载后替换 mock 目标
-  useTargetStatusInit()
-  // 任务区域 HTTP：首页加载仅请求一次（queryTaskAreaList），装入 taskAreaStore
-  // （图层默认关，预先拉取保证用户打开「任务区域」开关时数据已就绪）
-  useTaskAreaInit()
+/* 主应用懒加载（独立 chunk）：登录页首屏不加载主应用代码 */
+const MainApp = lazy(() => import('./MainApp'))
 
-  return <HomePage />
+/** 主应用 chunk 预取（幂等：已加载后动态 import 直接走缓存） */
+const prefetchMainApp = () => {
+  void import('./MainApp')
 }
 
 function App() {
-  // 惰性初始化：已缓存有效 token（上次登录会话）则刷新后直接进入主应用
-  const [loggedIn, setLoggedIn] = useState(() => getAuthToken() !== null)
+  // 始终先展示登录页，登录成功后再进入主应用
+  const [loggedIn, setLoggedIn] = useState(false)
+
+  // 登录页挂载后，浏览器空闲时预取主应用 chunk：
+  // 点击登录时通常已完成下载，登录成功切换接近无感，且不与登录页首屏加载竞争
+  useEffect(() => {
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(prefetchMainApp, { timeout: 3000 })
+      return () => w.cancelIdleCallback?.(id)
+    }
+    const timer = window.setTimeout(prefetchMainApp, 1600)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   return (
     <ErrorBoundary>
-      {loggedIn ? <MainApp /> : <LoginPage onSuccess={() => setLoggedIn(true)} />}
+      {loggedIn ? (
+        <Suspense
+          fallback={
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                display: 'grid',
+                placeItems: 'center',
+                background: '#050b18',
+                color: '#9fd8ff',
+                fontSize: 14,
+                letterSpacing: '0.3em',
+              }}
+            >
+              加载中…
+            </div>
+          }
+        >
+          <MainApp />
+        </Suspense>
+      ) : (
+        <LoginPage onSuccess={() => setLoggedIn(true)} />
+      )}
     </ErrorBoundary>
   )
 }

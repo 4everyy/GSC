@@ -1,0 +1,23 @@
+/*
+ * LoginLayout.css —— 页面骨架（.login-page 根容器）
+ * 自 LoginPage partN 机械拆分文件按功能归组：规则内容未改动，仅调整文件归属。
+ */
+
+.login-page {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% -20%, #12325c 0%, transparent 55%),
+    radial-gradient(ellipse 80% 60% at 85% 110%, #0d2c4e 0%, transparent 60%),
+    #0a1a2f;
+  color: #eafcff;
+  font-family: 'MiSans-Regular';
+  user-select: none;
+}
+
+.login-page {
+  cursor: crosshair;
+}
+

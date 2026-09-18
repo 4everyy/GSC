@@ -25,7 +25,20 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false, message: '' }
+  // 注意：不用 class fields（state = ... / handleRetry = ...）——
+  // 它们会被编译为 _defineProperty babel helper，而 rolldown 会把该共享
+  // helper 归入 antd chunk，导致登录页 entry 反向依赖整个 antd（190KB+）。
+  // 改用构造函数直接赋值，登录首屏不再拉取 antd。
+  declare state: State
+  private declare handleRetry: () => void
+
+  constructor(props: Props) {
+    super(props)
+    this.state = { hasError: false, message: '' }
+    this.handleRetry = () => {
+      this.setState({ hasError: false, message: '' })
+    }
+  }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, message: error?.message ?? String(error) }
@@ -34,10 +47,6 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo): void {
     // 输出到控制台，便于开发期定位真实堆栈（不依赖任何外部日志服务，严格离线友好）。
     console.error('[ErrorBoundary] 子组件渲染崩溃：', error, info)
-  }
-
-  private handleRetry = (): void => {
-    this.setState({ hasError: false, message: '' })
   }
 
   render(): ReactNode {

@@ -56,14 +56,20 @@ export default defineConfig({
     sourcemap: true,
     target: 'es2020',
     cssCodeSplit: true,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined
-          if (id.includes('react') || id.includes('scheduler')) return 'react'
-          if (id.includes('antd') || id.includes('@ant-design')) return 'antd'
-          if (id.includes('zustand')) return 'zustand'
-          return 'vendor'
+        // rolldown（vite 8）下函数式 manualChunks 兼容层不保证分组结果
+        // （实测 React 核心被并入 antd chunk，登录页仍需加载 380KB+ antd），
+        // 改用原生 advancedChunks 显式分组：
+        // - react 独立成组：登录页首屏仅需 entry(30KB)+react，不再拖入 antd；
+        // - 匹配必须限定包根目录，避免 rc-util/es/react 等子路径误入 react 组。
+        advancedChunks: {
+          groups: [
+            { name: 'react', test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 10 },
+            { name: 'antd', test: /[\\/]node_modules[\\/](antd|@ant-design|@rc-component)[\\/]/ },
+            { name: 'zustand', test: /[\\/]node_modules[\\/]zustand[\\/]/ },
+            { name: 'vendor', test: /[\\/]node_modules[\\/]/ },
+          ],
         },
       },
     },
@@ -81,15 +87,29 @@ export default defineConfig({
       // 后端地址变更时，在 .env.local 中设置：
       //   VITE_WS_PROXY_TARGET=ws://<后端IP>:<端口>
       '/ws': {
-        target: process.env.VITE_WS_PROXY_TARGET || 'ws://192.168.120.30:8080',
+        target: process.env.VITE_WS_PROXY_TARGET || 'ws://192.168.120.43:8080',
         ws: true,
         changeOrigin: true,
       },
-      // HTTP API 开发代理：/api/* 转发至后端（默认 http://192.168.120.30:8080，
+      // HTTP API 开发代理：/api/* 转发至后端（默认 http://192.168.120.43:8080，
       // 可用 .env.local 的 VITE_API_PROXY_TARGET 覆盖；生产环境由 nginx 反代）。
       '/api': {
-        target: process.env.VITE_API_PROXY_TARGET || 'http://192.168.120.30:8080',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://192.168.120.43:8080',
         changeOrigin: true,
+        // 上游不可达时快速失败（默认挂到 OS 级超时 ~30s+，登录按钮长时间无响应）
+        timeout: 5000,
+        proxyTimeout: 5000,
+        // 上游不可达时浏览器只看到 502，真实原因打印到 dev 终端，
+        // 便于区分「后端未启动」与「账号密码错误」。
+        configure(proxy) {
+          proxy.on('error', (err, req) => {
+            console.error(
+              `[api-proxy] ${req?.method ?? ''} ${req?.url ?? ''} forward failed: ${err.message}` +
+                ` (upstream ${process.env.VITE_API_PROXY_TARGET || 'http://192.168.120.43:8080'} unreachable;` +
+                ` start backend or set VITE_API_PROXY_TARGET in .env.local)`,
+            )
+          })
+        },
       },
     },
   },

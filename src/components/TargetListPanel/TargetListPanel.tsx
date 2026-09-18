@@ -1,24 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { fetchAndMapTargets } from '../../api/targetStatus'
-import { targetTypeOptions, type TargetItem } from '../../config/targets'
-import { BACKEND_ENABLED, TARGET_API_DATA_ENABLED } from '../../config/backend'
+import { targetTypeOptions } from '../../config/targets'
 import { deviceImages } from '../../assets/images/device'
 import { homeImages } from '../../assets/images/home'
 import { useTargetLinkStore } from '../../stores/targetLinkStore'
+import { TargetRow, typeIcon } from './TargetRow'
+import { TargetDeleteDialog } from './TargetDeleteDialog'
 import './TargetListPanel.css'
-import './TargetListPanel.clear.css'
-import './TargetListPanel.add.css'
 
 interface TargetListPanelProps {
   onClose: () => void
   visible?: boolean
-}
-
-/** 目标类型 → 行首图标（车辆 → tank / 人员 → people） */
-const typeIcon: Record<TargetItem['type'], string> = {
-  车辆: deviceImages.tank,
-  人员: deviceImages.people,
 }
 
 /** 刷新动画持续时长（毫秒），与 CSS 中 animation 时长保持一致 */
@@ -44,20 +35,14 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
   const [expandedId, setExpandedId] = useState<string | null>(null)
   // ===== 态势图目标图标联动（targetLinkStore 全局共享，与地图图标双向同步）=====
   // 重点标记的目标 id 集合（旗标图标切换 + 地图图标标记背景同步）
-  const markedIds = useTargetLinkStore((s) => s.markedIds)
   const toggleMarked = useTargetLinkStore((s) => s.toggleMarked)
   // 「假删除」（软删除）：确认删除仅打标记（mock 数据保留，刷新可恢复）
   const softDeleteTargets = useTargetLinkStore((s) => s.softDeleteTargets)
   const restoreTargets = useTargetLinkStore((s) => s.restoreTargets)
-  // 接口刷新装载：拉取 queryTargetStatus 成功后整体替换 targets（真实经纬度锚定）
-  const loadTargetsFromApi = useTargetLinkStore((s) => s.loadTargetsFromApi)
   const deletedIds = useTargetLinkStore((s) => s.deletedTargetIds)
   // hover 中的目标 id（行背景三态与设备管理面板一致：选中蓝 > hover 橙 > 普通灰）
-  const hoveredId = useTargetLinkStore((s) => s.hoveredTargetId)
   const setHoveredId = useTargetLinkStore((s) => s.setHoveredTargetId)
   // 点击行联动态目标 id（行与地图图标双向同步，再次点击解除）
-  const clickedTargetId = useTargetLinkStore((s) => s.clickedTargetId)
-  const toggleClickedTarget = useTargetLinkStore((s) => s.toggleClickedTarget)
   // 行勾选状态迁移至全局 store（与设备面板 selectedDevices 同模式）：
   // 地图图标单击与列表勾选框共用 toggleTarget，首页图标选中态双向同步
   const selectedIds = useTargetLinkStore((s) => s.selectedTargetIds)
@@ -197,48 +182,21 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     }, stayMs)
   }
 
-  /** 点击刷新：拉取 queryTargetStatus 装载最新目标（按 id 去重映射）；
-   *  按钮图标至少旋转 1.2 秒，之后提示「刷新完成/刷新失败」停留片刻自动消失；
-   *  后端未开启（BACKEND_ENABLED=false）时走 mock 刷新（仅恢复「假删除」目标） */
+  /** 点击刷新：纯前端 mock 刷新（取消全选 + 恢复「假删除」目标）；
+   *  按钮图标旋转 1.2 秒，之后提示「刷新完成」停留片刻自动消失 */
   const handleRefresh = () => {
     if (refreshStatus === 'refreshing') return
     if (refreshTimer.current !== null) window.clearTimeout(refreshTimer.current)
     if (refreshDoneTimer.current !== null) window.clearTimeout(refreshDoneTimer.current)
     // 刷新时取消所有行的选中状态（走 store，同步取消地图图标选中态）
     replaceSelectedIds(new Set())
-    // 恢复全部「假删除」的目标（接口成功装载时 loadTargetsFromApi 亦会清空，此处兜底失败场景）
+    // 恢复全部「假删除」的目标（mock 数据保留在 store，刷新恢复显示）
     restoreTargets()
     setRefreshStatus('refreshing')
-    // 旋转动画结束后收尾（接口先返回也等满 1.2 秒，保证动画节奏一致）
-    const spinThen = (finish: () => void) => {
-      refreshTimer.current = window.setTimeout(() => {
-        refreshTimer.current = null
-        finish()
-      }, REFRESH_SPIN_MS)
-    }
-    if (!BACKEND_ENABLED) {
-      spinThen(() => finishRefresh('done'))
-      return
-    }
-    fetchAndMapTargets()
-      .then((items) => {
-        // 联调过渡期：接口照常请求验证链路，成功后暂不装载（保留 mock 展示）
-        if (!TARGET_API_DATA_ENABLED) {
-          console.info(
-            '[TargetListPanel] 刷新请求成功（联调验证），TARGET_API_DATA_ENABLED=false 暂保留 mock 数据：',
-            items.length,
-            '条',
-          )
-          spinThen(() => finishRefresh('done'))
-          return
-        }
-        loadTargetsFromApi(items)
-        spinThen(() => finishRefresh('done'))
-      })
-      .catch((err) => {
-        console.warn('[TargetListPanel] 刷新失败，保留当前列表：', err)
-        spinThen(() => finishRefresh('failed'))
-      })
+    refreshTimer.current = window.setTimeout(() => {
+      refreshTimer.current = null
+      finishRefresh('done')
+    }, REFRESH_SPIN_MS)
   }
 
   /** 打开删除确认弹窗：行内删除按钮传单个 id，底部按钮传全部选中 id */
@@ -494,252 +452,28 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
               <span>暂无目标</span>
             </div>
           ) : (
-            filteredTargets.map((t) => {
-              const isSelected = selectedIds.has(t.id)
-              const isExpanded = expandedId === t.id
-              const isClicked = clickedTargetId === t.id
-              // 行背景多态与设备管理面板一致：
-              // 选中(蓝) > 点击联动(蓝) > hover(橙) > 普通(灰)
-              const bgImage =
-                isSelected || isClicked
-                  ? deviceImages.rowBgBlue
-                  : hoveredId === t.id
-                    ? deviceImages.rowBgOrange
-                    : deviceImages.rowBgGray
-              return (
-                <div
-                  className={`target-row-wrapper${isExpanded ? ' target-row-wrapper--expanded' : ''}`}
-                  key={t.id}
-                  data-target-id={t.id}
-                >
-                  <div
-                    className={`target-row${isSelected ? ' target-row--selected' : ''}${clickedTargetId === t.id ? ' target-row--clicked' : ''}`}
-                    onMouseEnter={() => setHoveredId(t.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    onClick={() => toggleClickedTarget(t.id)}
-                  >
-                    <img className="target-row__bg" src={bgImage} alt="" draggable={false} />
-                    {/* 行首三列组（复选框/类型图标/名称）：组内间距固定 8px，整组作为行内单一 flex 项 */}
-                    <div className="target-row__lead">
-                      <div
-                        className={`target-row__checkbox${isSelected ? ' target-row__checkbox--checked' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleSelect(t.id)
-                        }}
-                        role="checkbox"
-                        aria-checked={isSelected}
-                        tabIndex={0}
-                        onKeyDown={(e) => e.key === ' ' && (e.preventDefault(), toggleSelect(t.id))}
-                      >
-                        {isSelected && (
-                          <svg
-                            viewBox="0 0 12 12"
-                            width="10"
-                            height="10"
-                            fill="none"
-                            stroke="#fff"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <polyline points="2,6 5,9 10,3" />
-                          </svg>
-                        )}
-                      </div>
-                      <img
-                        className="target-row__icon"
-                        src={typeIcon[t.type]}
-                        alt={t.type}
-                        title={t.type}
-                        draggable={false}
-                      />
-                      <span className="target-row__name" title={t.name}>
-                        {t.name}
-                      </span>
-                    </div>
-                    <span className="target-row__model" title={t.model ?? '—'}>
-                      {t.model ?? '—'}
-                    </span>
-                    <span className="target-row__value" title={t.value}>
-                      {t.value}
-                    </span>
-                    <span className="target-row__status" title={t.status}>
-                      {t.status}
-                    </span>
-                    {/* 行尾操作图标组（标记/删除/展开详情）：组内间距固定 8px，整组作为行内单一 flex 项 */}
-                    <div className="target-row__actions">
-                      <img
-                        className="target-row__action target-row__action--locate"
-                        src={markedIds.has(t.id) ? deviceImages.flagMarked : deviceImages.flag}
-                        alt={markedIds.has(t.id) ? '取消重点标记' : '标记为重点'}
-                        title={markedIds.has(t.id) ? '取消重点标记' : '标记为重点'}
-                        draggable={false}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleMark(t.id)
-                        }}
-                      />
-                      <img
-                        className="target-row__action target-row__action--delete"
-                        src={homeImages.iconDelete}
-                        alt="删除"
-                        title="删除"
-                        draggable={false}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openDeleteDialog([t.id])
-                        }}
-                      />
-                      <img
-                        className="target-row__action target-row__action--more"
-                        src={isExpanded ? deviceImages.upArrow : deviceImages.downArrow}
-                        alt={isExpanded ? '收起详情' : '展开详情'}
-                        title={isExpanded ? '收起详情' : '展开详情'}
-                        draggable={false}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleExpand(t.id)
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* ====== 行内目标详情（设计稿 434×308 基准） ====== */}
-                  {isExpanded && (
-                    <div className="target-row__detail">
-                      {/* 信息行 1：发现源 / 目标位置（10 轨 grid，第二组竖条对齐 x=189/434） */}
-                      <div className="target-row__detail-row">
-                        <span className="target-row__detail-bar" />
-                        <span className="target-row__detail-label">发现源</span>
-                        <span className="target-row__detail-value">{t.source}</span>
-                        <span className="target-row__detail-bar" />
-                        <span className="target-row__detail-label">目标位置</span>
-                        <span className="target-row__detail-value">{t.position}</span>
-                      </div>
-
-                      {/* 信息行 2：打击方式 / 直角坐标系 */}
-                      <div className="target-row__detail-row">
-                        <span className="target-row__detail-bar" />
-                        <span className="target-row__detail-label">打击方式</span>
-                        <span className="target-row__detail-value">{t.strikeMode}</span>
-                        <span className="target-row__detail-bar" />
-                        <span className="target-row__detail-label">直角坐标系</span>
-                        <span className="target-row__detail-value">{t.coordinates ?? '—'}</span>
-                      </div>
-
-                      {/* 图片预览区：宽度与信息行一致、高 146px，四角放置角标图（原图为右上角预设，通过 rotate 旋转适配四角） */}
-                      <div className="target-row__detail-preview">
-                        {/* 预览图：宽度=顶部虚线整体长度（左右各 28px 内缩），高度自适应垂直居中 */}
-                        <img
-                          className="target-row__detail-preview-img"
-                          src={deviceImages.previewImage}
-                          alt="目标预览图"
-                          draggable={false}
-                        />
-                        {/* 四角连接线：取角标 45° 斜线中点，垂直于斜线（135° 方向）实线连到预览图 */}
-                        <div className="target-row__detail-preview-link target-row__detail-preview-link--tl" />
-                        <div className="target-row__detail-preview-link target-row__detail-preview-link--tr" />
-                        <div className="target-row__detail-preview-link target-row__detail-preview-link--bl" />
-                        <div className="target-row__detail-preview-link target-row__detail-preview-link--br" />
-                        <img
-                          className="target-row__detail-preview-corner target-row__detail-preview-corner--tl"
-                          src={deviceImages.previewCorner}
-                          alt=""
-                          draggable={false}
-                        />
-                        <img
-                          className="target-row__detail-preview-corner target-row__detail-preview-corner--tr"
-                          src={deviceImages.previewCorner}
-                          alt=""
-                          draggable={false}
-                        />
-                        <img
-                          className="target-row__detail-preview-corner target-row__detail-preview-corner--bl"
-                          src={deviceImages.previewCorner}
-                          alt=""
-                          draggable={false}
-                        />
-                        <img
-                          className="target-row__detail-preview-corner target-row__detail-preview-corner--br"
-                          src={deviceImages.previewCorner}
-                          alt=""
-                          draggable={false}
-                        />
-                        {/* 四边同色系虚线：衔接四角角标的线条端点 */}
-                        <div className="target-row__detail-preview-edge target-row__detail-preview-edge--top" />
-                        <div className="target-row__detail-preview-edge target-row__detail-preview-edge--right" />
-                        <div className="target-row__detail-preview-edge target-row__detail-preview-edge--bottom" />
-                        <div className="target-row__detail-preview-edge target-row__detail-preview-edge--left" />
-                      </div>
-
-                      {/* 分隔线 */}
-                      <div className="target-row__detail-divider" />
-
-                      {/* 时间行 1：首次发现时间（青色） */}
-                      <div className="target-row__detail-footer">
-                        <span className="target-row__detail-label target-row__detail-label--teal">
-                          首次发现时间
-                        </span>
-                        <span className="target-row__detail-time target-row__detail-time--teal">
-                          {t.firstSeenAt}
-                        </span>
-                      </div>
-
-                      {/* 时间行 2：最后更新时间（白色） */}
-                      <div className="target-row__detail-footer">
-                        <span className="target-row__detail-label">最后更新时间</span>
-                        <span className="target-row__detail-time">{t.lastUpdatedAt}</span>
-                      </div>
-
-                      {/* 底部装饰图 */}
-                      <img className="target-row__detail-deco" src={deviceImages.detailDeco} alt="" draggable={false} />
-                    </div>
-                  )}
-                </div>
-              )
-            })
+            filteredTargets.map((t) => (
+              <TargetRow
+                key={t.id}
+                target={t}
+                isExpanded={expandedId === t.id}
+                onToggleSelect={toggleSelect}
+                onToggleMark={toggleMark}
+                onToggleExpand={toggleExpand}
+                onDeleteRequest={openDeleteDialog}
+              />
+            ))
           )}
         </div>
       </div>
 
       {/* 删除确认弹窗（设计稿 box_27）：portal 到 body 的全局弹窗，遮罩覆盖整个页面并打断底层操作，视口正中 */}
-      {deleteDialogOpen &&
-        createPortal(
-          <div className="target-panel__delete-overlay" onClick={closeDeleteDialog}>
-            <div
-              className="target-panel__delete-dialog"
-              role="dialog"
-              aria-modal="true"
-              aria-label="删除目标确认"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="target-panel__delete-dialog-accent" aria-hidden="true" />
-              <span className="target-panel__delete-dialog-title">删除</span>
-              <span className="target-panel__delete-dialog-message">
-                {pendingDeleteIds.length > 1
-                  ? `是否删除选中的 ${pendingDeleteIds.length} 个目标`
-                  : '是否删除该目标'}
-              </span>
-              <div className="target-panel__delete-dialog-actions">
-                <button
-                  className="target-panel__delete-dialog-btn target-panel__delete-dialog-btn--confirm"
-                  type="button"
-                  onClick={handleDeleteConfirm}
-                >
-                  确认
-                </button>
-                <button
-                  className="target-panel__delete-dialog-btn target-panel__delete-dialog-btn--cancel"
-                  type="button"
-                  onClick={closeDeleteDialog}
-                >
-                  取消
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
+      {deleteDialogOpen && (
+          <TargetDeleteDialog
+            count={pendingDeleteIds.length}
+            onConfirm={handleDeleteConfirm}
+            onClose={closeDeleteDialog}
+          />
         )}
 
       {/* 底部操作：刷新 / 新增 / 删除 */}

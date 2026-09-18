@@ -15,7 +15,6 @@
 import { useEffect } from 'react'
 import { startRealtime } from './realtimeStore'
 import { wsClient } from './wsClient'
-import { BACKEND_ENABLED } from '../../config/backend'
 import { ensureAuthToken } from '../../api/auth'
 
 /** 模块级引用计数：StrictMode 双挂载/多组件复用时连接只建一次 */
@@ -29,15 +28,19 @@ let teardown: (() => void) | null = null
  */
 export function useRealtimeConnection(): void {
   useEffect(() => {
-    // 未开启联调时跳过 WS 连接，避免代理失败重连刷屏
-    if (!BACKEND_ENABLED) return
     // 局部标志：alive 登录完成前组件卸载时不再建连；connected 标记本次是否已计数建连
     let alive = true
     let connected = false
-    // 先完成登录（拿 token）再建立 WS 连接——登录是首页加载的第一个请求；
-    // 登录失败也继续建连（WS 鉴权由后端兜底），不阻塞实时通道
-    void ensureAuthToken().then(() => {
+    // 登录成功（token 已缓存）后再建立 WS 连接：
+    // App 登录门控保证本 Hook 挂载时 loginWithCredentials 已完成并缓存 token；
+    // 这里读取 token 仅用于 WS 建连 URL（ws://<host>/ws?token=xxx），失败则无 token 连接由后端拒绝
+    void ensureAuthToken().then((token) => {
       if (!alive) return
+      if (!token) {
+        console.warn('[ws] 无登录 token，跳过 WS 建连（请先登录）')
+        return
+      }
+      console.info('[ws] 登录 token 就绪，开始建立 WebSocket 连接')
       connected = true
       refCount += 1
       if (refCount === 1) {

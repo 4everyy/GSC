@@ -1,0 +1,681 @@
+/* ====== 设备管理面板 ====== */
+.device-panel {
+  position: absolute;
+  top: 0;
+  left: calc(100% + clamp(8px, .83vw, 16px));
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  width: 465px;
+  /* 高度贴合实际内容（头部+筛选+7行设备+适当底边距），消除多余留白但不溢出 */
+  height: clamp(460px, 30vw, 560px);
+  background: linear-gradient(180deg, rgba(36, 86, 107, 0.7) 0%, rgba(71, 167, 209, 0.4) 100%);
+  box-shadow: 0px 5px 12px 0px rgba(12, 69, 79, 0.5);
+  border-radius: 0px;
+  border: 1px solid;
+  border-image: radial-gradient(circle, rgba(24, 134, 161, 1), rgba(24, 134, 161, 0)) 1 1;
+  /* 顶部内边距进一步减小，让内容上移；底部保留适当边距 */
+  padding: clamp(2px, .21vw, 4px) clamp(8px, .83vw, 16px) clamp(10px, .83vw, 16px);
+  color: #fff;
+  font-family: 'MiSans-Regular';
+  font-weight: 400;
+
+  /* 淡入/淡出：默认隐藏 */
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  will-change: opacity, transform;
+  pointer-events: none;
+}
+
+/* 左上角三角装饰：位于面板外框左上角 */
+.device-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: clamp(10px, .83vw, 16px);
+  height: clamp(10px, .83vw, 16px);
+  background: linear-gradient(135deg, #93FFFB 0%, #65B9FF 100%);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* 可见态：触发淡入 */
+.device-panel--visible {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* ====== 标题栏 ====== */
+.device-panel__header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: clamp(24px, 1.67vw, 32px);
+  flex-shrink: 0;
+}
+
+.device-panel__header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(14px, 1vw, 19px);
+  height: clamp(14px, 1vw, 19px);
+  flex-shrink: 0;
+}
+
+.device-panel__header-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.device-panel__title {
+  margin-left: clamp(6px, .42vw, 8px);
+  font-size: clamp(12px, .94vw, 18px);
+  font-weight: 400;
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+}
+
+/* 关闭按钮：点击关闭面板。通过伪元素扩展透明热区 + 悬停/按下反馈，
+   解决"按钮过小难以点中"与"识别度不高"的问题 */
+.device-panel__close {
+  position: relative;
+  z-index: 5;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(20px, 1.4vw, 28px);
+  height: clamp(20px, 1.4vw, 28px);
+  padding: 0;
+  border: 1px solid rgba(70, 220, 231, 0.6);
+  border-radius: 2px;
+  background-color: rgba(34, 118, 243, 0.35);
+  box-shadow: 0 1px 4px 2px rgba(47, 199, 255, 0.3);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* 透明热区扩展：在视觉边界外向四周扩展 8px 不可见点击范围，
+   使小尺寸按钮仍具备可靠的可命中区域 */
+.device-panel__close::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  bottom: -8px;
+  left: -8px;
+}
+
+/* 悬停反馈：加亮边框与背景，提升识别度与操作确定性 */
+.device-panel__close:hover {
+  border-color: rgba(120, 240, 255, 0.95);
+  background-color: rgba(52, 138, 255, 0.6);
+  box-shadow: 0 1px 6px 3px rgba(47, 199, 255, 0.5);
+}
+
+/* 按下反馈：给用户明确的点击确认，避免误以为"没反应" */
+.device-panel__close:active {
+  background-color: rgba(30, 100, 220, 0.85);
+  box-shadow: 0 1px 2px 1px rgba(47, 199, 255, 0.4);
+}
+
+.device-panel__close img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+  /* 让点击事件始终命中按钮元素，避免图标拦截造成的不一致 */
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ====== 分隔线 ====== */
+.device-panel__separator {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, .42vw, 8px);
+  height: 3px;
+  margin: 6px 0;
+  flex-shrink: 0;
+}
+
+.device-panel__separator-dot {
+  width: 3px;
+  height: 3px;
+  background: #59ECFF;
+  box-shadow: 0 0 8px 1px #76ADFE;
+  flex-shrink: 0;
+}
+
+.device-panel__separator-line {
+  flex: 1;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(70, 220, 231, 0.8), rgba(70, 220, 231, 0.2));
+  border-radius: 1.5px;
+}
+
+/* ====== 筛选栏 ====== */
+.device-panel__filters {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: clamp(20px, 1.25vw, 24px);
+  margin-bottom: clamp(8px, .83vw, 16px);
+  /* 左右内边距与设备行一致，使筛选栏下拉框与下方设备行左右边缘对齐 */
+  padding: 0 clamp(8px, .63vw, 12px);
+  gap: clamp(6px, .42vw, 8px);
+  flex-shrink: 0;
+}
+
+/* "状态"标签紧跟全选框，行内剩余空间由"状态/类型"两个下拉框（flex:1）弹性撑满 */
+
+/* 全选复选框：与设备行复选框（.device-row__checkbox）样式完全一致 */
+.device-panel__select-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
+  min-width: clamp(14px, 1.15vw, 20px);
+  border-radius: 2px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid #4b79e4;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.device-panel__select-all:hover {
+  background-color: rgba(75, 121, 228, 0.5);
+  border-color: rgba(75, 121, 228, 0.8);
+}
+
+.device-panel__select-all--checked {
+  background: #4b79e4;
+  border-color: #4b79e4;
+}
+
+.device-panel__select-all--checked:hover {
+  background-color: rgba(40, 85, 200, 0.95);
+}
+
+/* 半选状态（indeterminate）也使用蓝色背景 */
+.device-panel__select-all--indeterminate {
+  background: #4b79e4;
+  border-color: #4b79e4;
+}
+
+.device-panel__filter-label {
+  font-size: clamp(10px, .73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.device-panel__select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* 弹性撑满筛选行剩余空间，min-width 保底防止过窄 */
+  flex: 1 1 0;
+  min-width: clamp(70px, 5.2vw, 100px);
+  height: clamp(20px, 1.25vw, 24px);
+  padding: 0 clamp(3px, .21vw, 4px);
+  background-color: rgba(217, 217, 217, 0.1);
+  border: 1px solid rgba(70, 220, 231, 1);
+  border-radius: 2px;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.device-panel__select:hover {
+  border-color: rgba(120, 240, 255, 0.95);
+  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.25);
+}
+
+.device-panel__select--open {
+  border-color: rgba(120, 240, 255, 0.95);
+  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.35);
+}
+
+.device-panel__select--open img {
+  transform: rotate(180deg);
+}
+
+.device-panel__select img {
+  transition: transform 0.2s ease;
+}
+
+.device-panel__select-placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* 清除按钮：仅在已选择具体选项时出现（TSX 条件渲染）。
+   margin-left:auto 将其推到右侧，与下拉箭头组成"右组"。
+   SVG × 使用 currentColor，颜色由 color 属性控制。 */
+.device-panel__select-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(12px, .94vw, 16px);
+  height: clamp(12px, .94vw, 16px);
+  min-width: clamp(12px, .94vw, 16px);
+  margin-left: auto;
+  margin-right: clamp(2px, .21vw, 4px);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.device-panel__select-clear:hover {
+  color: #fff;
+  background: rgba(70, 220, 231, 0.3);
+}
+
+.device-panel__select-clear:active {
+  background: rgba(70, 220, 231, 0.5);
+}
+
+/* 下拉菜单 */
+.device-panel__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: rgba(18, 52, 72, 0.95);
+  border: 1px solid rgba(70, 220, 231, 0.6);
+  border-radius: 2px;
+  overflow: hidden;
+  animation: dropdownIn 0.15s ease;
+}
+
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.device-panel__dropdown-item {
+  padding: clamp(4px, .31vw, 6px) clamp(6px, .42vw, 8px);
+  font-size: clamp(10px, .73vw, 14px);
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.device-panel__dropdown-item:hover {
+  background-color: rgba(70, 220, 231, 0.25);
+  color: #fff;
+}
+
+.device-panel__select + .device-panel__filter-label {
+  margin-left: clamp(16px, 1.25vw, 24px);
+}
+
+/* ====== 空数据占位 ====== */
+/* 设计稿用固定 margin 定位（基于固定尺寸容器），此处改为 flex 居中，
+   适配 clamp() 响应式面板，无论面板如何缩放空态内容始终水平+垂直居中 */
+.device-panel__list-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1vw, 16px);
+  min-height: 0;
+  padding: clamp(16px, 2vw, 32px) 0;
+}
+
+.device-panel__list-empty-icon {
+  /* 图标随面板缩放：设计稿 100×86，按比例响应式 */
+  width: clamp(64px, 7vw, 100px);
+  height: auto;
+  object-fit: contain;
+  -webkit-user-drag: none;
+}
+
+.device-panel__list-empty-text {
+  font-size: clamp(12px, 1vw, 16px);
+  line-height: 1;
+  color: #fff;
+  white-space: nowrap;
+  font-family: 'MiSans-Regular';
+}
+
+.device-panel__select span {
+  font-size: clamp(10px, .73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.device-panel__select img {
+  width: clamp(11px, .83vw, 16px);
+  height: clamp(11px, .83vw, 16px);
+  object-fit: contain;
+}
+
+/* ====== 主体（列表 + 右侧轨道 + 遥测卡） ====== */
+.device-panel__body {
+  position: relative;
+  flex: 1;
+  display: flex;
+  /* 主体内容在面板框内水平居中 */
+  justify-content: center;
+  /* flex 子项默认 min-height:auto 会撑开容器，需重置以启用内部滚动 */
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ====== 设备列表 ====== */
+.device-panel__list-wrapper {
+  position: relative;
+  /* 自适应宽度：跟随面板缩放，并在主体内水平居中 */
+  flex: 1 1 100%;
+  max-width: 100%;
+  min-width: 0;
+  /* 同样重置 min-height，允许内部列表滚动 */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.device-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, .42vw, 8px);
+  /* 用 flex 填充剩余高度并启用滚动，比 max-height 更可靠 */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* 隐藏滚动条但保留滚动功能（展开详情后内容超高时默认滚动条不美观） */
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* IE / 旧版 Edge */
+}
+
+/* Chrome / Edge / Safari：隐藏滚动条 */
+.device-panel__list::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* ====== 设备行 ====== */
+.device-row-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.device-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: clamp(36px, 2.6vw, 44px);
+  /* 左右内边距与筛选栏一致，确保行内容左边缘与筛选栏左边缘对齐 */
+  padding: 0 clamp(8px, .63vw, 12px);
+  border-radius: 2px;
+  overflow: hidden;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  /* 列左对齐：各列为固定宽度（列内内容左对齐），所有行同列左边缘垂直对齐；
+     剩余空间由 space-between 均分到列间隙，gap 8px 保底与组内间距一致 */
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.device-row__bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  display: block;
+  z-index: 0;
+}
+
+/* 行首组：复选框 + 编队图标 + 设备名称（组内固定 8px 间距，不随视口缩放）。
+   允许整组收缩（压缩量由组内设备名列吸收），避免行内容总宽溢出后
+   最后一列（查看详情箭头）被推出右边距、贴到容器边缘 */
+.device-row__lead {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.device-row__checkbox {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
+  min-width: clamp(14px, 1.15vw, 20px);
+  border-radius: 2px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid #4b79e4;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.device-row__checkbox:hover {
+  background-color: rgba(75, 121, 228, 0.5);
+  border-color: rgba(75, 121, 228, 0.8);
+}
+
+.device-row__checkbox--checked {
+  background: #4b79e4;
+  border-color: #4b79e4;
+}
+
+.device-row__checkbox--checked:hover {
+  background-color: rgba(40, 85, 200, 0.95);
+}
+
+/* 设备类型图标（蓝/灰无人机缩略图） */
+.device-row__type-icon {
+  position: relative;
+  z-index: 1;
+  width: clamp(14px, 1.05vw, 19px);
+  height: clamp(14px, 1.05vw, 19px);
+  min-width: clamp(14px, 1.05vw, 19px);
+  margin-left: clamp(6px, .52vw, 10px);
+  object-fit: contain;
+  flex-shrink: 0;
+  -webkit-user-drag: none;
+}
+
+/* 设备名：固定宽度，使后续状态列起始位置行行对齐（列左对齐）；
+   空间不足时允许收缩（超出以省略号截断），作为整行唯一的弹性列
+   吸收宽度缺口，防止行内容溢出把最后一列（查看详情）顶出右边距 */
+.device-row__name {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(10px, .73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+  flex: 0 1 clamp(80px, 6vw, 110px);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+/* 状态文字（任务中/待命/离线）：内容自适应宽度、内容左对齐 */
+.device-row__status {
+  /* 状态文字固定白色，圆点颜色由内联样式（状态色）控制 */
+  color: #fff;
+  position: relative;
+  z-index: 1;
+  /* 圆点+文字作为 inline-flex 整体在行内垂直居中 */
+  display: inline-flex;
+  align-items: center;
+  font-size: clamp(10px, .73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+  /* 列宽随内容自适应：列内不再保留尾部空白，剩余空间全部进入行间隙，
+     由 space-between 均分，使本列两侧及相邻列间隙相等 */
+  flex: 0 0 auto;
+  overflow: hidden;
+  text-align: left;
+}
+
+/* 状态圆点：与状态文字同色（currentColor），置于文字前 */
+.device-row__status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: currentColor;
+  margin-right: clamp(2px, .21vw, 4px);
+  flex-shrink: 0;
+}
+
+/* 指标组（高度/电量，图标+数值） */
+.device-row__metric {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: clamp(2px, .21vw, 4px);
+  /* 列宽随内容自适应：列内不再保留尾部空白，剩余空间全部进入行间隙，
+     由 space-between 均分，使高度/电量列两侧间隙相等 */
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.device-row__metric img {
+  /* 固定尺寸：确保所有电池图标大小一致（新图标均为24×24） */
+  width: clamp(12px, 1vw, 16px);
+  height: clamp(12px, 1vw, 16px);
+  /* 保持原始比例，不拉伸变形 */
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+  -webkit-user-drag: none;
+}
+
+.device-row__metric-value {
+  font-size: clamp(10px, .73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+}
+
+/* 尾部组：信号图标（打开云台）+ 展开箭头（查看详情），组内固定 8px 间距 */
+.device-row__tail {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  /* 间距对齐区域列表面板行尾图标（可见间距 = 32px - 图标尺寸clamp(14~20px)，1920屏约12px）：
+     区域面板倒数两列可见间距 = 8px盒间距 + 图标在24px盒内居中两侧留白(24-图标)；
+     此处用等效表达式作为 gap（箭头PNG左留白已由 .device-row__expand 负margin补偿） */
+  gap: calc(32px - clamp(14px, 1.15vw, 20px));
+  flex-shrink: 0;
+}
+
+/* 信号图标：与展开箭头同属尾部组，组内固定 8px 间距 */
+.device-row__signal {
+  position: relative;
+  z-index: 1;
+  width: clamp(11px, .83vw, 16px);
+  height: clamp(11px, .83vw, 16px);
+  min-width: clamp(11px, .83vw, 16px);
+  object-fit: contain;
+  flex-shrink: 0;
+  -webkit-user-drag: none;
+}
+
+.device-row__action-icon {
+  position: relative;
+  z-index: 1;
+  width: clamp(12px, .94vw, 16px);
+  height: clamp(12px, .94vw, 16px);
+  min-width: clamp(12px, .94vw, 16px);
+  object-fit: contain;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.device-row__action-icon + .device-row__action-icon {
+  width: clamp(14px, 1.05vw, 19px);
+  height: clamp(14px, 1.05vw, 18px);
+  min-width: clamp(14px, 1.05vw, 19px);
+}
+
+.device-row__label-icon {
+  position: relative;
+  z-index: 1;
+  width: clamp(15px, 1.15vw, 21px);
+  height: clamp(13px, 1vw, 18px);
+  min-width: clamp(15px, 1.15vw, 21px);
+  object-fit: contain;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* 最右侧编队图标按钮：点击展开/收起该行遥测详情 */
+.device-row__expand {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(15px, 1.15vw, 21px);
+  height: clamp(15px, 1.15vw, 21px);
+  min-width: clamp(15px, 1.15vw, 21px);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  /* 箭头 PNG（24×24）内部左侧约 4px 透明留白（占宽度 1/6），按按钮宽度等比负 margin-left 补偿，
+     使与信号图标的视觉间距保持 8px；右侧不做负补偿，保留 PNG 自带右留白叠加行右 padding，
+     确保最后一列（查看详情）与行/面板右缘始终有可见边距 */
+  margin-left: calc(clamp(15px, 1.15vw, 21px) / -6);
+  flex-shrink: 0;
+  transition: filter 0.2s ease;
+}
+
+.device-row__expand img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  -webkit-user-drag: none;
+}
+
+/* 展开时图标已通过 up_arrow.png 替换，无需旋转 */

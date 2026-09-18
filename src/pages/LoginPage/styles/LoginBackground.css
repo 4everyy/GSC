@@ -1,0 +1,680 @@
+/*
+ * LoginBackground.css —— 背景装饰层（网格 / 粒子 / 暗角 / 六边形 / 光束 / 刻度 / 涟漪 / 光斑 / 流星 / 轨道 / 冲击波 / 扫描线）
+ * 自 LoginPage partN 机械拆分文件按功能归组：规则内容未改动，仅调整文件归属。
+ */
+
+.login-glow {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  /* 性能：用径向渐变自模拟柔光，替代 blur(90px) 大面积实时滤波（刷新卡顿主因之一） */
+  opacity: 0.4;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.login-glow--a {
+  width: 46vw;
+  height: 46vw;
+  left: -12vw;
+  top: -14vw;
+  background: radial-gradient(circle, #1e5f8f 0%, rgba(30, 95, 143, 0.55) 45%, transparent 72%);
+  animation: login-glow-float 11s ease-in-out infinite alternate;
+}
+
+.login-glow--b {
+  width: 40vw;
+  height: 40vw;
+  right: -10vw;
+  bottom: -12vw;
+  background: radial-gradient(circle, #0f7d6c 0%, rgba(15, 125, 108, 0.55) 45%, transparent 72%);
+  animation: login-glow-float 13s ease-in-out -6s infinite alternate-reverse;
+}
+
+@keyframes login-glow-float {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(5vw, 4vw, 0) scale(1.15);
+  }
+}
+
+.login-meteor {
+  position: absolute;
+  z-index: 1;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #d9f9ff;
+  box-shadow: 0 0 8px 2px rgba(135, 235, 255, 0.8);
+  opacity: 0;
+  transform: rotate(-32deg);
+  pointer-events: none;
+}
+
+.login-meteor::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: clamp(120px, 16vw, 240px);
+  height: 1.5px;
+  transform-origin: 0 0;
+  transform: scaleX(1);
+  background: linear-gradient(90deg, rgba(135, 235, 255, 0.85), transparent 82%);
+}
+
+.login-meteor--a {
+  top: 6%;
+  left: 64%;
+  animation: login-meteor-fly 9s 2.2s ease-in infinite;
+}
+
+.login-meteor--b {
+  top: 22%;
+  left: 18%;
+  animation: login-meteor-fly 11.5s 6s ease-in infinite;
+}
+
+.login-meteor--c {
+  top: 2%;
+  left: 88%;
+  animation: login-meteor-fly 10s 8.6s ease-in infinite;
+}
+
+@keyframes login-meteor-fly {
+  0% {
+    opacity: 0;
+    transform: rotate(-32deg) translateX(0);
+  }
+  4% {
+    opacity: 1;
+  }
+  22% {
+    opacity: 0.9;
+  }
+  30%,
+  100% {
+    opacity: 0;
+    transform: rotate(-32deg) translateX(-46vw);
+  }
+}
+
+.login-orbits {
+  position: absolute;
+  width: min(680px, 96vw);
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+
+.login-orbit {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(135, 235, 255, 0.14);
+}
+
+.login-orbit--1 {
+  animation: login-orbit-spin-1 12s linear infinite;
+}
+
+@keyframes login-orbit-spin-1 {
+  from {
+    transform: rotateX(68deg) rotateZ(-14deg) rotate(0deg);
+  }
+  to {
+    transform: rotateX(68deg) rotateZ(-14deg) rotate(1turn);
+  }
+}
+
+.login-orbit--2 {
+  inset: 11%;
+  border-color: rgba(135, 235, 255, 0.1);
+  animation: login-orbit-spin-2 9s linear infinite reverse;
+}
+
+@keyframes login-orbit-spin-2 {
+  from {
+    transform: rotateX(72deg) rotateZ(28deg) rotate(0deg);
+  }
+  to {
+    transform: rotateX(72deg) rotateZ(28deg) rotate(-1turn);
+  }
+}
+
+.login-orbit__sat {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: #a0f5ff;
+  box-shadow:
+    0 0 12px 3px rgba(135, 235, 255, 0.8),
+    0 0 30px 8px rgba(135, 235, 255, 0.3);
+}
+
+.login-shockwave {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.login-shockwave__ring {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  border: 2px solid rgba(135, 235, 255, 0.85);
+  border-radius: 50%;
+  box-shadow:
+    0 0 26px rgba(135, 235, 255, 0.55),
+    inset 0 0 18px rgba(135, 235, 255, 0.35);
+  animation: login-shockwave-out 0.95s cubic-bezier(0.16, 0.6, 0.3, 1) forwards;
+}
+
+.login-shockwave__ring--2 {
+  border-color: rgba(46, 230, 197, 0.7);
+  animation-delay: 0.15s;
+}
+
+@keyframes login-shockwave-out {
+  from {
+    transform: scale(0.2);
+    opacity: 1;
+  }
+
+  to {
+    transform: scale(17);
+    opacity: 0;
+  }
+}
+
+.login-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -10%;
+  height: 26vh;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(135, 235, 255, 0.05) 45%,
+    rgba(135, 235, 255, 0.12) 50%,
+    rgba(135, 235, 255, 0.05) 55%,
+    transparent
+  );
+  animation: login-scan 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes login-scan {
+  0% {
+    transform: translateY(-30vh);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(130vh);
+    opacity: 0;
+  }
+}
+
+.login-radar__sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(135, 235, 255, 0.22) 0deg,
+    rgba(135, 235, 255, 0.07) 38deg,
+    transparent 80deg,
+    transparent 360deg
+  );
+  mask: radial-gradient(circle, transparent 30%, #000 34%, #000 72%, transparent 76%);
+  -webkit-mask: radial-gradient(circle, transparent 30%, #000 34%, #000 72%, transparent 76%);
+  animation: login-radar-sweep 6.5s linear infinite;
+}
+
+@keyframes login-radar-sweep {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.login-radar__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed rgba(135, 235, 255, 0.22);
+}
+
+.login-radar__ring--1 {
+  inset: 4%;
+  animation: login-radar-pulse 4s ease-in-out infinite;
+}
+
+.login-radar__ring--2 {
+  inset: 16%;
+  border-style: solid;
+  border-color: rgba(135, 235, 255, 0.16);
+  animation: login-radar-pulse 4s 1.3s ease-in-out infinite;
+}
+
+.login-radar__ring--3 {
+  inset: 30%;
+  animation: login-radar-pulse 4s 2.6s ease-in-out infinite;
+}
+
+@keyframes login-radar-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.012);
+  }
+}
+
+@keyframes login-card-scan {
+  from {
+    transform: translateY(-120%);
+  }
+  to {
+    transform: translateY(420%);
+  }
+}
+
+.login-hud-top__clock {
+  font-variant-numeric: tabular-nums;
+  color: rgba(191, 234, 255, 0.85);
+}
+
+.login-circuit__base {
+  fill: none;
+  stroke: rgba(135, 235, 255, 0.16);
+  stroke-width: 1.2;
+}
+
+.login-circuit__flow {
+  fill: none;
+  /* 性能优化：去掉 drop-shadow 滤镜（持续动画逐帧重绘开销大），加宽半透明描边近似流光 */
+  stroke: rgba(135, 235, 255, 0.4);
+  stroke-width: 3;
+  stroke-dasharray: 20 340;
+  animation: login-circuit-flow 3.4s linear infinite;
+}
+
+.login-circuit__flow--slow {
+  stroke: rgba(46, 230, 197, 0.38);
+  stroke-dasharray: 14 346;
+  animation-duration: 4.8s;
+  animation-delay: 1.3s;
+}
+
+@keyframes login-circuit-flow {
+  to {
+    stroke-dashoffset: -360;
+  }
+}
+
+@keyframes login-circuit-in {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.login-grid {
+  position: absolute;
+  inset: -60%;
+  /* 性能：顶部预留一圈网格滚动余量，动画改走 transform（合成层零重绘） */
+  top: calc(-60% - 56px);
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(135, 235, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(135, 235, 255, 0.06) 1px, transparent 1px);
+  background-size: 56px 56px;
+  transform: perspective(900px) rotateX(58deg) translateY(12%);
+  transform-origin: 50% 100%;
+  animation: login-grid-scroll 14s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes login-grid-scroll {
+  from {
+    transform: perspective(900px) rotateX(58deg) translateY(12%);
+  }
+  to {
+    /* 竖线沿自身方向平移视觉不变、横线滚动一个周期 56px，与原 background-position 效果一致 */
+    transform: perspective(900px) rotateX(58deg) translateY(calc(12% + 56px));
+  }
+}
+
+.login-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.login-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(ellipse 90% 80% at 50% 45%, transparent 55%, rgba(3, 12, 24, 0.55) 100%);
+  pointer-events: none;
+}
+
+.login-hex {
+  position: absolute;
+  z-index: 1;
+  /* 性能优化：去掉 drop-shadow（悬浮动画逐帧重绘），提高不透明度补偿亮度 */
+  color: rgba(135, 235, 255, 0.22);
+  animation: login-hex-float 16s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.login-hex--1 {
+  width: 140px;
+  left: 12%;
+  top: 16%;
+  animation-duration: 13s;
+}
+
+.login-hex--2 {
+  width: 90px;
+  right: 16%;
+  top: 24%;
+  animation-duration: 17s;
+  animation-delay: -5s;
+}
+
+.login-hex--3 {
+  width: 200px;
+  left: 6%;
+  bottom: 10%;
+  color: rgba(135, 235, 255, 0.1);
+  animation-duration: 21s;
+  animation-delay: -9s;
+}
+
+.login-hex--4 {
+  width: 64px;
+  right: 9%;
+  bottom: 18%;
+  animation-duration: 12s;
+  animation-delay: -3s;
+}
+
+@keyframes login-hex-float {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    transform: translateY(-26px) rotate(60deg);
+  }
+}
+
+.login-beam-v {
+  position: absolute;
+  bottom: -12%;
+  width: 2px;
+  height: 62vh;
+  z-index: 1;
+  background: linear-gradient(to top, rgba(135, 235, 255, 0.5), rgba(135, 235, 255, 0.06) 75%, transparent);
+  opacity: 0;
+  animation: login-beam-rise 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.login-beam-v::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(160, 245, 255, 0.9);
+  box-shadow: 0 0 14px 4px rgba(135, 235, 255, 0.6);
+}
+
+.login-beam-v--l {
+  left: 26%;
+}
+
+.login-beam-v--r {
+  right: 28%;
+  animation-delay: 3.2s;
+}
+
+@keyframes login-beam-rise {
+  0% {
+    transform: translateY(36vh);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.85;
+  }
+  70% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-66vh);
+    opacity: 0;
+  }
+}
+
+.login-ticks {
+  position: absolute;
+  top: -26px; /* 性能优化：上移一个周期（26px），transform 动画不露边 */
+  bottom: 0;
+  width: 10px;
+  z-index: 2;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(135, 235, 255, 0.4) 0 8px,
+    transparent 8px 26px
+  );
+  background-size: 10px 26px;
+  background-repeat: repeat-y;
+  opacity: 0.28;
+  mask: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent);
+  -webkit-mask: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent);
+  /* 性能优化：background-position 逐帧重绘 → transform 走合成层零重绘 */
+  will-change: transform;
+  animation: login-ticks-flow 2.6s linear infinite;
+  pointer-events: none;
+}
+
+.login-ticks--l {
+  left: clamp(40px, 5vw, 72px);
+}
+
+.login-ticks--r {
+  right: clamp(40px, 5vw, 72px);
+  animation-direction: reverse;
+}
+
+@keyframes login-ticks-flow {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(26px);
+  }
+}
+
+.login-ripple {
+  position: absolute;
+  z-index: 30;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(135, 235, 255, 0.9);
+  box-shadow:
+    0 0 16px rgba(135, 235, 255, 0.55),
+    inset 0 0 8px rgba(135, 235, 255, 0.4);
+  pointer-events: none;
+  animation: login-ripple-burst 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes login-ripple-burst {
+  from {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  to {
+    transform: scale(11);
+    opacity: 0;
+  }
+}
+
+.login-crosshair__v {
+  position: absolute;
+  background: rgba(135, 235, 255, 0.55);
+  box-shadow: 0 0 6px rgba(135, 235, 255, 0.5);
+}
+
+.login-crosshair__h {
+  width: 28px;
+  height: 1px;
+  margin: -0.5px 0 0 -14px;
+}
+
+.login-crosshair__v {
+  width: 1px;
+  height: 28px;
+  margin: -14px 0 0 -0.5px;
+}
+
+.login-crosshair__ring {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 1px solid rgba(135, 235, 255, 0.5);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: login-cross-spin 3.2s linear infinite;
+}
+
+.login-crosshair__dot {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+  border-radius: 50%;
+  background: #a0f5ff;
+  box-shadow: 0 0 9px rgba(135, 235, 255, 0.95);
+}
+
+@keyframes login-cross-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.login-dial__ticks {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    rgba(135, 235, 255, 0.3) 0deg 0.6deg,
+    transparent 0.6deg 6deg
+  );
+  mask: radial-gradient(circle, transparent 0 47%, #000 47.4% 49.6%, transparent 50%);
+  -webkit-mask: radial-gradient(circle, transparent 0 47%, #000 47.4% 49.6%, transparent 50%);
+  animation: login-dial-spin 28s linear infinite;
+}
+
+.login-dial__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed rgba(135, 235, 255, 0.22);
+}
+
+.login-dial__ring--1 {
+  inset: 3%;
+  animation: login-dial-spin 18s linear infinite;
+}
+
+.login-dial__ring--2 {
+  inset: 10%;
+  border-style: solid;
+  border-color: rgba(135, 235, 255, 0.12);
+  animation: login-dial-spin 24s linear infinite reverse;
+}
+
+@keyframes login-dial-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.login-submit__charge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+  animation: login-charge 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes login-charge {
+  0%,
+  100% {
+    transform: scaleX(0.12);
+    opacity: 0.35;
+  }
+
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+
+/* ====== 性能优化（2026-09-18）：登录成功后冻结背景装饰动画 ======
+ * phase=success 时 Canvas 已停帧（useLoginCanvas），此处同步暂停 CSS
+ * 装饰动画，主线程让给切换动画与主应用首屏挂载，消除点击登录时的卡顿。 */
+.login-page--success .login-grid,
+.login-page--success .login-glow,
+.login-page--success .login-meteor,
+.login-page--success .login-hex,
+.login-page--success .login-beam-v,
+.login-page--success .login-scanline,
+.login-page--success .login-ticks,
+.login-page--success .login-circuit__flow,
+.login-page--success .login-radar__sweep,
+.login-page--success .login-radar__ring,
+.login-page--success .login-dial__ticks,
+.login-page--success .login-dial__ring,
+.login-page--success .login-crosshair__ring,
+.login-page--success .login-submit__charge,
+.login-page--success .login-orbit {
+  animation-play-state: paused;
+}

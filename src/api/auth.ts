@@ -1,24 +1,19 @@
 /**
  * 登录鉴权模块。
  *
- * - 登录页（LoginPage）账号密码登录走 loginWithCredentials：用户名原样上送，
- *   密码字段固定传 FIXED_PASSWORD（2026-09-17 约定，明文直传、不做 MD5）；
- * - 响应信封为 { "data": "<JWT>" }——注意与常规业务信封 { code, data, message } 不同；
+ * - 登录页（LoginPage）账号密码登录走 loginWithCredentials：用户名、密码均按输入框
+ *   实际值原样上送（2026-09-18 约定，不做任何转换）；
+ * - 响应为 { token: <JWT>, expires_at }（token 顶层字段，非 data 信封）；
  * - 之后所有 HTTP 请求头携带 `token: <JWT>`（注入点见 http.ts）。
  */
-import { BACKEND_ENABLED } from '../config/backend'
-
 // 存储键带版本号：升级版本可使旧缓存 token 失效
 const TOKEN_KEY = 'gsc_auth_token_v2'
 
-/**
- * 登录页专用固定密码（2026-09-17 约定）：登录页提交时密码字段固定传该值（明文 '1'），
- * 不对用户输入的密码做任何转换——输入的密码仅用于「记住密码」回填展示。
- */
-const FIXED_PASSWORD = '1'
-
-/** 登录页默认预填账号（联调账号 b / 1）：无本地保存凭据时用于自动填充输入框 */
-export const DEFAULT_CREDENTIALS = { username: 'b', password: '1' }
+/** 登录页默认预填账号（2026-09-18）：刷新页面时用户名/密码初始填充 + 默认勾选两项记住 */
+export const DEFAULT_CREDENTIALS = {
+  username: 'b',
+  password: '6b155ebbcfbb65d3dc6c4c2cf75c0745',
+}
 
 /** 内存缓存 token（localStorage 兜底，SPA 会话内免重复读取） */
 let cachedToken: string | null = null
@@ -58,33 +53,33 @@ export function clearAuthToken(): void {
   }
 }
 
-/** 调用 /iam/logon 换取 JWT（响应信封 { data: token }，非业务信封，单独解析） */
+/** 调用 /auth/login 换取 JWT：JSON 请求体 + JSON 响应 { token, expires_at } */
 async function requestToken(username: string, password: string): Promise<string> {
-  const body = new URLSearchParams({ username, password }).toString()
-  const res = await fetch('/api/v1/iam/logon', {
+  // 接口要求 JSON 请求体（2026-09-18 变更：原 iam/logon 为表单编码）
+  const body = JSON.stringify({ username, password })
+  const res = await fetch('/api/v1/auth/login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body,
   })
-  if (!res.ok) throw new Error(`logon HTTP ${res.status} ${res.statusText}`)
-  const json = (await res.json()) as { data?: unknown }
-  if (typeof json.data !== 'string' || !json.data) throw new Error('logon 响应缺少 data(token)')
-  return json.data
+  if (res.status === 400 || res.status === 401) {
+    throw new Error('用户名或密码错误')
+  }
+  if (!res.ok) throw new Error(`login HTTP ${res.status} ${res.statusText}`)
+  // 响应格式：{ token, expires_at }（token 为 JWT 字符串）
+  const json = (await res.json()) as { token?: unknown; expires_at?: string }
+  if (typeof json.token !== 'string' || !json.token) throw new Error('login 响应缺少 token')
+  return json.token
 }
 
 /**
- * 登录页账号密码登录：用户名原样上送，密码字段固定传 FIXED_PASSWORD。
+ * 登录页账号密码登录：用户名、密码均按输入框实际值原样上送（不做转换）。
  * 成功：缓存并返回 token；失败：向上抛错（登录页展示提示文案）。
- * mock 模式（BACKEND_ENABLED=false）直接返回占位 token，便于纯前端演示。
  */
-export async function loginWithCredentials(username: string): Promise<string> {
-  if (!BACKEND_ENABLED) {
-    storeToken('mock-token')
-    return 'mock-token'
-  }
-  const token = await requestToken(username, FIXED_PASSWORD)
+export async function loginWithCredentials(username: string, password: string): Promise<string> {
+  const token = await requestToken(username, password)
   storeToken(token)
-  console.info('[auth] 登录成功，后续 HTTP请求将携带 token')
+  console.info('[auth] 登录成功，token 已缓存，后续 HTTP 请求将携带 token')
   return token
 }
 
@@ -94,6 +89,5 @@ export async function loginWithCredentials(username: string): Promise<string> {
  * 未登录（null）时业务请求照常发出，由后端 401 兜底使问题可见。
  */
 export async function ensureAuthToken(): Promise<string | null> {
-  if (!BACKEND_ENABLED) return null // mock 模式无后端，无需登录
   return readStoredToken()
 }

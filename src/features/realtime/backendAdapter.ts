@@ -10,6 +10,10 @@ import type { DeviceStatusPayload, ServerMessage, TelemetryPayload } from './pro
 
 /** 真实后端下行信封 */
 export interface BackendMessage<T = unknown> {
+  /** 新版订阅协议：操作类型（sub=订阅上行 / ack=订阅确认 / pub=推送） */
+  op?: string
+  /** 新版订阅协议：频道（cmd/task/device/telemetry/alert） */
+  ch?: string
   /** 旧版信封：消息类型（如 plane.swarmState） */
   action?: string
   /** 新版信封：publish / ack / error */
@@ -69,19 +73,26 @@ export interface SwarmStatePayload {
 /** 后端推送 topic：连接后需发送 subscribe 订阅帧才能收到数据 */
 export const TOPIC_SWARM_STATE = 'plane.swarmState'
 
+/** 订阅频道：连接后需按频道逐一发送 {"op":"sub","ch":"<频道>"} 订阅帧 */
+export const SUBSCRIBE_CHANNELS = ['cmd', 'task', 'device', 'telemetry', 'alert'] as const
+
 /**
- * 连接建立后的订阅帧：{"type":"subscribe","topic":"plane.swarmState"}。
- * 旧版纯文本 "client_UI" 握手已于 2026-09-11 废弃。
+ * 连接建立后的订阅帧：{"op":"sub","ch":"<频道>"}。
+ * 旧版 {"type":"subscribe","topic":...} 与纯文本握手均已废弃（2026-09-18）。
  */
-export function buildSubscribeFrame(topic: string = TOPIC_SWARM_STATE): string {
-  return JSON.stringify({ type: 'subscribe', topic })
+export function buildSubscribeFrame(channel: string): string {
+  return JSON.stringify({ op: 'sub', ch: channel })
 }
 
-/** 运行时校验：是否为真实后端信封（旧版按 action、新版按 topic 识别） */
+/** 运行时校验：是否为真实后端信封（新版按 op/ch、旧版按 action/topic 识别） */
 export function isBackendMessage(value: unknown): value is BackendMessage {
   if (typeof value !== 'object' || value === null) return false
   const v = value as Record<string, unknown>
-  return typeof v.action === 'string' || typeof v.topic === 'string'
+  return (
+    (typeof v.op === 'string' && typeof v.ch === 'string') ||
+    typeof v.action === 'string' ||
+    typeof v.topic === 'string'
+  )
 }
 
 /** 宽松取数：字段缺失/非数值时回退默认值，保证坏帧不抛异常 */
