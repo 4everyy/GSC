@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-import { createReadStream, existsSync, statSync } from 'node:fs'
+import { createReadStream, existsSync, stat, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 /**
@@ -41,8 +41,47 @@ function gscDevInject(): Plugin {
   }
 }
 
+
+/** dev 静态服务对 /maps/*.mbtiles 提供 HTTP Range 支持（直读 GB 级离线包必需） */
+function gscMbtilesRangePlugin(): Plugin {
+  return {
+    name: 'gsc-mbtiles-range',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const m = /^\/maps\/([A-Za-z0-9_-]+\.mbtiles)$/.exec(req.url ?? '')
+        if (!m) return next()
+        const file = join(server.config.root, 'public', 'maps', m[1])
+        stat(file, (err, st) => {
+          if (err || !st.isFile()) return next()
+          const size = st.size
+          const range = /bytes=(\d*)-(\d*)/.exec(String(req.headers.range ?? ''))
+          const send = (code: number, head: Record<string, string | number>) => {
+            res.writeHead(code, { 'Accept-Ranges': 'bytes', 'Content-Type': 'application/octet-stream', ...head })
+          }
+          if (!range) {
+            send(200, { 'Content-Length': size })
+            createReadStream(file).pipe(res)
+            return
+          }
+          const start = range[1] ? Number(range[1]) : 0
+          const end = Math.min(range[2] ? Number(range[2]) : size - 1, size - 1)
+          if (start < 0 || start > end) {
+            send(416, { 'Content-Range': `bytes */${size}` })
+            res.end()
+            return
+          }
+          send(206, { 'Content-Range': `bytes ${start}-${end}/${size}`, 'Content-Length': end - start + 1 })
+          createReadStream(file, { start, end }).pipe(res)
+        })
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), gscDevInject()],
+  plugins: [
+    gscMbtilesRangePlugin(),react(), gscDevInject()],
   // maplibre-gl 内部使用 Web Worker，若被 Vite 依赖预打包会破坏 worker 引用
   // (maplibre-gl-worker.mjs)，导致 map 'load' 事件永不触发、UI 卡在"加载中"。
   // 排除后让浏览器直接按原始路径加载 worker。

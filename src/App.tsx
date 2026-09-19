@@ -1,18 +1,20 @@
 /**
  * App —— 登录门控 + 主应用。
  *
- * 门控逻辑：启动始终先展示 LoginPage；登录成功（loginWithCredentials 缓存
- * token 后回调）→ 挂载 MainApp（所有业务 Hooks 仅在登录后才挂载，保证登录
- * 是首个网络请求，业务请求发出时 token 已就绪，见 api/auth.ts / api/http.ts）。
- * 每次访问（含刷新）均从登录页开始，登录成功后再跳转首页。
+ * 门控逻辑：默认跳过登录直接挂载 MainApp 进入首页（VITE_SKIP_LOGIN 未配置
+ * 或非 "false" 时生效）；如需恢复登录验证，在 .env 设置 VITE_SKIP_LOGIN=false。
+ * 登录路径保留：先展示 LoginPage，登录成功（loginWithCredentials 缓存
+ * token 后回调）→ 挂载 MainApp。跳过登录时业务请求头不携带 token 字段
+ * （见 api/index.ts 的 authHeader 实现，token 缺失自动省略）。
  *
  * 性能（2026-09-18 卡顿优化）：
  * - MainApp 拆分为独立模块（./MainApp，承载全部业务初始化 Hooks）并由
  *   React.lazy 懒加载：登录页刷新 / 首屏只解析登录相关代码，主应用（首页、
  *   地图引擎、业务 Hooks）独立分包，消除整包一次性解析执行导致的刷新卡顿；
- * - 登录页挂载且浏览器空闲（requestIdleCallback / setTimeout 兜底）时预取
- *   主应用 chunk：点击登录时通常已下载完成，切换无感；
- * - 预取不阻塞登录页动画与交互。
+ * - 挂载且浏览器空闲（requestIdleCallback / setTimeout 兜底）时预取
+ *   主应用 chunk：登录路径下点击登录时通常已下载完成，切换无感；
+ *   跳过路径下该预取与首屏加载幂等合并，不重复下载；
+ * - 预取不阻塞页面动画与交互。
  */
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { LoginPage } from './pages/LoginPage/LoginPage'
@@ -26,12 +28,14 @@ const prefetchMainApp = () => {
   void import('./MainApp')
 }
 
-function App() {
-  // 始终先展示登录页，登录成功后再进入主应用
-  const [loggedIn, setLoggedIn] = useState(false)
+/** 是否跳过登录页：默认跳过直接进首页；仅显式配置 VITE_SKIP_LOGIN=false 时恢复登录门控 */
+const SKIP_LOGIN = import.meta.env.VITE_SKIP_LOGIN !== 'false'
 
-  // 登录页挂载后，浏览器空闲时预取主应用 chunk：
-  // 点击登录时通常已完成下载，登录成功切换接近无感，且不与登录页首屏加载竞争
+function App() {
+  // 默认直接进入主应用（首页）；VITE_SKIP_LOGIN=false 时恢复先登录再进入
+  const [loggedIn, setLoggedIn] = useState(SKIP_LOGIN)
+
+  // 挂载后，浏览器空闲时预取主应用 chunk（幂等，见文件头说明）
   useEffect(() => {
     const w = window as Window & {
       requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number

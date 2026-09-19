@@ -6,8 +6,8 @@
  * 消除整包解析执行导致的登录页刷新卡顿（2026-09-18 卡顿优化）。
  */
 import { HomePage } from './pages/HomePage/HomePage'
-import { useRealtimeConnection } from './features/realtime/useRealtimeConnection'
-import { usePlaneStatusInit } from './hooks/usePlaneStatusInit'
+import { useRealtimeConnection } from './features/realtime/wsClient'
+import { usePlaneStatusInit } from './hooks/index'
 
 export default function MainApp() {
   // 全局唯一挂载点：登录成功拿到 token 后建立 WebSocket 连接，

@@ -1,0 +1,739 @@
+/* ====== 顶部状态栏 ====== */
+.status-header {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  height: clamp(64px, 6.25vw, 120px);
+  margin-bottom: calc(clamp(64px, 6.25vw, 120px) * -0.4667);
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 0 clamp(12px, 1.2vw, 24px);
+  overflow: visible;
+  background-color: transparent;
+  background-image: url('../../assets/images/home/status-bar-bg.png');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-position: center clamp(-34px, -1.77vw, -18.13px);
+  /* 顶部状态栏因负 margin-bottom 向下溢出覆盖地图舞台顶部区域，
+     为避免其透明盒体拦截下方元素（如设备管理面板关闭按钮）的鼠标事件，
+     整体放行事件，仅由内部需要交互的内容区自行接收 */
+  pointer-events: none;
+}
+
+.status-header__left,
+.status-header__right {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  height: clamp(34.13px, 3.33vw, 64px);
+  /* 左右容器同样放行事件：其透明盒体（flex 间隙/padding）可能覆盖下方元素，
+     仅需在真正可交互的子元素（.alarm）上单独开启 */
+}
+
+/* 告警徽标为唯一需要点击的元素，单独开启事件接收 */
+.alarm {
+  pointer-events: auto;
+}
+
+.status-header__left strong {
+  margin-right: clamp(20px, 2vw, 38px);
+  font-size: clamp(12px, 1.25vw, 24px);
+  white-space: nowrap;
+}
+
+.status-metric {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(70px, 7.14vw, 137px);
+  height: clamp(21px, 2.08vw, 40px);
+  margin-right: clamp(6px, .6vw, 12px);
+  border-left: 2px solid #07972b;
+  background: linear-gradient(41deg, #0dbe3933, transparent);
+}
+
+.status-metric--takeoff {
+  border-left-color: #60bff280;
+  background: linear-gradient(61deg, #60bff233, transparent);
+}
+
+.status-metric img {
+  width: clamp(8px, 1.3vw, 25px);
+  max-height: 62%;
+  margin: 0 clamp(3px, .42vw, 8px);
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.status-metric span {
+  color: #07972b;
+  font-size: clamp(6px, .63vw, 12px);
+  line-height: 1.15;
+  font-family: 'MiSans-Regular';
+  font-weight: 400;
+  text-align: center;
+  font-style: normal;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.status-metric--online span {
+  color: #7bff00;
+}
+
+.status-metric--takeoff span {
+  color: #60bff2;
+}
+
+.status-metric b {
+  margin-left: auto;
+  font-size: clamp(10px, 1.04vw, 20px);
+  font-weight: 400;
+  flex-shrink: 0;
+}
+
+.status-metric b i {
+  color: #ffffff66;
+  font-style: normal;
+}
+
+.status-header__right {
+  gap: clamp(10px, 1.56vw, 30px);
+  padding-right: clamp(8px, 1.56vw, 30px);
+}
+
+.alarm {
+  position: relative;
+  display: block;
+  width: clamp(18px, 1.88vw, 36px);
+  height: clamp(18px, 1.88vw, 36px);
+}
+
+.alarm>img:first-child {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.alarm__symbol {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 50%;
+  height: 50%;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+}
+
+.alarm em {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  padding: 1px 2px;
+  border-radius: 8px;
+  color: #fff;
+  background: #df5f41;
+  font-size: clamp(5px, .52vw, 10px);
+  font-style: normal;
+}
+
+.header-action {
+  width: clamp(14px, 1.46vw, 28px);
+  height: clamp(14px, 1.46vw, 28px);
+  object-fit: contain;
+}
+
+.avatar {
+  width: clamp(20px, 2.08vw, 40px);
+  height: clamp(20px, 2.08vw, 40px);
+}
+
+.signal {
+  width: clamp(18px, 1.88vw, 36px);
+  height: auto;
+}
+
+/* ====== 地图工具栏 ====== */
+.map-toolbar-wrapper {
+  position: absolute;
+  top: clamp(16px, 1.615vw, 31px);
+  left: clamp(8px, .83vw, 16px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, .42vw, 8px);
+}
+
+.map-toolbar {
+  display: grid;
+  gap: clamp(4px, .42vw, 8px);
+}
+
+.map-toolbar button {
+  position: relative;
+  display: grid;
+  width: clamp(32px, 3.33vw, 64px);
+  height: clamp(32px, 3.33vw, 64px);
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  /* 透明背景：浏览器默认 <button> 有白色/浅灰背景，背景图加载前会露出白底 */
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+  cursor: pointer;
+  place-items: center;
+  flex-shrink: 0;
+  /* 半透明效果：默认约 85% 不透明度，地图底图隐约透出；
+     悬停/激活时恢复完全不透明（见下方规则），带平滑过渡 */
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+.map-toolbar button:hover,
+.map-toolbar button.is-active {
+  opacity: 1;
+}
+
+.toolbar-icon {
+  position: relative;
+  z-index: 1;
+  width: 42%;
+  max-height: 46%;
+  object-fit: contain;
+}
+
+.map-toolbar button.is-active {
+  z-index: 10;
+}
+
+/* ====== 动态比例尺 ====== */
+/* 比例尺宽度由 MapScale 组件动态内联设置；
+   不加过渡，避免缩放时出现“抖动/拖影”。 */
+.scale span {
+  transition: none;
+}
+
+/* ====== 测距模式提示条 ====== */
+.measure-hint {
+  position: absolute;
+  top: clamp(8px, 1.5vw, 24px);
+  left: 50%;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 0.8vw, 14px);
+  min-width: 400px;
+  height: 40px;
+  padding: 0 clamp(20px, 2vw, 32px);
+  box-sizing: border-box;
+  border-radius: 1000px;
+  border: 1px solid transparent;
+  /* 双背景技巧：border-image 会令 border-radius 失效，
+     故用 padding-box 铺主体渐变、border-box 铺边框渐变 */
+  background:
+    linear-gradient(90deg, rgba(36, 86, 107, 0.7) 0%, rgba(71, 167, 209, 0.4) 100%) padding-box,
+    linear-gradient(90deg, rgba(24, 134, 161, 1), rgba(24, 134, 161, 0)) border-box;
+  box-shadow: 0 5px 12px 0 rgba(12, 69, 79, 0.5);
+  color: #ffffff;
+  font-family: 'MiSans-Regular';
+  font-weight: 400;
+  font-size: 16px;
+  font-style: normal;
+  text-transform: none;
+  text-align: center;
+  line-height: 1.4;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  /* 提示条本身不拦截地图交互，但内部按钮单独启用 */
+  pointer-events: none;
+  /* 入场动画 */
+  animation: measure-hint-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 撤销按钮：启用交互 */
+.measure-hint__btn {
+  pointer-events: auto;
+  padding: 2px 12px;
+  border-radius: 1000px;
+  border: 1px solid rgba(24, 134, 161, 0.5);
+  background: rgba(24, 134, 161, 0.15);
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.measure-hint__btn:hover {
+  background: rgba(24, 134, 161, 0.3);
+  border-color: rgba(24, 134, 161, 0.8);
+}
+
+.measure-hint__btn:active {
+  background: rgba(24, 134, 161, 0.4);
+}
+
+@keyframes measure-hint-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-12px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .measure-hint {
+    animation: none;
+  }
+}
+
+/* ====== 测距结束确认面板（依附于最新终点图钉） ======
+   排序（左→右）：取消 · 确定
+   - 取消（破坏性/低频）：ghost 弱化样式，靠左，降低误触
+   - 确定（主操作）：描边 + 半透填充，靠右
+   由 useDistanceMeasure 注入到最新红色终点图钉的零尺寸 Marker 容器内，
+   绝对定位在图钉右侧、竖直居中。仅测距激活且已落 ≥2 点时出现。
+   边界避让：靠近地图右/顶/底边缘时，由 useDistanceMeasure 动态翻到左侧或竖直收紧，避免被裁切。
+   pointer-events:auto 保证按钮可点；点击后由 hook 自行移除。 */
+.measure-finish-panel {
+  position: absolute;
+  left: 15px;
+  top: -13px;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 0.6vw, 10px);
+  padding: 5px clamp(8px, 0.8vw, 12px);
+  border-radius: 1000px;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+  /* 双背景：padding-box 主体渐变 + border-box 边框渐变（与 measure-hint 一致） */
+  background:
+    linear-gradient(90deg, rgba(36, 86, 107, 0.92) 0%, rgba(71, 167, 209, 0.6) 100%) padding-box,
+    linear-gradient(90deg, rgba(24, 134, 161, 1), rgba(24, 134, 161, 0)) border-box;
+  box-shadow: 0 4px 10px 0 rgba(12, 69, 79, 0.5);
+  color: #ffffff;
+  font-family: 'MiSans-Regular';
+  font-size: 13px;
+  pointer-events: auto;
+  animation: measure-finish-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 翻到图钉左侧：图钉靠近地图右边缘、面板在右侧会被裁切时启用。
+   仅覆盖 left/right；竖直（top/translateY）沿用基类。 */
+.measure-finish-panel.measure-finish-panel--left {
+  left: auto;
+  right: 15px;
+}
+
+.measure-finish-panel__label {
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  opacity: 0.88;
+  padding-left: 2px;
+}
+
+.measure-finish-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 0.4vw, 6px);
+}
+
+.measure-finish-panel__btn {
+  cursor: pointer;
+  padding: 3px 11px;
+  border-radius: 1000px;
+  font-family: 'MiSans-Regular';
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+/* 取消：ghost，破坏性动作弱化 */
+.measure-finish-panel__btn--cancel {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+}
+.measure-finish-panel__btn--cancel:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+}
+
+/* 确定：次级（描边 + 半透填充） */
+.measure-finish-panel__btn--confirm {
+  border: 1px solid rgba(24, 134, 161, 0.6);
+  background: rgba(24, 134, 161, 0.2);
+  color: #ffffff;
+}
+.measure-finish-panel__btn--confirm:hover {
+  background: rgba(24, 134, 161, 0.36);
+  border-color: rgba(24, 134, 161, 0.9);
+}
+
+.measure-finish-panel__btn:active {
+  transform: translateY(1px);
+}
+
+@keyframes measure-finish-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-6px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .measure-finish-panel {
+    animation: none;
+  }
+}
+
+/* ====== 测距「悬浮删除」按钮 ======
+   hover 已「确定」的测距折线时出现：折线高亮 + 本按钮位于命中点（≈光标处），
+   点击删除整条测距（折线 + 图钉 + 分段标签）。
+   由 useDistanceMeasure 注入为单例零尺寸 Marker，按钮绝对定位并 translate 居中于命中点。
+   150ms 延时隐藏避免光标在折线命中层与按钮间移动时闪烁。 */
+.measure-delete-btn {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  /* 与测距橙（#D95D04）同系，悬停加亮 */
+  background: rgba(217, 93, 4, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.measure-delete-btn:hover {
+  background: #ff6a00;
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.measure-delete-btn:active {
+  transform: translate(-50%, -50%) scale(0.95);
+}
+
+/* ====== 地图控制按钮 ====== */
+.view-controls {
+  position: absolute;
+  right: clamp(8px, .83vw, 16px);
+  bottom: calc(clamp(8px, .83vw, 16px) + clamp(32px, 3.33vw, 64px) * 2 + clamp(4px, .42vw, 8px));
+  z-index: 5;
+  display: grid;
+  gap: clamp(4px, .42vw, 8px);
+}
+
+.view-controls button,
+.zoom-controls button {
+  display: grid;
+  width: clamp(32px, 3.33vw, 64px);
+  height: clamp(32px, 3.33vw, 64px);
+  padding: 0;
+  color: #fff;
+  font-size: clamp(11px, 1.15vw, 22px);
+  cursor: pointer;
+  place-items: center;
+  box-sizing: border-box;
+  /* 清除浏览器默认 <button> 白色背景与边框：
+     避免在覆盖 background 时露出 UA 默认白底/灰边框 */
+  border: 0;
+  background: transparent;
+}
+
+/* view-controls 按钮三态（背景图：默认 / hover / active，带透明度）
+   透明度由 ::before 伪元素承载，独立于按钮内容（图标/文字），按需调整 opacity 值。
+   isolation: isolate 创建层叠上下文，把 z-index:-1 的伪元素困在按钮内，
+   确保伪元素位于按钮背景之上、内容（图标/文字）之下。 */
+.view-controls button {
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.view-controls button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: url('../../assets/images/home/map-button-normal.png');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.view-controls button:hover::before {
+  background-image: url('../../assets/images/home/map-button-hover.png');
+}
+
+.view-controls button:active::before,
+.view-controls button.active::before {
+  background-image: url('../../assets/images/home/map-button-active.png');
+}
+
+.view-controls img,
+.zoom-controls img {
+  width: 50%;
+  height: 50%;
+  object-fit: contain;
+}
+
+.zoom-controls {
+  position: absolute;
+  right: clamp(8px, .83vw, 16px);
+  bottom: clamp(8px, .83vw, 16px);
+  z-index: 5;
+  display: grid;
+  box-sizing: border-box;
+  width: clamp(32px, 3.33vw, 64px);
+  grid-template-columns: 1fr;
+  overflow: hidden;
+  /* 连体外框：背景图（默认 / hover / active 三态，带透明度）。
+     透明度由 ::before 承载，容器本身已是定位元素（层叠上下文），
+     z-index:-1 伪元素位于容器背景之上、内部按钮内容之下。 */
+  border: 0;
+  border-radius: 4px;
+}
+
+.zoom-controls::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: url('../../assets/images/home/map-button-normal.png');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* 内部按钮：默认透明（露出容器背景），无独立圆角/边框。
+   hover/active 整体效果由容器 :has() 承载，避免区域化变色。 */
+.zoom-controls button {
+  box-sizing: border-box;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.zoom-controls:has(button:hover)::before {
+  background-image: url('../../assets/images/home/map-button-hover.png');
+}
+
+.zoom-controls:has(button:active)::before {
+  background-image: url('../../assets/images/home/map-button-active.png');
+}
+
+.zoom-controls button img {
+  width: 50%;
+  height: 50%;
+  object-fit: contain;
+}
+
+/* ====== 图层控制面板 ====== */
+/* 定位：右下角图层按钮左侧（与 DeviceManagementPanel 的右侧定位对称）
+   定位锚点参考 MapControls.css 的 .view-controls：
+   right: clamp(8px, .83vw, 16px) + 按钮宽度 clamp(32px, 3.33vw, 64px) + 间距 */
+.layer-panel {
+  position: absolute;
+  /* 紧贴图层按钮左侧：图层按钮右边距 + 按钮宽度 + 8px 间距 */
+  right: calc(clamp(8px, .83vw, 16px) + clamp(32px, 3.33vw, 64px) + 8px);
+  bottom: calc(clamp(8px, .83vw, 16px) + clamp(32px, 3.33vw, 64px) * 2 + clamp(4px, .42vw, 8px));
+  z-index: 6;
+  width: clamp(160px, 13vw, 220px);
+  /* 高度随内容自适应，最小保证视觉完整 */
+  min-height: clamp(200px, 16vw, 262px);
+
+  /* 背景：CSS 渐变 + 径向渐变边框 + 阴影，替换原背景图（设计稿精确样式） */
+  background: linear-gradient(180deg, rgba(36, 86, 107, 0.7) 0%, rgba(71, 167, 209, 0.4) 100%);
+  box-shadow: 0px 5px 12px 0px rgba(12, 69, 79, 0.5);
+  border-radius: 4px;
+  border: 1px solid;
+  border-image: radial-gradient(circle, rgba(24, 134, 161, 1), rgba(24, 134, 161, 0)) 1 1;
+
+  /* 淡入/淡出动画 */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(8px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    visibility 0.25s ease;
+  pointer-events: none;
+}
+
+.layer-panel--visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* 内容层：直接位于面板背景之上 */
+.layer-panel__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  /* 用 CSS 变量统一内边距，供分割线负 margin 精确抵消使用 */
+  --panel-pad: clamp(12px, 1vw, 16px);
+  padding: var(--panel-pad);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: clamp(200px, 16vw, 262px);
+}
+
+/* 标题 */
+.layer-panel__title {
+  margin: 0;
+  font-size: clamp(12px, .94vw, 16px);
+  font-weight: normal;
+  line-height: 1.3;
+  color: #fff;
+  font-family: 'MiSans-Regular';
+  white-space: nowrap;
+}
+
+/* 分隔线：贯穿面板左右边界，不留 padding 空隙
+   - 左右 margin 用 calc(var(--panel-pad) * -1) 精确抵消 .layer-panel__content 的左右 padding；
+   - 上 margin 加大，避免标题"图层控制"紧贴分割线；
+   - 下 margin 保持原间距。 */
+.layer-panel__divider {
+  /* flex 布局中 width:100% + 负 margin 会导致左溢出/右内缩（不对称）。
+     用 calc 显式把宽度扩展为 content-box + 2×padding，配合左右各 -padding 负 margin，
+     实现左右对称溢出至 .layer-panel__content 的 border-box（即面板 border 内侧）。 */
+  width: calc(100% + var(--panel-pad) * 2);
+  height: 1px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 0;
+  margin: clamp(10px, 0.83vw, 16px) calc(var(--panel-pad) * -1) clamp(6px, 0.5vw, 8px);
+  flex-shrink: 0;
+}
+
+/* 图层项列表 */
+.layer-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1vw, 16px);
+  flex: 1;
+  justify-content: flex-start;
+  padding-top: clamp(8px, .63vw, 12px);
+}
+
+/* 单个图层项：标签左 + 开关右 */
+.layer-panel__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: clamp(18px, 1.5vw, 24px);
+}
+
+/* 图层标签 */
+.layer-panel__label {
+  font-size: clamp(12px, .94vw, 16px);
+  line-height: 1.3;
+  color: #fff;
+  white-space: nowrap;
+  font-family: 'MiSans-Regular';
+}
+
+/* 非开启态标签灰显 */
+.layer-panel__label--dimmed {
+  color: #999;
+}
+
+/* 开关按钮 */
+.layer-panel__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: clamp(36px, 3vw, 48px);
+  height: clamp(18px, 1.5vw, 24px);
+  flex-shrink: 0;
+}
+
+/* 开关内图片（开启态 PNG）：铺满按钮 */
+.layer-panel__toggle img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 开关内 SVG（off/error/loading 态）：铺满按钮，保持 2:1 比例 */
+.layer-panel__toggle svg {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 加载中 spinner：外壳不动，内圆环持续匀速旋转（参考 layer-toggle-on.png）。
+   圆环 PNG 尺寸 20×20，定位在 SVG 的 (27.77, 1.53)，中心点 = (37.77, 11.53)。
+   使用绝对坐标 transform-origin 确保围绕圆环几何中心旋转，零偏心。 */
+.layer-panel__spinner {
+  /* 关键：使用 SVG 坐标系中的绝对中心点作为旋转原点 */
+  transform-origin: 37.77px 11.53px;
+  /* 线性匀速旋转：1s/圈，流畅稳定 */
+  animation: layer-panel-spin 1s linear infinite;
+}
+
+@keyframes layer-panel-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 悬停反馈 */
+.layer-panel__toggle:hover {
+  filter: brightness(1.15);
+}
+
+.layer-panel__toggle:active {
+  filter: brightness(0.9);
+}

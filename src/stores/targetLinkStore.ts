@@ -27,8 +27,8 @@
  *   处理完成由列表侧清除，避免之后手动重开面板时重复聚焦）。
  */
 import { create } from 'zustand'
-import { targetList, type TargetItem } from '../config/targets'
-import type { LngLat } from '../map-engines/types'
+import { targetList, type TargetItem } from '../config/index'
+import { type LngLat } from '../map-engines/types'
 
 /** 目标地图图标坐标（map-stage 百分比），与飞机初始位置相对集中但不重叠：无人机簇居中偏左上，目标簇居中偏右下 */
 export const TARGET_MAP_POSITIONS: Record<string, { x: number; y: number }> = {

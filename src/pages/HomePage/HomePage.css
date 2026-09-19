@@ -1,11 +1,128 @@
+@import '../../components/home/aircraft/AircraftLayer.css';
+@import '../../styles/home/FlightMarkers.css';
+@import '../../styles/home/FlightPanels.css';
+
 /**
  * HomePage.css —— 样式入口（仅 @import，按拆分前 homepage-part1~5 的层叠顺序拼接）。
  * 各文件均为全局类选择器，无 CSS Modules；HoverPanelPlacement.css 因含覆盖性
  * 修饰类规则，仍保持在所有基础样式之后导入。
  */
-@import './styles/HomePageLayout.css';
-@import './styles/AircraftLayer.css';
-@import './styles/BottomBar.css';
-@import './styles/FlightPanels.css';
-@import './styles/FlightMarkers.css';
-@import './styles/AlarmPanels.css';
+
+/* HomePageLayout —— 页面容器 / 地图舞台 / 限制区域
+   自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
+   HomePage.css 按拆分前的层叠顺序 @import 各文件。 */
+/* ====== 页面容器 ====== */
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100vh;
+}
+
+.design-viewport {
+  width: 100vw;
+  height: 100vh;
+  min-width: 960px;
+  overflow: hidden;
+  background: #0a1a2f;
+}
+
+.design-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  font-family: 'MiSans-Regular';
+  display: flex;
+  flex-direction: column;
+}
+
+/* ====== 地图舞台 ====== */
+.map-stage {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  overflow: hidden;
+  box-sizing: border-box;
+  /* 放行鼠标事件，让滚轮/拖拽直达底层地图；仅可交互的子元素单独恢复 pointer-events */
+  pointer-events: none;
+}
+
+/* 地图舞台内需要交互的 UI 元素：单独开启鼠标事件接收 */
+.map-stage .map-toolbar-wrapper,
+.map-stage .view-controls,
+.map-stage .zoom-controls,
+.map-stage .bottom-bar,
+.map-stage .layer-panel,
+.map-stage .device-panel,
+.map-stage .mission-panel,
+.map-stage .alarm-info-panel,
+.map-stage .route-panel,
+.map-stage .aircraft,
+.map-stage .restricted-zone,
+.map-stage .offline-map-panel {
+  pointer-events: auto;
+}
+
+/* 地图底图层：绝对定位铺满整个画布（含状态栏凸出区域）并置于最底层，
+   其余 UI 元素通过各自的 z-index 浮于其上 */
+.map-base {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* ====== 限制区域 ====== */
+/* 基础类：仅橙色待接入区块使用（SHOW_PENDING_PANELS 门控，默认隐藏） */
+.restricted-zone {
+  position: absolute;
+  z-index: 2;
+}
+
+.restricted-zone--orange {
+  right: 17.8%;
+  bottom: 22.6%;
+  width: 12.4%;
+  height: 18.3%;
+  border: 3px solid #c66000;
+  background: #be6c1e66;
+  transform: rotate(35deg);
+}
+
+/* ====== Hover 面板边缘自适应定位（方向修饰类）======
+   说明：
+   - 由 panelPlacement.ts 根据宿主（飞机）在视口中的百分比位置，
+     在宿主 className 上追加 `panel-left` / `panel-down` 修饰类；
+   - 默认（无修饰类）= 面板向「右 + 上」展开（设计稿原样）；
+   - `panel-left` = 水平翻转：面板改为向左侧展开，避免右侧空间不足溢出；
+   - `panel-down` = 垂直翻转：面板改为向下方展开，避免上方空间不足溢出。
+   - 本文件需在 HomePage.css 之后导入，以保证修饰类规则的特异性相同时可覆盖默认值。 */
+
+/* ===== 飞机信息面板 =====
+   默认（向右+向上）：
+     left: calc(100% + 12px); top: 24px; transform: translateY(-100%); */
+
+/* panel-left：面板改为出现在图标左侧 */
+.aircraft.panel-left .aircraft-hover-panel,
+.aircraft.panel-left .aircraft-info-panel {
+  left: auto;
+  right: calc(100% + 12px);
+}
+
+/* panel-down：面板改为向下展开 */
+.aircraft.panel-down .aircraft-hover-panel,
+.aircraft.panel-down .aircraft-info-panel {
+  transform: none;
+}
+
+/* ====== Hover 面板视口边缘平移修正（兜底）======
+   说明：
+   - usePanelClamp hook 在每次渲染/拖拽/resize 后，测量所有 [data-hover-panel]
+     的实际矩形，计算使其完全进入视口所需的平移量，通过 CSS 变量
+     `--clamp-x` / `--clamp-y` 注入面板元素；
+   - 这里用独立的 `translate` 属性叠加该平移，与各面板既有的 `transform`
+     （translateY(-100%) / translateX(-30%) / panel-down 的 none）解耦互不干扰；
+   - 变量缺省值为 0px，未启用 hook 时无副作用。 */
+[data-hover-panel] {
+  translate: var(--clamp-x, 0px) var(--clamp-y, 0px);
+}

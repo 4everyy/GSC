@@ -1,0 +1,710 @@
+/* ====== 区域列表面板（视觉与目标/设备管理面板一致） ====== */
+.area-panel {
+  position: absolute;
+  top: 0;
+  left: calc(100% + clamp(8px, 0.83vw, 16px));
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  /* 与 target-panel 同宽 466px：行宽 434 + 左右内边距 + 边框 */
+  width: 466px;
+  height: clamp(460px, 30vw, 560px);
+  background: linear-gradient(180deg, rgba(36, 86, 107, 0.7) 0%, rgba(71, 167, 209, 0.4) 100%);
+  box-shadow: 0px 5px 12px 0px rgba(12, 69, 79, 0.5);
+  border: 1px solid;
+  border-image: radial-gradient(circle, rgba(24, 134, 161, 1), rgba(24, 134, 161, 0)) 1 1;
+  padding: clamp(2px, 0.21vw, 4px) clamp(8px, 0.78vw, 15px) clamp(10px, 0.83vw, 16px);
+  color: #fff;
+  font-family: 'MiSans-Regular';
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  pointer-events: none;
+}
+
+/* 左上角三角装饰：位于面板外框左上角 */
+.area-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: clamp(10px, 0.83vw, 16px);
+  height: clamp(10px, 0.83vw, 16px);
+  background: linear-gradient(135deg, #93fffb 0%, #65b9ff 100%);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  z-index: 3;
+}
+
+/* 可见态：触发淡入 */
+.area-panel--visible {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* ====== 标题栏 ====== */
+.area-panel__header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: clamp(24px, 1.67vw, 32px);
+  flex-shrink: 0;
+}
+
+.area-panel__header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(14px, 1vw, 19px);
+  height: clamp(14px, 1vw, 19px);
+  flex-shrink: 0;
+}
+
+.area-panel__header-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.area-panel__title {
+  margin-left: clamp(6px, 0.42vw, 8px);
+  font-size: clamp(12px, 0.94vw, 18px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+}
+
+/* 关闭按钮：与目标/设备管理面板一致 */
+.area-panel__close {
+  position: relative;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(20px, 1.4vw, 28px);
+  height: clamp(20px, 1.4vw, 28px);
+  padding: 0;
+  border: 1px solid rgba(70, 220, 231, 0.6);
+  border-radius: 2px;
+  background-color: rgba(34, 118, 243, 0.35);
+  box-shadow: 0 1px 4px 2px rgba(47, 199, 255, 0.3);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.area-panel__close:hover {
+  border-color: rgba(120, 240, 255, 0.95);
+  background-color: rgba(52, 138, 255, 0.6);
+}
+
+.area-panel__close img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+/* ====== 分隔线 ====== */
+.area-panel__separator {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 0.42vw, 8px);
+  height: 3px;
+  /* 分隔线与下方全选框/文案的间距固定 17px */
+  margin: 6px 0 17px;
+  flex-shrink: 0;
+}
+
+.area-panel__separator-dot {
+  width: 3px;
+  height: 3px;
+  background: #59ecff;
+  box-shadow: 0 0 8px 1px #76adfe;
+  flex-shrink: 0;
+}
+
+.area-panel__separator-line {
+  flex: 1;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(70, 220, 231, 0.8), rgba(70, 220, 231, 0.2));
+  border-radius: 1.5px;
+}
+
+/* ====== 筛选栏：全选复选框 ====== */
+.area-panel__filters {
+  display: flex;
+  align-items: center;
+  height: clamp(20px, 1.25vw, 24px);
+  margin-bottom: clamp(8px, 0.83vw, 16px);
+  padding: 0 clamp(8px, 0.63vw, 12px);
+  /* 全选文案与左侧全选框间距固定 8px */
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.area-panel__filter-label {
+  color: #fff;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+
+/* 全选复选框：与 .target-panel__checkbox / .device-panel__select-all 完全一致
+   （三态：全选显示白对勾 / 部分选中显示白横线 / 未选空框）
+   尺寸与行复选框 .area-row__checkbox 一致（响应式 clamp，随视口 14~20px） */
+.area-panel__checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
+  min-width: clamp(14px, 1.15vw, 20px);
+  border-radius: 2px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid #4b79e4;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.area-panel__checkbox:hover {
+  background-color: rgba(75, 121, 228, 0.5);
+  border-color: rgba(75, 121, 228, 0.8);
+}
+
+.area-panel__checkbox--checked,
+.area-panel__checkbox--indeterminate {
+  background: #4b79e4;
+  border-color: #4b79e4;
+}
+
+/* ====== 主体（列表滚动区） ====== */
+.area-panel__body {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.area-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.42vw, 8px);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0;
+  scrollbar-width: none;
+}
+
+.area-panel__list::-webkit-scrollbar {
+  display: none;
+}
+
+/* 加载中 / 空数据 / 错误占位 */
+.area-panel__state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1vw, 16px);
+  padding: clamp(16px, 2vw, 32px) 0;
+}
+
+.area-panel__state img {
+  width: clamp(64px, 7vw, 100px);
+  height: auto;
+  object-fit: contain;
+}
+
+.area-panel__state span {
+  color: #fff;
+  /* 空态文案：对齐设备管理面板空列表文案字号 */
+  font-size: clamp(12px, 1vw, 16px);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  line-height: 1;
+}
+
+/* 加载中旋转图标 */
+.area-panel__state-spinner {
+  animation: areaRefreshSpin 1.2s linear infinite;
+}
+
+/* 错误态：提示 + 重试按钮 */
+.area-panel__state--error {
+  gap: clamp(6px, 0.63vw, 10px);
+}
+
+.area-panel__retry {
+  padding: clamp(4px, 0.42vw, 8px) clamp(12px, 1vw, 20px);
+  color: #fff;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  background-color: rgba(75, 188, 249, 0.1);
+  border: 1px solid rgba(14, 167, 249, 1);
+  border-radius: 2px;
+  cursor: pointer;
+  line-height: 1.3;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.area-panel__retry:hover {
+  background-color: rgba(75, 188, 249, 0.25);
+  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.3);
+}
+
+/* ====== 区域行（434×48 固定行高，表格化列对齐——与 TargetListPanel 同模式） ======
+   布局：[复选框 16px] gap8 [名称(伸展吸收剩余宽度)] gap8 [类型 60px] gap8 [面积 140px] gap8 [图标组 88px]
+   类型/面积为固定列宽（flex-basis 不伸缩）——各行该列起始 x 完全一致，
+   跨行严格对齐成表格列；列内文字统一左对齐（text-align: left）；
+   名称列吸收行内剩余宽度（flex-grow），行尾图标组固定贴右缘；
+   行尾 [编辑 | 显示 | 删除] 三个功能图标规划为整体一列（不拆散、不被压缩），
+   内部间距 8px；未选/选中统一青色渐变底 + #8BF9EB 描边 */
+/* ====== 区域行（常规/hover/选中三态与 TargetListPanel 的目标行一致） ======
+   布局模式：各数据列固定列宽保证跨行严格对齐，剩余空间均分到列间隙；
+   常规(灰)/hover(橙)/选中(蓝) 三态由行背景图 area-row__bg 切换实现 */
+.area-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: clamp(36px, 2.6vw, 44px);
+  padding: 0 clamp(8px, 0.63vw, 12px);
+  border-radius: 2px;
+  overflow: hidden;
+  gap: clamp(4px, 0.31vw, 6px);
+  flex-shrink: 0;
+}
+
+/* 行背景图：绝对定位铺满整行（常规灰 / hover 橙 / 选中蓝） */
+.area-row__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  z-index: 0;
+}
+
+/* 行内内容统一浮于背景图之上 */
+.area-row > *:not(.area-row__bg) {
+  position: relative;
+  z-index: 1;
+}
+
+/* 行复选框：设计稿 16×16，行首第一列（行 flex 布局统一垂直居中） */
+.area-row__checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
+  min-width: clamp(14px, 1.15vw, 20px);
+  border-radius: 2px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid #4b79e4;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.area-row__checkbox:hover {
+  background-color: rgba(75, 121, 228, 0.5);
+  border-color: rgba(75, 121, 228, 0.8);
+}
+
+.area-row__checkbox--checked {
+  background: #4b79e4;
+  border-color: #4b79e4;
+}
+
+/* 行首两列组（复选框/区域名称）：整组作为行 flex 布局的单一子项并吸收剩余宽度
+   （原名称列 flex-grow 职责上移至组容器），组内间距固定 8px（不随视口缩放） */
+.area-row__lead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 三列文字：字号对齐设备管理面板行数据（响应式 10~14px）/ MiSans / 字重 330 / 白色，
+   行 flex 布局垂直居中，统一左对齐 */
+.area-row__name,
+.area-row__type,
+.area-row__area {
+  min-width: 0;
+  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  white-space: nowrap;
+  line-height: 1.2;
+  color: #fff;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 名称列（第2列）：组内自然伸展（组容器 .area-row__lead 已 flex-grow 吸收剩余宽度），
+   与复选框间距固定 8px（组 gap）；超长省略截断 */
+.area-row__name {
+  flex: 0 1 auto;
+  text-align: left;
+}
+
+/* 类型列（第3列）：固定列宽 60px（容纳最长「集群侦察/任务区域」4 汉字 ≈ 56px），
+   所有行该列起始 x 一致、文字左对齐——跨行严格对齐 */
+.area-row__type {
+  flex: 0 0 60px;
+  text-align: left;
+}
+
+/* 面积列（第4列）：固定列宽 140px（容纳「面积：9,999,999㎡」），所有行该列
+   起始 x 一致、文字左对齐——跨行严格对齐；超宽数字省略截断 */
+.area-row__area {
+  flex: 0 0 140px;
+  text-align: left;
+}
+
+/* 行尾操作图标组：整体规划为最后一列（固定宽度 88px = 24×3 + 8×2，
+   不压缩、不拆散），内部 [编辑 | 显示 | 删除] 三个 24×24 图标间距 8px */
+.area-row__actions {
+  display: flex;
+  align-items: center;
+  width: 88px;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.area-row__icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+/* 图标切图（edit.svg / eyes.svg 24×24、icon-delete.png 18×18）居中渲染于 24×24 按钮（尺寸 14~20px 随视口）：
+   此前 16×16 居中渲染导致每侧 4px 透明留白，图标间可见间距达 16px；
+   铺满后图标盒之间（及与面积列之间）可见间距即精确 8px（行 gap / 组内 8px） */
+.area-row__icon-btn img {
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.area-row__icon-btn:hover {
+  opacity: 1;
+}
+
+.area-row__icon-btn:active {
+  opacity: 0.7;
+}
+
+/* 显示图标关闭态（该区域已从地图隐藏）：半透明提示 */
+.area-row__icon-btn--off {
+  opacity: 0.45;
+}
+
+/* ====== 底部操作：刷新 / 新增 / 删除（与 TargetListPanel 同款视觉） ====== */
+.area-panel__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: clamp(6px, 0.52vw, 10px);
+  margin-top: clamp(8px, 0.83vw, 16px);
+  padding: 0 clamp(8px, 0.63vw, 12px);
+  flex-shrink: 0;
+}
+
+.area-panel__action-btn {
+  flex: 1;
+  height: clamp(26px, 2.2vw, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, 0.42vw, 8px);
+  padding: 0;
+  background-color: rgba(75, 188, 249, 0.1);
+  border: 1px solid rgba(14, 167, 249, 1);
+  border-radius: 2px;
+  color: #fff;
+  /* 字号对齐设备管理面板正文标准 */
+  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.area-panel__action-btn:hover {
+  background-color: rgba(75, 188, 249, 0.25);
+  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.3);
+}
+
+.area-panel__action-btn:active {
+  background-color: rgba(75, 188, 249, 0.4);
+}
+
+/* 禁用态（刷新 loading 中 / 删除未选中任何行）：置灰 + 去除交互反馈 */
+.area-panel__action-btn:disabled {
+  background-color: rgba(217, 217, 217, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.area-panel__action-btn:disabled:hover,
+.area-panel__action-btn:disabled:active {
+  background-color: rgba(217, 217, 217, 0.08);
+  box-shadow: none;
+}
+
+.area-panel__action-btn:disabled img {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.area-panel__action-btn img {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+/* 主按钮「添加区域」：实心蓝底 #0EA7F9（浅蓝底+蓝描边换成实心，保持同尺寸/圆角） */
+.area-panel__action-btn--primary {
+  background-color: #0ea7f9;
+  border-color: #0ea7f9;
+}
+
+.area-panel__action-btn--primary:hover {
+  background-color: #0ea7f9;
+  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.3);
+}
+
+.area-panel__action-btn--primary:active {
+  background-color: #0c96e0;
+}
+
+/* 刷新图标旋转动画：点击后顺时针旋转 1.2 秒（2 圈）回归初始（与 TargetListPanel 一致） */
+.area-panel__icon--spinning {
+  animation: areaRefreshSpin 1.2s linear;
+}
+
+@keyframes areaRefreshSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(720deg);
+  }
+}
+
+/**
+ * AreaLandingPanel 样式 —— 区域降落面板内容部分（参数区容器 / 降落编队下拉选择器）。
+ * tab 栏样式见 PanelTabs.css，降落速度步进行样式见 HeightStepper.css，
+ * 飞机列表区块样式见 AircraftListPanel.css（复用 AircraftListSection），
+ * 外壳样式复用 PanelShell.css；「.area-landing-panel」仅作页面级定位钩子（HomePage.css）。
+ */
+
+/* 参数区容器：宽度与 HeightStepper 行对齐（244px），纵向排布速度步进与编队选择行 */
+.area-landing-panel__params {
+  width: 244px;
+  margin: 16px 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 编队行（设计稿 group_11）：标签 + 下拉选择器。
+ * 下拉框左边缘与上方速度设置行的步进按钮列左对齐：
+ * label 56px 宽（同 .height-stepper__label）+ 下拉框 m-left 16（同 − 按钮 m-left 16）= 72px 起点一致 */
+.area-landing-panel__formation {
+  display: flex;
+  align-items: center;
+}
+
+/* 标签：56px 宽 + 14px 白色（与 HeightStepper 标签一致） */
+.area-landing-panel__formation-label {
+  width: 56px;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: MiSans, sans-serif;
+  font-weight: 400;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* 下拉选择器（设计稿 block_7）：宽 144×28，与上方速度行步进控件组整组等宽对齐
+ * （−24 + 1 + 值94 + 1 + +24 = 144，右缘与 + 按钮右缘对齐）；
+ * 视觉同风格（白 20% 底 + 60% 白描边） */
+.area-landing-panel__select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 16px;
+  width: 144px;
+  height: 28px;
+  padding: 0 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 2px;
+  box-sizing: border-box;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 选中值：14px 白色（与数值框文字一致），占据除图标外的剩余宽度 */
+.area-landing-panel__select-value {
+  flex: 1;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: MiSans, sans-serif;
+  font-weight: 400;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.area-landing-panel__select img {
+  width: 11px;
+  height: 11px;
+  pointer-events: none;
+  transition: transform 0.2s ease;
+}
+
+/* 展开态：箭头旋转 180° */
+.area-landing-panel__select--open img {
+  transform: rotate(180deg);
+}
+
+/* 下拉菜单：绝对定位于选择器下方，深色底 + 白色描边（与选择框同风格） */
+.area-landing-panel__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: rgba(10, 25, 47, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* 选项行：hover 高亮；当前选中项青色文字 */
+.area-landing-panel__dropdown-item {
+  padding: 6px 8px;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: MiSans, sans-serif;
+  font-weight: 400;
+  line-height: 14px;
+  cursor: pointer;
+}
+
+.area-landing-panel__dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.area-landing-panel__dropdown-item--active {
+  color: rgba(83, 255, 233, 1);
+}
+
+/* ---- 区域信息（参数 tab：降落编队行下方，蓝色分割线分隔） ---- */
+
+/* 蓝色分割线（设计稿样式） */
+.area-landing-panel__area-divider {
+  height: 1px;
+  background: #328cdb;
+  border-radius: 0px 0px 0px 0px;
+}
+
+.area-landing-panel__area-info {
+  display: flex;
+  flex-direction: column;
+  /* 标题与首行、行与行间距均为 17px */
+  gap: 17px;
+}
+
+.area-landing-panel__area-info-title {
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: MiSans, sans-serif;
+  font-weight: 400;
+  line-height: 14px;
+}
+
+/* 坐标行：编号徽标与经纬度文本左对齐排列，间距 16px */
+.area-landing-panel__area-info-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* 编号徽标（设计稿 text-wrapper_8）：20px 圆形，白 20% 底 + 白色 1px 描边；
+   内部数字（text_19）12px MiSans-Regular 白色，flex 居中（视觉等价于稿中 margin 定位） */
+.area-landing-panel__area-info-index {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 1);
+  font-size: 12px;
+  font-family: MiSans-Regular, MiSans, sans-serif;
+  font-weight: normal;
+  line-height: 12px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 1);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.area-landing-panel__area-info-coord {
+  width: 129px;
+  height: 19px;
+  overflow-wrap: break-word;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: MiSans-Regular, MiSans, sans-serif;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 14px;
+  /* 去掉偏移，由行容器 align-items:center 与徽标垂直居中 */
+}

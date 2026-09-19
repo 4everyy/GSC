@@ -1,67 +1,37 @@
 /**
  * HomePage —— 地面站主页面（编排层）。
  *
- * 地图引擎：MapLibre GL JS（严格离线，瓦片由本地 MBTiles 包经 IndexedDB 渲染）。
+ * 地图引擎：MapLibre GL JS（严格离线，瓦片由本地 MBTiles 经 HTTP Range 直读渲染）。
  * 页面按模块拆分（均 <500 行）：
- * - useExclusivePanels（内部 useBasicPanelStates/useAdvancedPanelStates）功能面板互斥状态机
+ * - useExclusivePanels（内部 状态声明/互斥开合/查询表单文件扁平化）功能面板互斥状态机
  * - useFlightAnimations / useFlightInteractions   模拟飞行动画与地图取点监听
  * - components/*   飞机层/飞行覆盖层/功能面板组/底部按钮条等
  */
 import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
-import { StatusHeader } from '../../components/StatusHeader/StatusHeader'
-import { MapToolbar } from '../../components/MapToolbar/MapToolbar'
-import { MissionPanel } from '../../components/MissionPanel/MissionPanel'
-import { MapControls } from '../../components/MapControls/MapControls'
-import { MapLoadProgress } from './components/map/MapLoadProgress'
-import { AlarmPanels } from './components/alarm/AlarmPanels'
-import { MapLibreContainer } from '../../components/MapLibreContainer/MapLibreContainer'
-import { MapScale } from '../../components/MapScale/MapScale'
-import { type FormationFlightFormation } from '../../components/FormationFlightPanel/FormationFlightPanel'
-import { useMapEngine } from '../../hooks/useMapEngine'
-import { aircraft } from '../../config/aircraft'
-import { useMapAnchorSync } from '../../hooks/useMapAnchorSync'
+import { StatusHeader, MapToolbar, MapControls, MapScale } from '../../components/MapChrome/MapChrome'
+import { MissionPanel, type FormationFlightFormation } from '../../components/FlightActionPanels/FlightActionPanels'
+import { MapLoadProgress, MapLibreContainer } from '../../components/MapLibreContainer/MapLibreContainer'
+import { AlarmPanels } from '../../components/home/alarm/AlarmPanels'
+import { useMapEngine, useMapAnchorSync, usePanelClamp } from '../../hooks/index'
+import { aircraft } from '../../config/index'
 import { AircraftFocusPanel } from '../../components/AircraftFocusPanel/AircraftFocusPanel'
-import { useLayerStore } from '../../stores/layerStore'
-import { usePanelClamp } from '../../hooks/usePanelClamp'
-import { useOfflineMap } from '../../features/offline-map/useOfflineMap'
-import { useOfflineMapStore } from '../../features/offline-map/offlineMapStore'
-import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
-import { useTaskAreaStore } from '../../stores/taskAreaStore'
-import { usePlaneStatusStore } from '../../stores/planeStatusStore'
-import type { AircraftListItem } from '../../components/AircraftListPanel/AircraftListSection'
+import { useLayerStore, useDeviceLinkStore, useTaskAreaStore, usePlaneStatusStore } from '../../stores/index'
+import { useOfflineMap } from '../../features/offline-map/index'
+import { type AircraftListItem, FlightCommandPanels, WaypointFlightPanels } from '../../components/home/panels/FlightCommandPanels'
 import './HomePage.css'
-import './styles/HoverPanelPlacement.css'
-import { TaskAreaLayer, getAreaBounds } from './components/zones/TaskAreaLayer'
-import AircraftLayer from './components/aircraft/AircraftLayer'
-import { TargetMarkerLayer } from './components/targets/TargetMarkerLayer'
-import { FlightCommandPanels } from './components/panels/FlightCommandPanels'
-import { WaypointFlightPanels } from './components/panels/WaypointFlightPanels'
-import { FlightMissionPanels } from './components/panels/FlightMissionPanels'
-import { useFlightInteractions } from './hooks/useFlightInteractions'
-import { useExclusivePanels } from './hooks/useExclusivePanels'
-import { useFlightAnimations } from './hooks/useFlightAnimations'
-import {
-  SHOW_PENDING_PANELS,
-  AIRCRAFT_INITIAL_POSITIONS,
-  AIRCRAFT_ANCHOR_OFFSETS,
-  TARGET_NEAR_AIRCRAFT_OFFSETS,
-  TARGET_REAL_LNGLAT_MAX_OFFSET,
-  MAP_FOCUS_ZOOM,
-  MAP_FOCUS_FLY_DURATION_MS,
-  AREA_FOCUS_PADDING,
-  AREA_FOCUS_MAX_ZOOM,
-} from './constants'
+import { TaskAreaLayer, getAreaBounds } from '../../components/home/zones/TaskAreaLayer'
+import AircraftLayer from '../../components/home/aircraft/AircraftLayer'
+import { TargetMarkerLayer } from '../../components/home/targets/TargetMarkerLayer'
+import { FlightMissionPanels } from '../../components/home/panels/FlightMissionPanels'
+import { useFlightInteractions } from '../../hooks/useFlightInteractions'
+import { useExclusivePanels } from '../../hooks/useExclusivePanels'
+import { useFlightAnimations } from '../../hooks/useFlightAnimations'
+import { SHOW_PENDING_PANELS, AIRCRAFT_INITIAL_POSITIONS, AIRCRAFT_ANCHOR_OFFSETS, TARGET_NEAR_AIRCRAFT_OFFSETS, TARGET_REAL_LNGLAT_MAX_OFFSET, MAP_FOCUS_ZOOM, MAP_FOCUS_FLY_DURATION_MS, AREA_FOCUS_PADDING, AREA_FOCUS_MAX_ZOOM, getAreaLandingSpots, getRallyPointSpots, computeFormationFlightGeometry } from '../../lib/formationLayout'
 import { buildTargetAnchors, useTargetLinkStore } from '../../stores/targetLinkStore'
-import { loadScopedAnchors } from '../../utils/geoAnchor'
-import type { LngLat } from '../../map-engines/types'
-import {
-  getAreaLandingSpots,
-  getRallyPointSpots,
-  computeFormationFlightGeometry,
-} from './formationLayout'
-import { FlightOverlays } from './components/overlays/FlightOverlays'
-import { AreaSelectOverlay } from './components/overlays/AreaSelectOverlay'
-import { BottomBar } from './components/bottom-bar/BottomBar'
+import { loadScopedAnchors } from '../../utils/index'
+import { type LngLat } from '../../map-engines/types'
+import { FlightOverlays, AreaSelectOverlay } from '../../components/home/overlays/FlightOverlays'
+import { BottomBar } from '../../components/home/bottom-bar/BottomBar'
 
 export function HomePage() {
   // 告警面板状态机已抽离（WB-PF-002）：activeAlarm/pendingAlarm/alarmCollapsing 及
@@ -157,37 +127,14 @@ export function HomePage() {
 
   // 地图取点监听 + 面板关闭/航线失效编排（自 useFlightInteractions 拆出）
   const { handleDeleteRoutePoint } = useFlightInteractions(panels, animations, adapter)
-  // 离线地图：注册 gcs-pkg:// 协议 + 加载已导入包 + 派生活跃栅格样式。
-  // 严格离线机制——地图容器不读取 navigator.onLine、无「在线/离线」分支；
-  // 尚未导入地图包时 activeStyle 为 null（渲染纯色占位底图），
-  // 导入后由 gcs-pkg:// 协议从 IndexedDB 渲染。
+  // 离线地图：gcs-pkg:// 协议经 HTTP Range 按需直读 public/maps/suzhou.mbtiles（无导入、无 IndexedDB）。
   const { activeStyle, activePackage } = useOfflineMap()
 
-  // 默认城市：每次会话首次加载完成后，无条件确保「苏州」离线包可用并激活（最新优先）。
-  // ensureCityPackage 内置版本检测（HEAD Last-Modified 对比 importedAt）：
-  // public/maps/suzhou.mbtiles 有更新 → 自动删旧导新升级为最新数据；
-  // 未导入 → 从同源静态目录拉取导入；已导入且未过期 → 直接激活。
-  // 离线地图面板已隐藏，用户无手动切换入口，故每次启动都回到默认苏州。
-  const ensureCityPackage = useOfflineMapStore((s) => s.ensureCityPackage)
-  const pruneNonSatellitePackages = useOfflineMapStore((s) => s.pruneNonSatellitePackages)
-  const offlineStatus = useOfflineMapStore((s) => s.status)
-  const defaultCityEnsuredRef = useRef(false)
-  useEffect(() => {
-    if (defaultCityEnsuredRef.current || offlineStatus !== 'ready') return
-    defaultCityEnsuredRef.current = true
-    void (async () => {
-      // 仅保留卫星影像包：清理历史导入的矢量/街道图包（png 等），再激活默认城市
-      await pruneNonSatellitePackages()
-      await ensureCityPackage('suzhou')
-    })()
-  }, [offlineStatus, ensureCityPackage, pruneNonSatellitePackages])
-
-  // 激活包变化时（导入新包 / 切换城市）平滑飞到包中心。
+  // 首次激活后平滑飞到包中心（苏州）。
   useEffect(() => {
     if (!adapter || !activePackage) return
     adapter.flyTo(activePackage.center, { zoom: 14, duration: 1500 })
   }, [adapter, activePackage])
-
 
   // 设备联动：hover/选中状态与设备管理面板双向同步（全局 store 承载，
   // deviceIndex 对应 config/devices.ts deviceList 下标）。
@@ -440,7 +387,6 @@ export function HomePage() {
           <AlarmPanels />
           {/* 离线地图管理面板（导入 / 城市切换 / 包列表）暂隐藏——默认自动加载最新苏州包，
               需要手动管理时恢复下方注释即可（严格离线，仅读写本地 IndexedDB） */}
-          {/* <OfflineMapPanel /> */}
 
           {/* 严格离线：瓦片缓存命中即渲染；未命中灰显（绝不在线回源）。
               尚未导入地图包时渲染纯色占位底图。导入/切换入口由离线地图管理模块提供（P1+）。 */}

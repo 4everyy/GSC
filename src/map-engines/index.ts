@@ -6,7 +6,7 @@
  *
  * 使用示例：
  * ```ts
- * import type { MapAdapter, MapEngineInstance } from '../map-engines'
+ * import type { MapAdapter, MapEngineInstance } from './'
  * ```
  */
 export type {

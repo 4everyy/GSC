@@ -13,30 +13,8 @@
  * - Circle：用 turf 风格的多边形近似（等角圆）绘制；为避免外部依赖，自实现圆形点生成。
  * - 销毁：removeOverlay 删除 source + 关联 layer；destroy 不 remove map（由容器组件负责）。
  */
-import {
-  Map as MLMap,
-  Marker as MLMarker,
-  LngLatBounds as MLLngLatBounds,
-  type MarkerOptions as MLMarkerOptions,
-  type MapMouseEvent as MLMapMouseEvent,
-  type GeoJSONSource as MLGeoJSONSource,
-  type StyleSpecification as MLStyleSpecification,
-} from 'maplibre-gl'
-import type {
-  CircleOptions,
-  FitBoundsOptions,
-  LngLat,
-  LngLatBounds,
-  MapAdapter,
-  MapStyleSpec,
-  MarkerHandle,
-  MarkerOptions,
-  PolylineHandle,
-  PolylineHighlightOptions,
-  PolylineInteractionOptions,
-  PolylineOptions,
-  PolygonOptions,
-} from './types'
+import { Map as MLMap, Marker as MLMarker, LngLatBounds as MLLngLatBounds, type MarkerOptions as MLMarkerOptions, type MapMouseEvent as MLMapMouseEvent, type GeoJSONSource as MLGeoJSONSource, type StyleSpecification as MLStyleSpecification } from 'maplibre-gl'
+import { type CircleOptions, type FitBoundsOptions, type LngLat, type LngLatBounds, type MapAdapter, type MapStyleSpec, type MarkerHandle, type MarkerOptions, type PolylineHandle, type PolylineHighlightOptions, type PolylineInteractionOptions, type PolylineOptions, type PolygonOptions } from './types'
 
 /** 本地 GeoJSON 最小类型定义（避免依赖 @types/geojson） */
 type GeoJSONPosition = number[]

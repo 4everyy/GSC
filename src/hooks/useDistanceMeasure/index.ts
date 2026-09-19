@@ -1,20 +1,10 @@
-﻿import { useCallback, useEffect, useRef, useState } from 'react'
-import type { LngLat, MapAdapter, MarkerHandle, PolylineHandle } from '../../map-engines'
-import { createCommittedController, type CommittedController } from './committedMeasurements'
-import {
-  createDistanceLabelElement,
-  createEndMarkerElement,
-  createFinishPanelElement,
-  createStartMarkerElement,
-  PIN_ANCHOR,
-  repositionFinishPanel,
-} from './dom'
-import { formatDistance, haversineDistance, makeMeasureSessionId, midpoint } from './geo'
-import { createPreviewController, type PreviewController } from './preview'
-import type { CommittedMeasurement } from './types'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { type LngLat, type MapAdapter, type MarkerHandle, type PolylineHandle } from '../../map-engines'
+import { createCommittedController, type CommittedController, createDistanceLabelElement, createEndMarkerElement, createFinishPanelElement, createStartMarkerElement, PIN_ANCHOR, repositionFinishPanel, formatDistance, haversineDistance, makeMeasureSessionId, midpoint, createPreviewController, type PreviewController } from './renderers'
+
 
 // 兼容 re-export：旧版单文件曾从 hook 文件直接导出这两个工具函数
-export { haversineDistance, formatDistance } from './geo'
+export { haversineDistance, formatDistance } from './renderers'
 
 /**
  * 测距工具 Hook。
@@ -397,4 +387,22 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
       })
     }, [adapter, redrawMarkers, redrawPolyline, updateSegmentLabels]),
   }
+}
+
+
+/**
+ * 一条已「确定」的测距记录。
+ * finish() 时把当前进行中覆盖物的 id 快照进来；之后 cleanup()/toggle()/Esc/右键
+ * 都不再移除它们，使多次测距结果可累积保留在地图上。
+ */
+export interface CommittedMeasurement {
+  markerIds: string[]
+  polylineId: string | null
+  segmentLabelIds: string[]
+  /** 提交时的测距点序列（删除悬停段后按剩余点重连重绘） */
+  points: LngLat[]
+  /** 折线句柄（删段后 setPolylinePoints 重连复用） */
+  polylineHandle: PolylineHandle | null
+  /** 取消该折线悬停交互绑定（删除该条测距 / 卸载时调用） */
+  unbindInteractive?: () => void
 }
