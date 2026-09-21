@@ -8,7 +8,6 @@ import { DeviceManagementPanel } from '../DeviceManagementPanel/DeviceManagement
 import { AreaListPanel } from '../AreaPanels/AreaPanels'
 import { TargetListPanel } from '../TargetListPanel/TargetListPanel'
 import { TaskListPanel } from '../TaskListPanel/TaskListPanel'
-import { TaskProPanel } from '../TaskListPanel/TaskPanels'
 import { type MapAdapter } from '../../map-engines/index'
 import { useDistanceMeasure } from '../../hooks/useDistanceMeasure/index'
 
@@ -136,16 +135,12 @@ export function MapToolbar() {
     }
   }, [])
 
-  // 专业模式面板：由创建任务弹层「专业模式」按钮触发，独立于任务面板组
-  const [proOpen, setProOpen] = useState(false)
-
   // 第 1 个按钮：设备管理面板；第 2 个按钮：区域列表面板；
   // 第 4 个按钮：任务面板；第 5 个按钮：目标列表面板
   const [deviceMounted, deviceVisible] = useFadeMount(active === 0)
   const [areaMounted, areaVisible] = useFadeMount(active === 1)
   const [taskMounted, taskVisible] = useFadeMount(active === 3)
   const [targetMounted, targetVisible] = useFadeMount(active === 4)
-  const [proMounted, proVisible] = useFadeMount(proOpen)
 
   return (
     <div className="map-toolbar-wrapper">
@@ -178,30 +173,9 @@ export function MapToolbar() {
         <DeviceManagementPanel visible={deviceVisible} onClose={() => setActive(-1)} />
       )}
       {areaMounted && <AreaListPanel visible={areaVisible} onClose={() => setActive(-1)} />}
-      {taskMounted && (
-        <TaskListPanel
-          visible={taskVisible}
-          onClose={() => setActive(-1)}
-          onProMode={() => {
-            // 进入专业模式：关闭任务面板组，打开专业模式工作区
-            setActive(-1)
-            setProOpen(true)
-          }}
-        />
-      )}
+      {taskMounted && <TaskListPanel visible={taskVisible} onClose={() => setActive(-1)} />}
       {targetMounted && (
         <TargetListPanel visible={targetVisible} onClose={() => setActive(-1)} />
-      )}
-      {proMounted && (
-        <TaskProPanel
-          visible={proVisible}
-          onClose={() => setProOpen(false)}
-          onSubmit={() => {
-            // 生成任务：关闭专业模式并回到任务列表
-            setProOpen(false)
-            setActive(3)
-          }}
-        />
       )}
     </div>
   )

@@ -1,11 +1,11 @@
 /**
  * App —— 登录门控 + 主应用。
  *
- * 门控逻辑：默认跳过登录直接挂载 MainApp 进入首页（VITE_SKIP_LOGIN 未配置
- * 或非 "false" 时生效）；如需恢复登录验证，在 .env 设置 VITE_SKIP_LOGIN=false。
- * 登录路径保留：先展示 LoginPage，登录成功（loginWithCredentials 缓存
- * token 后回调）→ 挂载 MainApp。跳过登录时业务请求头不携带 token 字段
- * （见 api/index.ts 的 authHeader 实现，token 缺失自动省略）。
+ * 门控逻辑：默认跳过登录页直接进入首页（演示阶段）——挂载即渲染 MainApp。
+ * 如需恢复登录验证（先展示 LoginPage，登录成功后进入首页），
+ * 在 .env 设置 VITE_SKIP_LOGIN=false。
+ * 跳过登录时业务请求头不携带 token 字段（见 api/index.ts 的 authHeader 实现，
+ * token 缺失自动省略）。
  *
  * 性能（2026-09-18 卡顿优化）：
  * - MainApp 拆分为独立模块（./MainApp，承载全部业务初始化 Hooks）并由
@@ -28,11 +28,11 @@ const prefetchMainApp = () => {
   void import('./MainApp')
 }
 
-/** 是否跳过登录页：默认跳过直接进首页；仅显式配置 VITE_SKIP_LOGIN=false 时恢复登录门控 */
+/** 是否跳过登录页：默认跳过直接进首页（演示阶段）；显式配置 VITE_SKIP_LOGIN=false 时恢复登录门控 */
 const SKIP_LOGIN = import.meta.env.VITE_SKIP_LOGIN !== 'false'
 
 function App() {
-  // 默认直接进入主应用（首页）；VITE_SKIP_LOGIN=false 时恢复先登录再进入
+  // 默认跳过登录直接进入主应用（首页）；VITE_SKIP_LOGIN=false 时恢复登录门控
   const [loggedIn, setLoggedIn] = useState(SKIP_LOGIN)
 
   // 挂载后，浏览器空闲时预取主应用 chunk（幂等，见文件头说明）

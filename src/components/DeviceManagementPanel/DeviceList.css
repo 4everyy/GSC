@@ -438,8 +438,9 @@
   overflow: hidden;
   box-sizing: border-box;
   flex-shrink: 0;
-  /* 列左对齐：各列为固定宽度（列内内容左对齐），所有行同列左边缘垂直对齐；
-     剩余空间由 space-between 均分到列间隙，gap 8px 保底与组内间距一致 */
+  /* 列间距统一：行首组/状态/高度/电量/尾部组均为内容宽，
+     space-between 把行内剩余空间均分到四段列间隙，四段间距恒相等；
+     尾部组自然贴右 */
   justify-content: space-between;
   gap: 8px;
 }
@@ -459,15 +460,16 @@
 }
 
 /* 行首组：复选框 + 编队图标 + 设备名称（组内固定 8px 间距，不随视口缩放）。
-   允许整组收缩（压缩量由组内设备名列吸收），避免行内容总宽溢出后
-   最后一列（查看详情箭头）被推出右边距、贴到容器边缘 */
+   flex:0 1 auto 内容宽可收缩：不独占行内剩余空间，剩余空间由行的 space-between
+   均分到四段列间隙；空间压力仍由组内设备名列（可收缩）吸收，
+   避免行内容总宽溢出把最后一列（查看详情箭头）推出右边距 */
 .device-row__lead {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 1;
+  flex: 0 1 auto;
   min-width: 0;
 }
 
@@ -517,9 +519,9 @@
   -webkit-user-drag: none;
 }
 
-/* 设备名：固定宽度，使后续状态列起始位置行行对齐（列左对齐）；
-   空间不足时允许收缩（超出以省略号截断），作为整行唯一的弹性列
-   吸收宽度缺口，防止行内容溢出把最后一列（查看详情）顶出右边距 */
+/* 设备名：内容宽可收缩（flex: 0 1 auto），使行首组紧贴名称文字结束；
+   行内剩余空间交由行 space-between 均分到四段列间隙；
+   文字左对齐，超长以省略号截断（min-width:0 + overflow:hidden） */
 .device-row__name {
   position: relative;
   z-index: 1;
@@ -527,14 +529,14 @@
   white-space: nowrap;
   line-height: 1;
   color: #fff;
-  flex: 0 1 clamp(80px, 6vw, 110px);
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: left;
 }
 
-/* 状态文字（任务中/待命/离线）：内容自适应宽度、内容左对齐 */
+/* 状态文字（任务中/待命/离线）：内容宽列，四段列间距由行均分相等 */
 .device-row__status {
   /* 状态文字固定白色，圆点颜色由内联样式（状态色）控制 */
   color: #fff;
@@ -546,8 +548,8 @@
   font-size: clamp(10px, .73vw, 14px);
   white-space: nowrap;
   line-height: 1;
-  /* 列宽随内容自适应：列内不再保留尾部空白，剩余空间全部进入行间隙，
-     由 space-between 均分，使本列两侧及相邻列间隙相等 */
+  /* 列宽紧贴内容（圆点+文字）：盒宽即内容宽，无列内右侧留白，
+     与左右相邻列的可见间距由行 space-between 均分，四段严格相等 */
   flex: 0 0 auto;
   overflow: hidden;
   text-align: left;
@@ -572,8 +574,8 @@
   align-items: center;
   justify-content: flex-start;
   gap: clamp(2px, .21vw, 4px);
-  /* 列宽随内容自适应：列内不再保留尾部空白，剩余空间全部进入行间隙，
-     由 space-between 均分，使高度/电量列两侧间隙相等 */
+  /* 列宽紧贴内容（图标+数值）：盒宽即内容宽，无列内右侧留白，
+     与左右相邻列的可见间距由行 space-between 均分，四段严格相等 */
   flex: 0 0 auto;
   overflow: hidden;
 }

@@ -3,7 +3,12 @@ import { taskList as initialTaskList, taskTypeOptions, type TaskItem, type TaskT
 import iconFormation from '../../assets/images/home/icon-formation.png'
 import { deviceImages } from '../../assets/images/device/index'
 import { taskPanelImages } from '../../assets/images/task-panel/index'
-import { TaskCreatePanel, type TaskCreateFormValue } from './TaskPanels'
+  import {
+    TaskCreatePanel,
+    type TaskCreateFormValue,
+    type TaskCreateType,
+    TaskProPanel,
+  } from './TaskPanels'
 import './TaskListPanel.css'
 
 
@@ -96,11 +101,9 @@ function formatNow(): string {
 interface TaskListPanelProps {
   visible: boolean
   onClose: () => void
-  /** 专业模式：由创建任务弹层触发，父组件关闭任务面板组并打开专业模式面板 */
-  onProMode: () => void
 }
 
-export function TaskListPanel({ visible, onClose, onProMode }: TaskListPanelProps) {
+export function TaskListPanel({ visible, onClose }: TaskListPanelProps) {
   const [tasks, setTasks] = useState<TaskItem[]>(initialTaskList)
   const [activeTab, setActiveTab] = useState<TabKey>('monitor')
   const [typeFilter, setTypeFilter] = useState<TaskType | null>(null)
@@ -110,8 +113,12 @@ export function TaskListPanel({ visible, onClose, onProMode }: TaskListPanelProp
   // hover 中的任务 id（行背景三态与设备/目标面板一致：展开蓝 > hover 橙 > 常规灰）
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
-  // 创建任务弹层：点击「创建任务」按钮在任务面板右侧弹出（设计稿 group_23）
+  // 创建任务：点击「创建任务」按钮后内嵌展示于任务面板内容区（替换页签/筛选/列表/创建按钮）
   const [createOpen, setCreateOpen] = useState(false)
+    // 专业模式：由创建任务面板「专业模式」按钮触发，内嵌替换创建表单（任务面板保持展开）
+    const [proOpen, setProOpen] = useState(false)
+    // 进入专业模式时的任务类型（由创建表单携带），决定步骤 1「策略适配」表单变体与生成任务类型
+    const [proTaskType, setProTaskType] = useState<TaskCreateType>('巡检任务')
 
   const filteredTasks = useMemo(
     () => (typeFilter ? tasks.filter((t) => t.type === typeFilter) : tasks),
@@ -144,7 +151,24 @@ export function TaskListPanel({ visible, onClose, onProMode }: TaskListPanelProp
     setPendingDeleteId(null)
   }
 
-  /** 一键创建：按表单值追加任务（默认未下发）并展开，随后关闭弹层 */
+    /** 专业模式生成任务：按进入时任务类型追加任务（默认未下发）并展开，随后收起整个创建流程 */
+    const handleSubmitPro = () => {
+      const id = String(tasks.length + 1).padStart(2, '0')
+      const task: TaskItem = {
+        id,
+        name: `${id}${proTaskType === '打击任务' ? '打击' : '巡检'}专业模式任务`,
+        type: proTaskType,
+        status: '未下发',
+        createdAt: formatNow(),
+        devices: [{ id: `${id}-d1`, name: '01中科晶锐', badge: 'locate' }],
+      }
+      setTasks((prev) => [...prev, task])
+      setExpandedId(id)
+      setProOpen(false)
+      setCreateOpen(false)
+    }
+
+  /** 一键创建：按表单值追加任务（默认未下发）并展开，随后收起内嵌创建面板 */
   const handleSubmitCreate = (value: TaskCreateFormValue) => {
     const id = String(tasks.length + 1).padStart(2, '0')
     const task: TaskItem = {
@@ -167,7 +191,9 @@ export function TaskListPanel({ visible, onClose, onProMode }: TaskListPanelProp
 
   return (
     <section
-      className={`task-panel${visible ? ' task-panel--visible' : ''}`}
+      className={`task-panel${visible ? ' task-panel--visible' : ''}${
+        proOpen ? ' task-panel--create task-panel--pro' : createOpen ? ' task-panel--create' : ''
+      }`}
       aria-label="任务列表面板"
     >
       {/* ====== 标题栏 ====== */}
@@ -189,276 +215,293 @@ export function TaskListPanel({ visible, onClose, onProMode }: TaskListPanelProp
       {/* 分隔线 */}
       <img className="task-panel__separator" src={IMAGES.separator} alt="" />
 
-      {/* ====== 页签：执行监控 / 任务规划 ====== */}
-      <div
-        className={`task-panel__tabs${activeTab === 'planning' ? ' task-panel__tabs--planning' : ''}`}
-        role="tablist"
-      >
-        <span className="task-panel__tab-slider" aria-hidden="true" />
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'monitor'}
-          className={`task-panel__tab${activeTab === 'monitor' ? ' task-panel__tab--active' : ''}`}
-          onClick={() => setActiveTab('monitor')}
-        >
-          执行监控
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'planning'}
-          className={`task-panel__tab${activeTab === 'planning' ? ' task-panel__tab--active' : ''}`}
-          onClick={() => setActiveTab('planning')}
-        >
-          任务规划
-        </button>
-      </div>
-
-      {/* ====== 任务类型筛选（仅任务规划 tab 显示，设计稿：执行监控下无此筛选行） ====== */}
-      {activeTab === 'planning' && (
-        <div className="task-panel__filter">
-          <span className="task-panel__filter-label">任务类型</span>
-          <div className={`task-panel__select${typeOpen ? ' task-panel__select--open' : ''}`}>
+      {createOpen ? (
+        /* ====== 创建流程（内嵌）：占满面板内容区，替换页签/筛选/列表/创建按钮 ======
+           基础表单与专业模式互斥切换；进入专业模式时表单保持挂载仅隐藏（visible=false），
+           「返回上一步」回到表单时已填数据保留；返回箭头/提交后返回任务列表视图 */
+        <>
+          <TaskCreatePanel
+            visible={!proOpen}
+            onClose={() => setCreateOpen(false)}
+            onSubmit={handleSubmitCreate}
+            onProMode={(taskType) => {
+              setProTaskType(taskType)
+              setProOpen(true)
+            }}
+          />
+          <TaskProPanel
+            visible={proOpen}
+            taskType={proTaskType}
+            onBack={() => setProOpen(false)}
+            onSubmit={handleSubmitPro}
+          />
+        </>
+      ) : (
+        <>
+          {/* ====== 页签：执行监控 / 任务规划 ====== */}
+          <div
+            className={`task-panel__tabs${activeTab === 'planning' ? ' task-panel__tabs--planning' : ''}`}
+            role="tablist"
+          >
+            <span className="task-panel__tab-slider" aria-hidden="true" />
             <button
               type="button"
-              className="task-panel__select-trigger"
-              onClick={() => setTypeOpen((o) => !o)}
+              role="tab"
+              aria-selected={activeTab === 'monitor'}
+              className={`task-panel__tab${activeTab === 'monitor' ? ' task-panel__tab--active' : ''}`}
+              onClick={() => setActiveTab('monitor')}
             >
-              <span className={typeFilter ? '' : 'task-panel__select-placeholder'}>
-                {typeFilter ?? '请选择'}
-              </span>
-              <img src={IMAGES.dropdownArrow} alt="" />
+              执行监控
             </button>
-            {typeOpen && (
-              <div className="task-panel__dropdown" role="listbox">
-                {typeOptions.map((t) => (
-                  <div
-                    key={t}
-                    role="option"
-                    aria-selected={typeFilter === t}
-                    className={`task-panel__dropdown-item${typeFilter === t ? ' is-selected' : ''}`}
-                    onClick={() => handleTypeSelect(t)}
-                  >
-                    {t}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'planning'}
+              className={`task-panel__tab${activeTab === 'planning' ? ' task-panel__tab--active' : ''}`}
+              onClick={() => setActiveTab('planning')}
+            >
+              任务规划
+            </button>
+          </div>
+
+          {/* ====== 任务类型筛选（仅任务规划 tab 显示，设计稿：执行监控下无此筛选行） ====== */}
+          {activeTab === 'planning' && (
+            <div className="task-panel__filter">
+              <span className="task-panel__filter-label">任务类型</span>
+              <div className={`task-panel__select${typeOpen ? ' task-panel__select--open' : ''}`}>
+                <button
+                  type="button"
+                  className="task-panel__select-trigger"
+                  onClick={() => setTypeOpen((o) => !o)}
+                >
+                  <span className={typeFilter ? '' : 'task-panel__select-placeholder'}>
+                    {typeFilter ?? '请选择'}
+                  </span>
+                  <img src={IMAGES.dropdownArrow} alt="" />
+                </button>
+                {typeOpen && (
+                  <div className="task-panel__dropdown" role="listbox">
+                    {typeOptions.map((t) => (
+                      <div
+                        key={t}
+                        role="option"
+                        aria-selected={typeFilter === t}
+                        className={`task-panel__dropdown-item${typeFilter === t ? ' is-selected' : ''}`}
+                        onClick={() => handleTypeSelect(t)}
+                      >
+                        {t}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-        </div>
-      )}
+            </div>
+          )}
 
-      {/* ====== 列表主体 ====== */}
-      {activeTab === 'planning' ? (
-        <div className="task-panel__body">
-          <div className="task-panel__list">
-            {filteredTasks.map((task) => {
-              const expanded = expandedId === task.id
-              // 下发进程：全部设备中就绪（online）行数，以 x/x 形式展示
-              const progress = dispatchProgress(task.devices)
-              return (
-                <div className="task-item" key={task.id}>
-                  {/* 任务行：背景三态（展开蓝 > hover 橙 > 常规灰），绝对定位铺满整行 */}
-                  <div
-                    className={`task-item__row${expanded ? ' task-item__row--active' : ''}`}
-                    onClick={() => toggleExpand(task.id)}
-                    onMouseEnter={() => setHoveredId(task.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                  >
-                    <img
-                      className="task-item__row-bg"
-                      src={
-                        expanded
-                          ? deviceImages.rowBgBlue
-                          : hoveredId === task.id
-                            ? deviceImages.rowBgOrange
-                            : deviceImages.rowBgGray
-                      }
-                      alt=""
-                    />
-                    <div className="task-item__main">
-                      <img
-                        className="task-item__type-icon"
-                        src={task.type === '巡检任务' ? IMAGES.inspectIcon : IMAGES.strikeIcon}
-                        alt=""
-                      />
-                      <span className="task-item__name">{task.name}</span>
-                    </div>
-                    <div className="task-item__status-wrap">
-                      <span
-                        className={`task-item__status-dot${
-                          task.status === '未下发' ? ' task-item__status-dot--blue' : ''
-                        }`}
-                      />
-                      <span className="task-item__status">{task.status}</span>
-                    </div>
-                    <span className="task-item__time">{task.createdAt}</span>
-                    <img
-                      className="task-item__expand"
-                      src={expanded ? IMAGES.expandArrowActive : IMAGES.expandArrowNormal}
-                      alt=""
-                    />
-                  </div>
-
-                  {/* 展开详情 */}
-                  {expanded && (
-                    <div className="task-item__detail">
-                      {/* 内容区与横向分割线包为一组：竖向分割线的定位锚点 */}
-                      <div className="task-detail__main">
-                        <div className="task-detail__top">
-                          {/* 左侧：时间轴 + 执行设备卡片（全部渲染，视口最多 4 行，超出滚动查看） */}
-                          <div className="task-detail__timeline">
-                            {buildDetailRows(task.devices).map((row) => {
-                              const dev = row.dev
-                              return (
-                                <div className="task-detail__node" key={dev.id}>
-                                  <div
-                                    className={`task-detail__card${dev.badge === 'online' ? ' task-detail__card--ready' : ''}`}
-                                  >
-                                    <span
-                                      className={`task-detail__badge task-detail__badge--${dev.badge}`}
-                                    >
-                                      {dev.badge === 'locate' ? (
-                                        <img
-                                          className="task-detail__locate"
-                                          src={IMAGES.locateIcon}
-                                          alt=""
-                                        />
-                                      ) : (
-                                        <img
-                                          className="task-detail__drone-white"
-                                          src={IMAGES.droneWhite}
-                                          alt=""
-                                        />
-                                      )}
-                                    </span>
-                                    <img
-                                      className="task-detail__drone-icon"
-                                      src={iconFormation}
-                                      alt=""
-                                    />
-                                    <span className="task-detail__device-name">{dev.name}</span>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-
-                          {/* 右侧：下发进程仪表（标签 + x/x 数值 + 3D 圆环切图，整体带高亮底光） */}
-                          <div className="task-detail__gauge">
-                            <span className="task-detail__gauge-label">下发进程</span>
-                            <span className="task-detail__gauge-value">
-                              {progress.ready}/{progress.total}
-                            </span>
-                            <div className="task-detail__gauge-ring-wrap">
-                              {/* 3D 圆环按进度揭示：底层暗态 + 上层亮态扇形裁剪 */}
-                              <svg
-                                className="task-detail__gauge-ring"
-                                viewBox="0 0 106 75"
-                                aria-hidden="true"
-                              >
-                                <defs>
-                                  <clipPath id={`task-ring-clip-${task.id}`}>
-                                    <path
-                                      d={ringSectorPath(
-                                        progress.total > 0 ? progress.ready / progress.total : 0,
-                                      )}
-                                    />
-                                  </clipPath>
-                                </defs>
-                                <image
-                                  className="task-detail__gauge-ring-base"
-                                  href={IMAGES.radarCircle}
-                                  x="0"
-                                  y="0"
-                                  width="106"
-                                  height="75"
-                                />
-                                <image
-                                  className="task-detail__gauge-ring-fill"
-                                  href={IMAGES.radarCircle}
-                                  x="0"
-                                  y="0"
-                                  width="106"
-                                  height="75"
-                                  clipPath={`url(#task-ring-clip-${task.id})`}
-                                />
-                              </svg>
-                            </div>
-                          </div>
+          {/* ====== 列表主体 ====== */}
+          {activeTab === 'planning' ? (
+            <div className="task-panel__body">
+              <div className="task-panel__list">
+                {filteredTasks.map((task) => {
+                  const expanded = expandedId === task.id
+                  // 下发进程：全部设备中就绪（online）行数，以 x/x 形式展示
+                  const progress = dispatchProgress(task.devices)
+                  return (
+                    <div className="task-item" key={task.id}>
+                      {/* 任务行：背景三态（展开蓝 > hover 橙 > 常规灰），绝对定位铺满整行 */}
+                      <div
+                        className={`task-item__row${expanded ? ' task-item__row--active' : ''}`}
+                        onClick={() => toggleExpand(task.id)}
+                        onMouseEnter={() => setHoveredId(task.id)}
+                        onMouseLeave={() => setHoveredId(null)}
+                      >
+                        <img
+                          className="task-item__row-bg"
+                          src={
+                            expanded
+                              ? deviceImages.rowBgBlue
+                              : hoveredId === task.id
+                                ? deviceImages.rowBgOrange
+                                : deviceImages.rowBgGray
+                          }
+                          alt=""
+                        />
+                        <div className="task-item__main">
+                          <img
+                            className="task-item__type-icon"
+                            src={task.type === '巡检任务' ? IMAGES.inspectIcon : IMAGES.strikeIcon}
+                            alt=""
+                          />
+                          <span className="task-item__name">{task.name}</span>
                         </div>
-
-                        {/* 竖向分割线：设备卡片右侧 24px（设计稿 box_7），
-                           自内容区顶边起，止于横向分割线处，不向下超出 */}
-                        <span className="task-detail__v-divider" aria-hidden="true" />
-
-                        {/* 分割线：设备数据行与操作按钮之间（434x1） */}
-                        <div className="task-detail__divider" />
+                        <div className="task-item__status-wrap">
+                          <span
+                            className={`task-item__status-dot${
+                              task.status === '未下发' ? ' task-item__status-dot--blue' : ''
+                            }`}
+                          />
+                          <span className="task-item__status">{task.status}</span>
+                        </div>
+                        <span className="task-item__time">{task.createdAt}</span>
+                        <img
+                          className="task-item__expand"
+                          src={expanded ? IMAGES.expandArrowActive : IMAGES.expandArrowNormal}
+                          alt=""
+                        />
                       </div>
 
-                      {/* 操作按钮 */}
-                      <div className="task-detail__actions">
-                        <button
-                          type="button"
-                          className="task-detail__btn task-detail__btn--primary"
-                          disabled={task.status === '已下发'}
-                          onClick={() => handleDispatch(task.id)}
-                        >
-                          下发
-                        </button>
-                        <button
-                          type="button"
-                          className="task-detail__btn task-detail__btn--disabled"
-                          disabled
-                        >
-                          开始
-                        </button>
-                        <button
-                          type="button"
-                          className="task-detail__btn task-detail__btn--outline"
-                        >
-                          重规划
-                        </button>
-                        <button
-                          type="button"
-                          className="task-detail__btn task-detail__btn--outline"
-                          onClick={() => setPendingDeleteId(task.id)}
-                        >
-                          删除
-                        </button>
-                      </div>
+                      {/* 展开详情 */}
+                      {expanded && (
+                        <div className="task-item__detail">
+                          {/* 内容区与横向分割线包为一组：竖向分割线的定位锚点 */}
+                          <div className="task-detail__main">
+                            <div className="task-detail__top">
+                              {/* 左侧：时间轴 + 执行设备卡片（全部渲染，视口最多 4 行，超出滚动查看） */}
+                              <div className="task-detail__timeline">
+                                {buildDetailRows(task.devices).map((row) => {
+                                  const dev = row.dev
+                                  return (
+                                    <div className="task-detail__node" key={dev.id}>
+                                      <div
+                                        className={`task-detail__card${dev.badge === 'online' ? ' task-detail__card--ready' : ''}`}
+                                      >
+                                        <span
+                                          className={`task-detail__badge task-detail__badge--${dev.badge}`}
+                                        >
+                                          {dev.badge === 'locate' ? (
+                                            <img
+                                              className="task-detail__locate"
+                                              src={IMAGES.locateIcon}
+                                              alt=""
+                                            />
+                                          ) : (
+                                            <img
+                                              className="task-detail__drone-white"
+                                              src={IMAGES.droneWhite}
+                                              alt=""
+                                            />
+                                          )}
+                                        </span>
+                                        <img
+                                          className="task-detail__drone-icon"
+                                          src={iconFormation}
+                                          alt=""
+                                        />
+                                        <span className="task-detail__device-name">{dev.name}</span>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
 
-                      <img className="task-detail__deco" src={IMAGES.detailBottomDeco} alt="" />
+                              {/* 右侧：下发进程仪表（标签 + x/x 数值 + 3D 圆环切图，整体带高亮底光） */}
+                              <div className="task-detail__gauge">
+                                <span className="task-detail__gauge-label">下发进程</span>
+                                <span className="task-detail__gauge-value">
+                                  {progress.ready}/{progress.total}
+                                </span>
+                                <div className="task-detail__gauge-ring-wrap">
+                                  {/* 3D 圆环按进度揭示：底层暗态 + 上层亮态扇形裁剪 */}
+                                  <svg
+                                    className="task-detail__gauge-ring"
+                                    viewBox="0 0 106 75"
+                                    aria-hidden="true"
+                                  >
+                                    <defs>
+                                      <clipPath id={`task-ring-clip-${task.id}`}>
+                                        <path
+                                          d={ringSectorPath(
+                                            progress.total > 0 ? progress.ready / progress.total : 0,
+                                          )}
+                                        />
+                                      </clipPath>
+                                    </defs>
+                                    <image
+                                      className="task-detail__gauge-ring-base"
+                                      href={IMAGES.radarCircle}
+                                      x="0"
+                                      y="0"
+                                      width="106"
+                                      height="75"
+                                    />
+                                    <image
+                                      className="task-detail__gauge-ring-fill"
+                                      href={IMAGES.radarCircle}
+                                      x="0"
+                                      y="0"
+                                      width="106"
+                                      height="75"
+                                      clipPath={`url(#task-ring-clip-${task.id})`}
+                                    />
+                                  </svg>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 竖向分割线：设备卡片右侧 24px（设计稿 box_7），
+                               自内容区顶边起，止于横向分割线处，不向下超出 */}
+                            <span className="task-detail__v-divider" aria-hidden="true" />
+
+                            {/* 分割线：设备数据行与操作按钮之间（434x1） */}
+                            <div className="task-detail__divider" />
+                          </div>
+
+                          {/* 操作按钮 */}
+                          <div className="task-detail__actions">
+                            <button
+                              type="button"
+                              className="task-detail__btn task-detail__btn--primary"
+                              disabled={task.status === '已下发'}
+                              onClick={() => handleDispatch(task.id)}
+                            >
+                              下发
+                            </button>
+                            <button
+                              type="button"
+                              className="task-detail__btn task-detail__btn--disabled"
+                              disabled
+                            >
+                              开始
+                            </button>
+                            <button
+                              type="button"
+                              className="task-detail__btn task-detail__btn--outline"
+                            >
+                              重规划
+                            </button>
+                            <button
+                              type="button"
+                              className="task-detail__btn task-detail__btn--outline"
+                              onClick={() => setPendingDeleteId(task.id)}
+                            >
+                              删除
+                            </button>
+                          </div>
+
+                          <img className="task-detail__deco" src={IMAGES.detailBottomDeco} alt="" />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              )
-            })}
-            {filteredTasks.length === 0 && <div className="task-panel__empty">暂无任务</div>}
-          </div>
-        </div>
-      ) : (
-        <div className="task-panel__body">
-          <TaskMonitorTab />
-        </div>
-      )}
+                  )
+                })}
+                {filteredTasks.length === 0 && <div className="task-panel__empty">暂无任务</div>}
+              </div>
+            </div>
+          ) : (
+            <div className="task-panel__body">
+              <TaskMonitorTab />
+            </div>
+          )}
 
-      {/* ====== 创建任务（仅任务规划 tab 显示，执行监控下不展示此按钮） ====== */}
-      {activeTab === 'planning' && (
-        <button type="button" className="task-panel__create" onClick={() => setCreateOpen(true)}>
-          <img src={IMAGES.createIcon} alt="" />
-          <span>创建任务</span>
-        </button>
+          {/* ====== 创建任务（仅任务规划 tab 显示，执行监控下不展示此按钮） ====== */}
+          {activeTab === 'planning' && (
+            <button type="button" className="task-panel__create" onClick={() => setCreateOpen(true)}>
+              <img src={IMAGES.createIcon} alt="" />
+              <span>创建任务</span>
+            </button>
+          )}
+        </>
       )}
-
-      {/* ====== 创建任务弹层（右侧弹出，设计稿 group_23） ====== */}
-      <TaskCreatePanel
-        visible={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={handleSubmitCreate}
-        onProMode={onProMode}
-      />
 
       {/* ====== 删除确认弹窗 ====== */}
       {pendingDeleteTask && (

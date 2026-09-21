@@ -262,9 +262,9 @@
   min-width: 71px;
   margin-left: 10px;
   color: rgba(255, 255, 255, 1);
-  font-size: 14px;
+  font-size: 12px;
   font-family: MiSans-Regular, 'MiSans', sans-serif;
-  line-height: 14px;
+  line-height: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -274,9 +274,9 @@
   flex: none;
   margin-left: 43px;
   color: rgba(255, 255, 255, 1);
-  font-size: 14px;
+  font-size: 12px;
   font-family: MiSans-Regular, 'MiSans', sans-serif;
-  line-height: 14px;
+  line-height: 12px;
   white-space: nowrap;
 }
 
@@ -284,9 +284,9 @@
   flex: none;
   margin-left: 43px;
   color: rgba(255, 255, 255, 0.85);
-  font-size: 14px;
+  font-size: 12px;
   font-family: MiSans-Regular, 'MiSans', sans-serif;
-  line-height: 14px;
+  line-height: 12px;
   white-space: nowrap;
 }
 
@@ -294,9 +294,9 @@
   flex: none;
   margin-left: 43px;
   color: rgba(255, 255, 255, 0.85);
-  font-size: 14px;
+  font-size: 12px;
   font-family: MiSans-Regular, 'MiSans', sans-serif;
-  line-height: 14px;
+  line-height: 12px;
   white-space: nowrap;
 }
 

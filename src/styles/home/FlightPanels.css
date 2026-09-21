@@ -367,7 +367,7 @@
   cursor: pointer;
 }
 
-/* 单选指示：off 半透明白圆 + 灰描边；on 态由 radio.svg 图片呈现（见 __radio-img） */
+/* 单选指示：off 半透明白圆 + 灰描边；on 态由 radio-checked.svg 图片呈现（见 __radio-img） */
 .hexagon-area-type-panel__radio {
   flex: none;
   width: 20px;
@@ -378,7 +378,7 @@
   border-radius: 9999px;
 }
 
-/* 选中态单选图标：设计稿 radio.svg（白 0.8 底圆 + #0EA7F9 蓝环，20×20） */
+/* 选中态单选图标：设计稿 radio-checked.svg（白 0.8 底圆 + #0EA7F9 蓝环，20×20） */
 .hexagon-area-type-panel__radio-img {
   flex: none;
   width: 20px;

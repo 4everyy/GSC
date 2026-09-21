@@ -168,8 +168,8 @@
   margin-left: clamp(5px, 0.42vw, 8px);
   font-family: MiSans, MiSans;
   font-weight: 400;
-  /* 字号对齐设备管理面板正文标准 */
-  font-size: clamp(10px, 0.73vw, 14px);
+  /* 详情字号小于任务行（行保持 clamp(10px,0.73vw,14px)），形成主次层级 */
+  font-size: clamp(9px, 0.63vw, 12px);
   font-style: normal;
   text-transform: none;
   color: #ffffff;

@@ -1,5 +1,7 @@
 import addAreaIcon from '../device/icon-add.png'
 import areaIndexIcon from './area-index-icon.png'
+import backArrow from './back-arrow.svg'
+import checkIcon from './step-check.svg'
 import checkboxUnchecked from './checkbox-unchecked.png'
 import closeIcon from '../device/close-btn.png'
 import createCloseIcon from './create-close-icon.png'
@@ -25,7 +27,7 @@ import monitorConnectorBg from './monitor-connector-bg.png'
 import monitorRowBg from './monitor-row-bg.png'
 import monitorRowBgActive from './monitor-row-bg-active.png'
 import radarCircle from './radar-circle.svg'
-import radioChecked from './radio.svg'
+import radioChecked from './radio-checked.svg'
 import separator from './separator.png'
 import stepperMinus from './stepper-minus.png'
 import stepperPlus from './stepper-plus.png'
@@ -38,6 +40,8 @@ import targetRightIcon from './target-right-icon.png'
 export const taskPanelImages = {
   addAreaIcon,
   areaIndexIcon,
+  backArrow,
+  checkIcon,
   checkboxUnchecked,
   closeIcon,
   createCloseIcon,

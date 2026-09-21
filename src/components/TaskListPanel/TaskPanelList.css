@@ -48,6 +48,18 @@
   pointer-events: auto;
 }
 
+/* 创建任务内嵌态：表单内容（子标题栏 + 名称/数量 + 任务类型 + 任务区列表 + 底栏）比列表视图更高，
+   外壳整体加高以尽量完整展示，超高部分由 .task-create__body 内部滚动兜底 */
+.task-panel--create {
+  height: clamp(600px, 40vw, 740px);
+  transition: opacity 0.5s ease, transform 0.5s ease, height 0.3s ease;
+}
+
+/* 专业模式（创建流程第二级）：策略配置内容更长，外壳在 --create 基础上进一步加高 */
+.task-panel--pro {
+  height: clamp(660px, 46vw, 800px);
+}
+
 /* ====== 标题栏 ====== */
 .task-panel__header {
   display: flex;

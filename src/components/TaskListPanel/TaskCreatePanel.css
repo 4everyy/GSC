@@ -1,68 +1,61 @@
-/* ====== 创建任务面板（设计稿 group_23，560x700） ====== */
+/* ====== 创建任务面板（设计稿 group_23）——内嵌于任务管理面板内容区展示 ======
+   内嵌透底策略：复用任务面板外壳（.task-panel）的蓝绿渐变背景与边框，
+   自身仅承担「子标题栏 + 可滚动表单 + 底部操作」三段式布局，不再叠加底色/描边/圆角 */
 .task-create {
-  position: absolute;
-  /* 挂在任务列表面板右侧（与 .task-panel 的定位方式一致） */
-  left: calc(100% + clamp(8px, 0.83vw, 16px));
-  top: 0;
-  z-index: 11;
+  /* 内嵌布局：占满任务面板外壳（标题栏/分隔线以下）全部剩余空间 */
+  position: relative;
   display: flex;
   flex-direction: column;
-  width: clamp(420px, 36vw, 560px);
-  max-height: min(700px, calc(100vh - 120px));
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
   box-sizing: border-box;
-  /* 设计稿 group_23：130° 蓝绿渐变打底 + 右上角青色径向高光。
-     多层背景叠放（CSS 前者在下层之上）：径向高光 → 线性底色 → 渐变描边。
-     用 padding-box/border-box 实现渐变边框并保留 16px 圆角（border-image 会禁用圆角）。 */
-  background:
-    radial-gradient(
-      37.56% 37.81% at 87.29% 4.44%,
-      #71d6e3 0%,
-      rgba(113, 214, 227, 0) 100%
-    )
-    padding-box,
-    linear-gradient(130deg, #2d6b73 0%, #4b78ca 60.48%) padding-box,
-    linear-gradient(
-      141deg,
-      rgba(255, 255, 255, 1),
-      rgba(255, 255, 255, 0.4),
-      rgba(255, 255, 255, 1),
-      rgba(145, 242, 255, 1)
-    )
-    border-box;
-  box-shadow: 0px 16px 48px 0px rgba(0, 0, 0, 0.4);
-  border: 2px solid transparent;
-  border-radius: 16px;
+  /* 透底：背景/边框/圆角均由外壳提供 */
+  background: transparent;
+  border: none;
+  border-radius: 0;
   /* 面板自身不设内边距：标题栏/底栏全出血贴边；中间选择区域间距由 .task-create__body 的 margin 提供 */
   padding: 0;
   color: #fff;
   font-family: 'MiSans-Regular';
   font-weight: 400;
-  overflow: hidden;
+  /* 允许标题栏以负边距出血到外壳内边距区（原 overflow: hidden 会裁切出血部分） */
+  overflow: visible;
 
   /* 淡入/淡出 */
   opacity: 0;
-  transform: translateX(-8px);
+  transform: translateY(6px);
   transition: opacity 0.3s ease, transform 0.3s ease;
   pointer-events: none;
 }
 
+/* 右上角装饰竖线已移除（设计稿 image_9 不再需要） */
 .task-create--visible {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateY(0);
   pointer-events: auto;
 }
 
-/* ====== 标题栏 ====== */
+/* ====== 子标题栏（48px：图标 + 文字，左缘渐变高亮底）====== */
 .task-create__header {
   position: relative; /* 定位底部渐变分割线 ::after */
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 56px;
+  gap: 14px; /* 箭头图标与标题文字间距 14px */
+  height: 48px;
+  /* 整行背景：白色左实右渐隐横条（0.4 → 0.20@54% → 0） */
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.2) 54%,
+    rgba(255, 255, 255, 0) 100%
+  );
   flex-shrink: 0;
-  /* 设计稿 group_24：标题栏全宽出血（面板 560px 时即 560x56），右侧渐隐白色遮罩（顶部圆角由面板 overflow:hidden 裁剪） */
-  /* 标题距面板左缘 32px、关闭图标距右缘 32px */
-  padding: 0 32px;
+  /* 全出血：负边距抵消外壳 .task-panel 的水平内边距（clamp(8px, 0.83vw, 16px)），
+     使本行背景与底部分割线直抵面板左右边框内缘 */
+  margin: 0 calc(-1 * clamp(8px, 0.83vw, 16px));
+  /* 返回箭头距面板左缘 26px，右缘 16px（自出血边缘起算） */
+  padding: 0 16px 0 26px;
   box-sizing: border-box;
 }
 
@@ -84,41 +77,45 @@
   pointer-events: none;
 }
 
-.task-create__title {
-  margin-left: 0;
-  font-family: 'MiSans-Demibold';
-  /* 字号对齐设备管理面板次级标题量级 */
-  font-size: clamp(12px, 1vw, 16px);
-  line-height: 1;
-  white-space: nowrap;
-  color: rgba(255, 255, 255, 1);
+/* 标题组：仅文字（+图标已移除），行背景渐变统一由 .task-create__header 提供 */
+.task-create__heading {
+  display: flex;
+  align-items: center;
 }
 
-/* 关闭按钮：复用任务面板视觉（24x24 白边框 + 图标 20x20） */
-.task-create__close {
-  margin-right: 0;
+.task-create__title {
+  margin-left: 0;
+  /* 设计稿：创建任务 16px MiSans 450 白色 */
+  color: #fff;
+  font-size: 16px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 450;
+  word-wrap: break-word;
+  line-height: 1;
+}
+
+/* 返回箭头按钮：标题左侧白色左箭头（back-arrow.svg），点击返回任务列表视图 */
+.task-create__back {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 2px;
+  border: none;
   background: transparent;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: opacity 0.2s ease;
 }
 
-.task-create__close:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.95);
+.task-create__back:hover {
+  opacity: 0.75;
 }
 
-.task-create__close img {
-  width: 20px;
-  height: 20px;
+.task-create__back img {
+  width: 24px;
+  height: 24px;
   object-fit: contain;
   pointer-events: none;
   user-select: none;
@@ -131,8 +128,17 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  /* 中间选择区域：距面板左右内缘 32px；距上方标题栏、下方按钮区各 16px */
-  margin: 16px 32px;
+  /* 标题行以下文字统一基准：14px MiSans 330 白色（子规则仅保留状态色差异） */
+  color: #fff;
+  font-size: 14px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+  /* 水平出血：负边距抵消外壳水平内边距，使本区贯通面板全宽；
+     内容行距面板左右边框内缘统一 16px（由 padding 提供）；上方距创建任务标题行 16px */
+  margin: 16px calc(-1 * clamp(8px, 0.83vw, 16px));
+  padding: 0 16px;
+  box-sizing: border-box;
   /* 隐藏滚动条但保留竖向滚动功能 */
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -153,11 +159,11 @@
 .task-create__label {
   display: block;
   margin: 24px 0 0;
-  /* 字号对齐设备管理面板正文标准 */
-  font-size: clamp(10px, 0.73vw, 14px);
+  /* 设计稿：标题行以下文字统一 14px MiSans 330 白色 */
+  font-size: 14px;
   line-height: 19px;
   white-space: nowrap;
-  color: rgba(255, 255, 255, 1);
+  color: #fff;
 }
 
 /* 任务名称输入框：与执行对象数量输入框同款（白 20% 底 + 白 60% 边框） */
@@ -165,15 +171,16 @@
   display: block;
   width: 100%;
   height: 28px;
+  /* 统一垂直节奏：任务名称以下每一项距上一项 24px */
   margin-top: 8px;
   padding: 0 4px;
   box-sizing: border-box;
   background-color: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.6);
   outline: none;
-  font-family: 'MiSans-Regular';
-  /* 字号对齐设备管理面板正文标准 */
-  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
   line-height: 26px;
   color: #fff;
 }
@@ -207,9 +214,9 @@
 .task-create__input-error {
   display: block;
   margin-top: 4px;
-  /* 辅助文案：小一号量级随视口缩放 */
-  font-size: clamp(10px, 0.63vw, 12px);
-  line-height: 14px;
+  /* 错误提示：字号随正文统一 14px，红色为功能性状态色 */
+  font-size: 14px;
+  line-height: 19px;
   color: rgba(255, 96, 96, 1);
 }
 
@@ -302,9 +309,9 @@
   border: none;
   outline: none;
   background: transparent;
-  font-family: 'MiSans-Regular';
-  /* 字号对齐设备管理面板正文标准 */
-  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
   line-height: 26px;
   color: #fff;
   text-align: left;
@@ -321,7 +328,7 @@
   position: relative;
   display: flex;
   width: 100%;
-  /* 整体框一分为二：两个 tab 平分宽度（488 = 2 x 244，560 面板 - 2 x 32 内边距 - 4px 容器内边距） */
+  /* 整体框一分为二：两个 tab 平分宽度 */
   height: 36px;
   margin-top: 8px;
   padding: 2px;
@@ -364,9 +371,9 @@
   border-radius: 4px;
   background: transparent;
   cursor: pointer;
-  font-family: 'MiSans-Regular';
-  /* 字号对齐设备管理面板正文标准 */
-  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
   line-height: 1;
   white-space: nowrap;
   color: rgba(255, 255, 255, 0.4);
@@ -435,8 +442,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  /* 左缘对齐面板 32px 内边距（去掉原 4px 缩进） */
-  margin: 9px 0 0;
+  margin: 8px 0 0;
   flex-shrink: 0;
 }
 
@@ -449,11 +455,11 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  font-family: 'MiSans-Regular';
-  /* 字号对齐设备管理面板正文标准 */
-  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
   line-height: 1;
-  color: rgba(255, 255, 255, 1);
+  color: #fff;
   white-space: nowrap;
 }
 
@@ -505,17 +511,15 @@
 }
 
 .task-create__add-area-inner span {
-  font-family: 'MiSans-Regular';
-  /* 字号对齐设备管理面板正文标准 */
-  font-size: clamp(10px, 0.73vw, 14px);
-  font-weight: normal;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
   line-height: 20px;
   white-space: nowrap;
-  color: rgba(255, 255, 255, 1);
+  color: #fff;
 }
 /* ====== 任务区列表（group_34/37：行首图标块 + 序号 + 三列信息） ====== */
-/* 行：flex-row 精确 margin 复刻设计稿（行宽 496 = 560 面板 - 32x2 内边距）：
-   图标块 x4(w16) → 序号 x28(w15) → 名称 x92(w56) → 类型 x219(w56) → 面积 x345(w56) → 右余 95 */
+/* 行：flex-row 精确 margin 复刻设计稿，行宽 100% = 内容区宽 */
 .task-create__area-item {
   display: flex;
   align-items: center;
@@ -526,11 +530,10 @@
 
 .task-create__area-header .task-create__area-col,
 .task-create__area-item .task-create__area-col {
-  /* 字号对齐设备管理面板行数据标准 */
-  font-size: clamp(10px, 0.73vw, 14px);
+  font-size: 14px;
   line-height: 19px;
   white-space: nowrap;
-  color: rgba(255, 255, 255, 1);
+  color: #fff;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -540,11 +543,12 @@
   margin-top: 4px;
   padding: 0;
   border: none;
-  /* 设计稿行样式：496x40（宽度 100% = 面板 560 - 2x32 边距）、白 16% 底、无圆角 */
+  /* 行样式：宽度 100%、白 16% 底、无圆角 */
   background: rgba(255, 255, 255, 0.16);
   border-radius: 0;
   cursor: pointer;
-  font-family: MiSans-Regular;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
   text-align: left;
   transition: background-color 0.15s ease;
   flex-shrink: 0;
@@ -675,9 +679,6 @@
   display: flex;
   flex-direction: column;
   margin-top: 8px;
-  /* 行容器占满内容区宽（496px = 面板 560 - 2x32 边距，即设计稿行宽）：
-     复选框距行左缘 4px（设计稿标注）真实可见；不再负边距左扩，左扩的 4px 会被
-     .task-create__body 滚动容器裁剪，导致 4px 间距视觉上不可见 */
   width: 100%;
   max-height: 176px;
   overflow-y: auto;
@@ -706,19 +707,25 @@
   position: relative; /* 锚定顶部分割线伪元素 */
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  /* 底部按钮区固定 72px 高，随面板 flex 布局贴底 */
-  height: 72px;
+  justify-content: center;
+  gap: 16px;
+  /* 底部按钮区固定 64px 高，随面板 flex 布局贴底 */
+  height: 64px;
   flex-shrink: 0;
-  /* 恢复全出血：面板 padding 为 0，底栏自然贴住面板底边与左右缘 */
-  /* 设计稿：一键创建距左缘 152px、专业模式距右缘 152px（560=152+120+16+120+152） */
-  padding: 0 152px;
+  /* 底栏文字（按钮）统一：14px MiSans 330 白色 */
+  color: #fff;
+  font-size: 14px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+  /* 底栏水平+底部出血：背景渐变与顶部分割线直抵面板左右边框内缘（与标题行一致），
+     并抵消外壳 .task-panel 的底部内边距 clamp(10px, 0.83vw, 16px)，使底栏紧贴面板底边无间距 */
+  margin: 0 calc(-1 * clamp(8px, 0.83vw, 16px)) calc(-1 * clamp(10px, 0.83vw, 16px));
+  /* 底栏内容（按钮组）距面板左右边框内缘 16px，双按钮居中排布 */
+  padding: 0 16px;
   box-sizing: border-box;
-  background-image: linear-gradient(
-    360deg,
-    rgba(255, 255, 255, 0.3) 0,
-    rgba(255, 255, 255, 0) 100%
-  );
+  /* 底部按钮区整体背景：白色 30% 自底部向上渐隐（设计稿 group_36） */
+  background: linear-gradient(360deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 100%);
 }
 
 /* 按钮区顶部分割线（设计稿 group_35：中间亮两侧淡的渐隐线） */
@@ -744,9 +751,8 @@
   padding: 0;
   border-radius: 2px 2px 2px 2px;
   font-family: 'MiSans', 'MiSans-Regular', sans-serif;
-  font-weight: 400;
-  /* 字号对齐设备管理面板正文标准 */
-  font-size: clamp(10px, 0.73vw, 14px);
+  font-weight: 330;
+  font-size: 14px;
   font-style: normal;
   text-transform: none;
   text-align: center;
