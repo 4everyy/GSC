@@ -233,11 +233,11 @@ export function computeFormationFlightGeometry(
 // 仅作为引擎未就绪（无地理锚定）时的退化布局；启用锚定后由
 // AIRCRAFT_ANCHOR_OFFSETS 按离线包中心播种真实地理锚点。
 export const AIRCRAFT_INITIAL_POSITIONS: DragPosition[] = [
-  { x: 35, y: 22 }, // red (01设备)
-  { x: 50, y: 24 }, // orange (03设备)
-  { x: 33, y: 36 }, // blue (04设备)
-  { x: 48, y: 38 }, // gray (02设备·离线)
-  { x: 41, y: 30 }, // blue2 (05设备)
+  { x: 33, y: 22 }, // red (01设备)：左上
+  { x: 56, y: 18 }, // orange (03设备)：中上偏右
+  { x: 26, y: 48 }, // blue (04设备)：左中
+  { x: 48, y: 58 }, // gray (02设备·离线)：中下
+  { x: 38, y: 36 }, // blue2 (05设备)：中部
 ]
 
 /**
@@ -246,15 +246,16 @@ export const AIRCRAFT_INITIAL_POSITIONS: DragPosition[] = [
  * 偏移量由 AIRCRAFT_INITIAL_POSITIONS 的百分比布局按 zoom 14 视口尺度换算
  * （1080p 下约 1% 宽 ≈ 0.00045° 经度、1% 高 ≈ 0.00035° 纬度；屏幕 y 向下为正，
  * 纬度向北为正，故 y 偏移取反），保证锚定播种后的初始布局与原百分比布局观感
- * 一致（无人机簇居中偏左上）；包中心必在瓦片 bounds 内，微小偏移不会越出
- * 离线数据覆盖范围。顺序与 AIRCRAFT_INITIAL_POSITIONS / config/aircraft.ts 一一对应。
+ * 一致（无人机簇分散于视口中部带，彼此间距 ≥ 180px 不聚集）；包中心必在瓦片
+ * bounds 内，微小偏移不会越出离线数据覆盖范围。顺序与 AIRCRAFT_INITIAL_POSITIONS /
+ * config/aircraft.ts 一一对应。
  */
 export const AIRCRAFT_ANCHOR_OFFSETS: LngLat[] = [
-  { lng: -0.0068, lat: 0.0098 }, // red (01设备)：左上
-  { lng: 0, lat: 0.0091 }, // orange (03设备)：中上偏右
-  { lng: -0.0077, lat: 0.0049 }, // blue (04设备)：左中
-  { lng: -0.0009, lat: 0.0042 }, // gray (02设备·离线)：中上
-  { lng: -0.0041, lat: 0.007 }, // blue2 (05设备)：左上偏右
+  { lng: -0.0077, lat: 0.0098 }, // red (01设备)：左上
+  { lng: 0.0027, lat: 0.0112 }, // orange (03设备)：中上偏右
+  { lng: -0.0108, lat: 0.0007 }, // blue (04设备)：左中
+  { lng: -0.0009, lat: -0.0028 }, // gray (02设备·离线)：中下
+  { lng: -0.0054, lat: 0.0049 }, // blue2 (05设备)：中部
 ]
 
 /**
@@ -262,7 +263,7 @@ export const AIRCRAFT_ANCHOR_OFFSETS: LngLat[] = [
  *
  * 接口目标携带的真实经纬度可能远离离线地图包（如后端测试数据落在其它城市），
  * 直接锚定会把图标投影视口之外；此类目标按序取本池偏移播种到无人机簇
- * （AIRCRAFT_ANCHOR_OFFSETS，簇中心约 (-0.0039, 0.007)，居中偏左上）右下侧
+ * （AIRCRAFT_ANCHOR_OFFSETS，簇中心约 (-0.004, 0.005)，居中偏左上）右下侧
  * 空白带——3 列网格（列距 0.003° ≈ 128px、行距 0.004° ≈ 123px@1080p），
  * 与全部无人机锚点及目标彼此间均保持 ≥ 84px 图标直径 + 间隙不重叠，
  * 且全部落在 zoom 14 初始视口内；超出池量的目标回退包中心。

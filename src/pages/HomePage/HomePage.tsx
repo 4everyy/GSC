@@ -32,6 +32,7 @@ import { loadScopedAnchors } from '../../utils/index'
 import { type LngLat } from '../../map-engines/types'
 import { FlightOverlays, AreaSelectOverlay } from '../../components/home/overlays/FlightOverlays'
 import { BottomBar } from '../../components/home/bottom-bar/BottomBar'
+import { DemoScenario } from '../../components/home/demo/DemoScenario'
 
 export function HomePage() {
   // 告警面板状态机已抽离（WB-PF-002）：activeAlarm/pendingAlarm/alarmCollapsing 及
@@ -202,7 +203,8 @@ export function HomePage() {
   const aircraftSeedAnchors = useMemo<LngLat[] | null>(() => {
     if (!activePackage) return null
     const ids = aircraft.map((_, i) => i)
-    const saved = loadScopedAnchors('gcs:aircraft-anchors', activePackage.id, ids)
+    // 锚点键随布局调整升版本（v2）：使旧集中布局的持久化锚点失效，重新按新偏移播种
+    const saved = loadScopedAnchors('gcs:aircraft-anchors:v2', activePackage.id, ids)
     // 全部索引都有持久化锚点才整体采用（loadScopedAnchors 部分缺失时返回 {}）
     if (Object.keys(saved).length > 0) return ids.map((i) => saved[String(i)])
     return AIRCRAFT_ANCHOR_OFFSETS.map((off) => ({
@@ -218,9 +220,9 @@ export function HomePage() {
     adapter,
     count: aircraft.length,
     initialPositions: AIRCRAFT_INITIAL_POSITIONS,
-    storageKey: 'gcs:aircraft-positions:v3',
+    storageKey: 'gcs:aircraft-positions:v4',
     initialAnchors: aircraftSeedAnchors,
-    anchorStorageKey: 'gcs:aircraft-anchors',
+    anchorStorageKey: 'gcs:aircraft-anchors:v2',
     anchorScope: activePackage?.id ?? null,
   })
 
@@ -448,6 +450,10 @@ export function HomePage() {
           <FlightCommandPanels panels={panels} anims={animations} aircraft={aircraft} selectedAircraft={selectedAircraft} handleRemoveAircraft={handleRemoveAircraft} selectedDevices={selectedDevices} aircraftPositions={aircraftPositions} />
           <WaypointFlightPanels panels={panels} anims={animations} aircraft={aircraft} selectedDevices={selectedDevices} areaLandingSpots={areaLandingSpots} aircraftPositions={aircraftPositions} />
           <FlightMissionPanels panels={panels} anims={animations} adapter={adapter} aircraft={aircraft} selectedDevices={selectedDevices} aircraftPositions={aircraftPositions} rallyPointSpots={rallyPointSpots} getFormationFlightGeometry={getFormationFlightGeometry} selectedAircraft={selectedAircraft} handleRemoveAircraft={handleRemoveAircraft} />
+          {/* DemoScenario：15 架无人机集群动作自动演示层（起飞/降落/区域降落/航点/
+              编队/悬停/航线，60s 精确循环；地理锚定随地图移动，纯展示、
+              pointer-events:none，不干扰交互） */}
+          <DemoScenario adapter={adapter} />
           {/* FlightOverlays（自 components/FlightOverlays 拆出）：连线/图钉/盘旋圆/模拟飞行图标 */}
           <FlightOverlays
             panels={panels}

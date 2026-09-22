@@ -14,19 +14,24 @@ export const ALARM_BADGES: string[] = [
 
 
 export interface Aircraft {
+  /** 机身图（组合图标上层） */
   src: string
+  /** 底部光晕图（组合图标下层），与 src 同色成套 */
+  bottomSrc: string
   className: string
   label: string
   /** 对应设备管理面板 deviceList 的下标，用于 hover/选中双向联动 */
   deviceIndex: number
 }
 
+/* 态势图飞机图标换为「机身 + 底部光晕」组合（与设备管理面板同素材）：
+   红=任务中 / 蓝=待命 / 灰=离线 / 黄≈原橙色（素材无橙色，取视觉最接近的黄色） */
 export const aircraft: Aircraft[] = [
-  { src: homeImages.aircraftRed, className: 'aircraft aircraft--red', label: '01设备', deviceIndex: 0 },
-  { src: homeImages.aircraftOrange, className: 'aircraft aircraft--orange', label: '03设备', deviceIndex: 2 },
-  { src: homeImages.aircraftBlue, className: 'aircraft aircraft--blue', label: '04设备', deviceIndex: 3 },
-  { src: homeImages.aircraftGray, className: 'aircraft aircraft--gray', label: '02设备', deviceIndex: 1 },
-  { src: homeImages.aircraftBlue, className: 'aircraft aircraft--blue2', label: '05设备', deviceIndex: 4 },
+  { src: deviceImages.redPlane, bottomSrc: deviceImages.redBottom, className: 'aircraft aircraft--red', label: '01设备', deviceIndex: 0 },
+  { src: deviceImages.yellowPlane, bottomSrc: deviceImages.yellowBottom, className: 'aircraft aircraft--orange', label: '03设备', deviceIndex: 2 },
+  { src: deviceImages.bluePlane, bottomSrc: deviceImages.blueBottom, className: 'aircraft aircraft--blue', label: '04设备', deviceIndex: 3 },
+  { src: deviceImages.grayPlane, bottomSrc: deviceImages.grayBottom, className: 'aircraft aircraft--gray', label: '02设备', deviceIndex: 1 },
+  { src: deviceImages.bluePlane, bottomSrc: deviceImages.blueBottom, className: 'aircraft aircraft--blue2', label: '05设备', deviceIndex: 4 },
 ]
 
 /**
@@ -184,7 +189,7 @@ export const deviceList: Device[] = [
     telemetry: firstTelemetry,
     status: 'tasking',
     statusText: '任务中',
-    altitudeValue: '40m',
+    altitudeValue: '1200m',
     batteryLevel: 'full',
     batteryValue: '100%',
     deviceType: 'gray',
@@ -193,7 +198,7 @@ export const deviceList: Device[] = [
     name: '02中科晶锐',
     status: 'offline',
     statusText: '离线',
-    altitudeValue: '40m',
+    altitudeValue: '--',
     batteryLevel: 'low',
     batteryValue: '12%',
     deviceType: 'gray',
@@ -202,7 +207,7 @@ export const deviceList: Device[] = [
     name: '03中科晶锐',
     status: 'standby',
     statusText: '待命',
-    altitudeValue: '400m',
+    altitudeValue: '1500m',
     batteryLevel: 'mid',
     batteryValue: '40%',
     deviceType: 'blue',
@@ -211,7 +216,7 @@ export const deviceList: Device[] = [
     name: '04中科晶锐',
     status: 'tasking',
     statusText: '任务中',
-    altitudeValue: '40m',
+    altitudeValue: '1800m',
     batteryLevel: 'low',
     batteryValue: '12%',
     deviceType: 'gray',
@@ -220,7 +225,7 @@ export const deviceList: Device[] = [
     name: '05中科晶锐',
     status: 'tasking',
     statusText: '任务中',
-    altitudeValue: '40m',
+    altitudeValue: '2000m',
     batteryLevel: 'mid',
     batteryValue: '40%',
     deviceType: 'gray',

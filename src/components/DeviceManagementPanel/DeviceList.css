@@ -438,10 +438,11 @@
   overflow: hidden;
   box-sizing: border-box;
   flex-shrink: 0;
-  /* 列间距统一：行首组/状态/高度/电量/尾部组均为内容宽，
-     space-between 把行内剩余空间均分到四段列间隙，四段间距恒相等；
-     尾部组自然贴右 */
-  justify-content: space-between;
+  /* 列布局规则：行首组内（复选框/图标/名称）与尾部组内（信号/箭头）间距固定不变；
+     名称/状态/高度/电量为定宽列（列内内容左对齐），所有行同列左边缘垂直对齐；
+     列整体左对齐（flex-start）：自行首起依次紧排，列间 gap 8px 保持不变；
+     行内剩余空间全部落在电量列与尾部组之间，尾部组由 margin-left:auto 贴右 */
+  justify-content: flex-start;
   gap: 8px;
 }
 
@@ -460,8 +461,8 @@
 }
 
 /* 行首组：复选框 + 编队图标 + 设备名称（组内固定 8px 间距，不随视口缩放）。
-   flex:0 1 auto 内容宽可收缩：不独占行内剩余空间，剩余空间由行的 space-between
-   均分到四段列间隙；空间压力仍由组内设备名列（可收缩）吸收，
+   组内设备名定宽（见下），整组宽度行行一致，状态列起始位置垂直对齐；
+   flex:0 1 auto 允许整组收缩（压缩量由组内设备名列吸收），
    避免行内容总宽溢出把最后一列（查看详情箭头）推出右边距 */
 .device-row__lead {
   position: relative;
@@ -519,9 +520,12 @@
   -webkit-user-drag: none;
 }
 
-/* 设备名：内容宽可收缩（flex: 0 1 auto），使行首组紧贴名称文字结束；
-   行内剩余空间交由行 space-between 均分到四段列间隙；
-   文字左对齐，超长以省略号截断（min-width:0 + overflow:hidden） */
+/* 设备名：定宽列，宽度曲线镜像最宽内容"0X中科晶锐"（2数字+4汉字 ≈ 5.2em）
+   随行字号 clamp(10px,.73vw,14px) 的缩放轨迹（两端取齐 52/72.8px，中部线性），
+   贴合最宽内容、无多余留白——既保证行首组宽度行行一致（后续各列左边缘
+   垂直对齐），又不侵占尾部组的贴右空间；
+   空间不足时允许收缩（超长以省略号截断），作为整行唯一的弹性列
+   吸收宽度缺口，防止行内容溢出把最后一列（查看详情）顶出右边距 */
 .device-row__name {
   position: relative;
   z-index: 1;
@@ -529,14 +533,15 @@
   white-space: nowrap;
   line-height: 1;
   color: #fff;
-  flex: 0 1 auto;
+  flex: 0 1 clamp(53px, 3.9vw, 74px);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: left;
 }
 
-/* 状态文字（任务中/待命/离线）：内容宽列，四段列间距由行均分相等 */
+/* 状态文字（任务中/待命/离线）：固定宽度列（4.4em 容纳最宽"任务中"+圆点），
+   列内内容左对齐，保证高度列左边缘行行对齐（列左对齐） */
 .device-row__status {
   /* 状态文字固定白色，圆点颜色由内联样式（状态色）控制 */
   color: #fff;
@@ -548,9 +553,11 @@
   font-size: clamp(10px, .73vw, 14px);
   white-space: nowrap;
   line-height: 1;
-  /* 列宽紧贴内容（圆点+文字）：盒宽即内容宽，无列内右侧留白，
-     与左右相邻列的可见间距由行 space-between 均分，四段严格相等 */
-  flex: 0 0 auto;
+  /* 定宽列，宽度 = 圆点8px + 间距.21vw + 文字3em（≈2.19vw），用 calc 精确
+     镜像内容宽度曲线（"任务中"为最宽状态），贴合无裁切、无多余留白：
+     列内左对齐，所有行该列左边缘垂直对齐；列间空隙仍由行 gap: 8px 统一
+     控制，与行首组/高度列的间隙保持原有量级 */
+  flex: 0 0 clamp(41.5px, calc(2.4vw + 9px), 55px);
   overflow: hidden;
   text-align: left;
 }
@@ -574,9 +581,11 @@
   align-items: center;
   justify-content: flex-start;
   gap: clamp(2px, .21vw, 4px);
-  /* 列宽紧贴内容（图标+数值）：盒宽即内容宽，无列内右侧留白，
-     与左右相邻列的可见间距由行 space-between 均分，四段严格相等 */
-  flex: 0 0 auto;
+  /* 定宽列，宽度曲线镜像最宽内容"100%"（图标clamp(12,1vw,16) + 间距.21vw +
+     文字≈2.7em）随视口的缩放轨迹，贴合无裁切、无多余留白：列内（图标+数值）
+     左对齐，所有行该列左边缘垂直对齐；高度↔电量间隙由行 gap: 8px 控制，
+     电量↔尾部组之间吸收行内全部剩余空间（尾部组贴右） */
+  flex: 0 0 clamp(42.5px, 3.4vw, 59px);
   overflow: hidden;
 }
 
@@ -604,6 +613,9 @@
   z-index: 1;
   display: flex;
   align-items: center;
+  /* 行列整体左对齐后尾部组仍贴右：auto margin 吸收电量列之后的全部行内
+     剩余空间；空间不足时 auto margin 归零，退化为普通列与前列保持 gap 8px */
+  margin-left: auto;
   /* 间距对齐区域列表面板行尾图标（可见间距 = 32px - 图标尺寸clamp(14~20px)，1920屏约12px）：
      区域面板倒数两列可见间距 = 8px盒间距 + 图标在24px盒内居中两侧留白(24-图标)；
      此处用等效表达式作为 gap（箭头PNG左留白已由 .device-row__expand 负margin补偿） */

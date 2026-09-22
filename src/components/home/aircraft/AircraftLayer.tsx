@@ -5,15 +5,17 @@
  * （在线蓝色 / 离线灰色，聚焦时隐藏），以及返航面板打开时选中飞机的 H 返航
  * 地面标记。图标显隐由图层控制面板「设备标签」开关联动。
  */
-import { memo, type MouseEvent as ReactMouseEvent } from 'react'
+import { memo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react'
 import { computePanelPlacement, placementToClasses } from '../../../utils/index'
 import batteryMidIcon from '../../../assets/images/device/battery-mid.png'
-import { useDeviceLinkStore } from '../../../stores/index'
+import { useDeviceLinkStore, usePlaneStatusStore } from '../../../stores/index'
 
 export interface AircraftItem {
   label: string
   className: string
   src: string
+  /** 底部光晕图（组合图标下层），与 src 同色成套 */
+  bottomSrc: string
   deviceIndex: number
 }
 
@@ -45,6 +47,8 @@ function AircraftLayerInner({
   onAircraftDoubleClick,
 }: AircraftLayerProps) {
   const hoveredDevice = useDeviceLinkStore((s) => s.hoveredDevice)
+  // 实时遥测：高度值/垂线长度随 queryPlaneStatus 刷新（devices 整体替换触发重渲染）
+  const devices = usePlaneStatusStore((s) => s.devices)
   return (
     <>
       {aircraft.map((item, index) => {
@@ -54,6 +58,17 @@ function AircraftLayerInner({
           aircraftPositions[index].y,
         )
         const aircraftPanelClasses = placementToClasses(aircraftPlacement)
+        // 高度垂线：值取设备遥测 altitudeValue（离线为 '--'），
+        // 虚线长度按高度线性伸缩（40m→40px，封顶 96px，下限 28px）
+        // 离线设备（无遥测 / status=offline / altitudeValue='--'）不渲染高度垂线
+        const device = devices[item.deviceIndex]
+        const isOffline =
+          !device || device.status === 'offline' || device.altitudeValue === '--'
+        const altitudeText = device?.altitudeValue ?? '--'
+        const altitudeNum = parseFloat(altitudeText) || 0
+        const altitudeStickHeight = Math.round(
+          Math.min(96, Math.max(28, altitudeNum * 0.6 + 16)),
+        )
         return (
           <span
             className={`${item.className} aircraft--draggable ${aircraftPanelClasses.join(' ')}${selectedDevices.has(item.deviceIndex) ? ' aircraft--selected' : ''}${hoveredDevice === item.deviceIndex ? ' aircraft--hovered' : ''}`}
@@ -68,8 +83,39 @@ function AircraftLayerInner({
             onClick={() => onAircraftClick(item.deviceIndex)}
             onDoubleClick={() => onAircraftDoubleClick(index)}
           >
-            <img src={item.src} alt={item.label} draggable={false} />
+            {/* 组合图标：底部光晕 + 机身（与设备管理面板同素材）。
+                光晕 img 置于 DOM 首位且严格居中于 48px 盒——返航/航线连线的
+                querySelector('img') 锚点取其中心，与旧单图锚点完全一致；
+                航向旋转只作用于机身（见 CSS） */}
+            <span className="aircraft-icon">
+              <img
+                className="aircraft-icon__bottom"
+                src={item.bottomSrc}
+                alt=""
+                draggable={false}
+              />
+              <img
+                className="aircraft-icon__top"
+                src={item.src}
+                alt={item.label}
+                draggable={false}
+              />
+            </span>
             <span className="aircraft-label">{item.label}</span>
+            {/* 高度垂线：图标中心垂直向下的绿色虚线（指向地面投影），
+                长度由 --aircraft-altitude-h（按实时高度计算）驱动，
+                底端小圆点为地面投影点，右侧实时标注高度值 */}
+            {/* 离线设备无遥测高度，不渲染垂线与高度标注 */}
+            {!isOffline && (
+              <span
+                className="aircraft-altitude"
+                aria-hidden="true"
+                style={{ '--aircraft-altitude-h': `${altitudeStickHeight}px` } as CSSProperties}
+              >
+                <span className="aircraft-altitude__stick" />
+                <span className="aircraft-altitude__value">{altitudeText}</span>
+              </span>
+            )}
             {/* Return-home indicator: ground marker (48x48 white circle with
                 vertical H only, floating above the selected aircraft
                 while the return panel is open; green solid line (SVG) from icon center to
@@ -144,7 +190,7 @@ function AircraftLayerInner({
                     <span className="aircraft-info-panel__bar" />
                     <span className="aircraft-info-panel__label">位置</span>
                     <span className="aircraft-info-panel__value">
-                      Lat:0000,&nbsp;Lon:0000,&nbsp;H:0000
+                      Lat:0000,&nbsp;Lon:0000,&nbsp;H:{altitudeText}
                     </span>
                   </div>
                   <div className="aircraft-info-panel__row">

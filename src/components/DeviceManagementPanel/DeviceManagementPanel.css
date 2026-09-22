@@ -85,6 +85,10 @@
   color: #fff;
   margin-left: 4px;
   flex-shrink: 0;
+  /* 标签列定宽（容纳最宽"速度(Y)"≈3.6em）：所有行的数值起点在同一竖直线上，
+     实现数值列左对齐；min-width 而非 width，footer 的"最后更新时间"（6em）
+     可自然撑开不受影响。标签与数值之间 16px 间距不变。 */
+  min-width: 3.6em;
 }
 
 .device-row__detail-value {
@@ -96,11 +100,6 @@
   margin-left: 16px !important;
   /* 移除固定宽度，让内容自然排列 */
   flex-shrink: 0;
-}
-
-/* 右列数值右对齐 */
-.device-row__detail-col:last-child .device-row__detail-value {
-  text-align: right;
 }
 
 /* 延迟数值：绿色 */
