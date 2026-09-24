@@ -12,8 +12,13 @@ interface DeviceManagementPanelProps {
 }
 
 // 筛选选项配置
-const STATUS_OPTIONS = ['任务中', '待命', '离线'] as const
+/** 状态筛选选项：与 queryPlaneStatus 状态文本一一对应（执行中/待命/离线/在线） */
+const STATUS_OPTIONS = ['执行中', '待命', '离线', '在线'] as const
 const TYPE_OPTIONS = ['无人机', '无人车', '无人船', '机器狗'] as const
+/** 类型文本 → typeId 码（联调口径：1-无人机；其余类型后端暂未定义，选中时列表为空） */
+const TYPE_ID_BY_LABEL: Record<string, string> = {
+  无人机: '1',
+}
 
 // 左列参数配置（3 行）
 const TELEMETRY_COL_LEFT: { label: string; key: keyof DeviceTelemetry }[] = [
@@ -44,9 +49,8 @@ const TELEMETRY_COL_RIGHT_2: { label: string; key: keyof DeviceTelemetry }[] = [
 ]
 
 export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagementPanelProps) {
-  // 设备列表：订阅 planeStatusStore。store 初始值取 config/devices 的 mock 数据，
-  // MainApp 的 usePlaneStatusInit 在首页加载时请求一次 /api/v1/control/queryPlaneStatus，
-  // 成功后整体覆盖为真实数据；接口未就绪/失败时继续展示 mock。
+  // 设备列表：订阅 planeStatusStore（数据全部来自 queryPlaneStatus 接口：
+  // MainApp 的 usePlaneStatusInit 在首页加载时请求并整体写入；初始为空列表）。
   const deviceList = usePlaneStatusStore((s) => s.devices)
   // 选中/hover 状态迁移至全局 store，与首页飞机图标联动
   const selectedDevices = useDeviceLinkStore((s) => s.selectedDevices)
@@ -173,8 +177,11 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
   const filteredDevices = deviceList
     .map((device, index) => ({ device, index }))
     .filter(({ device }) => {
-      // 类型筛选：当前 mock 数据均为无人机，选择其他类型时结果为空
-      if (typeFilter !== '请选择' && typeFilter !== '无人机') return false
+      // 类型筛选：按接口 typeId 匹配（1-无人机；其余类型后端暂未定义，选中时结果为空）
+      if (typeFilter !== '请选择') {
+        const expectId = TYPE_ID_BY_LABEL[typeFilter]
+        if (expectId === undefined || device.typeId !== expectId) return false
+      }
       // 状态筛选：按设备状态文字精确匹配
       if (statusFilter !== '请选择' && device.statusText !== statusFilter) return false
       return true

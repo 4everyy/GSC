@@ -276,13 +276,13 @@ export function HexagonDrawingSvg({
         >
           <line x1="0" y1="0" x2="0" y2="8" stroke={NOFLY_HATCH_COLOR} strokeWidth="1.5" />
         </pattern>
-        {/* 截图式蒙版：全屏矩形挖去六边形（evenodd 反转填充） */}
-        <mask id="hexagon-area-draw-mask">
-          <path ref={maskRef} d={maskD} fill="black" fillRule="evenodd" />
-        </mask>
       </defs>
-      {/* 蒙层矩形（引用上 defs.mask；rgba(0,0,0,0.55) 见 CSS 类） */}
-      <rect width={viewSize.w} height={viewSize.h} mask="url(#hexagon-area-draw-mask)" />
+      {/* 截图式变暗蒙层：外矩形 + 六边形组合路径 evenodd 直填 —— 六边形为镂空
+          亮区、四周 rgba(0,0,0,0.55) 变暗（与编辑态 HexagonEditVisuals 同暗度）。
+          注：原先 <mask> 内黑 path + 裸 rect 的写法在亮度遮罩语义下（黑 / 未覆盖
+          = 隐藏）使蒙层 rect 完全渲染不出，四周从未变暗；改为直填后拖动帧仍由
+          drawVertices 命令式重写 d（M0,0 外矩形 + 六边形 组合结构保持不变）。 */}
+      <path ref={maskRef} d={maskD} fill="rgba(0,0,0,0.55)" fillRule="evenodd" />
       {/* 六边形本体：默认无填充紫色描边（截图框选效果）；定格后按所选类型
           切换实时预览（禁飞区斜线/降落区绿/任务区蓝半透明） */}
       <path ref={polyRef} d={d} fill={polyFill} stroke={polyStroke} strokeWidth={2} />

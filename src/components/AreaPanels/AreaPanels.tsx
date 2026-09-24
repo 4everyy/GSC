@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTaskAreaStore, useLayerStore } from '../../stores/index'
 import { taskAreaTypeMeta } from '../../api/index'
 import { deviceImages } from '../../assets/images/device/index'
@@ -19,6 +19,8 @@ import { AircraftListSection, type AircraftListItem } from '../home/panels/Fligh
  * - 行首复选框勾选区域（勾上且区域处于显示状态时联动聚焦态势图，
  *   取消勾选不触发）；行常规(灰)/hover(橙)/选中(蓝) 三态背景图
  *   与目标列表面板（TargetListPanel）完全一致；
+ * - 区域名称双击进入行内编辑（input 替换 span，自动聚焦全选），
+ *   失焦或回车自动保存（trim 后为空则保留原名），Esc 取消编辑；
  * - 行尾操作图标组：编辑（进入地图绘制编辑态）/ 显示（控制该区域在态势图上的
  *   显隐，经 taskAreaStore.hiddenIds 与 TaskAreaLayer 联动；图标双态——
  *   可见时睁眼 eyes.svg / 隐藏时闭眼斜杠 eyes-off.svg）/ 删除（本地移除）；
@@ -54,12 +56,44 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
   const requestEditArea = useTaskAreaStore((s) => s.requestEditArea)
   // 行复选框勾选区域聚焦联动信号：HomePage 监听后将地图平滑飞转、框入该区域
   const requestFocusArea = useTaskAreaStore((s) => s.requestFocusArea)
+  // 重命名（名称行内编辑失焦/回车提交时调用）
+  const renameArea = useTaskAreaStore((s) => s.renameArea)
 
   // 勾选的区域 id 集合（面板内局部状态）
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   // hover 行 id：驱动行背景图切换为橙色 hover 态（与目标列表一致）
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+
+  // 名称行内编辑：editingId=正在编辑名称的区域 id（null 无），editingName=草稿
+  // （双击进入，失焦/回车提交 renameArea，Esc 取消；同屏仅一行可编辑）
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState('')
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  /** 双击名称进入编辑：以当前名称为草稿，下一帧 input 挂载后聚焦并全选（直接输入即覆盖） */
+  const startEditName = (id: string, name: string) => {
+    setEditingId(id)
+    setEditingName(name)
+    requestAnimationFrame(() => {
+      nameInputRef.current?.focus()
+      nameInputRef.current?.select()
+    })
+  }
+
+  /** 提交编辑：trim 后非空才写入 store（纯空格视为未修改，保留原名） */
+  const commitEditName = () => {
+    if (editingId === null) return
+    renameArea(editingId, editingName)
+    setEditingId(null)
+    setEditingName('')
+  }
+
+  /** 取消编辑：丢弃草稿恢复展示原名（Esc 触发；input 随即卸载不再触发 blur） */
+  const cancelEditName = () => {
+    setEditingId(null)
+    setEditingName('')
+  }
 
   /** 全选 / 全不选联动（作用于当前列表全部区域） */
   const isAllSelected = areas.length > 0 && areas.every((a) => selectedIds.has(a.id))
@@ -258,9 +292,35 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
                         </svg>
                       )}
                     </div>
-                    <span className="area-row__name" title="01区域名称">
-                      01区域名称
-                    </span>
+                    {editingId === a.id ? (
+                      /* 名称编辑态：input 替换 span，回车/失焦保存，Esc 取消 */
+                      <input
+                        ref={nameInputRef}
+                        className="area-row__name-input"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={commitEditName}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            commitEditName()
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault()
+                            cancelEditName()
+                          }
+                        }}
+                        aria-label="编辑区域名称"
+                        title="双击可修改区域名称"
+                      />
+                    ) : (
+                      <span
+                        className="area-row__name"
+                        title={a.name}
+                        onDoubleClick={() => startEditName(a.id, a.name)}
+                      >
+                        {a.name}
+                      </span>
+                    )}
                   </div>
                   <span className="area-row__type" title={meta.label}>
                     {meta.label}
@@ -358,9 +418,10 @@ export function AreaListPanel({ onClose, visible = true }: AreaListPanelProps) {
  * 结构与起飞/返航面板相同（最大化复用公共组件）：
  * - 外壳（背景/切角/标题/底部按钮）复用 PanelShell，确认按钮为设计稿置灰态（confirmMuted）；
  * - 「参数设置 / 飞机列表」tab 栏复用 PanelTabs；
- * - 参数设置 tab：降落速度 −/+ 步进器复用 HeightStepper（单位 m/s，默认 10，1~20）
+ * - 参数设置 tab：降落速度 −/+ 步进器复用 HeightStepper（单位 m/s，默认 10，
+ *   最低 1 不设上限，数值框支持手动键入 editable）
  *   + 降落编队下拉选择器（设计稿 group_11：标签居左、选择器居右，默认「一字型」）；
- * - 飞机列表 tab：复用 AircraftListSection（区块头 + 列表行，与降落面板共用）；
+ * - 飞机列表 tab：复用降落面板的飞机列表区块（与降落面板共用）；
  * - 底部「确认（灰）/ 航线生成 / 取消」三按钮（middleText 三按钮布局）。
  */
 
@@ -446,7 +507,8 @@ export function AreaLandingPanel({
             onChange={setSpeed}
             unit="m/s"
             min={1}
-            max={20}
+            max={Number.MAX_SAFE_INTEGER}
+            editable
             minusAriaLabel="减小降落速度"
             plusAriaLabel="增大降落速度"
           />

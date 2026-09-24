@@ -373,6 +373,25 @@
   text-align: left;
 }
 
+/* 名称行内编辑输入框（双击名称进入编辑时替换名称 span 展示）：字体/字号/
+   颜色与名称文字一致，浅蓝底 + 蓝描边给出明确的可编辑视觉提示；
+   占满组内剩余宽度（与名称列一致吸收剩余空间） */
+.area-row__name-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans';
+  font-weight: 330;
+  line-height: 1.2;
+  color: #fff;
+  text-align: left;
+  background: rgba(14, 167, 249, 0.12);
+  border: 1px solid #0ea7f9;
+  border-radius: 2px;
+  padding: 1px 4px;
+  outline: none;
+}
+
 /* 类型列（第3列）：固定列宽 60px（容纳最长「集群侦察/任务区域」4 汉字 ≈ 56px），
    所有行该列起始 x 一致、文字左对齐——跨行严格对齐 */
 .area-row__type {

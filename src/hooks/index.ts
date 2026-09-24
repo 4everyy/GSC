@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect, useRef, useLayoutEffect, type DependencyList, type RefObject } from 'react'
 import { type MapEngineInstance } from '../map-engines/index'
-import { usePlaneStatusStore } from '../stores/index'
+import { usePlaneStatusStore, useTaskAreaStore } from '../stores/index'
 import { type LngLat, type MapAdapter } from '../map-engines/types'
 import { createStageProjector, queryStageEl, saveScopedAnchors } from '../utils/index'
 
@@ -54,6 +54,26 @@ export function usePlaneStatusInit(): void {
     if (!initialized) {
       initialized = true
       void usePlaneStatusStore.getState().refresh()
+    }
+  }, [])
+}
+
+/**
+ * 任务区域一次性加载 Hook —— MainApp 挂载一次，拉取
+ * /api/v1/control/queryTaskAreaList 首帧写入 taskAreaStore。
+ *
+ * 与 usePlaneStatusInit 同模式：仅首页加载时调用一次，不做轮询；
+ * StrictMode 双挂载/路由返回不重复请求（模块级标记）。
+ */
+
+/** 模块级标记：本次会话内已发起过任务区域加载则不再请求 */
+let taskAreaInitialized = false
+
+export function useTaskAreaInit(): void {
+  useEffect(() => {
+    if (!taskAreaInitialized) {
+      taskAreaInitialized = true
+      void useTaskAreaStore.getState().refresh()
     }
   }, [])
 }

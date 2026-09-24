@@ -32,7 +32,6 @@ import { loadScopedAnchors } from '../../utils/index'
 import { type LngLat } from '../../map-engines/types'
 import { FlightOverlays, AreaSelectOverlay } from '../../components/home/overlays/FlightOverlays'
 import { BottomBar } from '../../components/home/bottom-bar/BottomBar'
-import { DemoScenario } from '../../components/home/demo/DemoScenario'
 
 export function HomePage() {
   // 告警面板状态机已抽离（WB-PF-002）：activeAlarm/pendingAlarm/alarmCollapsing 及
@@ -60,6 +59,7 @@ export function HomePage() {
     setAreaLandingRect,
     setAreaLandingCorners,
     setAreaLandingRouteGenerated,
+    setAreaLandingConfirmed,
     areaSelectMode,
     setAreaSelectMode,
     areaSelectAnchor,
@@ -131,11 +131,6 @@ export function HomePage() {
   // 离线地图：gcs-pkg:// 协议经 HTTP Range 按需直读 public/maps/suzhou.mbtiles（无导入、无 IndexedDB）。
   const { activeStyle, activePackage } = useOfflineMap()
 
-  // 首次激活后平滑飞到包中心（苏州）。
-  useEffect(() => {
-    if (!adapter || !activePackage) return
-    adapter.flyTo(activePackage.center, { zoom: 14, duration: 1500 })
-  }, [adapter, activePackage])
 
   // 设备联动：hover/选中状态与设备管理面板双向同步（全局 store 承载，
   // deviceIndex 对应 config/devices.ts deviceList 下标）。
@@ -198,20 +193,90 @@ export function HomePage() {
 
   // 飞机图标拖拽 + 地理锚定：手动拖动图标+名称至首页任意位置；地图拖动/缩放时
   // 图标按地理锚点（LngLat）随地图一起移动（useMapAnchorSync，详见该 hook 注释）
-  // 种子锚点按当前离线地图包派生：localStorage 按包恢复优先（上次拖放位置），
-  // 无则包中心 + AIRCRAFT_ANCHOR_OFFSETS 播种（布局与原百分比布局观感一致）
+  // 种子锚点按当前离线地图包派生，优先级与目标层（targetSeedAnchors）同口径：
+  // 1) queryPlaneStatus 真实经纬度（标准语义：latitude=纬度、longitude=经度）——
+  //    落在离线包 bounds 内才直接锚定（包外的远方坐标投影在瓦片覆盖之外、
+  //    图标悬在灰区，回退 2）；2) localStorage 按包恢复（上次拖放/播种位置）；
+  // 3) 包中心 + AIRCRAFT_ANCHOR_OFFSETS 播种（布局与原百分比布局观感一致）。
+  // 真实坐标签名：仅坐标实际变化时才重算种子（store 每次写入 rawPlanes 引用都变，
+  // 直接依赖会反复重播种）；rawPlanes 下标 = 设备面板 deviceIndex（planeList 顺序），
+  // 经 aircraft[i].deviceIndex 映射到对应飞机图标
+  const planeLngLatKey = usePlaneStatusStore((s) =>
+    aircraft
+      .map((a) => {
+        const raw = s.rawPlanes[a.deviceIndex]
+        return raw && typeof raw.latitude === 'number' && typeof raw.longitude === 'number'
+          ? `${a.deviceIndex}@${raw.latitude.toFixed(7)},${raw.longitude.toFixed(7)}`
+          : ''
+      })
+      .join('|'),
+  )
+  // 首次定位：引擎/离线包就绪后平滑飞到初始视口——优先 queryPlaneStatus 真实
+  // 机群簇中心（离线包 bounds 内坐标的均值）；暂无有效真实坐标时回退包中心
+  // （苏州）且不标记完成（接口晚于激活返回时随 planeLngLatKey 变化补飞一次，
+  // 此后的轮询坐标刷新经 initialFlightDoneRef 一次性闸门拦截，不再打断用户操作）。
+  const initialFlightDoneRef = useRef(false)
+  useEffect(() => {
+    if (!adapter || !activePackage || initialFlightDoneRef.current) return
+    const [west, south, east, north] = activePackage.bounds
+    const pts = usePlaneStatusStore
+      .getState()
+      .rawPlanes.map((p) => {
+        if (!p || typeof p.longitude !== 'number' || typeof p.latitude !== 'number') return null
+        const inPkg =
+          p.longitude >= west && p.longitude <= east && p.latitude >= south && p.latitude <= north
+        return inPkg ? { lng: p.longitude, lat: p.latitude } : null
+      })
+      .filter((q): q is { lng: number; lat: number } => q !== null)
+    if (pts.length === 0) {
+      adapter.flyTo(activePackage.center, { zoom: 14, duration: 1500 })
+      return
+    }
+    adapter.flyTo(
+      {
+        lng: pts.reduce((s, q) => s + q.lng, 0) / pts.length,
+        lat: pts.reduce((s, q) => s + q.lat, 0) / pts.length,
+      },
+      { zoom: 14, duration: 1500 },
+    )
+    initialFlightDoneRef.current = true
+  }, [adapter, activePackage, planeLngLatKey])
   const aircraftSeedAnchors = useMemo<LngLat[] | null>(() => {
     if (!activePackage) return null
     const ids = aircraft.map((_, i) => i)
     // 锚点键随布局调整升版本（v2）：使旧集中布局的持久化锚点失效，重新按新偏移播种
     const saved = loadScopedAnchors('gcs:aircraft-anchors:v2', activePackage.id, ids)
     // 全部索引都有持久化锚点才整体采用（loadScopedAnchors 部分缺失时返回 {}）
-    if (Object.keys(saved).length > 0) return ids.map((i) => saved[String(i)])
-    return AIRCRAFT_ANCHOR_OFFSETS.map((off) => ({
-      lng: activePackage.center.lng + off.lng,
-      lat: activePackage.center.lat + off.lat,
-    }))
-  }, [activePackage])
+    const fallback =
+      Object.keys(saved).length > 0
+        ? ids.map((i) => saved[String(i)])
+        : AIRCRAFT_ANCHOR_OFFSETS.map((off) => ({
+            lng: activePackage.center.lng + off.lng,
+            lat: activePackage.center.lat + off.lat,
+          }))
+    // 经 getState 读取最新 rawPlanes（签名未变时引用可能更新，坐标不变无需重播种）
+    const rawList = usePlaneStatusStore.getState().rawPlanes
+    const [west, south, east, north] = activePackage.bounds
+    return aircraft.map((entry, i) => {
+      const raw = rawList[entry.deviceIndex]
+      // 标准语义：longitude=经度、latitude=纬度（2026-09-23 实测确认）
+      const lng = raw?.longitude
+      const lat = raw?.latitude
+      // 落在离线包 bounds 内才锚定真实坐标（包外坐标投影在瓦片覆盖之外、
+      // 图标悬在灰区无底图，回退默认偏移布局保证可见）
+      if (
+        typeof lng === 'number' &&
+        typeof lat === 'number' &&
+        lng >= west &&
+        lng <= east &&
+        lat >= south &&
+        lat <= north
+      ) {
+        return { lng, lat }
+      }
+      return fallback[i]
+    })
+  }, [activePackage, planeLngLatKey])
   const {
     positions: aircraftPositions,
     onDragStart: onAircraftDragStart,
@@ -372,7 +437,7 @@ export function HomePage() {
         {/* 地图底图：MapLibre GL JS 容器（严格离线）。尚未导入地图包时渲染纯色占位底图，
             导入后由父组件通过 styleSpec 注入 MBTiles 派生样式（P1+）。 */}
         <MapLibreContainer
-          className="map-base"
+          className="map-base"                                                                    
           onReady={onEngineReady}
           styleSpec={activeStyle}
           autoLocate
@@ -450,10 +515,6 @@ export function HomePage() {
           <FlightCommandPanels panels={panels} anims={animations} aircraft={aircraft} selectedAircraft={selectedAircraft} handleRemoveAircraft={handleRemoveAircraft} selectedDevices={selectedDevices} aircraftPositions={aircraftPositions} />
           <WaypointFlightPanels panels={panels} anims={animations} aircraft={aircraft} selectedDevices={selectedDevices} areaLandingSpots={areaLandingSpots} aircraftPositions={aircraftPositions} />
           <FlightMissionPanels panels={panels} anims={animations} adapter={adapter} aircraft={aircraft} selectedDevices={selectedDevices} aircraftPositions={aircraftPositions} rallyPointSpots={rallyPointSpots} getFormationFlightGeometry={getFormationFlightGeometry} selectedAircraft={selectedAircraft} handleRemoveAircraft={handleRemoveAircraft} />
-          {/* DemoScenario：15 架无人机集群动作自动演示层（起飞/降落/区域降落/航点/
-              编队/悬停/航线，60s 精确循环；地理锚定随地图移动，纯展示、
-              pointer-events:none，不干扰交互） */}
-          <DemoScenario adapter={adapter} />
           {/* FlightOverlays（自 components/FlightOverlays 拆出）：连线/图钉/盘旋圆/模拟飞行图标 */}
           <FlightOverlays
             panels={panels}
@@ -474,6 +535,7 @@ export function HomePage() {
             setAreaLandingRect={setAreaLandingRect}
             setAreaLandingCorners={setAreaLandingCorners}
             setAreaLandingRouteGenerated={setAreaLandingRouteGenerated}
+            setAreaLandingConfirmed={setAreaLandingConfirmed}
             areaSelectMode={areaSelectMode}
             setAreaSelectMode={setAreaSelectMode}
             areaSelectAnchor={areaSelectAnchor}

@@ -9,6 +9,7 @@ import { memo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 're
 import { computePanelPlacement, placementToClasses } from '../../../utils/index'
 import batteryMidIcon from '../../../assets/images/device/battery-mid.png'
 import { useDeviceLinkStore, usePlaneStatusStore } from '../../../stores/index'
+import { useRealtimeStore } from '../../../features/realtime/wsClient'
 
 export interface AircraftItem {
   label: string
@@ -47,8 +48,15 @@ function AircraftLayerInner({
   onAircraftDoubleClick,
 }: AircraftLayerProps) {
   const hoveredDevice = useDeviceLinkStore((s) => s.hoveredDevice)
-  // 实时遥测：高度值/垂线长度随 queryPlaneStatus 刷新（devices 整体替换触发重渲染）
+  // HTTP 设备快照：queryPlaneStatus 仅页面加载时拉取一次（无轮询），
+  // 高度等遥测字段静态——起飞后的实时变化必须由 WS 驱动
   const devices = usePlaneStatusStore((s) => s.devices)
+  // WS 实时遥测：pub#device / pub#telemetry 频道 swarmState（data.height = 相对起飞点高度）
+  // 经 mapSwarmStateItem 映射为 telemetry[planeId].altitude，起飞后 1~2Hz 推送，
+  // 驱动高度垂线伸长与数值刷新（形成爬升动态效果）。planeId 即 rawPlanes[].id
+  // （起飞指令 podControlTakeoff 同源主键），与 deviceIndex（planeList 下标）经 rawPlanes 对应。
+  const wsTelemetry = useRealtimeStore((s) => s.telemetry)
+  const rawPlanes = usePlaneStatusStore((s) => s.rawPlanes)
   return (
     <>
       {aircraft.map((item, index) => {
@@ -58,25 +66,43 @@ function AircraftLayerInner({
           aircraftPositions[index].y,
         )
         const aircraftPanelClasses = placementToClasses(aircraftPlacement)
-        // 高度垂线：值取设备遥测 altitudeValue（离线为 '--'），
-        // 虚线长度按高度线性伸缩（40m→40px，封顶 96px，下限 28px）
-        // 离线设备（无遥测 / status=offline / altitudeValue='--'）不渲染高度垂线
+        // 实时升空特效：优先取 WS 实时遥测高度（swarmState.data.height →
+        // telemetry.altitude，起飞后 1~2Hz 推送）；无 WS 帧时回退 HTTP 快照
+        // altitudeValue（离线为 '--'）。高度换算为升空像素 --aircraft-lift：
+        // 容器整体上移（飞机图标/标签/选中光环跟随升空），地面投影垂线底端
+        // 钉在原位置、顶端连到空中飞机中心（分段线性不设总封顶，见下方 liftPx）
         const device = devices[item.deviceIndex]
+        const planeId = rawPlanes[item.deviceIndex]?.id
+        const liveAltitude = planeId !== undefined ? wsTelemetry[planeId]?.altitude : undefined
+        const hasLiveAltitude = liveAltitude !== undefined && Number.isFinite(liveAltitude)
+        // 标签以设备管理面板的设备名称为准（queryPlaneStatus → mapPlaneToDevice
+        // 写入 devices[].name），无对应设备数据时回退配置静态标签（"01设备"等）
+        const labelText = device?.name || item.label
+        // 离线判定：WS 有实时高度即可视（含待命 height≈0）；否则按 HTTP 快照
+        // （无遥测 / status=offline / altitudeValue='--'）判离线，不渲染投影垂线
         const isOffline =
-          !device || device.status === 'offline' || device.altitudeValue === '--'
-        const altitudeText = device?.altitudeValue ?? '--'
-        const altitudeNum = parseFloat(altitudeText) || 0
-        const altitudeStickHeight = Math.round(
-          Math.min(96, Math.max(28, altitudeNum * 0.6 + 16)),
-        )
+          !hasLiveAltitude &&
+          (!device || device.status === 'offline' || device.altitudeValue === '--')
+        // 数值格式与 HTTP fmt(height, 3, 'm') 对齐（如 31.000m）
+        const altitudeText = hasLiveAltitude
+          ? `${liveAltitude.toFixed(3)}m`
+          : (device?.altitudeValue ?? '--')
+        const altitudeNum = hasLiveAltitude ? liveAltitude : parseFloat(altitudeText) || 0
+        // 高度→升空像素纯线性 0.3px/m（无分段、无封顶）：匀速爬升/降落时
+        // 图标上移与虚线伸缩幅度全程恒定（每 10m = 3px），与真实垂直速度
+        // 成正比（400m→120px、800m→240px、1000m→300px）
+        const liftPx = Math.round(Math.max(0, altitudeNum * 0.3))
         return (
           <span
             className={`${item.className} aircraft--draggable ${aircraftPanelClasses.join(' ')}${selectedDevices.has(item.deviceIndex) ? ' aircraft--selected' : ''}${hoveredDevice === item.deviceIndex ? ' aircraft--hovered' : ''}`}
-            key={item.label}
+            key={item.deviceIndex}
             style={{
               left: `${aircraftPositions[index].x}%`,
               top: `${aircraftPositions[index].y}%`,
-            }}
+              // 升空像素：驱动 .aircraft 容器 translateY 上移（见 CSS .aircraft），
+              // 与 left/top（拖拽定位）独立叠加互不干扰
+              '--aircraft-lift': `${liftPx}px`,
+            } as CSSProperties}
             onMouseEnter={() => onHoverDevice(item.deviceIndex)}
             onMouseLeave={() => onHoverDevice(null)}
             onMouseDown={(e) => onDragStart(index, e)}
@@ -97,21 +123,17 @@ function AircraftLayerInner({
               <img
                 className="aircraft-icon__top"
                 src={item.src}
-                alt={item.label}
+                alt={labelText}
                 draggable={false}
               />
             </span>
-            <span className="aircraft-label">{item.label}</span>
-            {/* 高度垂线：图标中心垂直向下的绿色虚线（指向地面投影），
-                长度由 --aircraft-altitude-h（按实时高度计算）驱动，
-                底端小圆点为地面投影点，右侧实时标注高度值 */}
-            {/* 离线设备无遥测高度，不渲染垂线与高度标注 */}
+            <span className="aircraft-label">{labelText}</span>
+            {/* 地面投影垂线：容器整体升空 liftPx（--aircraft-lift 驱动 translateY），
+                本垂线自容器内图标中心向下延伸同等距离——顶端=空中飞机中心，
+                底端投影绿点钉在原地面位置；右侧沿垂线标注实时高度值。
+                离线设备无遥测高度，不渲染垂线与高度标注 */}
             {!isOffline && (
-              <span
-                className="aircraft-altitude"
-                aria-hidden="true"
-                style={{ '--aircraft-altitude-h': `${altitudeStickHeight}px` } as CSSProperties}
-              >
+              <span className="aircraft-altitude" aria-hidden="true">
                 <span className="aircraft-altitude__stick" />
                 <span className="aircraft-altitude__value">{altitudeText}</span>
               </span>
@@ -141,7 +163,7 @@ function AircraftLayerInner({
               <div className="aircraft-hover-panel" data-hover-panel>
                 <div className="aircraft-hover-panel__top">
                   <div className="aircraft-hover-panel__header">
-                    <span className="aircraft-hover-panel__name">02设备</span>
+                    <span className="aircraft-hover-panel__name">{labelText}</span>
                     <span className="aircraft-hover-panel__status">离线</span>
                   </div>
                   <div className="aircraft-hover-panel__divider" />
@@ -160,7 +182,7 @@ function AircraftLayerInner({
               <div className="aircraft-info-panel" data-hover-panel>
                 <div className="aircraft-info-panel__top">
                   <div className="aircraft-info-panel__header">
-                    <span className="aircraft-info-panel__name">{item.label}</span>
+                    <span className="aircraft-info-panel__name">{labelText}</span>
                     <div className="aircraft-info-panel__indicators">
                       <img
                         className="aircraft-info-panel__battery-icon"

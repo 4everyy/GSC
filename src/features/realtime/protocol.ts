@@ -671,12 +671,14 @@ export function buildSubscribeFrame(channel: string): string {
   return JSON.stringify({ op: 'sub', ch: channel })
 }
 
-/** 运行时校验：是否为真实后端信封（新版按 op/ch、旧版按 action/topic 识别） */
+/** 运行时校验：是否为真实后端信封（新版按 op/ch、旧版按 action/topic 识别）。
+ *  后端实测（2026-09-24）推送帧可无 op：{ch, seq, ts, data}——ch 存在即认定为
+ *  新版频道帧（op 缺省按 pub 处理，见 mapBackendMessage），避免推送帧被误判丢弃。 */
 export function isBackendMessage(value: unknown): value is BackendMessage {
   if (typeof value !== 'object' || value === null) return false
   const v = value as Record<string, unknown>
   return (
-    (typeof v.op === 'string' && typeof v.ch === 'string') ||
+    typeof v.ch === 'string' ||
     typeof v.action === 'string' ||
     typeof v.topic === 'string'
   )
@@ -694,15 +696,76 @@ function bool(v: unknown): boolean {
 
 /**
  * 将真实后端消息映射为内部消息数组（一条后端消息可映射为多条内部消息）。
- * plane.swarmState → telemetry（遥测）+ deviceStatus（在线/任务状态）。
- * 未知 action 返回空数组（静默忽略，协议向前兼容）。
+ * 新版 op/ch 五频道：pub 推送按 ch 分发（telemetry/device/cmd/alert/task）。
+ * 旧版 plane.swarmState → telemetry（遥测）+ deviceStatus（在线/任务状态）。
+ * 未知频道/action 返回空数组（静默忽略，协议向前兼容）。
  */
 export function mapBackendMessage(msg: BackendMessage): ServerMessage[] {
-  // 双兼容：旧版 { action: 'plane.swarmState' } 与新版 { type: 'publish', topic: 'plane.swarmState' }
-  if (msg.action !== TOPIC_SWARM_STATE && msg.topic !== TOPIC_SWARM_STATE) return []
   // data 可能为单帧或帧数组（新版批量推送），统一按数组展开
   const items: unknown[] = Array.isArray(msg.data) ? msg.data : [msg.data]
+
+  // 新版订阅协议信封（2026-09-18）：{"op":"pub","ch":"<频道>"} 推送。
+  // 后端实测（2026-09-24）推送帧可省略 op（{ch:"device",seq,ts,data}）——
+  // op 缺省按 pub 处理；op 显式存在且非 pub（sub/ack 等）才跳过
+  //（订阅确认已在 wsClient.dispatch 记录日志）
+  if (typeof msg.ch === 'string') {
+    if (msg.op !== undefined && msg.op !== 'pub') return []
+    switch (msg.ch) {
+      case 'telemetry':
+      case 'device':
+        // 遥测与设备状态共用 swarmState 载荷（model=99 → 离线 deviceStatus）
+        return items.flatMap((item) => mapSwarmStateItem(item))
+      case 'cmd':
+        return items.flatMap((item) => mapCmdAckItem(item))
+      case 'alert':
+        return items.flatMap((item) => mapAlarmItem(item))
+      case 'task':
+        // 任务状态/进度暂无内部消息类型（任务列表走 REST 拉取），记录后忽略
+        console.info('[ws] 收到 task 频道推送（暂未消费）：', msg.data)
+        return []
+      default:
+        return []
+    }
+  }
+
+  // 旧版双兼容：{ action: 'plane.swarmState' } 与 { type: 'publish', topic: 'plane.swarmState' }
+  if (msg.action !== TOPIC_SWARM_STATE && msg.topic !== TOPIC_SWARM_STATE) return []
   return items.flatMap((item) => mapSwarmStateItem(item))
+}
+
+/** cmd 频道回执帧 → 内部 cmdAck（reqId/result 宽松解析）。
+ *  reqId 缺省时合成 unknown-<ts> 而非丢弃：REST podControl（起飞等）不携带 reqId，
+ *  后端 cmd 频道回执可能无 reqId——保留消息流可观测性（store 按 reqId 匹配不到
+ *  pending 指令时自动忽略，不影响既有回执跟踪语义）。 */
+function mapCmdAckItem(data: unknown): ServerMessage[] {
+  const d = (data ?? {}) as Record<string, unknown>
+  const rawId = d.reqId ?? d.req_id
+  const reqId = typeof rawId === 'string' && rawId ? rawId : `unknown-${Date.now()}`
+  const rawResult = String(d.result ?? d.status ?? 'accepted')
+  const result: CommandResult =
+    rawResult === 'rejected' || rawResult === 'failed' ? (rawResult as CommandResult) : 'accepted'
+  const ack: CmdAckPayload = { reqId, result }
+  if (typeof d.reason === 'string' && d.reason) ack.reason = d.reason
+  return [{ type: 'cmdAck', payload: ack, ts: Date.now() }]
+}
+
+/** alert 频道帧 → 内部 alarm（alarmId 缺失丢弃；级别未知归蓝） */
+function mapAlarmItem(data: unknown): ServerMessage[] {
+  const d = (data ?? {}) as Record<string, unknown>
+  const alarmId = typeof d.alarmId === 'string' ? d.alarmId : String(d.alarmId ?? '')
+  if (!alarmId) return []
+  const rawLevel = String(d.level ?? 'blue')
+  const level: AlarmLevel = rawLevel === 'red' || rawLevel === 'orange' ? (rawLevel as AlarmLevel) : 'blue'
+  const alarm: AlarmPayload = {
+    alarmId,
+    level,
+    title: typeof d.title === 'string' ? d.title : '未命名告警',
+    detail: typeof d.detail === 'string' ? d.detail : '',
+    occurredAt: num(d.occurredAt, Date.now()),
+    acknowledged: bool(d.acknowledged),
+  }
+  if (typeof d.deviceId === 'string' && d.deviceId) alarm.deviceId = d.deviceId
+  return [{ type: 'alarm', payload: alarm, ts: Date.now() }]
 }
 
 /** 单帧 swarmState → 内部消息（telemetry + deviceStatus） */

@@ -52,7 +52,8 @@ export function MissionPanel() {
  * 交互流程（对应设计稿 group_10）：
  * - 底部按钮条点击「起飞」→ 按钮保持弹出状态 + 本面板出现在右上角；
  * - 「参数设置 / 飞机列表」tab 栏复用公共组件 PanelTabs；
- * - 起飞高度：−/+ 步进器复用公共组件 HeightStepper（步长 1m，范围 1~500m）；
+ * - 起飞高度：−/+ 步进器复用公共组件 HeightStepper（步长 1m，最低 1m，不设上限，
+ *   PRD DC-P0-01 仅约束「大于 0 的数字」）；
  * - 飞机列表 tab：复用 AircraftListSection（与降落面板同款列表样式），
  *   数据由 HomePage 依据 deviceLinkStore 选中设备计算后传入；
  * - 「确认」回调 onConfirm(height)，「取消」回调 onCancel() 关闭面板。
@@ -94,6 +95,8 @@ export function TakeoffPanel({ aircraft, onRemove, onConfirm, onCancel }: Takeof
             label="起飞高度"
             height={height}
             onChange={setHeight}
+            editable
+            max={Number.MAX_SAFE_INTEGER}
             minusAriaLabel="减小起飞高度"
             plusAriaLabel="增大起飞高度"
           />
@@ -114,7 +117,8 @@ export function TakeoffPanel({ aircraft, onRemove, onConfirm, onCancel }: Takeof
  * 结构与起飞面板相同：
  * - 外壳（背景/切角/标题/底部按钮）复用 PanelShell；
  * - 「参数设置 / 飞机列表」tab 栏复用 PanelTabs；
- * - 返航高度：−/+ 步进器复用 HeightStepper（默认 10m，支持手动键入 editable）；
+ * - 返航高度：−/+ 步进器复用 HeightStepper（默认 10m，支持手动键入 editable，
+ *   最低 1m 不设上限，与起飞面板一致）；
  * - 交互状态流：打开面板即可点「航线生成」（高度默认 10m 有效），
  *   点击「航线生成」画出航线后「确认」解除置灰（confirmMuted 由 HomePage 联动），
  *   「航线生成」点击后置灰（middleMuted 由 HomePage 联动，统一交互规范）；
@@ -178,6 +182,7 @@ export function ReturnHomePanel({
             height={height}
             onChange={handleHeightChange}
             editable
+            max={Number.MAX_SAFE_INTEGER}
             minusAriaLabel="减小返航高度"
             plusAriaLabel="增大返航高度"
           />
@@ -203,6 +208,7 @@ export function ReturnHomePanel({
  * - 外壳（背景/切角/标题/底部按钮）复用 PanelShell；
  * - 「参数设置」区块头 + 返航高度 −/+ 步进行（HeightStepper，默认 10m）；
  * - 环绕飞行面板复用时可通过 radiusLabel 追加第二行步进（盘旋半径，默认 50m）；
+ * - 高度/半径两行数值默认不设上限（最低 1m），需收紧的复用方经 heightMax/radiusMax 传入；
  * - editable 开启后两行数值框支持手动键入数字（环绕飞行）；
  * - 编队飞行面板复用时可通过 children 在步进行与航点信息行之间插入队形选择行；
  * - 航点信息行：纬度 000.00 N° / 经度 000.00 E° 两个坐标输入框；
@@ -218,6 +224,10 @@ export interface TapReturnPanelProps {
   radiusLabel?: string
   /** 数值框可手动输入数字（环绕飞行盘旋高度/盘旋半径），默认 false 仅 −/+ 步进 */
   editable?: boolean
+  /** 高度行数值上限，默认不设上限（最低 1m）；需收紧的复用方显式传入 */
+  heightMax?: number
+  /** 半径行数值上限（仅 radiusLabel 存在的复用方生效），默认不设上限（最低 1m） */
+  radiusMax?: number
   /** 页面级定位钩子类名，默认「tap-return-panel」 */
   className?: string
   /** 确认按钮置灰态（航点飞行设计稿确认钮为灰色），默认 false */
@@ -245,6 +255,8 @@ export function TapReturnPanel({
   heightLabel = '返航高度',
   radiusLabel,
   editable = false,
+  heightMax = Number.MAX_SAFE_INTEGER,
+  radiusMax = Number.MAX_SAFE_INTEGER,
   className = 'tap-return-panel',
   confirmMuted = false,
   middleMuted = false,
@@ -295,23 +307,25 @@ export function TapReturnPanel({
       </div>
 
       <div className="tap-return-panel__params">
-        {/* 高度：−/+ 步进，默认 10m；editable 时支持手动键入 */}
+        {/* 高度：−/+ 步进，默认 10m；editable 时支持手动键入；上限默认不设（heightMax 可收紧） */}
         <HeightStepper
           label={heightLabel}
           height={height}
           onChange={setHeight}
           editable={editable}
+          max={heightMax}
           minusAriaLabel={`减小${heightLabel}`}
           plusAriaLabel={`增大${heightLabel}`}
         />
 
-        {/* 半径：−/+ 步进，默认 50m（环绕飞行面板「盘旋半径」行）；editable 时支持手动键入 */}
+        {/* 半径：−/+ 步进，默认 50m（环绕飞行面板「盘旋半径」行）；editable 时支持手动键入；上限默认不设（radiusMax 可收紧） */}
         {radiusLabel && (
           <HeightStepper
             label={radiusLabel}
             height={radius}
             onChange={setRadius}
             editable={editable}
+            max={radiusMax}
             minusAriaLabel={`减小${radiusLabel}`}
             plusAriaLabel={`增大${radiusLabel}`}
           />
@@ -436,6 +450,8 @@ export function FormationFlightPanel({
       title="编队飞行"
       heightLabel="飞行高度"
       className="formation-flight-panel"
+      // 飞行高度支持手动键入（上限默认不设，TapReturnPanel 内置，最低 1m）
+      editable
       confirmMuted={confirmMuted}
       middleMuted={middleMuted}
       waypoint={waypoint}
@@ -513,7 +529,8 @@ export function OrbitFlightPanel({
  *
  * 与指点返航面板结构完全一致（参数设置区块头 + 高度步进 + 航点信息 + 确认/航线生成/取消），
  * 仅标题（航点飞行）、高度标签（飞行高度）与按钮置灰透传几处不同，
- * 故直接复用参数化后的 TapReturnPanel，不重复任何样式。
+ * 飞行高度数值框支持手动键入（editable）且不设上限，故直接复用参数化后的
+ * TapReturnPanel，不重复任何样式。
  */
 
 export interface WaypointFlightPanelProps {
@@ -544,6 +561,8 @@ export function WaypointFlightPanel({
       title="航点飞行"
       heightLabel="飞行高度"
       className="waypoint-flight-panel"
+      // 飞行高度支持手动键入（上限默认不设，TapReturnPanel 内置，最低 1m）
+      editable
       confirmMuted={confirmMuted}
       middleMuted={middleMuted}
       waypoint={waypoint}
@@ -560,8 +579,9 @@ export function WaypointFlightPanel({
  * 结构与区域降落/环绕飞行面板相同（最大化复用公共组件）：
  * - 外壳（背景/切角/标题/底部按钮）复用 PanelShell，确认按钮为设计稿置灰态（confirmMuted）；
  * - 「参数设置 / 飞机列表」tab 栏复用 PanelTabs；
- * - 参数设置 tab：起飞高度 −/+ 步进器复用 HeightStepper（单位 m，默认 10，1~500）
- *   + 集结速度步进器（单位 m/s，默认 10，1~20）
+ * - 参数设置 tab：起飞高度 −/+ 步进器复用 HeightStepper（单位 m，默认 10，
+ *   支持手动键入 editable，最低 1 不设上限）
+ *   + 集结速度步进器（单位 m/s，默认 10，支持手动键入，最低 1 不设上限）
  *   + 集结队形下拉选择行复用 FormationSelect（标签居左、选择器居右，默认「人字形」）；
  * - 飞机列表 tab：复用 AircraftListSection（区块头 + 列表行，与降落面板共用）；
  * - 底部「确认（灰）/ 航线生成 / 取消」三按钮（middleText 三按钮布局）。
@@ -630,6 +650,8 @@ export function RallyPointPanel({
             height={height}
             onChange={setHeight}
             unit="m"
+            editable
+            max={Number.MAX_SAFE_INTEGER}
             minusAriaLabel="减小起飞高度"
             plusAriaLabel="增大起飞高度"
           />
@@ -639,7 +661,8 @@ export function RallyPointPanel({
             onChange={setSpeed}
             unit="m/s"
             min={1}
-            max={20}
+            max={Number.MAX_SAFE_INTEGER}
+            editable
             minusAriaLabel="减小集结速度"
             plusAriaLabel="增大集结速度"
           />
@@ -672,7 +695,8 @@ export function RallyPointPanel({
  *   （光标变带编号的航线图钉，左键逐点追加航点），右键/Esc 结束取点后航线定格，「确认」解除置灰；
  * - 飞行高度下方蓝色分割线 + 「航线信息」区：标题行 + 逐航点行
  *   （航点 + 圆形序号 + 纬度 000.00 N° / 经度 000.00 E°，设计稿 group_8）。
- * 参数区复用参数化后的 TapReturnPanel，航线信息区经 children 槽位插入，不重复外壳样式。
+ * 参数区复用参数化后的 TapReturnPanel（飞行高度支持手动键入且不设上限），
+ * 航线信息区经 children 槽位插入，不重复外壳样式。
  */
 
 /** 航点信息行：地图取点回传的经纬度（面板内仅只读展示） */
@@ -713,6 +737,8 @@ export function RouteFlightPanel({
       title="航线飞行"
       heightLabel="飞行高度"
       className="route-flight-panel"
+      // 飞行高度支持手动键入（上限默认不设，TapReturnPanel 内置，最低 1m）
+      editable
       confirmMuted={!confirmReady}
       middleMuted={routeMuted ?? !confirmReady}
       showWaypoint={false}

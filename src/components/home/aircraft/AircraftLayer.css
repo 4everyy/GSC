@@ -5,6 +5,12 @@
 .aircraft {
   position: absolute;
   z-index: 4;
+  /* 实时升空：--aircraft-lift（WS 遥测高度换算，TSX 注入）驱动容器整体上移——
+     飞机图标/标签/选中光环/hover 面板同步升空；地面投影垂线
+     （.aircraft-altitude）底端钉在原位置、顶端连到空中飞机中心。
+     拖拽写 left/top，与本 translateY 独立叠加互不干扰 */
+  transform: translateY(calc(-1 * var(--aircraft-lift, 0px)));
+  transition: transform 0.8s ease;
   display: flex; /* 鏀逛负 flex 浠ユ敮鎸佸浘鏍?鏍囩鍨傜洿鎺掑垪 */
   flex-direction: column;
   align-items: center;
@@ -485,31 +491,32 @@
   top: 36%;
 }
 
-/* ====== 高度垂线（实时遥测）：图标中心垂直向下的绿色虚线 ====== */
-/* 48px 图标盒的垂直中心（24px）为起点，指向地面投影点；
-   长度由 --aircraft-altitude-h 驱动（TSX 按实时高度计算注入）；
+/* ====== 升空特效（实时遥测）：飞机图标升空 + 地面投影垂线 ====== */
+/* 高度 → --aircraft-lift：容器整体上移（见 .aircraft），本垂线自空中飞机
+   中心向下连到原地面点（投影绿点钉地，长度=lift）；
    pointer-events:none 不拦截拖拽/点击/hover 交互 */
 .aircraft-altitude {
   position: absolute;
   top: 24px;
   left: 50%;
   width: 0;
-  /* 容器高=虚线高：让 __value 的 top:50% 沿虚线垂直居中生效 */
-  height: var(--aircraft-altitude-h, 40px);
+  /* 容器高=虚线高（=lift）：让 __value 的 top:50% 沿虚线垂直居中生效；
+     与容器 transform 同步 0.8s 过渡（WS 1~2Hz 推送间平滑插值，爬升连续） */
+  height: var(--aircraft-lift, 0px);
+  transition: height 0.8s ease;
   pointer-events: none;
 }
 
 /* 虚线本体：1.5px 宽绿色虚线（与航线连线 #00FF95 同色系）+ 微光晕；
-   高度变化（遥测刷新）时 0.3s 平滑过渡 */
+   高度=父容器高度（由 --aircraft-lift 过渡驱动），自身无需 transition */
 .aircraft-altitude__stick {
   position: absolute;
   top: 0;
   left: 0;
   width: 0;
-  height: var(--aircraft-altitude-h, 40px);
+  height: 100%;
   border-left: 1.5px dashed #00ff95;
   filter: drop-shadow(0 0 3px rgba(0, 255, 149, 0.6));
-  transition: height 0.3s ease;
 }
 
 /* 地面投影点：虚线底端 4px 实心绿点（中心对准虚线中线） */

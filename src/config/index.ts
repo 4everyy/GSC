@@ -163,75 +163,16 @@ export interface Device {
   batteryValue: string
   /** 设备类型图标颜色：blue(在线蓝标) / gray(离线灰标) */
   deviceType: 'blue' | 'gray'
+  /** 设备类型码（queryPlaneStatus typeId：1-无人机，默认 1；类型筛选按此匹配） */
+  typeId?: string
   /** 是否充电中（影响电量图标的显示方式） */
   isCharging?: boolean
 }
 
-const firstTelemetry: DeviceTelemetry = {
-  longitude: '109.10',
-  velocityY: '40.06',
-  latitude: '32.21',
-  yaw: '103.10',
-  elevation: '90.47',
-  roll: '0.57',
-  altitude: '40.90',
-  voltage: '17.05KV',
-  delay: '20ms',
-  pitch: '-7.16',
-  battery: '40%',
-  gps: '信号中',
-  time: '2026/07/28  14:24:56',
-}
+// 设备 mock 数据（firstTelemetry / deviceList）已删除：
+// 设备面板完全由 queryPlaneStatus 接口数据接管（api/index.ts mapPlaneToDevice），
+// planeStatusStore 初始为空列表，无任何兜底数据。
 
-export const deviceList: Device[] = [
-  {
-    name: '01中科晶锐',
-    telemetry: firstTelemetry,
-    status: 'tasking',
-    statusText: '任务中',
-    altitudeValue: '1200m',
-    batteryLevel: 'full',
-    batteryValue: '100%',
-    deviceType: 'gray',
-  },
-  {
-    name: '02中科晶锐',
-    status: 'offline',
-    statusText: '离线',
-    altitudeValue: '--',
-    batteryLevel: 'low',
-    batteryValue: '12%',
-    deviceType: 'gray',
-  },
-  {
-    name: '03中科晶锐',
-    status: 'standby',
-    statusText: '待命',
-    altitudeValue: '1500m',
-    batteryLevel: 'mid',
-    batteryValue: '40%',
-    deviceType: 'blue',
-  },
-  {
-    name: '04中科晶锐',
-    status: 'tasking',
-    statusText: '任务中',
-    altitudeValue: '1800m',
-    batteryLevel: 'low',
-    batteryValue: '12%',
-    deviceType: 'gray',
-  },
-  {
-    name: '05中科晶锐',
-    status: 'tasking',
-    statusText: '任务中',
-    altitudeValue: '2000m',
-    batteryLevel: 'mid',
-    batteryValue: '40%',
-    deviceType: 'gray',
-    isCharging: true,
-  },
-]
 
 // 根据电池等级获取对应图标
 export function getBatteryIcon(level: BatteryLevel): string {

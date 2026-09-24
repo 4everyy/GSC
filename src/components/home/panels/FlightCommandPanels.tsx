@@ -7,6 +7,9 @@ import { type useFlightAnimations } from '../../../hooks/useFlightAnimations'
 import { homeImages } from '../../../assets/images/home/index'
 import '../../PanelKit/PanelKit.css'
 import { deviceImages } from '../../../assets/images/device/index'
+import { podControlLand, podControlTakeoff, podControlWaypoint } from '../../../api/index'
+import { observeDownlink } from '../../../features/realtime/wsClient'
+import { usePlaneStatusStore } from '../../../stores/index'
 
 /**
  * FlightCommandPanels —— 飞行指令面板组：起飞/降落/返航/指点返航/区域降落/悬停（自 HomePage.tsx 拆出）。
@@ -160,9 +163,12 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
           {tapReturnOpen && (
             <TapReturnPanel
               waypoint={tapReturnPoint}
+              // 返航高度支持手动键入；面板族默认不设上限（TapReturnPanel 内置，最低 1m）
+              editable
               confirmMuted={!tapReturnRouteReady || tapReturnConfirmed}
               // 缃伆鏉′欢锛氳埅绾垮凡鐢熸垚 鎴?钀界偣鏈‘璁わ紙灏氭湭鐐瑰嚮鍥鹃拤涓嬫柟銆岀‘瀹氥€嶆寜閽潯锛夋椂
-              // 銆岃埅绾跨敓鎴愩€嶆寜閽疆鐏扳€斺€斿厛鍦ㄥ湴鍥句笂纭钀界偣锛屽啀鍥為潰鏉跨敓鎴愯埅绾?nl              middleMuted={tapReturnRouteReady || !tapReturnPointConfirmed}
+              // Muted when route already generated or landing point not yet confirmed
+              middleMuted={tapReturnRouteReady || !tapReturnPointConfirmed}
               onConfirm={(height) => {
                 // 置灰守卫：未生成航线/已确认过时不弹确认弹窗（按钮视觉置灰兜底拦截）
                 if (!tapReturnRouteReady || tapReturnConfirmed) return
@@ -277,6 +283,8 @@ interface WaypointFlightPanelsProps {
 }
 
 export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices, areaLandingSpots, aircraftPositions }: WaypointFlightPanelsProps) {
+  // 接口原始设备列表（保留无人机主键 id）：起飞指令按选中设备 id 逐架下发
+  const rawPlanes = usePlaneStatusStore((s) => s.rawPlanes)
   const {
     waypointFlightOpen,
     setTakeoffOpen,
@@ -367,7 +375,33 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
             title="起飞"
             message="执行起飞指令"
             onConfirm={() => {
-              console.info(`[takeoff] 确认起飞，高度 ${takeoffSlide.height}m`)
+              // 起飞指令下发（POST /api/v1/control/podControl）：对设备管理面板选中的
+              // 每架无人机下发 actionType=40，height 取起飞面板高度步进器设定值；
+              // fire-and-forget：成功/失败记录日志（toast 反馈待后续接入）
+              const height = takeoffSlide.height ?? 0
+              const planeIds = [...selectedDevices]
+                .sort((a, b) => a - b)
+                .map((index) => rawPlanes[index]?.id)
+                .filter((id): id is string => !!id)
+              // 指令发出即开 15s 下行观测窗口：检验后端是否通过 WS 推送回执/状态变更
+              // （窗口结束输出分频道结论：cmd=指令回执、device=设备状态回执，见 observeDownlink）
+              void observeDownlink(15_000, `takeoff×${planeIds.length}`)
+              // REST 下发结果计数：全部失败时飞机根本未进入起飞流程，device 频道无状态推送属预期
+              // （避免 WS 观测结论误判为服务端推送问题——先排查 REST 链路）
+              let restFailCount = 0
+              planeIds.forEach((planeId) => {
+                podControlTakeoff(planeId, height)
+                  .then(() => console.info(`[takeoff] 起飞指令已发送：${planeId}，高度 ${height}m`))
+                  .catch((err) => {
+                    restFailCount += 1
+                    console.error(`[takeoff] 起飞指令下发失败：${planeId}`, err)
+                    if (restFailCount === planeIds.length) {
+                      console.warn(
+                        '[takeoff] ⚠ 全部起飞指令 REST 下发失败——指令未进入后端执行流程，观测窗口内 device 频道无推送属预期，请先排查 REST 链路',
+                      )
+                    }
+                  })
+              })
               setTakeoffSlide((s) => ({ ...s, open: false }))
               setTakeoffOpen(false)
             }}
@@ -381,7 +415,32 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
             title="降落"
             message="执行降落指令"
             onConfirm={() => {
-              console.info('[landing] 确认降落')
+              // 降落指令下发（POST /api/v1/control/podControl）：对设备管理面板选中的
+              // 每架无人机下发 actionType=41（与起飞同接口，无指令参数）；
+              // fire-and-forget：成功/失败记录日志（toast 反馈待后续接入）
+              const planeIds = [...selectedDevices]
+                .sort((a, b) => a - b)
+                .map((index) => rawPlanes[index]?.id)
+                .filter((id): id is string => !!id)
+              // 指令发出即开 15s 下行观测窗口：检验后端是否通过 WS 推送回执/状态变更
+              //（窗口结束输出分频道结论：cmd=指令回执、device=设备状态回执，见 observeDownlink）
+              void observeDownlink(15_000, `land×${planeIds.length}`)
+              // REST 下发结果计数：全部失败时指令未进入后端执行流程，device 频道
+              // 无状态推送属预期（避免 WS 观测结论误判为服务端推送问题——先排查 REST 链路）
+              let restFailCount = 0
+              planeIds.forEach((planeId) => {
+                podControlLand(planeId)
+                  .then(() => console.info(`[landing] 降落指令已发送：${planeId}`))
+                  .catch((err) => {
+                    restFailCount += 1
+                    console.error(`[landing] 降落指令下发失败：${planeId}`, err)
+                    if (restFailCount === planeIds.length) {
+                      console.warn(
+                        '[landing] ⚠ 全部降落指令 REST 下发失败——指令未进入后端执行流程，观测窗口内 device 频道无推送属预期，请先排查 REST 链路',
+                      )
+                    }
+                  })
+              })
               setLandingSlide({ open: false })
               setLandingOpen(false)
             }}
@@ -516,7 +575,34 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
             title="航点飞行"
             message="执行航点飞行指令"
             onConfirm={() => {
-              console.info(`[waypoint-flight] 确认航点飞行，高度 ${waypointSlide.height}m`)
+              // 航点指令下发（POST /v1/control/podControl）：对设备管理面板选中的每架
+              // 无人机下发 actionType=48，geopoint = 地图定格航点的 WGS84 经纬度
+              //（waypointPoint 取点时经 adapter.unproject 换算）+ 面板飞行高度；
+              // fire-and-forget：成功/失败记录日志（toast 反馈待后续接入）
+              const height = waypointSlide.height
+              if (waypointPoint) {
+                const planeIds = [...selectedDevices]
+                  .sort((a, b) => a - b)
+                  .map((index) => rawPlanes[index]?.id)
+                  .filter((id): id is string => !!id)
+                // 指令发出即开 15s 下行观测窗口：检验后端是否通过 WS 推送回执/状态变更
+                void observeDownlink(15_000, `waypoint×${planeIds.length}`)
+                planeIds.forEach((planeId) => {
+                  podControlWaypoint(planeId, {
+                    height,
+                    longitude: waypointPoint.lng,
+                    latitude: waypointPoint.lat,
+                  })
+                    .then(() =>
+                      console.info(
+                        `[waypoint-flight] 航点飞行指令已发送：${planeId} → (${waypointPoint.lng.toFixed(6)}, ${waypointPoint.lat.toFixed(6)}) 高度 ${height}m`,
+                      ),
+                    )
+                    .catch((err) =>
+                      console.error(`[waypoint-flight] 航点飞行指令下发失败：${planeId}`, err),
+                    )
+                })
+              }
               // 确认后启动循环模拟飞行：无人机沿已生成实线航线飞向航点图钉并无限循环；
               // 面板保持展开，「取消」或重新「航线生成」取点可随时终止
               if (waypointPoint) {

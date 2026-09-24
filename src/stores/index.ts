@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { type FlightState } from '../hooks/useFlightAnimations'
 import { ALARM_COLLAPSE_MS } from '../lib/formationLayout'
-import { deviceList as mockDevices, type Device, MAPLIBRE_DEFAULT_CENTER } from '../config/index'
-import { fetchPlaneStatus, mapPlaneToDevice, type PlaneRaw, type PlaneStatusData, type TaskArea, type TaskAreaVertex } from '../api/index'
+import { type Device } from '../config/index'
+import { fetchPlaneStatus, mapPlaneToDevice, fetchTaskAreaList, mapTaskArea, deleteTaskArea, type PlaneRaw, type PlaneStatusData, type TaskArea, type TaskAreaVertex } from '../api/index'
 
 /**
  * layerStore —— 首页图层显隐全局状态。
@@ -44,7 +44,7 @@ export const useLayerStore = create<LayerState>((set) => ({
  * deviceLinkStore —— 首页飞机图标与设备管理面板的联动状态。
  *
  * 设备管理面板挂载于 MapToolbar 内部，与 HomePage 平级，无法通过 props 传递
- * hover/选中状态，故用 zustand 全局 store 承载（设备索引 = devices.ts deviceList 下标）：
+ * hover/选中状态，故用 zustand 全局 store 承载（设备索引 = planeStatusStore devices 下标）：
  * - hoveredDevice：当前 hover 的设备索引（面板行与首页飞机图标双向同步）；
  * - selectedDevices：已勾选设备索引集合（面板复选框与首页图标单击同步）。
  */
@@ -283,8 +283,9 @@ export const useAlarmPanelStore = create<AlarmPanelState>((set, get) => {
  *
  * 数据流：usePlaneStatusInit（MainApp 挂载，首页加载时调用一次）→ fetchPlaneStatus →
  * applyPlaneStatus（映射为 Device 模型整体写入）→ 设备管理面板 / 首页
- * AircraftFocusPanel 按选择器订阅。store 初始值取 config/devices 的 mock
- * 数据；接口成功后整体覆盖为真实数据，失败时保留上一帧/mock 并记录 lastError。
+ * AircraftFocusPanel 按选择器订阅。store 初始为空列表（不做 mock 兜底，
+ * 设备只来自后端 queryPlaneStatus）；refresh 成功后整体写入真实数据，
+ * 失败时保留上一帧并记录 lastError。
  *
  * 设备索引（deviceLinkStore 的 hoveredDevice/selectedDevices、首页 aircraft
  * 联动）直接使用 planeList 数组下标；列表长度变化（设备增删）时越界索引
@@ -307,7 +308,7 @@ export interface PlaneStatusState {
   stats: PlaneStats
   /** 首帧是否已加载完成（面板空态判断依据） */
   loaded: boolean
-  /** 最近一次请求是否成功（失败保留上一帧/mock 数据） */
+  /** 最近一次请求是否成功（失败保留上一帧数据） */
   lastError: string | null
   /** 最近一次成功刷新时间（Unix 毫秒） */
   lastUpdated: number
@@ -321,8 +322,8 @@ export interface PlaneStatusState {
 const EMPTY_STATS: PlaneStats = { planeOnline: 0, planeInAir: 0, planeTotal: 0 }
 
 export const usePlaneStatusStore = create<PlaneStatusState>((set) => ({
-  // 接口就绪前先用 mock 数据展示；refresh 成功后由真实数据整体覆盖
-  devices: mockDevices,
+  // 初始空列表：首帧数据由 usePlaneStatusInit（MainApp 挂载）拉取接口填充
+  devices: [],
   rawPlanes: [],
   stats: EMPTY_STATS,
   loaded: false,
@@ -335,7 +336,7 @@ export const usePlaneStatusStore = create<PlaneStatusState>((set) => ({
       usePlaneStatusStore.getState().applyPlaneStatus(data)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      // 不清空已有数据（接口暂不可用时面板继续展示 mock/上一帧），仅记录错误
+      // 不清空已有数据（接口暂不可用时面板保留上一帧），仅记录错误
       set({ lastError: message })
       console.warn('[planeStatus] queryPlaneStatus 请求失败：', message)
     }
@@ -344,7 +345,7 @@ export const usePlaneStatusStore = create<PlaneStatusState>((set) => ({
   applyPlaneStatus: (data) => {
     const list = Array.isArray(data?.planeList) ? data.planeList : []
     set({
-      devices: list.map((raw, index) => mapPlaneToDevice(raw, index)),
+      devices: list.map((raw) => mapPlaneToDevice(raw)),
       rawPlanes: list,
       stats: {
         planeOnline: data?.planeOnline ?? 0,
@@ -364,29 +365,27 @@ export function getPlaneDevices(): Device[] {
 }
 
 /**
- * taskAreaStore —— 任务区域全局状态（纯前端）。
+ * taskAreaStore —— 任务区域全局状态。
  *
  * 承载任务区域（多边形）列表，供 TaskAreaLayer 渲染到态势图。
- * 后端 HTTP 接口（queryTaskAreaList）模拟逻辑已移除：区域仅来自本地 mock
- * 数据（config/taskAreas.ts）初始化，以及用户在态势图上的绘制/编辑
- * （addArea / updateAreaVertices / updateAreaType）。
- * 本地新增（addArea）时若仍处初始 mock 数据则先整体清空（isMockFallback 标记），
- * 避免 mock 区域随「任务区域」图层自动开启一并涌上态势图。
+ * 数据流：useTaskAreaInit（MainApp 挂载，首页加载时调用一次）→
+ * fetchTaskAreaList → mapTaskArea 过滤已删除/非法记录 → 整体写入 areas。
+ * 接口失败时保留上一帧数据并记录 lastError（不回退 mock）；用户在态势图上的
+ * 绘制/编辑（addArea / updateAreaVertices / updateAreaType）在此基础上演进。
  */
 
 interface TaskAreaState {
   /** 任务区域列表 */
   areas: TaskArea[]
-  /**
-   * 当前 areas 是否仍为初始 mock 数据（首次本地新增前置 true）。
-   * addArea 时若仍为 true 则先整体清空 mock 再写入新区域——否则「添加区域」
-   * 确认后自动开启「任务区域」图层时，mock 区域会一并涌上态势图/列表
-   * （表现为「只添加 1 个区域，地图却多出好几个区域」）
-   */
-  isMockFallback: boolean
+  /** 首帧是否已加载完成 */
+  loaded: boolean
+  /** 最近一次请求是否成功（失败保留上一帧数据） */
+  lastError: string | null
+  /** 拉取并应用最新区域列表（首帧加载 Hook 调用；失败时仅记录错误） */
+  refresh: () => Promise<void>
   /**
    * 本地隐藏的区域 id 集合（区域列表面板「显示」图标维护，TaskAreaLayer 渲染时过滤）。
-   * 区域默认显示：mock 初始化与本地新增均默认全部显示（集合为空），
+   * 区域默认显示：接口数据与本地新增均默认全部显示（集合为空），
    * 用户经行内眼睛/底部批量「显示」逐个隐藏；本地新增（addArea）
    * 的区域不进集合——刚绘制完立即以持久样式可见。
    */
@@ -402,13 +401,18 @@ interface TaskAreaState {
   setEditingArea: (id: string | null) => void
   /** 切换单个区域在态势图上的显隐（区域列表面板「显示」图标） */
   toggleHidden: (id: string) => void
-  /** 本地移除单个区域 */
-  removeArea: (id: string) => void
+  /**
+   * 删除单个区域（POST /api/v1/control/delTaskArea，2026-09-23 接入）：
+   * 先调后端逻辑删除接口，成功后再本地移除（含 hiddenIds/编辑态清理），
+   * 随后调用 refresh()（queryTaskAreaList）以后端数据为准刷新列表；
+   * 删除失败保留本地数据并记录 lastError（与 refresh 同款保帧策略），
+   * 返回是否删除成功（调用方均为 fire-and-forget，可不消费返回值）。
+   */
+  removeArea: (id: string) => Promise<boolean>
   /**
    * 本地新增区域（区域列表「添加区域」六边形绘制「确定」后调用）；
    * type 为「选择区域类型」面板所选类型字典值（禁飞区/任务区/集结区/降落区），
-   * 未传时默认「集群侦察」；仍处初始 mock 数据时先清空 mock 仅保留本次新增
-   * （见 isMockFallback 注释），列表（AreaListPanel）与态势图（TaskAreaLayer）
+   * 未传时默认「集群侦察」；列表（AreaListPanel）与态势图（TaskAreaLayer）
    * 即时同步展示（TaskAreaLayer 立即以持久样式渲染新区域）。
    * 返回新建区域 id（顶点不足 3 个时返回 null）
    */
@@ -420,6 +424,11 @@ interface TaskAreaState {
    * mouseup 时一次性写入最新顶点数组并重算面积；拖拽全程零 store 更新保证丝滑）
    */
   updateAreaVertices: (id: string, vertices: TaskAreaVertex[]) => void
+  /**
+   * 重命名区域（区域列表面板行内名称双击进入编辑、失焦/回车提交时调用）。
+   * 名称 trim 后为空（纯空格/未输入）时静默忽略、保留原名称。
+   */
+  renameArea: (id: string, name: string) => void
   /**
    * 「添加区域」请求计数器：区域列表面板（挂载于 MapToolbar 内，与 HomePage 平级，
    * 无法经 props 传递）点击「添加区域」按钮时 +1；HomePage 监听计数变化进入
@@ -453,84 +462,38 @@ interface TaskAreaState {
   clearAreaFocusRequest: () => void
 }
 
-/**
- * 任务区域 mock 数据（config/taskAreas.ts）。
- *
- * - 区域列表（AreaListPanel）与态势图任务区域层（TaskAreaLayer）的兜底数据源：
- *   taskAreaStore 初始即填充本 mock，后端 queryTaskAreaList 成功后整体替换为
- *   真实数据；接口失败/后端未开启时静默保留 mock（表现与目标列表一致）；
- * - 4 条数据均为正六边形（与「添加区域」绘制交互同款 pointy-top 朝向），
- *   各对应一种可选区域类型（禁飞区/任务区/集结区/降落区），面积给 km² 数值
- *   （与 addArea 包围盒估算同口径）；
- * - 中心分布于苏州市中心（MAPLIBRE_DEFAULT_CENTER 120.6/31.3）附近，
- *   保证态势图默认视野内可见（与离线瓦片覆盖范围匹配）。
- */
-
-/** 正六边形顶点方位角（度，pointy-top：自正上方起每 60°，
- *  与 HexagonAreaOverlay 绘制朝向一致） */
-const HEX_ANGLES = [90, 30, -30, -90, -150, 150]
-
-/** 以 (cx, cy) 为圆心、外接圆半径 r（度）的正六边形顶点（WGS84） */
-function hexagon(cx: number, cy: number, r: number) {
-  return HEX_ANGLES.map((deg) => {
-    const rad = (deg * Math.PI) / 180
-    return { longitude: cx + r * Math.cos(rad), latitude: cy + r * Math.sin(rad) }
-  })
-}
-
-const CX = MAPLIBRE_DEFAULT_CENTER.lng
-const CY = MAPLIBRE_DEFAULT_CENTER.lat
-
-/** 任务区域 mock 列表（4 条六边形，各对应一种区域类型） */
-export const MOCK_TASK_AREAS: TaskArea[] = [
-  {
-    id: 'mock-area-01',
-    name: '01区域名称',
-    type: 'NoFlyArea',
-    areaKm2: 2.3,
-    priority: '1',
-    createTime: 1756000000000,
-    vertices: hexagon(CX - 0.03, CY + 0.02, 0.008),
-  },
-  {
-    id: 'mock-area-02',
-    name: '02区域名称',
-    type: 'taskArea',
-    areaKm2: 0.9,
-    priority: '2',
-    createTime: 1756000100000,
-    vertices: hexagon(CX + 0.025, CY + 0.03, 0.005),
-  },
-  {
-    id: 'mock-area-03',
-    name: '03区域名称',
-    type: 'assembleArea',
-    areaKm2: 1.8,
-    priority: '3',
-    createTime: 1756000200000,
-    vertices: hexagon(CX - 0.035, CY - 0.025, 0.007),
-  },
-  {
-    id: 'mock-area-04',
-    name: '04区域名称',
-    type: 'landingArea',
-    areaKm2: 0.7,
-    priority: '2',
-    createTime: 1756000300000,
-    vertices: hexagon(CX + 0.04, CY - 0.02, 0.0045),
-  },
-]
-
 export const useTaskAreaStore = create<TaskAreaState>((set, get) => ({
-  // 初始填充 mock（用户本地新增/编辑在此基础上演进）
-  areas: [...MOCK_TASK_AREAS],
-  isMockFallback: true,
-  // mock 数据同样默认全部显示（列表显隐按钮控制隐藏）
+  // 初始空列表：首帧数据由 useTaskAreaInit（MainApp 挂载）拉取接口填充
+  areas: [],
+  loaded: false,
+  lastError: null,
+  // 接口数据默认全部显示（列表显隐按钮控制隐藏）
   hiddenIds: new Set<string>(),
   editingAreaId: null,
   setEditingArea: (id) => set({ editingAreaId: id }),
+  refresh: async () => {
+    try {
+      const rawList = await fetchTaskAreaList()
+      const areas = (Array.isArray(rawList) ? rawList : [])
+        .map((raw) => mapTaskArea(raw))
+        .filter((a): a is TaskArea => a !== null)
+      set({ areas, loaded: true, lastError: null })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      // 不清空已有数据（接口暂不可用时保留上一帧），仅记录错误
+      set({ lastError: message })
+      console.warn('[taskArea] queryTaskAreaList 请求失败：', message)
+    }
+  },
   updateAreaType: (id, type) =>
     set((s) => ({ areas: s.areas.map((a) => (a.id === id ? { ...a, type } : a)) })),
+  renameArea: (id, name) =>
+    set((s) => {
+      const trimmed = name.trim()
+      // 空名（纯空格/未输入）不写入，保留原名称（列表行失焦保存的回退约定）
+      if (!trimmed) return {}
+      return { areas: s.areas.map((a) => (a.id === id ? { ...a, name: trimmed } : a)) }
+    }),
   updateAreaVertices: (id, vertices) =>
     set((s) => ({
       areas: s.areas.map((a) => {
@@ -555,12 +518,31 @@ export const useTaskAreaStore = create<TaskAreaState>((set, get) => ({
       }
       return { hiddenIds: next }
     }),
-  removeArea: (id) =>
+  removeArea: async (id) => {
+    // 先走后端逻辑删除（鉴权头由 apiPost 统一注入），失败时保帧不删本地数据
+    try {
+      await deleteTaskArea(id)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      set({ lastError: message })
+      console.warn('[taskArea] delTaskArea 请求失败：', message)
+      return false
+    }
     set((s) => {
       const nextHidden = new Set(s.hiddenIds)
       nextHidden.delete(id)
-      return { areas: s.areas.filter((a) => a.id !== id), hiddenIds: nextHidden }
-    }),
+      return {
+        areas: s.areas.filter((a) => a.id !== id),
+        hiddenIds: nextHidden,
+        // 正在编辑的区域被删除时同步退出编辑态
+        editingAreaId: s.editingAreaId === id ? null : s.editingAreaId,
+      }
+    })
+    // 删除成功后再拉一次 queryTaskAreaList，以后端返回为准刷新列表数据；
+    // 刷新失败时 refresh 内部保帧（保留已删除状态）并记录 lastError
+    await get().refresh()
+    return true
+  },
   addAreaRequests: 0,
   requestAddArea: () => set((s) => ({ addAreaRequests: s.addAreaRequests + 1 })),
   // 「编辑区域」跨层级请求信号（与 addAreaRequests 同款方案，但携带目标 id）：
@@ -593,14 +575,10 @@ export const useTaskAreaStore = create<TaskAreaState>((set, get) => ({
       const areaKm2 = Math.abs((widthM * heightM) / 1_000_000)
       const id = `local-area-${Date.now()}`
       createdId = id
-      // 仍处初始 mock 数据时整体清空，仅保留本地新增区域：
-      // 确认新区域会自动开启「任务区域」图层，若不清空 mock 将一并渲染，
-      // 出现「只添加 1 个区域、态势图却多出好几个区域」的问题
-      const base = s.isMockFallback ? [] : s.areas
       const area: TaskArea = {
         id,
         // 命名沿用列表既有格式（01区域名称/02区域名称…），按当前列表长度递增编号
-        name: `${String(base.length + 1).padStart(2, '0')}区域名称`,
+        name: `${String(s.areas.length + 1).padStart(2, '0')}区域名称`,
         // 「选择区域类型」面板所选类型（未传时默认「集群侦察」）
         type: type ?? 'TeamReconnaissance',
         areaKm2,
@@ -608,14 +586,8 @@ export const useTaskAreaStore = create<TaskAreaState>((set, get) => ({
         createTime: Date.now(),
         vertices,
       }
-      return {
-        areas: [...base, area],
-        isMockFallback: false,
-        // mock 的隐藏标记随兜底数据一并作废（避免残留指向已不存在区域的 id）
-        hiddenIds: s.isMockFallback ? new Set<string>() : s.hiddenIds,
-      }
+      return { areas: [...s.areas, area] }
     })
     return createdId
   },
 }))
-

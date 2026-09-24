@@ -335,7 +335,8 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
     for (const [id, area] of want) {
       if (prev.has(id)) continue
       const meta = taskAreaTypeMeta(area.type)
-      const isLanding = area.type === 'landingArea'
+      // 降落区判定兼容新旧类型键（接口新枚举 TeamLand / 本地绘制旧值 landingArea）
+      const isLanding = area.type === 'TeamLand' || area.type === 'landingArea'
       const isNoFly = area.type === 'NoFlyArea'
       adapter.addPolygon(
         `${POLYGON_ID_PREFIX}${id}`,

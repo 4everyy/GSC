@@ -524,7 +524,10 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
   const info = useMemo(() => {
     if (!fixed || !hex || !adapter) return null
     const bounds = adapter.getContainer().getBoundingClientRect()
-    return computeHexInfo(hex, adapter.unproject, bounds.left, bounds.top)
+    // 箭头包装保住 adapter 绑定：裸方法引用 adapter.unproject 传入 computeHexInfo
+    // 后调用时 this 为 undefined，MapLibreAdapter.unproject 内 this.map 直接抛
+    // "Cannot read properties of undefined (reading 'map')"（定格瞬间崩溃进 ErrorBoundary）
+    return computeHexInfo(hex, (p) => adapter.unproject(p), bounds.left, bounds.top)
   }, [fixed, hex, adapter])
 
   // 是否选中「禁飞区」/「降落区」/「任务区」：定格面板单选变化即切换六边形实时

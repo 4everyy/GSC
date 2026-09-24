@@ -1,6 +1,11 @@
 import { ALARM_BADGES, toolbarItems } from '../../config/index'
 import { homeImages } from '../../assets/images/home/index'
-import { useAlarmPanelStore, useDeviceLinkStore, useLayerStore } from '../../stores/index'
+import {
+  useAlarmPanelStore,
+  useDeviceLinkStore,
+  useLayerStore,
+  usePlaneStatusStore,
+} from '../../stores/index'
 import './MapChrome.css'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useTargetLinkStore } from '../../stores/targetLinkStore'
@@ -17,6 +22,9 @@ import { useDistanceMeasure } from '../../hooks/useDistanceMeasure/index'
 export function StatusHeader() {
   const activeAlarm = useAlarmPanelStore((s) => s.activeAlarm)
   const handleAlarmClick = useAlarmPanelStore((s) => s.handleAlarmClick)
+  // 集群统计（queryPlaneStatus data 顶层字段）：
+  // 在线 = planeOnline/planeTotal，起飞 = planeInAir/planeTotal
+  const stats = usePlaneStatusStore((s) => s.stats)
   return (
     <header className="status-header">
       <div className="status-header__left">
@@ -28,7 +36,7 @@ export function StatusHeader() {
             数量
           </span>
           <b>
-            18/<i>20</i>
+            {stats.planeOnline}/<i>{stats.planeTotal}</i>
           </b>
         </div>
         <div className="status-metric status-metric--takeoff">
@@ -38,7 +46,7 @@ export function StatusHeader() {
             数量
           </span>
           <b>
-            15/<i>18</i>
+            {stats.planeInAir}/<i>{stats.planeTotal}</i>
           </b>
         </div>
       </div>

@@ -459,7 +459,7 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
 
 
 interface AreaSelectOverlayProps extends
-  Pick<Panels, 'setAreaLandingOpen' | 'setRallyPointOpen' | 'setAreaLandingRect' | 'setAreaLandingCorners' | 'setAreaLandingRouteGenerated' | 'areaSelectMode' | 'setAreaSelectMode' | 'areaSelectAnchor' | 'setAreaSelectAnchor' | 'areaSelectEnd' | 'setAreaSelectEnd' | 'areaSelectDragging' | 'setAreaSelectDragging' | 'areaSelectHover' | 'setAreaSelectHover' | 'areaSelectSource' | 'setRallyPointRect' | 'setRallyPointRouteGenerated'>,
+  Pick<Panels, 'setAreaLandingOpen' | 'setRallyPointOpen' | 'setAreaLandingRect' | 'setAreaLandingCorners' | 'setAreaLandingRouteGenerated' | 'setAreaLandingConfirmed' | 'areaSelectMode' | 'setAreaSelectMode' | 'areaSelectAnchor' | 'setAreaSelectAnchor' | 'areaSelectEnd' | 'setAreaSelectEnd' | 'areaSelectDragging' | 'setAreaSelectDragging' | 'areaSelectHover' | 'setAreaSelectHover' | 'areaSelectSource' | 'setRallyPointRect' | 'setRallyPointRouteGenerated'>,
   Pick<Anims, 'stopRallyPointFlights'> {
   adapter: ReturnType<typeof useMapEngine>['adapter']
 }
@@ -471,6 +471,7 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
     setAreaLandingRect,
     setAreaLandingCorners,
     setAreaLandingRouteGenerated,
+    setAreaLandingConfirmed,
     areaSelectMode,
     setAreaSelectMode,
     areaSelectAnchor,
@@ -511,7 +512,8 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
     <>
           {/* 区域降落/集结点框选模式（航线生成）：截图式拖拽选区——按下左键确定起点，
               按住拖动实时拉伸出自定义大小的矩形（框内清晰、框外遮罩变暗），
-              松开定格；定格后右键等效「取消」回到绘制态，绘制阶段右键/Esc 退出 */}
+              松开定格；定格后右键/选区「取消」等效清选区回到绘制态可重绘，
+              绘制阶段右键等效面板「取消」——收起面板（按钮弹回）并清理取点状态 */}
           {areaSelectMode &&
             createPortal(
               <div
@@ -559,12 +561,24 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                   }
                   return
                 }
-                // 绘制阶段（未定格）：右键退出框选模式并重新展示对应面板（信息已提升保留）
+                // 绘制阶段（未定格）：右键等效对应面板「取消」按钮——退出框选模式并
+                // 收起面板（底部功能按钮随之弹回），清理各自全部取点状态
+                // （与 FlightCommandPanels/FlightMissionPanels 的 onCancel 动作一致）
                 setAreaSelectMode(false)
                 setAreaSelectAnchor(null)
                 setAreaSelectEnd(null)
-                if (areaSelectSource === 'rally-point') setRallyPointOpen(true)
-                else if (areaSelectSource === 'area-landing') setAreaLandingOpen(true)
+                if (areaSelectSource === 'rally-point') {
+                  stopRallyPointFlights()
+                  setRallyPointRouteGenerated(false)
+                  setRallyPointRect(null)
+                  setRallyPointOpen(false)
+                } else if (areaSelectSource === 'area-landing') {
+                  setAreaLandingRect(null)
+                  setAreaLandingCorners(null)
+                  setAreaLandingRouteGenerated(false)
+                  setAreaLandingConfirmed(false)
+                  setAreaLandingOpen(false)
+                }
                 }}
               >
                 {/* 框选模式全程跟随光标：停机坪图标图片（54×54，中心对准鼠标）替代原生

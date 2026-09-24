@@ -4,13 +4,15 @@
  */
 import { FormationFlightPanel, OrbitFlightPanel, RallyPointPanel, RouteFlightPanel, type FormationFlightFormation } from '../../FlightActionPanels/FlightActionPanels'
 import { SlideConfirmDialog } from '../../PanelKit/PanelKit'
+import { podControlOrbit } from '../../../api/index'
+import { observeDownlink } from '../../../features/realtime/wsClient'
 import { aircraft } from '../../../config/index'
 import { getRallyPointSpots, computeFormationFlightGeometry } from '../../../lib/formationLayout'
 import { type useExclusivePanels } from '../../../hooks/useExclusivePanels'
 import { type useFlightAnimations } from '../../../hooks/useFlightAnimations'
 import { type useMapEngine } from '../../../hooks/index'
 import { type AircraftListItem } from './FlightCommandPanels'
-import { useFlightAnimStore } from '../../../stores/index'
+import { useFlightAnimStore, usePlaneStatusStore } from '../../../stores/index'
 
 interface FlightMissionPanelsProps {
   panels: ReturnType<typeof useExclusivePanels>
@@ -164,9 +166,38 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
             title="环绕飞行"
             message="执行环绕飞行指令"
             onConfirm={() => {
-              console.info(
-                `[orbit-flight] 确认环绕飞行，高度 ${orbitSlide.height}m，半径 ${orbitSlide.radius}m`,
-              )
+              // 环绕指令下发（POST /v1/control/podControl）：对设备管理面板选中的每架
+              // 无人机下发 actionType=47，circlepoint = 盘旋高度/半径（面板步进器确认值）
+              // + 地图定格环绕中心的 WGS84 经纬度（orbitPoint 取点时经
+              // adapter.unproject 换算）；fire-and-forget：成功/失败记录日志
+              //（toast 反馈待后续接入）。rawPlanes 经 getState 一次性读取（事件回调内
+              // 取最新值，不引入订阅重渲染，保持纯展示组件语义）
+              const radius = orbitSlide.radius ?? orbitRadius
+              if (orbitPoint) {
+                const rawPlanes = usePlaneStatusStore.getState().rawPlanes
+                const planeIds = [...selectedDevices]
+                  .sort((a, b) => a - b)
+                  .map((index) => rawPlanes[index]?.id)
+                  .filter((id): id is string => !!id)
+                // 指令发出即开 15s 下行观测窗口：检验后端是否通过 WS 推送回执/状态变更
+                void observeDownlink(15_000, `orbit×${planeIds.length}`)
+                planeIds.forEach((planeId) => {
+                  podControlOrbit(planeId, {
+                    height: orbitSlide.height,
+                    radius,
+                    longitude: orbitPoint.lng,
+                    latitude: orbitPoint.lat,
+                  })
+                    .then(() =>
+                      console.info(
+                        `[orbit-flight] 环绕飞行指令已发送：${planeId} → 中心(${orbitPoint.lng.toFixed(6)}, ${orbitPoint.lat.toFixed(6)}) 高度 ${orbitSlide.height}m 半径 ${radius}m`,
+                      ),
+                    )
+                    .catch((err) =>
+                      console.error(`[orbit-flight] 环绕飞行指令下发失败：${planeId}`, err),
+                    )
+                })
+              }
               // 确认后启动循环模拟飞行：无人机先沿绿色直线（飞机中心 → 圆周最近点）切入，
               // 再绕绿色盘旋圆无限盘旋；切入段约 120px/s，整圈时长按半径自适应（3~12s）。
               // 几何与盘旋圆渲染完全同源（orbitRadius/mpp 换算），动画路径与绿色轨迹精确重合；
