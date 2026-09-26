@@ -115,16 +115,38 @@
   z-index: 1498;
   pointer-events: none;
 }
-/* 模拟飞行无人机（确认指点返航后）：fixed 视口定位，left/top 由内联样式按
-   连线插值坐标驱动，translate(-50%,-50%) 让机身中心贴合坐标点，rotate 航向角；
-   z-index 高于图钉(1500)使飞行图标完整可见；pointer-events:none 不拦截交互；
-   循环飞行，手动点击「取消」后随状态清除消失 */
-.tap-return-drone {
+/* 模拟飞行无人机（底座 + 飞机整体）：确认航线后沿航线循环飞行的组合图标——
+   fixed 视口定位，left/top 由内联样式按航线插值坐标驱动；整体刚体原则：
+   底座（blue_bottom.svg 等同色套图）与机身（blue_plane.png 等）绑定为一个
+   整体对象，航向旋转 rotate(航向角) 由内联样式挂在外层容器上（覆盖本处的
+   translate 回退）——调整飞机头指向即整体旋转，机头自适应对准航线轨迹切线
+   方向；will-change 提示合成层，rAF 逐帧移动/旋转不掉帧；
+   z-index 高于图钉(1500)使飞行图标完整可见；pointer-events:none 不拦截交互 */
+.drone-flight {
   position: fixed;
   z-index: 1501;
   width: 48px;
   height: 48px;
+  transform: translate(-50%, -50%);
+  transform-origin: center;
+  will-change: transform;
   pointer-events: none;
+}
+
+/* 底座层：与静止飞机标记同规格（48×48 铺满），随容器整体旋转（自身不再单独变换） */
+.drone-flight__base {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* 机身层：铺满容器叠放在底座上，随容器整体旋转（自身不再单独变换） */
+.drone-flight__plane {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 /* 航点飞行取点阶段（waypoint-picking：面板开启且未定格航点）：光标为航点标记图钉（32×56 切图，钉尖热点 16 55 对准鼠标）；
    左键定格航点后类移除，光标恢复默认样式 */

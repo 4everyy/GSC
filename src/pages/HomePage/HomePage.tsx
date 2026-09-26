@@ -88,7 +88,16 @@ export function HomePage() {
   const animations = useFlightAnimations()
   const {
     stopRallyPointFlights,
+    stopWaypointFlight,
   } = animations
+
+  // 应急指令（一键RTL/一键迫降/急停）与航点跟飞互斥：点击即中断航点飞行动效
+  // 状态机（climbing/following → idle），动效图标随状态清空立即消失，位置交还
+  // AircraftLayer 遥测渲染；REST 下发链路（emergencyStop/forceLand/RTL actionType）
+  // 待后端接口就绪后在此补接，先行保证本地动效即时中断
+  const handleEmergencyInterrupt = useCallback(() => {
+    stopWaypointFlight()
+  }, [stopWaypointFlight])
 
   // 区域列表「添加区域」跨层级信号：AreaListPanel 挂载于 MapToolbar 内（与本组件
   // 平级，无法经 props 传递），按钮点击时 taskAreaStore.addAreaRequests 计数 +1；
@@ -513,7 +522,7 @@ export function HomePage() {
 
           {/* 功能面板（互斥，自 components/FlightPanels* 拆出） */}
           <FlightCommandPanels panels={panels} anims={animations} aircraft={aircraft} selectedAircraft={selectedAircraft} handleRemoveAircraft={handleRemoveAircraft} selectedDevices={selectedDevices} aircraftPositions={aircraftPositions} />
-          <WaypointFlightPanels panels={panels} anims={animations} aircraft={aircraft} selectedDevices={selectedDevices} areaLandingSpots={areaLandingSpots} aircraftPositions={aircraftPositions} />
+          <WaypointFlightPanels panels={panels} anims={animations} aircraft={aircraft} selectedDevices={selectedDevices} areaLandingSpots={areaLandingSpots} aircraftPositions={aircraftPositions} adapter={adapter} />
           <FlightMissionPanels panels={panels} anims={animations} adapter={adapter} aircraft={aircraft} selectedDevices={selectedDevices} aircraftPositions={aircraftPositions} rallyPointSpots={rallyPointSpots} getFormationFlightGeometry={getFormationFlightGeometry} selectedAircraft={selectedAircraft} handleRemoveAircraft={handleRemoveAircraft} />
           {/* FlightOverlays（自 components/FlightOverlays 拆出）：连线/图钉/盘旋圆/模拟飞行图标 */}
           <FlightOverlays
@@ -563,9 +572,13 @@ export function HomePage() {
 
           <footer className="map-footer">
             <div className="emergency-actions">
-              <button type="button">一键RTL</button>
-              <button type="button">一键迫降</button>
-              <button className="danger" type="button">
+              <button type="button" onClick={handleEmergencyInterrupt}>
+                一键RTL
+              </button>
+              <button type="button" onClick={handleEmergencyInterrupt}>
+                一键迫降
+              </button>
+              <button className="danger" type="button" onClick={handleEmergencyInterrupt}>
                 急停
               </button>
             </div>

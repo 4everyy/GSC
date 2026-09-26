@@ -206,16 +206,19 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
                 const idx = aircraft.findIndex((a) => selectedDevices.has(a.deviceIndex))
                 const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
                 if (idx !== -1 && stage) {
-                  const mpp = adapter.getMetersPerPixel()
-                  const rPx = Math.max(2, orbitRadius / mpp)
+                  // 地理锚定：中心携带 WGS84 经纬度、半径传米制——动画每帧经适配器
+                  // 重投影圆心并按当前比例尺换算像素半径，与地理锚定的绿色盘旋圆/
+                  // 中心图钉逐帧贴合（地图拖动/旋转/缩放后轨迹不漂移），飞机+底座
+                  // 组合整体按运动方向旋转
                   startOrbitFlight(
                     {
                       x: stage.left + (aircraftPositions[idx].x / 100) * stage.width + 24,
                       y: stage.top + (aircraftPositions[idx].y / 100) * stage.height + 24,
                     },
-                    { x: orbitPoint.x, y: orbitPoint.y },
-                    rPx,
+                    { x: orbitPoint.x, y: orbitPoint.y, lng: orbitPoint.lng, lat: orbitPoint.lat },
+                    radius,
                     aircraft[idx].src,
+                    adapter,
                   )
                 }
               }

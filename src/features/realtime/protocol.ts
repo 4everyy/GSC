@@ -749,22 +749,58 @@ function mapCmdAckItem(data: unknown): ServerMessage[] {
   return [{ type: 'cmdAck', payload: ack, ts: Date.now() }]
 }
 
-/** alert 频道帧 → 内部 alarm（alarmId 缺失丢弃；级别未知归蓝） */
+/**
+ * alert 频道帧 → 内部 alarm（alarmId 缺失丢弃；级别未知归蓝）。
+ *
+ * 真实后端报文（alert 频道 pub 推送）：
+ * {"equipId":"1","id":"9ee4ff8c4a061c61","isRead":"0","level":2,"msg":"1飞入禁飞区",
+ *  "round":1,"time":"2026:09:24 15:01:08","title":"禁飞区告警","ts":1790233268418,
+ *  "type":"0","typeName":"plane"}
+ *
+ * 字段映射：id→alarmId；level 数字枚举 1紧急→red / 2警告→orange / 3提示→blue
+ * （同时兼容字符串 'red'/'orange'/'blue' 旧格式）；msg→detail；isRead("0"未读/"1"已读)
+ * →acknowledged；equipId→deviceId（用于面板设备名展示）；ts→occurredAt（缺省回退解析
+ * time 字符串，其日期分隔符为冒号需归一化后再 Date.parse，再缺省取到达时刻）。
+ */
 function mapAlarmItem(data: unknown): ServerMessage[] {
   const d = (data ?? {}) as Record<string, unknown>
-  const alarmId = typeof d.alarmId === 'string' ? d.alarmId : String(d.alarmId ?? '')
+  const alarmId =
+    typeof d.id === 'string' && d.id
+      ? d.id
+      : typeof d.alarmId === 'string'
+        ? d.alarmId
+        : String(d.id ?? d.alarmId ?? '')
   if (!alarmId) return []
-  const rawLevel = String(d.level ?? 'blue')
-  const level: AlarmLevel = rawLevel === 'red' || rawLevel === 'orange' ? (rawLevel as AlarmLevel) : 'blue'
+  // 告警级别归一：数字 1/2/3 → red/orange/blue；字符串色值直通；未知归蓝
+  const rawLevel = d.level
+  let level: AlarmLevel = 'blue'
+  if (rawLevel === 1 || rawLevel === '1') level = 'red'
+  else if (rawLevel === 2 || rawLevel === '2') level = 'orange'
+  else if (rawLevel === 3 || rawLevel === '3') level = 'blue'
+  else if (rawLevel === 'red' || rawLevel === 'orange' || rawLevel === 'blue')
+    level = rawLevel as AlarmLevel
+  // 已读/已确认归一：isRead "1"/1 视为已确认（兼容旧 acknowledged 布尔字段）
+  const acknowledged =
+    d.isRead !== undefined ? String(d.isRead) === '1' : bool(d.acknowledged)
+  // 发生时间：优先 ts/occurredAt 数值毫秒；回退解析 time（"2026:09:24 15:01:08" 日期段
+  // 冒号分隔需归一化为连字符才能被 Date.parse 解析）；再回退消息到达时刻
+  let occurredAt = num(d.ts ?? d.occurredAt, NaN)
+  if (!Number.isFinite(occurredAt) && typeof d.time === 'string') {
+    const parsed = Date.parse(d.time.replace(/^(\d{4}):(\d{1,2}):(\d{1,2})/, '$1-$2-$3'))
+    if (Number.isFinite(parsed)) occurredAt = parsed
+  }
+  if (!Number.isFinite(occurredAt)) occurredAt = Date.now()
   const alarm: AlarmPayload = {
     alarmId,
     level,
-    title: typeof d.title === 'string' ? d.title : '未命名告警',
-    detail: typeof d.detail === 'string' ? d.detail : '',
-    occurredAt: num(d.occurredAt, Date.now()),
-    acknowledged: bool(d.acknowledged),
+    title: typeof d.title === 'string' && d.title ? d.title : '未命名告警',
+    detail: typeof d.msg === 'string' && d.msg ? d.msg : typeof d.detail === 'string' ? d.detail : '',
+    occurredAt,
+    acknowledged,
   }
-  if (typeof d.deviceId === 'string' && d.deviceId) alarm.deviceId = d.deviceId
+  // 关联设备：equipId（真实报文）/ deviceId（旧格式）均可
+  const deviceId = typeof d.equipId === 'string' && d.equipId ? d.equipId : d.deviceId
+  if (typeof deviceId === 'string' && deviceId) alarm.deviceId = deviceId
   return [{ type: 'alarm', payload: alarm, ts: Date.now() }]
 }
 

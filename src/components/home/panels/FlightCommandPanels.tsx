@@ -10,6 +10,7 @@ import { deviceImages } from '../../../assets/images/device/index'
 import { podControlLand, podControlTakeoff, podControlWaypoint } from '../../../api/index'
 import { observeDownlink } from '../../../features/realtime/wsClient'
 import { usePlaneStatusStore } from '../../../stores/index'
+import { type useMapEngine } from '../../../hooks/index'
 
 /**
  * FlightCommandPanels —— 飞行指令面板组：起飞/降落/返航/指点返航/区域降落/悬停（自 HomePage.tsx 拆出）。
@@ -280,9 +281,11 @@ interface WaypointFlightPanelsProps {
   selectedDevices: Set<number>
   areaLandingSpots: { x: number; y: number }[]
   aircraftPositions: { x: number; y: number }[]
+  /** 地图适配器：航点飞行动效按 WS 遥测经纬度每帧重投影（跟随地图平移/缩放） */
+  adapter: ReturnType<typeof useMapEngine>['adapter']
 }
 
-export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices, areaLandingSpots, aircraftPositions }: WaypointFlightPanelsProps) {
+export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices, areaLandingSpots, aircraftPositions, adapter }: WaypointFlightPanelsProps) {
   // 接口原始设备列表（保留无人机主键 id）：起飞指令按选中设备 id 逐架下发
   const rawPlanes = usePlaneStatusStore((s) => s.rawPlanes)
   const {
@@ -329,6 +332,7 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
   const {
     startTapReturnFlight,
     startWaypointFlight,
+    stopWaypointFlight,
     startRouteFlightAnimation,
     startReturnHomeFlights,
     startAreaLandingFlights,
@@ -422,6 +426,9 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
                 .sort((a, b) => a - b)
                 .map((index) => rawPlanes[index]?.id)
                 .filter((id): id is string => !!id)
+              // 中断航点飞行动效状态机（climbing/following → idle）：降落指令与航点
+              // 跟飞互斥，动效图标随状态清空立即消失，位置交还 AircraftLayer 遥测渲染
+              stopWaypointFlight()
               // 指令发出即开 15s 下行观测窗口：检验后端是否通过 WS 推送回执/状态变更
               //（窗口结束输出分频道结论：cmd=指令回执、device=设备状态回执，见 observeDownlink）
               void observeDownlink(15_000, `land×${planeIds.length}`)
@@ -455,6 +462,9 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
             message="执行返航指令"
             onConfirm={() => {
               console.info(`[return-home] 确认返航，高度 ${returnHomeSlide.height}m`)
+              // 中断航点飞行动效状态机（climbing/following → idle）：返航与航点跟飞
+              // 互斥，动效图标随状态清空立即消失，位置交还 AircraftLayer 遥测渲染
+              stopWaypointFlight()
               // 确认后启动循环模拟飞行：各选中无人机沿已生成航线飞向对应 H 返航标记
               // 并无限循环（多机并行）；面板保持展开，「取消」按钮可随时手动终止循环。
               // 航线与飞行图标同源配对：均按 aircraft 数组顺序过滤选中设备
@@ -603,21 +613,32 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
                     )
                 })
               }
-              // 确认后启动循环模拟飞行：无人机沿已生成实线航线飞向航点图钉并无限循环；
+              // 确认后启动两阶段连贯动效：①高度过渡——自当前遥测高度匀速爬升/下降
+              // 至面板设定飞行高度；②航点平飞——按 WS 遥测经纬度（telemetry[planeId]）
+              // 经地图适配器每帧重投影驱动图标实时飞向航点（报文驱动、平滑插值）。
               // 面板保持展开，「取消」或重新「航线生成」取点可随时终止
               if (waypointPoint) {
                 const flyIdx = aircraft.findIndex((a) => selectedDevices.has(a.deviceIndex))
                 const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
                 if (flyIdx !== -1 && stage) {
-                  startWaypointFlight(
-                    {
-                      x1: stage.left + (aircraftPositions[flyIdx].x / 100) * stage.width + 24,
-                      y1: stage.top + (aircraftPositions[flyIdx].y / 100) * stage.height + 24,
-                      x2: waypointPoint.x,
-                      y2: waypointPoint.y,
+                  const firstPlaneId = [...selectedDevices]
+                    .sort((a, b) => a - b)
+                    .map((index) => rawPlanes[index]?.id)
+                    .filter((id): id is string => !!id)[0]
+                  startWaypointFlight({
+                    planeId: firstPlaneId,
+                    icon: aircraft[flyIdx].src,
+                    adapter,
+                    waypoint: {
+                      x: waypointPoint.x,
+                      y: waypointPoint.y,
+                      lng: waypointPoint.lng,
+                      lat: waypointPoint.lat,
                     },
-                    aircraft[flyIdx].src,
-                  )
+                    targetHeight: height,
+                    aircraftX: stage.left + (aircraftPositions[flyIdx].x / 100) * stage.width + 24,
+                    aircraftY: stage.top + (aircraftPositions[flyIdx].y / 100) * stage.height + 24,
+                  })
                 }
               }
               // 确认成功：置灰「确认」按钮（防止重复下发航点飞行指令）；面板关闭时自动复位
@@ -643,8 +664,14 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
                 const flyIdx = aircraft.findIndex((a) => selectedDevices.has(a.deviceIndex))
                 if (flyIdx !== -1) {
                   startRouteFlightAnimation(
-                    routeFlightPoints.map((pt) => ({ x: pt.x, y: pt.y })),
+                    routeFlightPoints.map((pt) => ({
+                      x: pt.x,
+                      y: pt.y,
+                      lng: pt.lng,
+                      lat: pt.lat,
+                    })),
                     aircraft[flyIdx].src,
+                    adapter,
                   )
                 }
               }

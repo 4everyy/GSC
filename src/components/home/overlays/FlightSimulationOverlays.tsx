@@ -2,6 +2,8 @@ import { type FlightOverlaysProps } from './FlightOverlays'
 import { homeImages } from '../../../assets/images/home/index'
 import { aircraft } from '../../../config/index'
 import { useFlightAnimStore } from '../../../stores/index'
+import { DroneFlightIcon } from './DroneFlightIcon'
+import { useEffect, useState } from 'react'
 
 /**
  * FlightSimulationOverlays —— 模拟飞行覆盖层：航点/航线模拟飞行、区域降落与集结点编队航线（自 FlightOverlays 拆出）。
@@ -10,7 +12,7 @@ import { useFlightAnimStore } from '../../../stores/index'
  */
 
 export function FlightSimulationOverlays(props: FlightOverlaysProps) {
-  const { panels, anims, aircraftPositions, selectedDevices, areaLandingSpots, rallyPointSpots, handleDeleteRoutePoint } = props
+  const { panels, anims, aircraftPositions, selectedDevices, areaLandingSpots, rallyPointSpots, handleDeleteRoutePoint, adapter } = props
   const {
     routeFlightOpen,
     areaLandingRect,
@@ -40,42 +42,55 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
   const rallyPointFlights = useFlightAnimStore((s) => s.rallyPointFlights)
   // 集结点「删除重绘」按钮需要终止循环动画（事件期调用，稳定引用）
   const stopRallyPointFlights = anims.stopRallyPointFlights
+  // 航线定格航点地理锚定：地图拖动/旋转/缩放的每一帧都触发 move 事件，
+  // 驱动本覆盖层重渲染，使已定格航点图钉与折线航线经 project 重投影持续钉在原地理位置
+  const [, setRouteMoveTick] = useState(0)
+  useEffect(() => {
+    if (!adapter || !routeFlightOpen || routeFlightPoints.length === 0) return
+    return adapter.onMove(() => setRouteMoveTick((t) => t + 1))
+  }, [adapter, routeFlightOpen, routeFlightPoints])
   return (
     <>
 
           {/* 航点飞行模拟飞行无人机：确认后沿已生成航线循环飞向航点图钉
               （fixed 视口定位 + 航向旋转，无限循环播放，面板取消/重新取点后消失） */}
           {waypointFlight && (
-            <img
-              className="tap-return-drone"
-              src={waypointFlight.icon}
-              alt=""
-              draggable={false}
-              style={{
-                left: waypointFlight.x,
-                top: waypointFlight.y,
-                transform: `translate(-50%, -50%) rotate(${waypointFlight.angle}deg)`,
-              }}
+            <DroneFlightIcon
+              x={waypointFlight.x}
+              y={waypointFlight.y}
+              angle={waypointFlight.angle}
+              icon={waypointFlight.icon}
             />
           )}
 
           {/* 航线飞行航线：航点1 → 航点2 → …（1px #00FF95，不与飞机连线），
               取点中全部连线保持虚线，点击「航线生成」后定格为实线；
               各航点渲染带编号的航线图钉（32×56，钉尖对准取点位置），
-              取消/切换面板时随状态清除 */}
+              取消/切换面板时随状态清除。
+              定格航点按经纬度地理锚定：每次渲染经 project 重投影到当前视口
+              （容器原点偏移换算），配合上方 move 订阅触发的重渲染，地图拖动/旋转/缩放后
+              编号图钉与折线航线仍钉在同一地理位置不漂移；鼠标跟随点保持视口坐标 */}
           {routeFlightOpen &&
             (() => {
               if (routeFlightPoints.length === 0 && !routeFlightHover) return null
+              // 定格航点：经纬度 → 容器像素（project）→ 视口像素（加容器原点偏移）；
+              // 无适配器时退回定格屏幕坐标
+              const bounds = adapter ? adapter.getContainer().getBoundingClientRect() : null
+              const projected = routeFlightPoints.map((p) => {
+                if (adapter && bounds) {
+                  const pt = adapter.project({ lng: p.lng, lat: p.lat })
+                  return { ...p, x: bounds.left + pt.x, y: bounds.top + pt.y }
+                }
+                return p
+              })
               // 不与飞机连线：last 仅取最新航点（无航点时为 null，鼠标跟随虚线不渲染）
               const last =
-                routeFlightPoints.length > 0
-                  ? routeFlightPoints[routeFlightPoints.length - 1]
-                  : null
+                projected.length > 0 ? projected[projected.length - 1] : null
               return (
                 <>
                   <svg className="route-flight-route" aria-hidden="true">
                     <polyline
-                      points={routeFlightPoints
+                      points={projected
                         .map((p) => `${p.x},${p.y}`)
                         .join(' ')}
                       fill="none"
@@ -95,9 +110,9 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
                       />
                     )}
                   </svg>
-                  {routeFlightPoints.map((p, i) => (
+                  {projected.map((p, i) => (
                     <RoutePinMarker
-                      key={`${p.x}-${p.y}-${i}`}
+                      key={`${p.lng}-${p.lat}-${i}`}
                       num={i + 1}
                       x={p.x}
                       y={p.y}
@@ -134,16 +149,11 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
               （fixed 视口定位 + 航向旋转，到达末航点停留后回到首航点无限循环，
               面板取消/重新取点/删除航点后消失） */}
           {routeFlightFlight && (
-            <img
-              className="tap-return-drone"
-              src={routeFlightFlight.icon}
-              alt=""
-              draggable={false}
-              style={{
-                left: routeFlightFlight.x,
-                top: routeFlightFlight.y,
-                transform: `translate(-50%, -50%) rotate(${routeFlightFlight.angle}deg)`,
-              }}
+            <DroneFlightIcon
+              x={routeFlightFlight.x}
+              y={routeFlightFlight.y}
+              angle={routeFlightFlight.angle}
+              icon={routeFlightFlight.icon}
             />
           )}
 
@@ -231,17 +241,12 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
           {/* 区域降落模拟飞行无人机：确认后各机沿航线连线循环飞向对应降落坪
               （fixed 视口定位 + 航向旋转，多机并行无限循环播放，面板取消/删除重绘后消失） */}
           {areaLandingFlights.map((flight, i) => (
-            <img
+            <DroneFlightIcon
               key={i}
-              className="tap-return-drone"
-              src={flight.icon}
-              alt=""
-              draggable={false}
-              style={{
-                left: flight.x,
-                top: flight.y,
-                transform: `translate(-50%, -50%) rotate(${flight.angle}deg)`,
-              }}
+              x={flight.x}
+              y={flight.y}
+              angle={flight.angle}
+              icon={flight.icon}
             />
           ))}
 
@@ -294,17 +299,12 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
           {/* 集结点模拟飞行无人机：确认后各机沿航线连线循环飞向对应集结坪
               （fixed 视口定位 + 航向旋转，多机并行无限循环播放，取消面板/删除重绘后消失） */}
           {rallyPointFlights.map((flight, i) => (
-            <img
+            <DroneFlightIcon
               key={i}
-              className="tap-return-drone"
-              src={flight.icon}
-              alt=""
-              draggable={false}
-              style={{
-                left: flight.x,
-                top: flight.y,
-                transform: `translate(-50%, -50%) rotate(${flight.angle}deg)`,
-              }}
+              x={flight.x}
+              y={flight.y}
+              angle={flight.angle}
+              icon={flight.icon}
             />
           ))}
 

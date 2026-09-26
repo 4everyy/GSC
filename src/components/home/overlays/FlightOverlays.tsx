@@ -4,10 +4,12 @@ import { type useMapEngine } from '../../../hooks/index'
 import { type FormationFlightFormation } from '../../FlightActionPanels/FlightActionPanels'
 import { computeFormationFlightGeometry } from '../../../lib/formationLayout'
 import { FlightSimulationOverlays } from './FlightSimulationOverlays'
+import { DroneFlightIcon } from './DroneFlightIcon'
 import { homeImages } from '../../../assets/images/home/index'
 import { aircraft } from '../../../config/index'
 import { useFlightAnimStore } from '../../../stores/index'
 import { HexagonAreaOverlay } from './HexagonAreaOverlay'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 /**
@@ -84,6 +86,13 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
   const returnHomeFlights = useFlightAnimStore((s) => s.returnHomeFlights)
   const orbitFlight = useFlightAnimStore((s) => s.orbitFlight)
   const formationFlightFlights = useFlightAnimStore((s) => s.formationFlightFlights)
+  // 定格点地理锚定（航点/环绕中心）：地图拖动/旋转/缩放的每一帧都触发 move 事件，
+  // 驱动本覆盖层重渲染，使定格图钉/连线/盘旋圆经 project 重投影持续钉在原地理位置
+  const [, setMoveTick] = useState(0)
+  useEffect(() => {
+    if (!adapter) return
+    return adapter.onMove(() => setMoveTick((t) => t + 1))
+  }, [adapter])
   return (
     <>
           {/* 已确认的区域降落范围：半透明紫色填充（rgba(113,96,242,0.3)）、直角，
@@ -109,17 +118,12 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
           {/* 返航模拟飞行无人机：确认后各机沿各自航线连线循环飞向对应 H 返航标记
               （fixed 视口定位 + 航向旋转，多机并行无限循环播放，面板取消/切换后消失） */}
           {returnHomeFlights.map((flight, i) => (
-            <img
+            <DroneFlightIcon
               key={i}
-              className="tap-return-drone"
-              src={flight.icon}
-              alt=""
-              draggable={false}
-              style={{
-                left: flight.x,
-                top: flight.y,
-                transform: `translate(-50%, -50%) rotate(${flight.angle}deg)`,
-              }}
+              x={flight.x}
+              y={flight.y}
+              angle={flight.angle}
+              icon={flight.icon}
             />
           ))}
 
@@ -141,16 +145,11 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
           {/* 模拟飞行无人机：确认后沿连线循环飞向落点（fixed 视口定位 + 航向旋转，
               无限循环播放，手动点击「取消」后消失） */}
           {tapReturnFlight && (
-            <img
-              className="tap-return-drone"
-              src={tapReturnFlight.icon}
-              alt=""
-              draggable={false}
-              style={{
-                left: tapReturnFlight.x,
-                top: tapReturnFlight.y,
-                transform: `translate(-50%, -50%) rotate(${tapReturnFlight.angle}deg)`,
-              }}
+            <DroneFlightIcon
+              x={tapReturnFlight.x}
+              y={tapReturnFlight.y}
+              angle={tapReturnFlight.angle}
+              icon={tapReturnFlight.icon}
             />
           )}
           {/* 指点返航落点图钉标记（32×56 切图）：钉尖对准点击点
@@ -248,16 +247,32 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
           )}
 
           {/* 编队飞行定格图钉：左键点击地图定格航点后原地保留（钉尖对准点击点），
-              回填面板「航点信息」坐标；再次点击覆盖，取消/关闭面板时清除 */}
-          {formationFlightOpen && formationFlightPoint && (
-            <img
-              className="tap-return-marker"
-              src={homeImages.tapReturnMarker}
-              style={{ left: formationFlightPoint.x, top: formationFlightPoint.y }}
-              alt="编队飞行航点"
-              draggable={false}
-            />
-          )}
+              回填面板「航点信息」坐标；再次点击覆盖，取消/关闭面板时清除。
+              定格航点按经纬度地理锚定（与航点/环绕定格点同方案）：每次渲染经 project
+              重投影到当前视口（容器原点偏移换算），配合上方 move 订阅触发的重渲染，
+              地图拖动/旋转/缩放后图钉仍钉在同一地理位置不漂移 */}
+          {formationFlightOpen &&
+            formationFlightPoint &&
+            (() => {
+              let anchor = formationFlightPoint
+              if (adapter) {
+                const container = adapter.getContainer()
+                if (container) {
+                  const bounds = container.getBoundingClientRect()
+                  const p = adapter.project({ lng: formationFlightPoint.lng, lat: formationFlightPoint.lat })
+                  anchor = { ...formationFlightPoint, x: bounds.left + p.x, y: bounds.top + p.y }
+                }
+              }
+              return (
+                <img
+                  className="tap-return-marker"
+                  src={homeImages.tapReturnMarker}
+                  style={{ left: anchor.x, top: anchor.y }}
+                  alt="编队飞行航点"
+                  draggable={false}
+                />
+              )
+            })()}
 
           {/* 编队飞行降落点编队 + 航线（点击「航线生成」后）：在最左选中飞机图标上方按所选
               编队队形布置「数量=选中飞机数」的降落点图标（area-landing-spot），并用
@@ -303,17 +318,12 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
               降落点（fixed 视口定位 + 航向旋转，多机并行无限循环播放，
               直至取消面板/重新生成后消失） */}
           {formationFlightFlights.map((flight, i) => (
-            <img
+            <DroneFlightIcon
               key={i}
-              className="tap-return-drone"
-              src={flight.icon}
-              alt=""
-              draggable={false}
-              style={{
-                left: flight.x,
-                top: flight.y,
-                transform: `translate(-50%, -50%) rotate(${flight.angle}deg)`,
-              }}
+              x={flight.x}
+              y={flight.y}
+              angle={flight.angle}
+              icon={flight.icon}
             />
           ))}
 
@@ -330,12 +340,18 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
               if (idx === -1 || !stage) return null
               const mpp = adapter.getMetersPerPixel()
               const rPx = Math.max(2, orbitRadius / mpp)
+              // 定格环绕中心按经纬度重投影为当前视口坐标（容器原点偏移换算）：
+              // 地图拖动/旋转/缩放后图钉与盘旋圆仍钉在同一地理位置不漂移
+              const container = adapter.getContainer()
+              const bounds = container.getBoundingClientRect()
+              const p = adapter.project({ lng: orbitPoint.lng, lat: orbitPoint.lat })
+              const center = { ...orbitPoint, x: bounds.left + p.x, y: bounds.top + p.y }
               // 飞机图标按百分比挂在 .map-stage 上，换算视口像素取图标中心（+24）
               const planeX = stage.left + (aircraftPositions[idx].x / 100) * stage.width + 24
               const planeY = stage.top + (aircraftPositions[idx].y / 100) * stage.height + 24
               // 圆周最近点：圆心沿「飞机→圆心」方向回退半径像素（无人机恰在圆心时取正右方）
-              const dx = orbitPoint.x - planeX
-              const dy = orbitPoint.y - planeY
+              const dx = center.x - planeX
+              const dy = center.y - planeY
               const dist = Math.hypot(dx, dy)
               const ux = dist > 1e-6 ? dx / dist : 1
               const uy = dist > 1e-6 ? dy / dist : 0
@@ -343,8 +359,8 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
                 <>
                   <svg className="orbit-flight-graphics" aria-hidden="true">
                     <circle
-                      cx={orbitPoint.x}
-                      cy={orbitPoint.y}
+                      cx={center.x}
+                      cy={center.y}
                       r={rPx}
                       fill="none"
                       stroke="#00FF95"
@@ -354,8 +370,8 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
                     <line
                       x1={planeX}
                       y1={planeY}
-                      x2={orbitPoint.x - ux * rPx}
-                      y2={orbitPoint.y - uy * rPx}
+                      x2={center.x - ux * rPx}
+                      y2={center.y - uy * rPx}
                       stroke="#00FF95"
                       strokeWidth={1}
                       strokeDasharray={orbitRouteGenerated ? undefined : '16 10'}
@@ -363,7 +379,7 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
                   </svg>
                   <span
                     className="tap-return-marker tap-return-marker--pin"
-                    style={{ left: orbitPoint.x, top: orbitPoint.y }}
+                    style={{ left: center.x, top: center.y }}
                     onMouseEnter={() => setOrbitPinMenuOpen(true)}
                     onMouseLeave={() => setOrbitPinMenuOpen(false)}
                     onClick={(e) => {
@@ -395,7 +411,10 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
 
           {/* 航点飞行取点：图钉实时跟随鼠标（仅航点图钉，无 H 停机坪圈），
               选中飞机中心 → 鼠标 1px #00FF95 虚线实时连线；
-              左键点击后定格航点（保持虚线），点击「航线生成」后虚线定格为实线；取消/切换面板时随状态清除 */}
+              左键点击后定格航点（保持虚线），点击「航线生成」后虚线定格为实线；取消/切换面板时随状态清除。
+              定格航点按经纬度地理锚定：每次渲染经 project 重投影到当前视口
+              （容器原点偏移换算），配合上方 move 订阅触发的重渲染，地图拖动/旋转/缩放后
+              图钉与连线仍钉在同一地理位置不漂移；取点跟随阶段保持视口坐标直接跟随鼠标 */}
           {waypointFlightOpen &&
             (() => {
               const pt = waypointPoint ?? waypointHover
@@ -403,25 +422,37 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
               const idx = aircraft.findIndex((a) => selectedDevices.has(a.deviceIndex))
               const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
               if (idx === -1 || !stage) return null
+              // 定格航点：经纬度 → 容器像素（project）→ 视口像素（加容器原点偏移）；
+              // 未定格（跟随鼠标）：直接用鼠标视口坐标
+              let anchor = pt
+              if (waypointPoint && adapter) {
+                const container = adapter.getContainer()
+                if (container) {
+                  const bounds = container.getBoundingClientRect()
+                  const p = adapter.project({ lng: waypointPoint.lng, lat: waypointPoint.lat })
+                  anchor = { ...waypointPoint, x: bounds.left + p.x, y: bounds.top + p.y }
+                }
+              }
               return (
                 <>
                   <svg className="waypoint-flight-route" aria-hidden="true">
                     <line
                       x1={stage.left + (aircraftPositions[idx].x / 100) * stage.width + 24}
                       y1={stage.top + (aircraftPositions[idx].y / 100) * stage.height + 24}
-                      x2={pt.x}
-                      y2={pt.y}
+                      x2={anchor.x}
+                      y2={anchor.y}
                       stroke="#00FF95"
                       strokeWidth={2}
                       strokeDasharray={waypointRouteGenerated ? undefined : '16 10'}
                     />
                   </svg>
                   {/* 图钉 DOM 跟随鼠标/定格点：取点阶段原生光标由 .waypoint-picking 隐藏
-                      （32×56 图钉超出系统光标 32×32 上限，CSS cursor 无法呈现），左键定格后原地停留 */}
+                      （32×56 图钉超出系统光标 32×32 上限，CSS cursor 无法呈现），左键定格后
+                      钉在重投影后的地理位置（随地图拖动/旋转/缩放联动） */}
                   <img
                     className="waypoint-flight-marker"
                     src={homeImages.tapReturnMarker}
-                    style={{ left: pt.x, top: pt.y }}
+                    style={{ left: anchor.x, top: anchor.y }}
                     alt="航点"
                     draggable={false}
                   />
@@ -432,16 +463,11 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
           {/* 环绕飞行模拟飞行无人机：确认后先沿直线切入盘旋圆，再绕圆持续盘旋
               （fixed 视口定位 + 航向旋转，无限循环播放，面板取消/重新取点后消失） */}
           {orbitFlight && (
-            <img
-              className="tap-return-drone"
-              src={orbitFlight.icon}
-              alt=""
-              draggable={false}
-              style={{
-                left: orbitFlight.x,
-                top: orbitFlight.y,
-                transform: `translate(-50%, -50%) rotate(${orbitFlight.angle}deg)`,
-              }}
+            <DroneFlightIcon
+              x={orbitFlight.x}
+              y={orbitFlight.y}
+              angle={orbitFlight.angle}
+              icon={orbitFlight.icon}
             />
           )}
     </>
