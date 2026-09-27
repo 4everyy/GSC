@@ -115,38 +115,51 @@
   z-index: 1498;
   pointer-events: none;
 }
-/* 模拟飞行无人机（底座 + 飞机整体）：确认航线后沿航线循环飞行的组合图标——
-   fixed 视口定位，left/top 由内联样式按航线插值坐标驱动；整体刚体原则：
-   底座（blue_bottom.svg 等同色套图）与机身（blue_plane.png 等）绑定为一个
-   整体对象，航向旋转 rotate(航向角) 由内联样式挂在外层容器上（覆盖本处的
-   translate 回退）——调整飞机头指向即整体旋转，机头自适应对准航线轨迹切线
-   方向；will-change 提示合成层，rAF 逐帧移动/旋转不掉帧；
-   z-index 高于图钉(1500)使飞行图标完整可见；pointer-events:none 不拦截交互 */
+/* 模拟飞行无人机（底座 + 飞机组合）：确认航线后沿航线循环飞行的组合图标——
+   fixed 视口定位，left/top 由内联样式按航线插值坐标驱动；底座固定策略：
+   底座（blue_bottom.svg 等同色套图）作为地面基准正置固定不随航向转动，
+   航向旋转 rotate(航向角) 由内联样式下沉到机身层（.drone-flight__plane），
+   仅飞机图标转向使机头自适应对准航线轨迹切线方向（覆盖本处 translate 的
+   居中锚定）；z-index 高于图钉(1500)使飞行图标完整可见；
+   pointer-events:none 不拦截交互 */
 .drone-flight {
   position: fixed;
   z-index: 1501;
   width: 48px;
   height: 48px;
   transform: translate(-50%, -50%);
-  transform-origin: center;
-  will-change: transform;
   pointer-events: none;
 }
 
-/* 底座层：与静止飞机标记同规格（48×48 铺满），随容器整体旋转（自身不再单独变换） */
+/* 底座层：与静止飞机标记完全同规格（AircraftLayer .aircraft-icon__bottom：
+   64px 等比宽、高自动，top/left 50% + 负偏移精确居中于 48px 盒，中心与机身重合），
+   正置固定不旋转（居中 translate 由 CSS 承担，自身不承载航向变换） */
 .drone-flight__base {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 50%;
+  left: 50%;
+  width: 64px;
+  height: auto;
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+  pointer-events: none;
 }
 
-/* 机身层：铺满容器叠放在底座上，随容器整体旋转（自身不再单独变换） */
+/* 机身层：与静止飞机标记完全同规格（AircraftLayer .aircraft-icon__top：
+   40px 等比宽、高自动，居中于 48px 盒）——居中锚定的 translate(-50%,-50%)
+   与航向旋转合并由内联样式注入（translate + rotate 复合变换，见 DroneFlightIcon）：
+   机头（切图机头默认朝右，rotate 直接采用 atan2 屏幕角，0°=正右，见 useFlightAnimations）
+   对准航线轨迹切线方向；transform-origin 居中 + will-change 提示合成层，rAF 逐帧旋转不掉帧 */
 .drone-flight__plane {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: auto;
+  object-fit: contain;
+  transform-origin: center;
+  will-change: transform;
+  pointer-events: none;
 }
 /* 航点飞行取点阶段（waypoint-picking：面板开启且未定格航点）：光标为航点标记图钉（32×56 切图，钉尖热点 16 55 对准鼠标）；
    左键定格航点后类移除，光标恢复默认样式 */

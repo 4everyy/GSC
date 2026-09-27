@@ -21,6 +21,7 @@ import {   type ClientMessage,
   logWsMessage } from './protocol'
 import { create } from 'zustand'
 import { ensureAuthToken } from '../../api/index'
+import { MOCK_WS_ALERT_FRAMES } from '../../api/mock-data'
 import { useEffect } from 'react'
 
 /**
@@ -1033,6 +1034,39 @@ const useRealtimeStore = create<RealtimeStore>((set, get) => ({
   },
 }))
 
+// ==================== 离线兜底：WS 告警 mock 注入（链路恢复自动移除）====================
+
+/** mock 告警 alarmId 集合（mapAlarmItem 的 id→alarmId 映射结果，用于恢复链路后精确剔除） */
+const MOCK_ALARM_IDS: string[] = MOCK_WS_ALERT_FRAMES.map((f) => String(f.data.id ?? '')).filter(Boolean)
+
+/** mock 告警是否已注入：重连循环中每次 reconnecting 只注一次；open 后复位 */
+let mockAlertsInjected = false
+
+/** 注入 mock 告警：走 mapBackendMessage → applyMessage 同一映射管线，与真实 WS 帧零差异 */
+function injectMockAlerts(): void {
+  if (mockAlertsInjected) return
+  mockAlertsInjected = true
+  console.warn(
+    `[ws] 后端 WS 不可达，注入离线兜底告警 ×${MOCK_WS_ALERT_FRAMES.length}` +
+      '（mock-data.ts 2026-09-24 联调快照，链路恢复后自动移除）',
+  )
+  MOCK_WS_ALERT_FRAMES.forEach((frame) => {
+    mapBackendMessage(frame).forEach((m) => useRealtimeStore.getState().applyMessage(m))
+  })
+}
+
+/** 移除 mock 告警：真实链路恢复（open）后按 alarmId 精确剔除，不污染真实告警流 */
+function removeMockAlerts(): void {
+  if (!mockAlertsInjected) return
+  mockAlertsInjected = false
+  const { alarms } = useRealtimeStore.getState()
+  const remaining = alarms.filter((a) => !MOCK_ALARM_IDS.includes(a.alarmId))
+  if (remaining.length !== alarms.length) {
+    useRealtimeStore.setState({ alarms: remaining })
+    console.info('[ws] 链路恢复，已移除离线兜底告警，恢复真实告警流')
+  }
+}
+
 /**
  * 启动实时通道（幂等）：订阅 wsClient 消息与状态，注入 store。
  * 在应用根部调用一次（见 useRealtimeConnection）。
@@ -1041,8 +1075,14 @@ export function startRealtime(): () => void {
   const offMessage = wsClient.onMessage((msg) => useRealtimeStore.getState().applyMessage(msg))
   const offStatus = wsClient.onStatus((status) => {
     useRealtimeStore.getState().setStatus(status)
-    // 真实后端握手协议：连接建立时 wsClient 已发送纯文本 "client_UI"，
-    // 后端确认身份后自动推送全部遥测，无需（也不支持）JSON subscribe 消息。
+    // 离线兜底：首次连接失败（connecting → close → reconnecting）或重连超限（closed）
+    // 时注入 mock 告警；连接恢复 open 后按 alarmId 精确移除。仅影响告警列表，
+    // 不参与任何成功路径。
+    if (status === 'open') {
+      removeMockAlerts()
+    } else if (status === 'reconnecting' || status === 'closed') {
+      injectMockAlerts()
+    }
   })
   wsClient.connect()
   return () => {

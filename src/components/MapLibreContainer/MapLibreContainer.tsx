@@ -89,12 +89,24 @@ function addLocationMarker(
  * 传入 isCancelled 回调，避免异步定位返回时用户已开始编辑航线，
  * 此刻放弃 panTo 防止视野被移走。
  */
-function runAutoLocate(adapter: MapLibreAdapter, isCancelled: () => boolean) {
+function runAutoLocate(
+  adapter: MapLibreAdapter,
+  isCancelled: () => boolean,
+  bounds?: readonly [number, number, number, number] | null,
+) {
   if (typeof navigator === 'undefined' || !navigator.geolocation) return
   navigator.geolocation.getCurrentPosition(
     (position) => {
       if (isCancelled()) return
       const { longitude, latitude } = position.coords
+      // 严格离线底图仅在包 bounds 内有瓦片：GPS 越界时平移视野会飞出瓦片
+      // 覆盖区、底图一片空白（用户不在包覆盖城市时必现）。此时保留默认中心。
+      if (bounds) {
+        const [west, south, east, north] = bounds
+        if (longitude < west || longitude > east || latitude < south || latitude > north) {
+          return
+        }
+      }
       adapter.panTo({ lng: longitude, lat: latitude })
       addLocationMarker(adapter, longitude, latitude, position.coords.accuracy ?? 80)
     },
@@ -139,6 +151,8 @@ interface MapLibreContainerProps {
    * （含 gcs-pkg:// 瓦片源）；未就绪时为 null / undefined（使用占位底图）。
    */
   styleSpec?: MapStyleSpec | null
+  /** 自动定位有效边界 [west, south, east, north]（离线包 bounds）；GPS 越界时放弃平移 */
+  locateBounds?: readonly [number, number, number, number] | null
   /** 叠加在地图之上的 DOM 覆盖物（如飞行器、限制区） */
   children?: ReactNode
 }
@@ -156,6 +170,7 @@ export function MapLibreContainer({
   autoLocate = false,
   onReady,
   styleSpec,
+  locateBounds,
   children,
 }: MapLibreContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -265,12 +280,12 @@ export function MapLibreContainer({
     if (!adapter) return
 
     let cancelled = false
-    runAutoLocate(adapter, () => cancelled)
+    runAutoLocate(adapter, () => cancelled, locateBounds)
 
     return () => {
       cancelled = true
     }
-  }, [autoLocate, status])
+  }, [autoLocate, status, locateBounds])
 
   return (
     <div className={`maplibre-container ${className ?? ''}`}>

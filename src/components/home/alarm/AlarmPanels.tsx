@@ -6,7 +6,7 @@
  * 「点击面板组外部收起」监听亦内聚于此（捕获阶段，排除面板组内部与顶栏 .alarm 徽标）。
  * HomePage 不再持有任何告警状态，告警切换只重渲染本组件与 StatusHeader。
  */
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlarmInfoPanel, AlarmDetailPanel } from '../../AlarmPanels/AlarmPanels'
 import { useAlarmPanelStore } from '../../../stores/index'
 import { ALARM_COLORS } from '../../../lib/formationLayout'
@@ -15,6 +15,22 @@ export function AlarmPanels() {
   const activeAlarm = useAlarmPanelStore((s) => s.activeAlarm)
   const pendingAlarm = useAlarmPanelStore((s) => s.pendingAlarm)
   const alarmCollapsing = useAlarmPanelStore((s) => s.alarmCollapsing)
+
+  // 行点击联动（常驻告警框 → 详情面板）：点击行后直接展开该级别详情面板
+  // （openAlarm 非 toggle，不播收起中转动画），并发出聚焦请求让详情面板展开并
+  // 滚动定位到对应告警卡片。nonce 递增保证连续点击同一行也能再次触发消费。
+  const [focusRequest, setFocusRequest] = useState<{ alarmId: string; nonce: number } | null>(null)
+  const focusNonceRef = useRef(0)
+  const openAlarm = useAlarmPanelStore((s) => s.openAlarm)
+  const handleRowClick = useCallback(
+    (alarmId: string, tone: 'red' | 'orange' | 'blue') => {
+      openAlarm(ALARM_COLORS.indexOf(tone))
+      setFocusRequest({ alarmId, nonce: ++focusNonceRef.current })
+    },
+    [openAlarm],
+  )
+  const clearFocusRequest = useCallback(() => setFocusRequest(null), [])
+
   // 告警信息面板色调：当前激活徽标（红/橙/蓝）映射为面板边框色调
   const currentAlarmColor = activeAlarm !== null ? ALARM_COLORS[activeAlarm] : undefined
 
@@ -44,9 +60,13 @@ export function AlarmPanels() {
       ref={alarmPanelsRef}
       className={`alarm-panels${activeAlarm !== null ? ' alarm-panels--expanded' : ''}${alarmCollapsing ? ' alarm-panels--collapsing' : ''}`}
     >
-      <AlarmInfoPanel alarmColor={currentAlarmColor} />
+      <AlarmInfoPanel alarmColor={currentAlarmColor} onRowClick={handleRowClick} />
       <div className="alarm-panels__detail">
-        <AlarmDetailPanel alarmColor={currentAlarmColor} />
+        <AlarmDetailPanel
+          alarmColor={currentAlarmColor}
+          focusRequest={focusRequest}
+          onFocusConsumed={clearFocusRequest}
+        />
       </div>
     </div>
   )

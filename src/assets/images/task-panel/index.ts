@@ -27,7 +27,6 @@ import monitorConnectorBg from './monitor-connector-bg.png'
 import monitorRowBg from './monitor-row-bg.png'
 import monitorRowBgActive from './monitor-row-bg-active.png'
 import radarCircle from './radar-circle.svg'
-import radioChecked from './radio-checked.svg'
 import separator from './separator.png'
 import stepperMinus from './stepper-minus.png'
 import stepperPlus from './stepper-plus.png'
@@ -67,7 +66,6 @@ export const taskPanelImages = {
   monitorRowBg,
   monitorRowBgActive,
   radarCircle,
-  radioChecked,
   separator,
   stepperMinus,
   stepperPlus,

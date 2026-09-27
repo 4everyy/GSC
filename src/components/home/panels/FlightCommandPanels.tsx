@@ -613,9 +613,12 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
                     )
                 })
               }
-              // 确认后启动两阶段连贯动效：①高度过渡——自当前遥测高度匀速爬升/下降
-              // 至面板设定飞行高度；②航点平飞——按 WS 遥测经纬度（telemetry[planeId]）
-              // 经地图适配器每帧重投影驱动图标实时飞向航点（报文驱动、平滑插值）。
+              // 确认后启动两阶段连贯动效：①高度调整——自当前高度（遥测实测 → mock
+              // 设备 rawPlanes.altitude → 0m 兜底）以恒定 20m/s 爬升/下降至面板设定
+              // 飞行高度；②航点平飞——到达设定高度后以恒定 20m/s 地速飞向目标点
+              // （WS 遥测可用时以遥测位置为目标，mock 离线时直接飞向航点，经地图
+              // 适配器每帧重投影）。全程实时高度逐帧写入 store，由
+              // WaypointAltitudeOverlay 在态势图上随图标标注（垂直虚线 + 高度值）。
               // 面板保持展开，「取消」或重新「航线生成」取点可随时终止
               if (waypointPoint) {
                 const flyIdx = aircraft.findIndex((a) => selectedDevices.has(a.deviceIndex))
@@ -658,11 +661,20 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
               console.info(
                 `[route-flight] 确认航线飞行，高度 ${routeSlide.height}m，航点 ${routeFlightPoints.length} 个`,
               )
-              // 确认后启动循环模拟飞行：无人机沿已生成实线航线依次飞过各航点并无限循环；
-              // 面板保持展开，「取消」或重新「航线生成」取点/删除航点可随时终止
+              // 确认后启动三阶段连贯动效（与航点/环绕飞行同口径）：①高度调整——自当前
+              // 高度（遥测实测 → mock 设备 rawPlanes.altitude → 0m 兜底）以恒定 20m/s
+              // 爬升/下降至面板设定飞行高度，水平钉在起飞点；②转场平飞——到达设定高度
+              // 后自飞机位置匀速飞向首航点；③航线巡航——到达首航点后沿折线航线依次飞过
+              // 各航点并无限循环。全程实时高度逐帧写入 store，由 WaypointAltitudeOverlay
+              // 随图标标注。面板保持展开，「取消」或重新「航线生成」取点/删除航点可随时终止
               if (routeFlightPoints.length > 0) {
                 const flyIdx = aircraft.findIndex((a) => selectedDevices.has(a.deviceIndex))
-                if (flyIdx !== -1) {
+                const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
+                if (flyIdx !== -1 && stage) {
+                  const firstPlaneId = [...selectedDevices]
+                    .sort((a, b) => a - b)
+                    .map((index) => rawPlanes[index]?.id)
+                    .filter((id): id is string => !!id)[0]
                   startRouteFlightAnimation(
                     routeFlightPoints.map((pt) => ({
                       x: pt.x,
@@ -672,6 +684,14 @@ export function WaypointFlightPanels({ panels, anims, aircraft, selectedDevices,
                     })),
                     aircraft[flyIdx].src,
                     adapter,
+                    {
+                      planeId: firstPlaneId,
+                      targetHeight: routeSlide.height,
+                      aircraftX:
+                        stage.left + (aircraftPositions[flyIdx].x / 100) * stage.width + 24,
+                      aircraftY:
+                        stage.top + (aircraftPositions[flyIdx].y / 100) * stage.height + 24,
+                    },
                   )
                 }
               }

@@ -3,6 +3,7 @@ import { homeImages } from '../../../assets/images/home/index'
 import { aircraft } from '../../../config/index'
 import { useFlightAnimStore } from '../../../stores/index'
 import { DroneFlightIcon } from './DroneFlightIcon'
+import { WaypointAltitudeOverlay } from './WaypointAltitudeOverlay'
 import { useEffect, useState } from 'react'
 
 /**
@@ -62,6 +63,9 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
               icon={waypointFlight.icon}
             />
           )}
+          {/* 航点飞行高度实时标注：高度虚线自飞行图标延伸至地面轨迹点，
+              数值随遥测逐帧刷新（mock 起飞/飞行高度默认 20m/s 变化），全程跟随 */}
+          <WaypointAltitudeOverlay />
 
           {/* 航线飞行航线：航点1 → 航点2 → …（1px #00FF95，不与飞机连线），
               取点中全部连线保持虚线，点击「航线生成」后定格为实线；
@@ -145,9 +149,12 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
               )
             })()}
 
-          {/* 航线飞行模拟飞行无人机：确认后沿已生成航线依次飞过各航点图钉
-              （fixed 视口定位 + 航向旋转，到达末航点停留后回到首航点无限循环，
-              面板取消/重新取点/删除航点后消失） */}
+          {/* 航线飞行模拟飞行无人机：确认后三阶段动效（与航点/环绕飞行同口径）——
+              ①高度调整：自飞机位置垂直爬升/下降至设定高度（20m/s）；②转场平飞：
+              到达设定高度后自飞机位置匀速飞向首航点；③航线巡航：到达首航点后沿
+              已生成航线依次飞过各航点图钉（fixed 视口定位 + 航向旋转，到达末航点
+              停留后回到首航点无限循环），高度标注逐帧跟随；面板取消/重新取点/
+              删除航点后消失 */}
           {routeFlightFlight && (
             <DroneFlightIcon
               x={routeFlightFlight.x}

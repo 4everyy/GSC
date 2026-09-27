@@ -1,6 +1,6 @@
 ﻿import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-import { createReadStream, existsSync, stat, statSync } from 'node:fs'
+import { createReadStream, existsSync, readFileSync, stat, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 /**
@@ -79,6 +79,54 @@ function gscMbtilesRangePlugin(): Plugin {
   }
 }
 
+/**
+ * maplibre-gl v6 独立 Worker 文件服务（修复生产构建离线地图空白）。
+ *
+ * 背景：maplibre-gl v6 将 Web Worker 拆分为独立文件（maplibre-gl-worker.mjs +
+ * maplibre-gl-shared.mjs），运行时经 new URL('./maplibre-gl-worker.mjs', import.meta.url)
+ * 推导地址。该地址是运行时字符串拼接，打包器无法静态分析：
+ * - dev：optimizeDeps.exclude 让浏览器按 node_modules 原始路径加载，推导正确；
+ * - build：主包被打进 /assets/vendor-*.js，推导出的 /assets/maplibre-gl-worker.mjs
+ *   在 dist 中不存在 → Worker 加载 404 → 地图 load 永不触发 → 离线地图空白。
+ *
+ * 修复：应用侧显式设置 config.WORKER_URL = '/maplibre/maplibre-gl-worker.mjs'
+ * （见 src/features/offline-map/index.ts），本插件保证该路径两端可达：
+ * - serve：middleware 按需从 node_modules 返回（不落地 public/，仓库干净）；
+ * - build：emitFile 把两个 worker 文件写进产物 /maplibre/ 目录。
+ */
+const MAPLIBRE_WORKER_FILES = ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs'] as const
+
+function gscMaplibreWorkerPlugin(): Plugin {
+  return {
+    name: 'gsc-maplibre-worker',
+    // 注意：不可设 apply: 'serve'——那会在 build 时禁用整个插件（含 generateBundle）。
+    // dev/build 行为分流由钩子自身保证：configureServer 仅 dev 调用，generateBundle 仅 build 调用。
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = (req.url ?? '').split('?')[0]
+        const m = /^\/maplibre\/(maplibre-gl-worker\.mjs|maplibre-gl-shared\.mjs)$/.exec(path)
+        if (!m) return next()
+        const file = join(server.config.root, 'node_modules', 'maplibre-gl', 'dist', m[1])
+        if (!existsSync(file)) {
+          res.statusCode = 404
+          return res.end()
+        }
+        res.writeHead(200, { 'Content-Type': 'text/javascript', 'Cache-Control': 'no-cache' })
+        createReadStream(file).pipe(res)
+      })
+    },
+    generateBundle() {
+      for (const f of MAPLIBRE_WORKER_FILES) {
+        this.emitFile({
+          type: 'asset',
+          fileName: `maplibre/${f}`,
+          source: readFileSync(join(process.cwd(), 'node_modules', 'maplibre-gl', 'dist', f)),
+        })
+      }
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   // loadEnv：vite.config.ts 直接读 process.env 只能拿到 shell 环境变量，
   // .env.local / .env 中的 VITE_WS_PROXY_TARGET、VITE_API_PROXY_TARGET 此前实际不生效
@@ -87,8 +135,7 @@ export default defineConfig(({ mode }) => {
   const wsTarget = env.VITE_WS_PROXY_TARGET || 'ws://192.168.120.43:2222'
   const apiTarget = env.VITE_API_PROXY_TARGET || 'http://192.168.120.43:2222'
   return {
-  plugins: [
-    gscMbtilesRangePlugin(),react(), gscDevInject()],
+  plugins: [gscMbtilesRangePlugin(), gscMaplibreWorkerPlugin(), react(), gscDevInject()],
   // maplibre-gl 鍐呴儴浣跨敤 Web Worker锛岃嫢琚?Vite 渚濊禆棰勬墦鍖呬細鐮村潖 worker 寮曠敤
   // (maplibre-gl-worker.mjs)锛屽鑷?map 'load' 浜嬩欢姘镐笉瑙﹀彂銆乁I 鍗″湪"鍔犺浇涓?銆?
   // 鎺掗櫎鍚庤娴忚鍣ㄧ洿鎺ユ寜鍘熷璺緞鍔犺浇 worker銆?

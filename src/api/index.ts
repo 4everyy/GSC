@@ -1,4 +1,5 @@
 import { type BatteryLevel, type Device, type DeviceStatus } from '../config/index'
+import { MOCK_PLANE_STATUS, MOCK_TASK_AREA_LIST } from './mock-data'
 
 /**
  * HTTP API 基建层（后端路由保留 /api 前缀，如 /api/v1/control/...）。
@@ -238,10 +239,18 @@ export function parseTaskAreaVertex(vertex: string): TaskAreaVertex[] {
  * 兼容旧口径（data 直接为数组）与异常载荷（返回 []）。
  */
 export async function fetchTaskAreaList(): Promise<TaskAreaRaw[]> {
-  const data = await apiPost<TaskAreaRaw[] | { dataList?: TaskAreaRaw[] }>(
-    '/v1/control/queryTaskAreaList',
-    {},
-  )
+  let data: TaskAreaRaw[] | { dataList?: TaskAreaRaw[] }
+  try {
+    data = await apiPost<TaskAreaRaw[] | { dataList?: TaskAreaRaw[] }>(
+      '/v1/control/queryTaskAreaList',
+      {},
+    )
+  } catch (err) {
+    // 离线兜底（mock-data.ts 2026-09-23 联调快照）：后端不可达（网络不通/HTTP/
+    // 业务错误）时返回区域 mock；仅失败路径走这里，接口恢复后真实数据自动覆盖
+    console.warn('[api] queryTaskAreaList 请求失败，使用离线 mock 兜底：', err)
+    return MOCK_TASK_AREA_LIST
+  }
   if (Array.isArray(data)) return data
   if (Array.isArray(data?.dataList)) return data.dataList
   return []
@@ -497,7 +506,15 @@ export function mapPlaneToDevice(raw: PlaneRaw): Device {
  * 这里归一化为 planeList 供既有消费方（stores 等）无感使用。
  */
 export async function fetchPlaneStatus(): Promise<PlaneStatusData> {
-  const data = await apiPost<PlaneStatusData>('/v1/control/queryPlaneStatus', {})
+  let data: PlaneStatusData
+  try {
+    data = await apiPost<PlaneStatusData>('/v1/control/queryPlaneStatus', {})
+  } catch (err) {
+    // 离线兜底（mock-data.ts 2026-09-23 联调快照）：后端不可达（网络不通/HTTP/
+    // 业务错误）时返回设备 mock；仅失败路径走这里，接口恢复后真实数据自动覆盖
+    console.warn('[api] queryPlaneStatus 请求失败，使用离线 mock 兜底：', err)
+    return MOCK_PLANE_STATUS
+  }
   if (!data.planeList && Array.isArray(data.dataList)) {
     return { ...data, planeList: data.dataList }
   }

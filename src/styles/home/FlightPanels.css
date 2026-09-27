@@ -367,24 +367,57 @@
   cursor: pointer;
 }
 
-/* 单选指示：off 半透明白圆 + 灰描边；on 态由 radio-checked.svg 图片呈现（见 __radio-img） */
+/* 单选指示（off 态）：半透明白底圆 + 灰描边；选中态由 __radio--on + __radio-inner 呈现 */
 .hexagon-area-type-panel__radio {
   flex: none;
   width: 20px;
   height: 20px;
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid #bebebe;
   border-radius: 9999px;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
-/* 选中态单选图标：设计稿 radio-checked.svg（白 0.8 底圆 + #0EA7F9 蓝环，20×20） */
-.hexagon-area-type-panel__radio-img {
+/* 选中态外环：描边色由 TSX 内联注入（各类型主题色），底色提亮强调选中 */
+.hexagon-area-type-panel__radio--on {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 选中态内芯圆点：10×10 实心圆（颜色由 TSX 内联注入，与类型色块同色） */
+.hexagon-area-type-panel__radio-inner {
   flex: none;
-  width: 20px;
-  height: 20px;
-  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
   pointer-events: none;
+}
+
+/* 行 hover：未选中项外环提亮白描边提示可点（选中项保持类型色描边） */
+.hexagon-area-type-panel__option:hover
+  .hexagon-area-type-panel__radio:not(.hexagon-area-type-panel__radio--on) {
+  border-color: rgba(255, 255, 255, 0.85);
+}
+
+/* 隐藏原生单选框：仅承担受控语义与键盘可达性，视觉全部由自定义元素呈现 */
+.hexagon-area-type-panel__option input[type='radio'] {
+  position: absolute;
+  margin: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 键盘聚焦反馈：Tab 聚焦隐藏 input 时外环展示白色描边圈（:has 现代浏览器支持） */
+.hexagon-area-type-panel__option:has(input[type='radio']:focus-visible) .hexagon-area-type-panel__radio {
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 2px rgba(75, 188, 249, 0.45);
 }
 
 /* 类型色块：12×12、2px 圆角（距单选图标右 8px，行内垂直居中） */
@@ -408,10 +441,18 @@
   white-space: nowrap;
 }
 
-/* 底部按钮（确定/取消）：90×32、2px 圆角、浅蓝底 + #0EA7F9 描边、文字居中 */
-.hexagon-area-type-panel__btn {
+/* 底部按钮条：左右 16px 边距、按钮间 16px 间距（16+90+16+90+16 = 面板宽 228） */
+.hexagon-area-type-panel__actions {
   position: absolute;
+  left: 16px;
   top: 125px;
+  display: flex;
+  gap: 16px;
+}
+
+/* 底部按钮（取消/确定）：90×32、2px 圆角、浅蓝底 + #0EA7F9 描边、文字居中 */
+.hexagon-area-type-panel__btn {
+  flex: none;
   width: 90px;
   height: 32px;
   box-sizing: border-box;
@@ -427,14 +468,33 @@
   font-weight: 330;
   word-wrap: break-word;
   cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.hexagon-area-type-panel__btn--ok {
-  left: 16px;
+.hexagon-area-type-panel__btn:hover {
+  background: rgba(75, 188, 249, 0.25);
+  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.3);
 }
 
-.hexagon-area-type-panel__btn--cancel {
-  left: 122px;
+.hexagon-area-type-panel__btn:active {
+  background: rgba(75, 188, 249, 0.4);
+}
+
+/* 主按钮「确定」：实心蓝底（与区域面板「添加区域」主按钮同款视觉） */
+.hexagon-area-type-panel__btn--primary {
+  background-color: #0ea7f9;
+  border-color: #0ea7f9;
+}
+
+.hexagon-area-type-panel__btn--primary:hover {
+  background-color: #0ea7f9;
+  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.45);
+}
+
+.hexagon-area-type-panel__btn--primary:active {
+  background-color: #0c96e0;
 }
 /* 降落区中心地面图标（定格且选中「降落区」时）：与指点返航落点圆圈
    （tap-return-zone，设计稿 image-wrapper_4）同款视觉——48×48、

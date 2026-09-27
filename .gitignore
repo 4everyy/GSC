@@ -39,3 +39,7 @@ public/maps/*.mbtiles
 # SQLite čżčĄćśä¸´ćśćäťśďźmbtiles WAL ć¨ĄĺźĺŻäş§çŠďź
 public/maps/*-shm
 public/maps/*-wal
+
+# browser diagnostic artifacts
+.diag-screenshot.png
+.edge-diag-profile/

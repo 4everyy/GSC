@@ -182,6 +182,8 @@ interface AlarmPanelState {
   alarmCollapsing: boolean
   /** 顶栏徽标点击（展开/toggle/中转切换，见函数内注释） */
   handleAlarmClick: (index: number) => void
+  /** 常驻告警面板行点击：直接展开该级别详情面板（非 toggle；已在展开其它级别时立即切换，不播收起中转动画） */
+  openAlarm: (index: number) => void
   /** 面板组外部点击收起：取消待展开目标并收起当前面板 */
   collapseFromOutside: () => void
 }
@@ -261,6 +263,12 @@ export const useAlarmPanelStore = create<AlarmPanelState>((set, get) => {
         return
       }
       set({ activeAlarm: index })
+    },
+
+    /** 常驻面板行点击：直接展开指定级别（收起中转/收起动画期间也立即切换，不播收起动画） */
+    openAlarm: (index) => {
+      clearPendingTimer()
+      set({ activeAlarm: index, pendingAlarm: null, alarmCollapsing: false })
     },
 
     /** 面板组外部点击：收起当前面板并取消待展开目标（无展开/无中转时不动作） */

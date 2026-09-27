@@ -531,19 +531,15 @@
   display: flex;
   align-items: center;
   position: relative; /* hover 背景条 ::after 的定位基准 */
+  cursor: pointer; /* 行可点击：联动展开详情面板对应卡片 */
+  user-select: none;
   /* 122px 高度反算：内容 94 = 标题 21 + 行 16×2 + 间距 20.6×2，
      仅用 margin-top（无 margin-bottom），否则 1920 视口内容溢出底 padding、header 被压缩 */
   margin-top: clamp(6px, 1.07vw, 20.5px);
   margin-bottom: 0;
-  padding-left: clamp(12px, 1.25vw, 24px);
+  padding-left: clamp(13.5px, 1.41vw, 27px);
   padding-right: clamp(8px, 0.833vw, 16px); /* 行尾图标距容器右缘 16px（1920 基准等比） */
   gap: clamp(3px, 0.31vw, 6px);
-}
-
-/* 红色告警行（含标记）：设计稿 section_4 左 27 / 右 16 */
-.alarm-info-panel__row--red {
-  padding-left: clamp(13.5px, 1.41vw, 27px);
-  padding-right: clamp(8px, 0.833vw, 16px); /* 与普通行一致：行尾图标距容器右缘 16px */
 }
 
 /* ====== 消息行 hover 背景条 ======
@@ -570,44 +566,10 @@
   opacity: 1;
 }
 
-/* 首行红色告警前的标记：红色横线 + 下方向上的箭头（设计稿 section_3/4/5，CSS 绘制） */
-.alarm-info-panel__mark {
-  position: relative;
-  flex-shrink: 0;
-  width: clamp(8px, 0.78vw, 15px);
-  height: clamp(8px, 0.83vw, 16px);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.alarm-info-panel__mark-h {
-  width: clamp(8px, 0.78vw, 15px);
-  height: clamp(1px, 0.1vw, 2px);
-  background: #f32c30;
-}
-
-/* 向上的箭头：竖杆 + 顶端三角头（整体位于横线下方，水平居中） */
-.alarm-info-panel__mark-arrow {
-  position: relative;
-  width: 0;
-  height: clamp(2.5px, 0.26vw, 5px);
-  margin-top: clamp(3px, 0.34vw, 6.5px);
-  margin-left: auto;
-  margin-right: auto;
-  border-left: clamp(1px, 0.1vw, 2px) solid #f32c30;
-}
-
-/* 箭头头部：实心三角（朝上） */
-.alarm-info-panel__mark-arrow::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 100%;
-  transform: translateX(-50%);
-  border-left: clamp(2.5px, 0.26vw, 5px) solid transparent;
-  border-right: clamp(2.5px, 0.26vw, 5px) solid transparent;
-  border-bottom: clamp(2.5px, 0.26vw, 5px) solid #f32c30;
+/* 键盘聚焦轮廓（行 role=button tabIndex=0，Enter/空格触发点击联动） */
+.alarm-info-panel__row:focus-visible {
+  outline: 2px solid rgba(64, 224, 255, 0.8);
+  outline-offset: 2px;
 }
 
 .alarm-info-panel__text {
@@ -622,53 +584,8 @@
   text-overflow: ellipsis;
 }
 
-.alarm-info-panel__close {
-  flex-shrink: 0;
-  width: clamp(8px, 0.83vw, 16px);
-  height: clamp(8px, 0.83vw, 16px);
-  margin-left: clamp(6px, 1.35vw, 26px);
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-
-/* 叉号悬停反馈：轻微放大，提示可点击处理 */
-.alarm-info-panel__close:hover {
-  transform: scale(1.25);
-}
-
-/* ====== 行隐藏动画：点击叉号处理完成后播放 ======
-   阶段一（0%→70%）：淡出 + 右移（视觉上"被处理掉"）；
-   阶段二（70%→100%）：折叠收起占位（max-height + margin-top 归零），其余行自然上移补位。
-   总时长 360ms 与组件内 ROW_HIDE_DURATION 保持一致，动画结束后由 JS 从列表移除该行。 */
-@keyframes alarm-row-hide {
-  0% {
-    opacity: 1;
-    transform: translateX(0);
-    max-height: 24px; /* 略大于行实际高度上限（16px），保证折叠平滑 */
-    margin-top: clamp(6px, 1.07vw, 20.5px);
-  }
-  70% {
-    opacity: 0;
-    transform: translateX(clamp(4px, 0.42vw, 8px));
-    max-height: 24px;
-    margin-top: clamp(6px, 1.07vw, 20.5px);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(clamp(4px, 0.42vw, 8px));
-    max-height: 0;
-    margin-top: 0;
-  }
-}
-
-.alarm-info-panel__row.is-leaving {
-  overflow: hidden; /* 折叠时裁剪行内容 */
-  animation: alarm-row-hide 360ms ease forwards;
-  pointer-events: none; /* 动画期间禁止交互，防止重复点击 */
-}
-
 /* ====== 面板整体隐藏动画：全部告警处理完成后播放 ======
-   淡出 + 整体右滑离场（向屏幕右缘"滑走"），与行隐藏动画风格一致。
+   淡出 + 整体右滑离场（向屏幕右缘"滑走"）。
    总时长 400ms 与组件内 PANEL_HIDE_DURATION 保持一致，动画结束后由 JS 不再渲染面板。 */
 @keyframes alarm-panel-hide {
   from {

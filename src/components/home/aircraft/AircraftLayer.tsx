@@ -8,7 +8,7 @@
 import { memo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react'
 import { computePanelPlacement, placementToClasses } from '../../../utils/index'
 import batteryMidIcon from '../../../assets/images/device/battery-mid.png'
-import { useDeviceLinkStore, usePlaneStatusStore } from '../../../stores/index'
+import { useDeviceLinkStore, useFlightAnimStore, usePlaneStatusStore } from '../../../stores/index'
 import { useRealtimeStore } from '../../../features/realtime/wsClient'
 
 export interface AircraftItem {
@@ -57,6 +57,14 @@ function AircraftLayerInner({
   // （起飞指令 podControlTakeoff 同源主键），与 deviceIndex（planeList 下标）经 rawPlanes 对应。
   const wsTelemetry = useRealtimeStore((s) => s.telemetry)
   const rawPlanes = usePlaneStatusStore((s) => s.rawPlanes)
+  // 航点/环绕飞行进行中的目标设备主键（flightAnimStore.waypointFlight 与
+  // orbitFlight 的 planeId；两面板互斥，动效快照不同时存在，?? 取当前生效者）：
+  // 该机已由飞行动效图标（DroneFlightIcon + WaypointAltitudeOverlay）接管呈现，
+  // 原地面图标的高度垂线/数值标注（起飞前冻结的 0.000m）随之隐藏，避免两套
+  // 0.000m 标注并存重复——沿用同一套 .aircraft-altitude 样式仅渲染一处实时标注
+  const flyingPlaneId = useFlightAnimStore(
+    (s) => (s.waypointFlight ?? s.routeFlightFlight ?? s.orbitFlight)?.planeId,
+  )
   return (
     <>
       {aircraft.map((item, index) => {
@@ -83,9 +91,11 @@ function AircraftLayerInner({
         const isOffline =
           !hasLiveAltitude &&
           (!device || device.status === 'offline' || device.altitudeValue === '--')
-        // 数值格式与 HTTP fmt(height, 3, 'm') 对齐（如 31.000m）
+        // 数值格式与 HTTP fmt(height, 3, 'm') 对齐（如 31.000m）；显示层取整——
+        // 小数点后三位恒为 .000（爬升/降落动画逐帧浮点高度仅驱动下方 liftPx 平滑位移，
+        // 与 WaypointAltitudeOverlay 飞行标注 Math.floor 同规则）
         const altitudeText = hasLiveAltitude
-          ? `${liveAltitude.toFixed(3)}m`
+          ? `${Math.floor(liveAltitude).toFixed(3)}m`
           : (device?.altitudeValue ?? '--')
         const altitudeNum = hasLiveAltitude ? liveAltitude : parseFloat(altitudeText) || 0
         // 高度→升空像素纯线性 0.3px/m（无分段、无封顶）：匀速爬升/降落时
@@ -131,8 +141,10 @@ function AircraftLayerInner({
             {/* 地面投影垂线：容器整体升空 liftPx（--aircraft-lift 驱动 translateY），
                 本垂线自容器内图标中心向下延伸同等距离——顶端=空中飞机中心，
                 底端投影绿点钉在原地面位置；右侧沿垂线标注实时高度值。
-                离线设备无遥测高度，不渲染垂线与高度标注 */}
-            {!isOffline && (
+                离线设备无遥测高度，不渲染垂线与高度标注；
+                航点/环绕飞行中的该机（flyingPlaneId）已由飞行动效图标侧实时标注接管，
+                原地面 0.000m 冻结标注隐藏去重 */}
+            {!isOffline && planeId !== flyingPlaneId && (
               <span className="aircraft-altitude" aria-hidden="true">
                 <span className="aircraft-altitude__stick" />
                 <span className="aircraft-altitude__value">{altitudeText}</span>

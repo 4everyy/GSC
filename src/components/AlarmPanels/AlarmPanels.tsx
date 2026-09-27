@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { ALARM_COLLAPSE_MS } from '../../lib/formationLayout'
 import { deviceImages } from '../../assets/images/device/index'
 import { homeImages } from '../../assets/images/home/index'
 import { type AlarmColor } from '../../config'
@@ -21,7 +22,8 @@ import './AlarmPanels.css'
  * 无数据时列表为空（样式结构保留，等待服务端推送）。
  *
  * 结构（对应设计稿）：
- * - 筛选条：紧急信息 / 处理状态 / 处理状态下拉（section_5，背景切图）
+ * - 筛选条：紧急信息 / 处理状态 / 处理状态下拉（section_5，背景切图）；
+ *   下拉按已读状态筛选列表：全部（默认）/ 未读 / 已读
  * - 告警卡片列表（box_7 382×84）：青→蓝半透明渐变卡片（2px 圆角），
  *   结构 = 头部（标题/时间/状态徽章）→ 青色分隔线 → 主体（无人机图标/名称/告警文本）
  * - 右侧滚动条（image_9）
@@ -34,6 +36,9 @@ const LEVEL_TITLE: Record<AlarmColor, string> = {
   blue: '提示信息',
 }
 
+/** 处理状态筛选项：全部（默认）/ 未读 / 已读（依据 readIds 已读集合过滤） */
+type StatusFilter = 'all' | 'unread' | 'read'
+
 /** 告警发生时间（Unix 毫秒）→ 展示文案：YYYY/MM/DD  HH:mm:ss（与设计稿格式一致，本地时区） */
 function formatOccurredAt(ts: number): string {
   const d = new Date(ts)
@@ -44,9 +49,18 @@ function formatOccurredAt(ts: number): string {
 interface AlarmDetailPanelProps {
   /** 当前激活的告警色调（与常驻告警框同步，红/橙/蓝） */
   alarmColor?: AlarmColor
+  /** 行聚焦请求（常驻告警框行点击联动）：展开并滚动定位到对应卡片；
+   *  nonce 递增保证连续聚焦同一卡片也能触发消费，消费后由本组件清除 */
+  focusRequest?: { alarmId: string; nonce: number } | null
+  /** 消费完毕清除聚焦请求（避免重复消费） */
+  onFocusConsumed?: () => void
 }
 
-export function AlarmDetailPanel({ alarmColor }: AlarmDetailPanelProps) {
+export function AlarmDetailPanel({
+  alarmColor,
+  focusRequest,
+  onFocusConsumed,
+}: AlarmDetailPanelProps) {
   // 记忆最近一次有效级别（渲染期派生状态）：收起瞬间 activeAlarm → null、alarmColor → undefined，
   // 但收起动画播放期间面板仍可见，须沿用收起前的级别标题与色调，
   // 避免"警告/提示信息"在收起途中跳变为"紧急信息"（红色默认值）。
@@ -58,11 +72,6 @@ export function AlarmDetailPanel({ alarmColor }: AlarmDetailPanelProps) {
 
   // 真实告警数据源：WS alert 频道推送沉淀于 useRealtimeStore.alarms
   const alarms = useRealtimeStore((s) => s.alarms)
-  // 当前级别告警（最新在前）：切换徽标即整组切换。
-  // filter 返回新数组，sort 不会改动 store 中的原列表
-  const events = alarms
-    .filter((a) => a.level === effectiveColor)
-    .sort((x, y) => y.occurredAt - x.occurredAt)
 
   // 展开的卡片（手风琴：同时仅一张展开；点击已展开卡片收起）。
   // 展开态卡片高度自适应加高，主体下方多行展示详细文案 detail。
@@ -73,14 +82,54 @@ export function AlarmDetailPanel({ alarmColor }: AlarmDetailPanelProps) {
   // 已读卡片集合：点击展开过的卡片即视为已读（灰调背景），收起后保持已读态
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
 
+  // 处理状态筛选：'all' 全部（默认）/ 'unread' 未读 / 'read' 已读，
+  // 依据已读集合 readIds 过滤当前级别告警列表
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+
+  // 当前级别告警（最新在前）：切换徽标即整组切换。
+  // filter 返回新数组，sort 不会改动 store 中的原列表。
+  // 处理状态筛选叠加其上（已读/未读按 readIds 判断）；展开中的卡片保持可见
+  // ——未读筛选下点击展开即变已读，不立即消失，收起后再按筛选隐藏
+  const events = alarms
+    .filter((a) => a.level === effectiveColor)
+    .filter((a) => {
+      if (statusFilter === 'all' || a.alarmId === expandedId) return true
+      return statusFilter === 'read' ? readIds.has(a.alarmId) : !readIds.has(a.alarmId)
+    })
+    .sort((x, y) => y.occurredAt - x.occurredAt)
+
   // 级别切换重置（渲染期派生重置，与上方 lastColor 同一模式）：
-  // 切换紧急/警告/提示时清空展开与已读状态，各级别互不串扰
+  // 切换紧急/警告/提示时清空展开、已读与筛选状态，各级别互不串扰
   const [resetColor, setResetColor] = useState<AlarmColor>(effectiveColor)
   if (effectiveColor !== resetColor) {
     setResetColor(effectiveColor)
     setExpandedId(null)
     setReadIds(new Set())
+    setStatusFilter('all')
   }
+
+  // 列表滚动容器 ref：聚焦请求到达时滚动定位到对应卡片
+  const eventsRef = useRef<HTMLDivElement>(null)
+
+  // 常驻告警框行点击联动：展开目标卡片（标记已读）并滚动定位。
+  // 级别切换时上方渲染期重置先清空展开/已读，本 effect 在提交后设置目标卡片，
+  // 顺序安全；面板可能仍在展开动画（grid 0fr→1fr，ALARM_COLLAPSE_MS）中，
+  // 延迟至动画结束再滚动，定位才准确。目标卡片不在当前级别列表时不动作
+  // （级别展开切换已由 alarmPanelStore.openAlarm 完成）。
+  const lastFocusNonceRef = useRef(0)
+  useEffect(() => {
+    if (!focusRequest || focusRequest.nonce === lastFocusNonceRef.current) return
+    lastFocusNonceRef.current = focusRequest.nonce
+    onFocusConsumed?.()
+    const target = focusRequest.alarmId
+    setExpandedId(target)
+    setReadIds((prev) => (prev.has(target) ? prev : new Set(prev).add(target)))
+    const timer = window.setTimeout(() => {
+      const card = eventsRef.current?.querySelector<HTMLElement>(`[data-alarm-id="${target}"]`)
+      card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, ALARM_COLLAPSE_MS)
+    return () => window.clearTimeout(timer)
+  }, [focusRequest, onFocusConsumed])
 
   return (
     <div className={`alarm-detail-panel${colorClass}`}>
@@ -91,19 +140,23 @@ export function AlarmDetailPanel({ alarmColor }: AlarmDetailPanelProps) {
         <span className="alarm-detail-panel__filter-icon" />
         <span className="alarm-detail-panel__filter-title">{LEVEL_TITLE[effectiveColor]}</span>
         <span className="alarm-detail-panel__filter-status-label">处理状态</span>
-        {/* 原生下拉框：占位 option「请选择」默认显示（disabled hidden，
-            展开列表中不出现）；处理状态筛选逻辑待接入（仅保留控件与样式） */}
-        <select className="alarm-detail-panel__select" defaultValue="" aria-label="处理状态筛选">
-          <option value="" disabled hidden>请选择</option>
-          <option value="pending">待处理</option>
-          <option value="processing">处理中</option>
-          <option value="done">已处理</option>
+        {/* 原生下拉框（受控）：全部（默认）/ 未读 / 已读，
+            按卡片已读状态（readIds）过滤下方告警列表 */}
+        <select
+          className="alarm-detail-panel__select"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+          aria-label="处理状态筛选"
+        >
+          <option value="all">全部</option>
+          <option value="unread">未读</option>
+          <option value="read">已读</option>
         </select>
       </div>
 
       {/* 告警卡片列表（box_7：渐变卡片）：数据全部来自 WS alert 频道真实推送，
           无告警时列表为空；点击卡片展开/收起详情（手风琴），展开后卡片加高并显示多行详细文案 */}
-      <div className="alarm-detail-panel__events">
+      <div className="alarm-detail-panel__events" ref={eventsRef}>
         {events.map((ev) => {
           const expanded = expandedId === ev.alarmId
           const read = readIds.has(ev.alarmId)
@@ -111,6 +164,7 @@ export function AlarmDetailPanel({ alarmColor }: AlarmDetailPanelProps) {
             <div
               className={`alarm-detail-panel__event${expanded ? ' alarm-detail-panel__event--expanded' : ''}${read ? ' alarm-detail-panel__event--read' : ''}`}
               key={ev.alarmId}
+              data-alarm-id={ev.alarmId}
               role="button"
               aria-expanded={expanded}
               onClick={() => {
@@ -170,8 +224,8 @@ export function AlarmDetailPanel({ alarmColor }: AlarmDetailPanelProps) {
  *
  * 设计稿 box_3（414×122 @1920 基准）：
  * - 标题行：告警图标 + "告警信息"
- * - 紧急信息行（一级，红 #F32C30）：左侧 "!" 标记 + 文本 + 行尾处理图标（叉号）
- * - 警告信息行（二级，橙 #F3C200）：文本 + 行尾处理图标（叉号）
+ * - 紧急信息行（一级，红 #F32C30）：文本
+ * - 警告信息行（二级，橙 #F3C200）：文本
  *
  * 数据源：WS alert 频道 → useRealtimeStore.alarms（真实告警事件流）。
  * 展示未确认（acknowledged=false）告警，按紧急程度优先排序（一级红 > 二级橙 >
@@ -181,15 +235,16 @@ export function AlarmDetailPanel({ alarmColor }: AlarmDetailPanelProps) {
  *
  * 交互：
  * - 点击顶部告警徽标（红/橙/蓝）切换面板边框色调；
- * - 点击行尾叉号即将该条告警在本地面板内标记为已处理，
- *   该行播放隐藏动画（淡出右移 + 折叠收起）后从列表移除；
- * - 全部告警处理完成后，面板整体播放隐藏动画（淡出 + 右滑离场）后从页面移除，
+ * - 全部告警确认完成后，面板整体播放隐藏动画（淡出 + 右滑离场）后从页面移除，
  *   待新告警到达时重新出现。
  * 布局：absolute 定位，右边距与右侧图层按钮一致（clamp(8px,.83vw,16px)）。
  */
 interface AlarmInfoPanelProps {
   /** 当前激活的告警色调（来自顶栏徽标点击），未激活时不着色 */
   alarmColor?: AlarmColor
+  /** 行点击联动：展开告警详情面板中该行对应的告警卡片（包装器据此驱动
+   *  alarmPanelStore.openAlarm + 详情面板聚焦请求） */
+  onRowClick?: (alarmId: string, tone: AlarmTone) => void
 }
 
 /** 告警级别：一级 red（紧急信息）/ 二级 orange（警告信息）/ 三级 blue（提示信息），与顶栏三个告警徽标一一对应（同协议 AlarmLevel） */
@@ -208,9 +263,6 @@ const TONE_TEXT: Record<AlarmTone, string> = {
   blue: '#0EA7F9',
 }
 
-/** 行隐藏动画总时长（ms）＝淡出 260ms + 折叠收起 100ms，需与 CSS 中行 .is-leaving 的动画时长保持一致 */
-const ROW_HIDE_DURATION = 360
-
 /** 面板整体隐藏动画时长（ms），需与 CSS 中 .alarm-info-panel.is-leaving 的动画时长保持一致 */
 const PANEL_HIDE_DURATION = 400
 
@@ -224,25 +276,19 @@ interface AlarmRow {
   tone: AlarmTone
 }
 
-export function AlarmInfoPanel({ alarmColor }: AlarmInfoPanelProps) {
+export function AlarmInfoPanel({ alarmColor, onRowClick }: AlarmInfoPanelProps) {
   const colorClass = alarmColor ? `alarm-info-panel--${alarmColor}` : ''
 
   // 真实告警数据源：WS alert 频道推送沉淀于 useRealtimeStore.alarms
   const alarms = useRealtimeStore((s) => s.alarms)
 
-  // 本地已处理集合（叉号点击）：行动画播完后移入该集合，面板不再展示
-  //（处理状态回写后端的 API 尚未提供，当前仅作用于本地面板）
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
-  // 正在播放隐藏动画的告警 id 集合
-  const [leavingIds, setLeavingIds] = useState<string[]>([])
-
-  // 展示行：未确认（acknowledged=false）且未被本地处理，按紧急程度优先排序
+  // 展示行：未确认（acknowledged=false），按紧急程度优先排序
   //（一级红 > 二级橙 > 三级蓝，同级内最新在前），截取最紧急的前 2 行；
   // 未入选的告警仍完整沉淀在告警详情面板（AlarmDetailPanel）中查看。
   // sort/filter 作用于 slice 前的新数组（展开拷贝），不改动 store 原列表
   const messages: AlarmRow[] = [...alarms]
     .sort((x, y) => TONE_URGENCY[x.level] - TONE_URGENCY[y.level] || y.occurredAt - x.occurredAt)
-    .filter((a: AlarmPayload) => !a.acknowledged && !dismissedIds.has(a.alarmId))
+    .filter((a: AlarmPayload) => !a.acknowledged)
     .slice(0, INFO_PANEL_MAX_ROWS)
     .map((a: AlarmPayload) => ({ id: a.alarmId, text: a.detail || a.title, tone: a.level }))
 
@@ -281,17 +327,6 @@ export function AlarmInfoPanel({ alarmColor }: AlarmInfoPanelProps) {
     timersRef.current.push(timer)
   }, [messages.length, panelLeaving, panelHidden])
 
-  /** 点击叉号：该条告警标记为已处理，先播放行隐藏动画，动画结束后移入已处理集合 */
-  const handleDismiss = (id: string) => {
-    if (leavingIds.includes(id)) return // 动画播放中，忽略重复点击
-    setLeavingIds((prev) => [...prev, id])
-    const timer = window.setTimeout(() => {
-      setDismissedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
-      setLeavingIds((prev) => prev.filter((leavingId) => leavingId !== id))
-    }, ROW_HIDE_DURATION)
-    timersRef.current.push(timer)
-  }
-
   // 面板隐藏动画播完后，整体从页面移除
   if (panelHidden) return null
 
@@ -307,34 +342,26 @@ export function AlarmInfoPanel({ alarmColor }: AlarmInfoPanelProps) {
         <span className="alarm-info-panel__title">告警信息</span>
       </div>
 
-      {/* 消息行：标记 + 文本 + 处理（叉号）图标；数据来自 WS alert 频道真实推送 */}
-      {messages.map((msg) => {
-        const isLeaving = leavingIds.includes(msg.id)
-        return (
-          <div
-            key={msg.id}
-            className={`alarm-info-panel__row${msg.tone === 'red' ? ' alarm-info-panel__row--red' : ''}${isLeaving ? ' is-leaving' : ''}`}
-            aria-hidden={isLeaving}
-          >
-            {msg.tone === 'red' && (
-              <i className="alarm-info-panel__mark" aria-hidden="true">
-                <i className="alarm-info-panel__mark-h" />
-                <i className="alarm-info-panel__mark-arrow" />
-              </i>
-            )}
-            <span className="alarm-info-panel__text" style={{ color: TONE_TEXT[msg.tone] ?? TONE_TEXT.orange }} title={msg.text}>
-              {msg.text}
-            </span>
-            <img
-              className="alarm-info-panel__close"
-              src={homeImages.alarmCloseIcon}
-              alt="处理该条告警"
-              draggable={false}
-              onClick={() => handleDismiss(msg.id)}
-            />
-          </div>
-        )
-      })}
+      {/* 消息行：文本；数据来自 WS alert 频道真实推送 */}
+      {messages.map((msg) => (
+        <div
+          key={msg.id}
+          className={`alarm-info-panel__row${msg.tone === 'red' ? ' alarm-info-panel__row--red' : ''}`}
+          role="button"
+          tabIndex={0}
+          onClick={() => onRowClick?.(msg.id, msg.tone)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onRowClick?.(msg.id, msg.tone)
+            }
+          }}
+        >
+          <span className="alarm-info-panel__text" style={{ color: TONE_TEXT[msg.tone] ?? TONE_TEXT.orange }} title={msg.text}>
+            {msg.text}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }

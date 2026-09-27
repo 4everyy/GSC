@@ -6,15 +6,17 @@ import { deviceImages } from '../../../assets/images/device/index'
  *
  * 与地图上静止飞机标记（AircraftLayer：blue_bottom.svg + blue_plane.png 上下叠放）
  * 视觉规格保持一致：模拟飞行的飞机不再是一个光秃秃的 48×48 机身切图，
- * 而是底座与飞机作为一个刚体整体沿航线移动，且飞机头自适应对准航线轨迹方向。
+ * 而是底座与飞机组合沿航线移动，且飞机头自适应对准航线轨迹方向。
  *
- * 结构与旋转策略（整体刚体原则）：
- * - 底座 + 机身绑定视为一个整体对象（刚体）：外层容器（.drone-flight）承载
- *   fixed 定位（left/top 由动画插值坐标驱动）与整体旋转 rotate(angle)——
- *   调整飞机头的指向 = 整体旋转调整，底座与机身同步转向不散架；
- * - 机身层（.drone-flight__plane）与底座层（.drone-flight__base）仅负责
- *   同色成套切图的叠放，自身不再单独旋转（随容器整体转向），
- *   机头始终对准航线轨迹切线方向（含航点飞行沿航线平飞段）。
+ * 结构与旋转策略（底座固定 + 机身转向）：
+ * - 外层容器（.drone-flight）仅承载 fixed 定位（left/top 由动画插值坐标驱动）
+ *   与 translate(-50%,-50%) 居中锚定，自身不旋转——底座作为地面基准（椭圆停机坪
+ *   光环）正置固定，不随航向转动（观感与静止飞机标记一致）；
+ * - 机身层（.drone-flight__plane）单独承载 rotate(航向角)：飞机头对准航线
+ *   轨迹切线方向（含航点飞行沿航线平飞段），底座不受机身转向影响；
+ * - 底座层（.drone-flight__base）与机身层仅负责同色成套切图的叠放，
+ *   两层尺寸规格（底座 64px 等比宽 / 机身 40px 等比宽，均精确居中于 48px 盒）
+ *   与静止标记的 .aircraft-icon__bottom / .aircraft-icon__top 完全一致。
  */
 
 /** 机身切图 → 同色底座切图映射：与 config aircraft 的成套关系保持一致
@@ -40,17 +42,22 @@ interface DroneFlightIconProps {
 
 function DroneFlightIconImpl({ x, y, angle, icon }: DroneFlightIconProps) {
   const bottomSrc = PLANE_BOTTOM_MAP.get(icon) ?? deviceImages.blueBottom
-  // 整体刚体旋转：translate(-50%,-50%) 居中锚定 + rotate(航向角) 同挂在外层容器——
-  // 底座与机身作为一个整体对象同步转向，飞机头对准航线轨迹切线方向
+  // 位置锚定：容器仅做 left/top 定位（居中平移由 CSS 的 translate 承担），
+  // 航向旋转下沉到机身层——底座正置固定，仅飞机图标转向对准航线轨迹切线方向
   const style: CSSProperties = {
     left: x,
     top: y,
-    transform: `translate(-50%, -50%) rotate(${angle}deg)`,
   }
   return (
     <span className="drone-flight" style={style} aria-hidden="true">
       <img className="drone-flight__base" src={bottomSrc} alt="" draggable={false} />
-      <img className="drone-flight__plane" src={icon} alt="" draggable={false} />
+      <img
+        className="drone-flight__plane"
+        src={icon}
+        style={{ transform: `translate(-50%, -50%) rotate(${angle}deg)` }}
+        alt=""
+        draggable={false}
+      />
     </span>
   )
 }

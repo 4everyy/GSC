@@ -8,6 +8,7 @@
  * - components/*   飞机层/飞行覆盖层/功能面板组/底部按钮条等
  */
 import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
+import { Alert } from 'antd'
 import { StatusHeader, MapToolbar, MapControls, MapScale } from '../../components/MapChrome/MapChrome'
 import { MissionPanel, type FormationFlightFormation } from '../../components/FlightActionPanels/FlightActionPanels'
 import { MapLoadProgress, MapLibreContainer } from '../../components/MapLibreContainer/MapLibreContainer'
@@ -138,7 +139,9 @@ export function HomePage() {
   // 地图取点监听 + 面板关闭/航线失效编排（自 useFlightInteractions 拆出）
   const { handleDeleteRoutePoint } = useFlightInteractions(panels, animations, adapter)
   // 离线地图：gcs-pkg:// 协议经 HTTP Range 按需直读 public/maps/suzhou.mbtiles（无导入、无 IndexedDB）。
-  const { activeStyle, activePackage } = useOfflineMap()
+  // status/error 一并透出：探测失败（mbtiles 缺失 / 服务器不支持 Range 等）时在地图
+  // 上方显示告警条，而不是静默停在纯色占位底图让人误以为「地图坏了」。
+  const { activeStyle, activePackage, status: offlineStatus, error: offlineError } = useOfflineMap()
 
 
   // 设备联动：hover/选中状态与设备管理面板双向同步（全局 store 承载，
@@ -450,11 +453,28 @@ export function HomePage() {
           onReady={onEngineReady}
           styleSpec={activeStyle}
           autoLocate
+          locateBounds={activePackage?.bounds ?? null}
         />
 
         <StatusHeader />
 
         <section className="map-stage">
+          {offlineStatus === 'error' && (
+            <Alert
+              type="error"
+              showIcon
+              message="离线地图加载失败"
+              description={offlineError ?? '未知错误'}
+              style={{
+                position: 'absolute',
+                top: 76,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 30,
+                maxWidth: 480,
+              }}
+            />
+          )}
           <MapToolbar />
 
           {/* 告警面板组（WB-PF-002 抽离）：常驻告警框 + 详情弹层，状态机见

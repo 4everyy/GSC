@@ -1,6 +1,15 @@
-import { addProtocol, type RequestTransformFunction, type StyleSpecification } from 'maplibre-gl'
+import { addProtocol, config, type RequestTransformFunction, type StyleSpecification } from 'maplibre-gl'
 import { useEffect, useMemo, useState } from 'react'
 import { type LngLat } from '../../map-engines/types'
+
+// maplibre-gl v6 将 Worker 拆为独立文件（maplibre-gl-worker.mjs + maplibre-gl-shared.mjs），
+// 主包运行时用 new URL('./maplibre-gl-worker.mjs', import.meta.url) 推导地址——该字符串
+// 拼接打包器无法静态分析：生产构建后主包位于 /assets/vendor-*.js，推导出的
+// /assets/maplibre-gl-worker.mjs 在 dist 中不存在 → Worker 404 → 地图 load 永不触发
+// → 离线地图空白。显式指定同源地址（由 vite gsc-maplibre-worker 插件保证两端可达：
+// dev 走 middleware、build 经 emitFile 落在 dist/maplibre/；nginx 需放行该前缀）。
+// 模块加载即设置，确保先于任何 new Map() 的 Worker 池初始化。
+config.WORKER_URL = '/maplibre/maplibre-gl-worker.mjs'
 
 /**
  * 离线地图特性 —— 公共出口（barrel）。
@@ -347,7 +356,12 @@ export class SqliteRangeReader {
   /** 计算 payload 本地字节数（SQLite 溢出公式） */
   private localLen(P: number, index: boolean): number {
     const U = this.usable
-    const X = index ? Math.floor(((U - 12) * 64) / 255) - 23 : U - 23
+    // 溢出阈值 X（SQLite fileformat2 §B-tree Pages）：
+    // - 索引页（含表内页）：X = ((U-12)*64/255)-23；
+    // - 表叶子页：X = U-35。此前误写 U-23（与 M 公式常数 23 混淆），
+    //   导致 payload 在 (U-35, U-23]（4096 页即 4062~4073B）窗口内的瓦片被
+    //   误判为「全部本地存储」，溢出页指针错位、读取内容损坏 → 瓦片解码失败。
+    const X = index ? Math.floor(((U - 12) * 64) / 255) - 23 : U - 35
     if (P <= X) return P
     const M = Math.floor(((U - 12) * 32) / 255) - 23
     const K = M + ((P - M) % (U - 4))

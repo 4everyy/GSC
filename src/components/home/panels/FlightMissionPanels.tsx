@@ -198,8 +198,9 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
                     )
                 })
               }
-              // 确认后启动循环模拟飞行：无人机先沿绿色直线（飞机中心 → 圆周最近点）切入，
-              // 再绕绿色盘旋圆无限盘旋；切入段约 120px/s，整圈时长按半径自适应（3~12s）。
+              // 确认后启动循环模拟飞行（与航点飞行「先到高度再平飞」同口径）：先垂直
+              // 爬升/下降到面板设定盘旋高度（20m/s，水平钉在起飞点），再沿绿色直线切入
+              // 盘旋圆，最后绕圆无限盘旋；切入段约 120px/s，整圈时长按半径自适应（3~12s）。
               // 几何与盘旋圆渲染完全同源（orbitRadius/mpp 换算），动画路径与绿色轨迹精确重合；
               // 面板保持展开，「取消」/重新取点/取消重绘可随时手动终止
               if (orbitPoint && adapter) {
@@ -210,16 +211,31 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
                   // 重投影圆心并按当前比例尺换算像素半径，与地理锚定的绿色盘旋圆/
                   // 中心图钉逐帧贴合（地图拖动/旋转/缩放后轨迹不漂移），飞机+底座
                   // 组合整体按运动方向旋转
-                  startOrbitFlight(
-                    {
+                  // 目标设备主键（首架选中设备，与上方指令下发 planeIds 同序取法）：
+                  // 动画起始高度按遥测实测 → mock rawPlanes 兜底取数（getState 一次性
+                  // 读取不引入订阅重渲染），并驱动地面标注去重与高度标注层跟随
+                  const rawPlanes = usePlaneStatusStore.getState().rawPlanes
+                  const planeId = [...selectedDevices]
+                    .sort((a, b) => a - b)
+                    .map((index) => rawPlanes[index]?.id)
+                    .filter((id): id is string => !!id)[0]
+                  startOrbitFlight({
+                    plane: {
                       x: stage.left + (aircraftPositions[idx].x / 100) * stage.width + 24,
                       y: stage.top + (aircraftPositions[idx].y / 100) * stage.height + 24,
                     },
-                    { x: orbitPoint.x, y: orbitPoint.y, lng: orbitPoint.lng, lat: orbitPoint.lat },
+                    center: {
+                      x: orbitPoint.x,
+                      y: orbitPoint.y,
+                      lng: orbitPoint.lng,
+                      lat: orbitPoint.lat,
+                    },
                     radius,
-                    aircraft[idx].src,
+                    icon: aircraft[idx].src,
                     adapter,
-                  )
+                    planeId,
+                    targetHeight: orbitSlide.height,
+                  })
                 }
               }
               // 确认成功：置灰「确认」按钮（防止重复下发环绕飞行指令）；面板关闭/重新取点时自动复位
