@@ -1,0 +1,415 @@
+/* ====== 编队任务面板 ====== */
+.mission-panel {
+  position: absolute;
+  top: 10.3%;
+  left: 33.1%;
+  z-index: 3;
+  width: clamp(170px, 17.66vw, 339px);
+  aspect-ratio: 339 / 263;
+  padding: clamp(12px, 1.5vw, 20px);
+  border: 2px solid rgba(175, 227, 240, 0.6);
+  background: linear-gradient(135deg, rgba(30, 163, 234, 0.35) 0%, rgba(30, 163, 234, 0.15) 100%);
+  box-shadow:
+    inset 0 0 20px rgba(135, 235, 255, 0.3),
+    0 0 20px rgba(135, 235, 255, 0.4),
+    0 0 40px rgba(30, 163, 234, 0.2);
+  backdrop-filter: blur(2px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.mission-routes {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: clamp(3px, 0.5vw, 8px);
+  overflow: hidden;
+}
+
+.mission-route {
+  position: relative;
+  flex: 1;
+  min-height: clamp(18px, 2.5vw, 36px);
+  border: clamp(2px, 0.25vw, 3px) solid currentColor;
+  border-radius: clamp(15px, 2vw, 30px);
+  background: transparent;
+  opacity: 0.85;
+  transition: all 0.3s ease;
+  overflow: visible;
+}
+
+.mission-route--selected {
+  opacity: 1;
+  box-shadow:
+    0 0 clamp(8px, 1vw, 16px) currentColor,
+    inset 0 0 clamp(4px, 0.5vw, 8px) rgba(76, 175, 80, 0.2);
+  filter: brightness(1.2);
+}
+
+.mission-route__dot {
+  position: absolute;
+  right: clamp(-2px, -0.3vw, -4px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: clamp(10px, 1.2vw, 18px);
+  height: clamp(10px, 1.2vw, 18px);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 clamp(6px, 0.8vw, 12px) currentColor;
+}
+
+.mission-aircraft-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(48px, 6vw, 96px);
+  height: clamp(48px, 6vw, 96px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%,
+    rgba(120, 200, 255, 0.95) 0%,
+    rgba(60, 140, 220, 0.98) 40%,
+    rgba(30, 100, 190, 1) 70%,
+    rgba(20, 80, 160, 1) 100%);
+  box-shadow:
+    0 0 clamp(16px, 2.5vw, 32px) rgba(60, 140, 220, 0.7),
+    0 0 clamp(32px, 4vw, 64px) rgba(60, 140, 220, 0.5),
+    inset 0 2px clamp(6px, 0.8vw, 12px) rgba(255, 255, 255, 0.5),
+    inset 0 -3px clamp(8px, 1vw, 16px) rgba(0, 0, 0, 0.25);
+  border: 2px solid rgba(180, 220, 255, 0.9);
+}
+
+.mission-aircraft-icon {
+  width: 50%;
+  height: 50%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+  transform: rotate(-90deg);
+}
+
+/**
+ * TakeoffPanel 样式 —— 面板内部分（参数区容器 / 飞机列表区容器）。
+ * tab 栏样式已抽取至 PanelTabs.css，高度步进器样式已抽取至 HeightStepper.css，
+ * 飞机列表行样式复用 AircraftListPanel.css（与降落面板同款），
+ * 外壳样式复用 PanelShell.css；「takeoff-panel」仅作页面级定位钩子（HomePage.css）。
+ */
+
+/* 参数区容器：宽度与 HeightStepper 行对齐（244px），纵向排布各行、行间隙统一 16；
+ * 下方留白由 flex 布局自动填充至底部按钮 */
+.takeoff-panel__params {
+  width: 244px;
+  margin: 16px 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 飞机列表区容器：占据 tab 栏与底部按钮之间剩余区域，
+ * 列表本体（滚动行）样式由 AircraftListPanel.css 提供 */
+.takeoff-panel__aircraft-list {
+  flex: 1;
+  min-height: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 无区块头（showSectionTitle=false）时，归零内部列表的顶部间距，避免与容器 margin 叠加过大 */
+.takeoff-panel__aircraft-list .aircraft-list-panel__list {
+  margin-top: 0;
+}
+
+/**
+ * ReturnHomePanel 样式 —— 返航面板内容部分（参数区容器 / 飞机列表占位）。
+ * tab 栏样式见 PanelTabs.css，高度步进行样式见 HeightStepper.css，
+ * 外壳样式复用 PanelShell.css；「.return-home-panel」仅作页面级定位钩子（HomePage.css）。
+ */
+
+/* 参数区容器：宽度与 HeightStepper 行对齐（244px），纵向排布各行、行间距统一 16；
+ * 下方留白由 flex 布局自动填充至底部按钮 */
+.return-home-panel__params {
+  width: 244px;
+  margin: 16px 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Aircraft list tab container: fills space between tab bar and bottom buttons,
+   same layout as takeoff panel list tab */
+.return-home-panel__aircraft-list {
+  flex: 1;
+  min-height: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* No section header (showSectionTitle=false): reset inner list top margin */
+.return-home-panel__aircraft-list .aircraft-list-panel__list {
+  margin-top: 0;
+}
+
+/**
+ * TapReturnPanel 样式 —— 指点返航面板内容区。
+ *
+ * 外壳样式复用 PanelShell.css（背景/切角/标题/底部三按钮），
+ * 高度步进行样式见 HeightStepper.css，
+ * 「.tap-return-panel」仅作页面级定位钩子（HomePage.css）。
+ */
+
+/* 区块头「参数设置」：渐变底，标题垂直居中（与起飞/降落面板 tab 头同规格） */
+.tap-return-panel__section {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  margin-top: 8px;
+  background-image: linear-gradient(
+    90deg,
+    rgba(85, 206, 222, 0.4) 0,
+    rgba(255, 255, 255, 0.2) 100%
+  );
+}
+
+.tap-return-panel__section-title {
+  display: block;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 14px;
+  white-space: nowrap;
+  padding: 0 0 0 16px;
+}
+
+/* 参数区容器：宽度与 HeightStepper 行对齐（244px），纵向排布各行、行间距统一 16 */
+.tap-return-panel__params {
+  width: 244px;
+  margin: 16px 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ============ 航点信息行：245×28，内容垂直居中，间距由容器 gap 统一 ============ */
+.tap-return-panel__waypoint {
+  display: flex;
+  align-items: center;
+  width: 245px;
+  height: 28px;
+}
+
+/* 标签「航点信息」：56px 宽，随行垂直居中 */
+.tap-return-panel__waypoint-label {
+  width: 56px;
+  font-size: 14px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* 坐标输入框：56×28，切图底（半透明渐变框，本地 assets），文字垂直居中（line-height=28） */
+.tap-return-panel__waypoint-input {
+  width: 56px;
+  height: 28px;
+  margin-left: 16px;
+  padding: 0 0 0 4px;
+  box-sizing: border-box;
+  border: none;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 28px;
+  background: url('../../assets/images/home/waypoint-input-bg.png') 100% no-repeat;
+  background-size: 100% 100%;
+}
+
+/* 第二个输入框（经度）：m-left 11 */
+.tap-return-panel__waypoint-input
+  + .tap-return-panel__waypoint-unit
+  + .tap-return-panel__waypoint-input {
+  margin-left: 11px;
+}
+
+.tap-return-panel__waypoint-input:focus {
+  outline: none;
+}
+
+/* 单位 N°/E°：m-left 4，随行垂直居中 */
+.tap-return-panel__waypoint-unit {
+  margin: 0 0 0 4px;
+  font-size: 14px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* 第二个单位 E°：m-left 15 */
+.tap-return-panel__waypoint-unit:last-child {
+  margin-left: 15px;
+}
+
+/* 高度步进行已随 HeightStepper 公共样式整体垂直居中，无需面板级覆盖 */
+
+/**
+ * RallyPointPanel 样式 —— 集结点面板内容部分（参数区容器）。
+ * tab 栏样式见 PanelTabs.css，高度/速度步进行样式见 HeightStepper.css，
+ * 集结队形下拉选择行复用公共 FormationSelect 组件（样式见 FormationSelect.css），
+ * 飞机列表区块样式见 AircraftListPanel.css（复用 AircraftListSection），
+ * 外壳样式复用 PanelShell.css；「.rally-point-panel」仅作页面级定位钩子（HomePage.css）。
+ */
+
+/* 参数区容器：宽度与 HeightStepper 行对齐（244px），纵向排布高度/速度步进与队形选择行 */
+.rally-point-panel__params {
+  width: 244px;
+  margin: 16px 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/**
+ * FormationFlightPanel 样式 —— 编队飞行面板（薄包装组件，无面板私有样式）。
+ *
+ * 面板结构复用 TapReturnPanel（参数设置区块头 + 飞行高度步进 + 编队队形下拉 + 航点信息 + 三按钮）：
+ * - 外壳样式见 PanelShell.css；
+ * - 高度步进行样式见 HeightStepper.css；
+ * - 编队队形下拉选择行复用公共 FormationSelect 组件（样式见 FormationSelect.css）；
+ * - 航点信息行样式复用 TapReturnPanel.css；
+ * 「.formation-flight-panel」仅作页面级定位钩子（HomePage.css）。
+ */
+
+/**
+ * RouteFlightPanel 样式 —— 航线飞行面板「航线信息」区。
+ *
+ * 外壳/区块头/高度步进/按钮均复用（PanelShell.css、HeightStepper.css、TapReturnPanel.css），
+ * 本文件仅定义飞行高度下方的蓝色分割线 + 「航线信息」标题行 + 逐航点行。
+ * 航点行采用紧凑布局（统一 4px 间距 + 缩小序号圆/坐标框），确保全部元素
+ * 一行放下且不出现横向滚动条（列表 overflow-x 兜底隐藏）。
+ */
+
+/* 航线信息区容器：纵向排布（分割线 / 标题 / 逐航点行） */
+.route-flight-panel__routes {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* 航点列表：面板外壳固定 260×469 不可滚，航点行多时列表内仍可滚轮滚动，
+   但完全隐藏滚动条（视觉更干净），overflow-x hidden 防止行内容超宽时出现横向滚动条 */
+.route-flight-panel__waypoint-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* 隐藏滚动条但保留滚动：Firefox */
+  scrollbar-width: none;
+  /* 隐藏滚动条但保留滚动：旧 Edge/IE */
+  -ms-overflow-style: none;
+}
+
+/* 隐藏滚动条但保留滚动：Chromium/WebKit（display:none 后滚轮/触摸/拖拽滚动均不受影响） */
+.route-flight-panel__waypoint-list::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* 蓝色分割线：飞行高度步进行与航线信息区之间 */
+.route-flight-panel__divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(85, 206, 222, 1) 0%, rgba(85, 206, 222, 0) 100%);
+}
+
+/* 标题行「航线信息」 */
+.route-flight-panel__routes-title {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* 航点行：内容垂直居中，元素间统一 6px 间距（gap 替代逐元素 margin），
+   总宽不超面板内容区 245px，overflow hidden 兜底防溢出 */
+.route-flight-panel__waypoint-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  width: 100%;
+  max-width: 245px;
+  height: 28px;
+  margin-top: 14px;
+  overflow: hidden;
+}
+
+/* 标签「航点」：自适应宽（两个 14px 中文字符），不收缩 */
+.route-flight-panel__waypoint-label {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* 序号圆：20×20 白描边半透明圆，序号 12px 居中 */
+.route-flight-panel__waypoint-index {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 1);
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 1);
+  font-size: 12px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 12px;
+}
+
+/* 坐标框：56×26 切图底（同航点信息坐标框），文字 13px 垂直居中（只读展示） */
+.route-flight-panel__waypoint-coord {
+  flex-shrink: 0;
+  width: 56px;
+  height: 26px;
+  box-sizing: border-box;
+  padding-left: 3px;
+  color: rgba(255, 255, 255, 1);
+  font-size: 13px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 26px;
+  white-space: nowrap;
+  background: url('../../assets/images/home/waypoint-input-bg.png') 100% no-repeat;
+  background-size: 100% 100%;
+}
+
+/* 单位 N°/E°：白色 13px（紧凑版），不收缩 */
+.route-flight-panel__waypoint-unit {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 1);
+  font-size: 13px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 13px;
+  white-space: nowrap;
+}

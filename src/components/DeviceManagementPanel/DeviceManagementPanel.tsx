@@ -1,11 +1,6 @@
-﻿import { useState, useRef, useLayoutEffect, useCallback } from 'react'
-import { useDeviceLinkStore } from '../../stores/deviceLinkStore'
-import {
-  deviceList,
-  getBatteryIcon,
-  getStatusColor,
-  type DeviceTelemetry,
-} from '../../config/devices'
+import { useState, useRef, useLayoutEffect, useCallback } from 'react'
+import { useDeviceLinkStore, usePlaneStatusStore } from '../../stores/index'
+import { getBatteryIcon, getStatusColor, type DeviceTelemetry } from '../../config/index'
 import { deviceImages } from '../../assets/images/device'
 import { homeImages } from '../../assets/images/home'
 import { AircraftFocusPanel } from '../AircraftFocusPanel/AircraftFocusPanel'
@@ -17,8 +12,13 @@ interface DeviceManagementPanelProps {
 }
 
 // 筛选选项配置
-const STATUS_OPTIONS = ['任务中', '待命', '离线'] as const
+/** 状态筛选选项：与 queryPlaneStatus 状态文本一一对应（执行中/待命/离线/在线） */
+const STATUS_OPTIONS = ['执行中', '待命', '离线', '在线'] as const
 const TYPE_OPTIONS = ['无人机', '无人车', '无人船', '机器狗'] as const
+/** 类型文本 → typeId 码（联调口径：1-无人机；其余类型后端暂未定义，选中时列表为空） */
+const TYPE_ID_BY_LABEL: Record<string, string> = {
+  无人机: '1',
+}
 
 // 左列参数配置（3 行）
 const TELEMETRY_COL_LEFT: { label: string; key: keyof DeviceTelemetry }[] = [
@@ -49,9 +49,9 @@ const TELEMETRY_COL_RIGHT_2: { label: string; key: keyof DeviceTelemetry }[] = [
 ]
 
 export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagementPanelProps) {
-  // 设备列表：暂用本地 mock（config/devices.ts deviceList）。HTTP /control/queryPlaneStatus
-  // 请求与 WebSocket 通道仍保留在 App 层（usePlaneStatusPolling / features/realtime），
-  // 后续需要接回实时数据时改订阅 usePlaneStatusStore 即可
+  // 设备列表：订阅 planeStatusStore（数据全部来自 queryPlaneStatus 接口：
+  // MainApp 的 usePlaneStatusInit 在首页加载时请求并整体写入；初始为空列表）。
+  const deviceList = usePlaneStatusStore((s) => s.devices)
   // 选中/hover 状态迁移至全局 store，与首页飞机图标联动
   const selectedDevices = useDeviceLinkStore((s) => s.selectedDevices)
   const hoveredIndex = useDeviceLinkStore((s) => s.hoveredDevice)
@@ -177,8 +177,11 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
   const filteredDevices = deviceList
     .map((device, index) => ({ device, index }))
     .filter(({ device }) => {
-      // 类型筛选：当前 mock 数据均为无人机，选择其他类型时结果为空
-      if (typeFilter !== '请选择' && typeFilter !== '无人机') return false
+      // 类型筛选：按接口 typeId 匹配（1-无人机；其余类型后端暂未定义，选中时结果为空）
+      if (typeFilter !== '请选择') {
+        const expectId = TYPE_ID_BY_LABEL[typeFilter]
+        if (expectId === undefined || device.typeId !== expectId) return false
+      }
       // 状态筛选：按设备状态文字精确匹配
       if (statusFilter !== '请选择' && device.statusText !== statusFilter) return false
       return true
@@ -431,6 +434,8 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                   >
                     <img className="device-row__bg" src={bgImage} alt="" draggable={false} />
 
+                    {/* 行首组：复选框 + 设备图标 + 设备名称（组内固定 8px 间距） */}
+                    <div className="device-row__lead">
                     {/* 勾选框 */}
                     <div
                       className={`device-row__checkbox${isSelected ? ' device-row__checkbox--checked' : ''}`}
@@ -468,6 +473,7 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                     <span className="device-row__name" title={device.name}>
                       {device.name}
                     </span>
+                    </div>
 
                     {/* 状态文字 */}
                     <span className="device-row__status">
@@ -490,6 +496,8 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                       <span className="device-row__metric-value">{device.batteryValue}</span>
                     </div>
 
+                    {/* 尾部组：信号图标（打开云台）+ 展开箭头（查看详情），组内固定 8px 间距 */}
+                    <div className="device-row__tail">
                     {/* 信号图标：点击显示该无人机的聚焦视图面板 */}
                     <img
                       className="device-row__signal device-row__signal--clickable"
@@ -523,6 +531,7 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                     >
                       <img src={isExpanded ? deviceImages.upArrow : deviceImages.downArrow} alt="" />
                     </button>
+                    </div>
                   </div>
 
                   {/* 行详情 */}
@@ -664,7 +673,7 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
         </div>
       </div>
       {/* 聚焦视图面板：位于设备管理面板右侧、间距 8px（定位见 CSS） */}
-      {focusIndex !== null && (
+      {focusIndex !== null && deviceList[focusIndex] && (
         <AircraftFocusPanel
           name={deviceList[focusIndex].name}
           batteryLevel={Number(deviceList[focusIndex].batteryValue.replace(/[^\d.]/g, '')) || 0}

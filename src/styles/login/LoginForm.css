@@ -1,0 +1,340 @@
+/*
+ * LoginForm.css —— 表单（输入框 / 记住密码 / 错误提示 / 提交按钮 / 加载与成功过渡）
+ * 自 LoginPage partN 机械拆分文件按功能归组：规则内容未改动，仅调整文件归属。
+ */
+
+.login-form {
+  display: grid;
+  gap: 16px;
+}
+
+.login-stagger {
+  opacity: 0;
+  animation: login-stagger-in 0.55s ease both;
+  animation-delay: var(--stagger-delay, 0s);
+}
+
+.login-stagger--1 { --stagger-delay: 0.15s; }
+
+.login-stagger--2 { --stagger-delay: 0.28s; }
+
+.login-stagger--3 { --stagger-delay: 0.4s; }
+
+.login-stagger--4 { --stagger-delay: 0.52s; }
+
+.login-stagger--5 { --stagger-delay: 0.64s; }
+
+@keyframes login-stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(6, 22, 40, 0.65);
+  border: 1px solid rgba(135, 235, 255, 0.22);
+  border-radius: 4px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.25s ease,
+    background-color 0.2s ease;
+}
+
+.login-field::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, transparent, #6fe3ff, transparent);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+  pointer-events: none;
+}
+
+.login-field:focus-within::after {
+  transform: scaleX(1);
+}
+
+.login-field:hover {
+  border-color: rgba(135, 235, 255, 0.4);
+}
+
+.login-field:focus-within {
+  border-color: rgba(135, 235, 255, 0.85);
+  background: rgba(9, 32, 56, 0.8);
+  box-shadow:
+    0 0 0 1px rgba(135, 235, 255, 0.35),
+    0 0 18px rgba(135, 235, 255, 0.18),
+    inset 0 0 14px rgba(135, 235, 255, 0.06);
+}
+
+.login-field:focus-within .login-field__icon {
+  color: #87ebff;
+  filter: drop-shadow(0 0 6px rgba(135, 235, 255, 0.8));
+}
+
+.login-eye {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-right: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(135, 235, 255, 0.6);
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.login-eye svg {
+  width: 18px;
+  height: 18px;
+}
+
+.login-eye:hover {
+  color: #87ebff;
+  transform: scale(1.1);
+}
+
+.login-eye:disabled {
+  cursor: default;
+  opacity: 0.5;
+  transform: none;
+}
+
+.login-options {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  margin-top: -2px;
+}
+
+.login-remember {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: clamp(12px, 0.9vw, 13.5px);
+  color: #bfeaff;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.login-remember input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.login-checkbox {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid rgba(135, 235, 255, 0.45);
+  border-radius: 3px;
+  background: rgba(6, 22, 40, 0.7);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.2s ease,
+    background-color 0.18s ease;
+}
+
+.login-checkbox svg {
+  width: 11px;
+  height: 11px;
+  color: #061828;
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 0.16s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.login-remember:hover .login-checkbox {
+  border-color: rgba(135, 235, 255, 0.8);
+}
+
+.login-remember input:checked + .login-checkbox {
+  background: #87ebff;
+  border-color: #87ebff;
+  box-shadow:
+    0 0 10px rgba(135, 235, 255, 0.55),
+    inset 0 0 4px rgba(255, 255, 255, 0.4);
+}
+
+.login-remember input:checked + .login-checkbox svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.login-remember input:focus-visible + .login-checkbox {
+  outline: 2px solid rgba(135, 235, 255, 0.6);
+  outline-offset: 2px;
+}
+
+.login-remember:has(input:disabled) {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.login-error {
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 120, 110, 0.45);
+  border-left: 3px solid #ff786e;
+  border-radius: 3px;
+  background: rgba(90, 20, 18, 0.35);
+  color: #ffd9d5;
+  font-size: clamp(12px, 0.85vw, 13px);
+  line-height: 1.5;
+  animation: login-shake 0.4s ease;
+}
+
+@keyframes login-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-7px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+.login-submit {
+  position: relative;
+  overflow: hidden;
+  margin-top: 4px;
+  display: grid;
+  place-items: center;
+  min-height: 46px;
+  padding: 13px 0;
+  border: 0;
+  border-radius: 4px;
+  font-family: 'MiSans-Medium';
+  font-size: clamp(14px, 1.05vw, 16px);
+  letter-spacing: 0.5em;
+  text-indent: 0.5em; /* 抵消末字间距 */
+  color: #062033;
+  background: linear-gradient(135deg, #6fe3ff 0%, #38b6ff 55%, #2ee6c5 100%);
+  background-size: 200% 100%;
+  cursor: pointer;
+  box-shadow:
+    0 6px 22px rgba(56, 182, 255, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.25s ease,
+    filter 0.2s ease,
+    background-position 0.5s ease;
+}
+
+.login-submit::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: translateX(-140%) skewX(-20deg);
+  animation: login-btn-shine 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* 性能：流光用 transform 平移替代 left 动画，避免逐帧重排 */
+@keyframes login-btn-shine {
+  0%,
+  55% {
+    transform: translateX(-140%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(290%) skewX(-20deg);
+  }
+}
+
+.login-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  background-position: 100% 0;
+  box-shadow:
+    0 10px 30px rgba(56, 182, 255, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.login-submit:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+  filter: brightness(0.96);
+}
+
+.login-submit:disabled {
+  cursor: default;
+  filter: saturate(0.85);
+}
+
+.login-submit:focus-visible {
+  outline: 2px solid rgba(135, 235, 255, 0.8);
+  outline-offset: 3px;
+}
+
+.login-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid rgba(6, 32, 51, 0.3);
+  border-top-color: #062033;
+  border-radius: 50%;
+  animation: login-spin 0.7s linear infinite;
+}
+
+@keyframes login-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.login-success-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 20, 38, 0.88);
+  backdrop-filter: blur(6px);
+  border-radius: 9px;
+  animation: login-overlay-in 0.3s ease both;
+}
+
+@keyframes login-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+

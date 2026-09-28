@@ -17,6 +17,24 @@ export interface LngLat {
   lat: number
 }
 
+/** 经纬度包围盒（WGS84，fitBounds 输入） */
+export interface LngLatBounds {
+  west: number
+  south: number
+  east: number
+  north: number
+}
+
+/** fitBounds（飞转适配包围盒）选项 */
+export interface FitBoundsOptions {
+  /** 视口边距（px）：包围盒与容器各边的安全距离，用于避开悬浮面板遮挡 */
+  padding?: { top?: number; bottom?: number; left?: number; right?: number }
+  /** 最大缩放级别（防止小区域被过度放大） */
+  maxZoom?: number
+  /** 动画时长（ms） */
+  duration?: number
+}
+
 /**
  * 引擎无关的底图样式描述。
  *
@@ -147,6 +165,13 @@ export interface MapAdapter {
   panTo(lngLat: LngLat): void
   /** 平滑飞到目标点（用于切换城市时定位；动画由引擎实现） */
   flyTo(lngLat: LngLat, options?: { zoom?: number; duration?: number }): void
+
+  /**
+   * 平滑飞转以完整容纳包围盒：视图中心/缩放自适应（区域聚焦等场景）。
+   * 换算数学由引擎原生保证（避免上层手算米/像素口径偏差）；
+   * padding 避开悬浮面板，maxZoom 防止小区域过度放大。
+   */
+  fitBounds(bounds: LngLatBounds, options?: FitBoundsOptions): void
 
   // ============ 坐标换算（供比例尺等使用） ============
   /**

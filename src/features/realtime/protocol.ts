@@ -1,3 +1,5 @@
+
+
 /**
  * WebSocket 通信协议类型定义 —— 与后端约定的唯一契约（Single Source of Truth）。
  *
@@ -341,4 +343,510 @@ export function isServerMessage(value: unknown): value is ServerMessage {
     v.payload !== null &&
     typeof v.ts === 'number'
   )
+}
+
+/**
+ * WebSocket 通信日志 —— 应用层持久化留存（刷新不丢失）。
+ *
+ * 动机：浏览器 DevTools 的 Network 面板刷新后清空、Console 默认不保留，
+ * 联调排障时历史帧难以追溯。本模块在应用层记录全部 WS 收发帧与连接事件：
+ *
+ * 1. 内存环形缓冲（默认 1000 条）+ localStorage 持久化（默认 300 条），
+ *    页面刷新后自动从 localStorage 恢复，可跨会话追溯；
+ * 2. 控制台镜像（[ws-log] 前缀）：低频消息与连接事件全量打印，
+ *    telemetry/heartbeat 高频帧默认静默（避免刷屏，可用 __wsLog.setVerbose(true) 打开）；
+ * 3. 一键导出 JSON 文件，便于离线分析或发给后端对日志。
+ *
+ * 浏览器控制台调试入口：
+ *   __wsLog.list()            // 读取已留存日志（WsLogEntry[]）
+ *   __wsLog.export()          // 下载 ws-log-<时间戳>.json
+ *   __wsLog.clear()           // 清空留存日志（内存 + localStorage）
+ *   __wsLog.setVerbose(true)  // 控制台打印全部帧（含遥测/心跳）
+ *
+ * ⚠️ 仅用于排障：日志不含鉴权信息（协议本身也无鉴权字段），生产环境可保留。
+ */
+
+export type WsLogDirection = 'up' | 'down' | 'event'
+
+export interface WsLogEntry {
+  /** 进程内单调递增序号（跨会话接续） */
+  seq: number
+  /** Unix 毫秒时间戳 */
+  ts: number
+  /** up=上行（前端→后端） down=下行（后端→前端） event=连接生命周期事件 */
+  dir: WsLogDirection
+  /** 消息 type（telemetry/command/...）或事件名（open/close/reconnect-scheduled/...） */
+  kind: string
+  /** 摘要：payload 的 JSON 串（截断）+ reqId/seq 标记，或事件描述 */
+  detail?: string
+}
+
+// ==================== 可调参数 ====================
+
+/** 内存环形缓冲上限（条） */
+const MEMORY_LIMIT = 1000
+
+/** localStorage 持久化上限（条）：刷新后恢复的历史长度 */
+const STORAGE_LIMIT = 300
+
+/** 落盘防抖间隔（毫秒）：高频帧下避免每帧写 localStorage */
+const FLUSH_INTERVAL_MS = 2_000
+
+/** 单条 detail 最大字符数：超出截断，防止遥测帧撑爆存储配额 */
+const DETAIL_MAX_CHARS = 800
+
+/** 控制台镜像默认静默的高频消息类型（仍写入留存日志） */
+const QUIET_KINDS = new Set(['telemetry', 'heartbeat'])
+
+const STORAGE_KEY = 'gsc:ws-log:v1'
+const VERBOSE_KEY = 'gsc:ws-log-verbose'
+
+// ==================== 内部状态与工具 ====================
+
+let buffer: WsLogEntry[] = []
+let seq = 0
+let flushTimer: number | null = null
+
+function safeStringify(value: unknown): string {
+  try {
+    const s = JSON.stringify(value)
+    return s === undefined ? String(value) : s
+  } catch {
+    return String(value)
+  }
+}
+
+function truncate(text: string): string {
+  return text.length > DETAIL_MAX_CHARS ? `${text.slice(0, DETAIL_MAX_CHARS)}…(已截断)` : text
+}
+
+function isVerbose(): boolean {
+  try {
+    return localStorage.getItem(VERBOSE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** 追加一条日志：进内存环形缓冲 + 调度落盘 */
+function push(entry: Omit<WsLogEntry, 'seq'>): void {
+  seq += 1
+  buffer.push({ ...entry, seq })
+  if (buffer.length > MEMORY_LIMIT) buffer = buffer.slice(-MEMORY_LIMIT)
+  scheduleFlush()
+}
+
+/** 落盘防抖：间隔内多条合并为一次写入 */
+function scheduleFlush(): void {
+  if (flushTimer !== null) return
+  flushTimer = window.setTimeout(() => {
+    flushTimer = null
+    persist()
+  }, FLUSH_INTERVAL_MS)
+}
+
+/** 将最近 STORAGE_LIMIT 条写入 localStorage（配额不足时降级减半重试） */
+function persist(): void {
+  if (flushTimer !== null) {
+    window.clearTimeout(flushTimer)
+    flushTimer = null
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(buffer.slice(-STORAGE_LIMIT)))
+  } catch {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(buffer.slice(-Math.floor(STORAGE_LIMIT / 2))))
+    } catch {
+      console.warn('[ws-log] 日志持久化失败（localStorage 不可用或配额已满），仅保留内存日志')
+    }
+  }
+}
+
+/** 模块加载时从 localStorage 恢复上一会话日志（跨刷新留存的关键） */
+function loadFromStorage(): void {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw) as WsLogEntry[]
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      buffer = parsed
+      seq = parsed.reduce((max, e) => Math.max(max, e.seq), 0)
+    }
+  } catch {
+    /* 存储损坏则从空日志开始 */
+  }
+}
+
+/** 控制台镜像：高频帧默认静默，其余以 [ws-log] 前缀打印 */
+function mirror(dir: WsLogDirection, kind: string, detail?: string): void {
+  if (!isVerbose() && dir === 'up' && QUIET_KINDS.has(kind)) return
+  const arrow = dir === 'up' ? '↑' : dir === 'down' ? '↓' : '·'
+  console.info(`[ws-log] ${arrow} ${kind}${detail ? ` ${detail}` : ''}`)
+}
+
+// ==================== 对外 API ====================
+
+/** 记录一条收发消息（信封级：type + reqId/seq 标记 + payload 摘要） */
+export function logWsMessage(dir: 'up' | 'down', msg: unknown): void {
+  if (typeof msg !== 'object' || msg === null) return
+  const m = msg as { type?: unknown; payload?: unknown; reqId?: unknown; seq?: unknown }
+  const kind = typeof m.type === 'string' ? m.type : 'unknown'
+  const marks: string[] = []
+  if (typeof m.reqId === 'string') marks.push(`reqId=${m.reqId}`)
+  if (typeof m.seq === 'number') marks.push(`seq=${m.seq}`)
+  const body = m.payload === undefined ? '' : truncate(safeStringify(m.payload))
+  const detail = [marks.join(' '), body].filter(Boolean).join(' ')
+  push({ ts: Date.now(), dir, kind, detail: detail || undefined })
+  mirror(dir, kind, detail)
+}
+
+/** 记录一条连接生命周期事件（connecting/open/close/reconnect-scheduled/dropped/...） */
+export function logWsEvent(kind: string, detail?: unknown): void {
+  const text =
+    detail === undefined ? undefined : typeof detail === 'string' ? detail : truncate(safeStringify(detail))
+  push({ ts: Date.now(), dir: 'event', kind, detail: text })
+  mirror('event', kind, text)
+}
+
+/** 读取已留存日志（内存缓冲的拷贝，最新在末尾） */
+export function getWsLog(): WsLogEntry[] {
+  return [...buffer]
+}
+
+/** 清空留存日志（内存 + localStorage） */
+export function clearWsLog(): void {
+  if (flushTimer !== null) {
+    window.clearTimeout(flushTimer)
+    flushTimer = null
+  }
+  buffer = []
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    /* ignore */
+  }
+  console.info('[ws-log] 已清空留存日志')
+}
+
+/** 设置控制台详细模式：true=打印全部帧（含遥测/心跳）；留存日志不受影响 */
+export function setWsLogVerbose(on: boolean): void {
+  try {
+    localStorage.setItem(VERBOSE_KEY, on ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+  console.info(
+    `[ws-log] 详细模式已${on ? '开启' : '关闭'}（遥测/心跳帧将${on ? '' : '不再'}打印到控制台，留存日志不受影响）`,
+  )
+}
+
+/** 导出留存日志为 JSON 文件（含导出时间与条数元信息），便于发给后端对日志 */
+export function exportWsLog(): void {
+  persist()
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    entryCount: buffer.length,
+    entries: [...buffer],
+  }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `ws-log-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  console.info(`[ws-log] 已导出 ${buffer.length} 条日志`)
+}
+
+// ==================== 控制台调试入口：window.__wsLog ====================
+
+declare global {
+  interface Window {
+    __wsLog?: {
+      list: typeof getWsLog
+      export: typeof exportWsLog
+      clear: typeof clearWsLog
+      setVerbose: typeof setWsLogVerbose
+    }
+  }
+}
+
+if (typeof window !== 'undefined') {
+  loadFromStorage()
+  window.__wsLog = {
+    list: getWsLog,
+    export: exportWsLog,
+    clear: clearWsLog,
+    setVerbose: setWsLogVerbose,
+  }
+  // 卸载/切后台立即落盘，避免防抖间隔内的最后几条丢失
+  window.addEventListener('beforeunload', persist)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') persist()
+  })
+}
+
+/**
+ * 真实后端协议适配层（2026-09-11 按新版订阅协议联调更新）。
+ *
+ * 实测（2026-09-11）：连接 ws://<host>:8080/ws 后发送 JSON 订阅帧（见 buildSubscribeFrame），
+ * 后端回 ack；有飞机在线时以 1Hz 推送遥测，信封为
+ * { action, req_id, code, msg, data } 或 { type, topic, data }（与 protocol.ts 约定的 type/payload 信封不同）。
+ * 本模块将真实信封映射为内部 ServerMessage，store/组件层无感知。
+ */
+
+/** 真实后端下行信封 */
+export interface BackendMessage<T = unknown> {
+  /** 新版订阅协议：操作类型（sub=订阅上行 / ack=订阅确认 / pub=推送） */
+  op?: string
+  /** 新版订阅协议：频道（cmd/task/device/telemetry/alert） */
+  ch?: string
+  /** 旧版信封：消息类型（如 plane.swarmState） */
+  action?: string
+  /** 新版信封：publish / ack / error */
+  type?: string
+  /** 新版信封：订阅主题（如 plane.swarmState） */
+  topic?: string
+  /** 请求关联 ID（推送型消息为空串） */
+  req_id?: string
+  /** 业务状态码（0 = ok） */
+  code?: number
+  /** 状态描述 */
+  msg?: string
+  /** 消息体 */
+  data?: T
+}
+
+/** 蜂群状态遥测原始字段（后端命名；time 为字符串，布尔字段新旧版本类型不一，解析层兼容处理） */
+export interface SwarmStatePayload {
+  planeId: string
+  /** 业务模式（起飞/航线/航点/侦察等）；99 = 飞机离线，除 planeId/model 外字段无效 */
+  model: number
+  /** 任务/空闲状态 */
+  status: number
+  latitude: number
+  longitude: number
+  /** 海拔（米） */
+  altitude: number
+  /** 相对起飞点高度（米） */
+  height: number
+  voltage: number
+  velocityEast: number
+  velocityNorth: number
+  velocityDown: number
+  initLongitude: number
+  initLatitude: number
+  initAltitude: number
+  /** 起飞点相对高度 */
+  initHeight: number
+  disToHome: number
+  anglePitch: number
+  angleYaw: number
+  angleRoll: number
+  usedGPS: number
+  /** 字符串型 Unix 毫秒时间戳 */
+  time: string
+  mode: number
+  modeStr: string
+  cameraAnglePitch: number
+  cameraAngleYaw: number
+  cameraAngleRoll: number
+  /** 布尔（新版为真布尔，兼容旧版字符串） */
+  formationStatus: boolean
+  /** 布尔（新版为真布尔，兼容旧版字符串） */
+  inAir: boolean
+}
+
+/** 后端推送 topic：连接后需发送 subscribe 订阅帧才能收到数据 */
+export const TOPIC_SWARM_STATE = 'plane.swarmState'
+
+/** 订阅频道：连接后需按频道逐一发送 {"op":"sub","ch":"<频道>"} 订阅帧 */
+export const SUBSCRIBE_CHANNELS = ['cmd', 'task', 'device', 'telemetry', 'alert'] as const
+
+/**
+ * 连接建立后的订阅帧：{"op":"sub","ch":"<频道>"}。
+ * 旧版 {"type":"subscribe","topic":...} 与纯文本握手均已废弃（2026-09-18）。
+ */
+export function buildSubscribeFrame(channel: string): string {
+  return JSON.stringify({ op: 'sub', ch: channel })
+}
+
+/** 运行时校验：是否为真实后端信封（新版按 op/ch、旧版按 action/topic 识别）。
+ *  后端实测（2026-09-24）推送帧可无 op：{ch, seq, ts, data}——ch 存在即认定为
+ *  新版频道帧（op 缺省按 pub 处理，见 mapBackendMessage），避免推送帧被误判丢弃。 */
+export function isBackendMessage(value: unknown): value is BackendMessage {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  return (
+    typeof v.ch === 'string' ||
+    typeof v.action === 'string' ||
+    typeof v.topic === 'string'
+  )
+}
+
+/** 宽松取数：字段缺失/非数值时回退默认值，保证坏帧不抛异常 */
+function num(v: unknown, fallback = 0): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : fallback
+}
+
+/** 宽松布尔：兼容新版 true 与旧版字符串 'true' */
+function bool(v: unknown): boolean {
+  return v === true || v === 'true'
+}
+
+/**
+ * 将真实后端消息映射为内部消息数组（一条后端消息可映射为多条内部消息）。
+ * 新版 op/ch 五频道：pub 推送按 ch 分发（telemetry/device/cmd/alert/task）。
+ * 旧版 plane.swarmState → telemetry（遥测）+ deviceStatus（在线/任务状态）。
+ * 未知频道/action 返回空数组（静默忽略，协议向前兼容）。
+ */
+export function mapBackendMessage(msg: BackendMessage): ServerMessage[] {
+  // data 可能为单帧或帧数组（新版批量推送），统一按数组展开
+  const items: unknown[] = Array.isArray(msg.data) ? msg.data : [msg.data]
+
+  // 新版订阅协议信封（2026-09-18）：{"op":"pub","ch":"<频道>"} 推送。
+  // 后端实测（2026-09-24）推送帧可省略 op（{ch:"device",seq,ts,data}）——
+  // op 缺省按 pub 处理；op 显式存在且非 pub（sub/ack 等）才跳过
+  //（订阅确认已在 wsClient.dispatch 记录日志）
+  if (typeof msg.ch === 'string') {
+    if (msg.op !== undefined && msg.op !== 'pub') return []
+    switch (msg.ch) {
+      case 'telemetry':
+      case 'device':
+        // 遥测与设备状态共用 swarmState 载荷（model=99 → 离线 deviceStatus）
+        return items.flatMap((item) => mapSwarmStateItem(item))
+      case 'cmd':
+        return items.flatMap((item) => mapCmdAckItem(item))
+      case 'alert':
+        return items.flatMap((item) => mapAlarmItem(item))
+      case 'task':
+        // 任务状态/进度暂无内部消息类型（任务列表走 REST 拉取），记录后忽略
+        console.info('[ws] 收到 task 频道推送（暂未消费）：', msg.data)
+        return []
+      default:
+        return []
+    }
+  }
+
+  // 旧版双兼容：{ action: 'plane.swarmState' } 与 { type: 'publish', topic: 'plane.swarmState' }
+  if (msg.action !== TOPIC_SWARM_STATE && msg.topic !== TOPIC_SWARM_STATE) return []
+  return items.flatMap((item) => mapSwarmStateItem(item))
+}
+
+/** cmd 频道回执帧 → 内部 cmdAck（reqId/result 宽松解析）。
+ *  reqId 缺省时合成 unknown-<ts> 而非丢弃：REST podControl（起飞等）不携带 reqId，
+ *  后端 cmd 频道回执可能无 reqId——保留消息流可观测性（store 按 reqId 匹配不到
+ *  pending 指令时自动忽略，不影响既有回执跟踪语义）。 */
+function mapCmdAckItem(data: unknown): ServerMessage[] {
+  const d = (data ?? {}) as Record<string, unknown>
+  const rawId = d.reqId ?? d.req_id
+  const reqId = typeof rawId === 'string' && rawId ? rawId : `unknown-${Date.now()}`
+  const rawResult = String(d.result ?? d.status ?? 'accepted')
+  const result: CommandResult =
+    rawResult === 'rejected' || rawResult === 'failed' ? (rawResult as CommandResult) : 'accepted'
+  const ack: CmdAckPayload = { reqId, result }
+  if (typeof d.reason === 'string' && d.reason) ack.reason = d.reason
+  return [{ type: 'cmdAck', payload: ack, ts: Date.now() }]
+}
+
+/**
+ * alert 频道帧 → 内部 alarm（alarmId 缺失丢弃；级别未知归蓝）。
+ *
+ * 真实后端报文（alert 频道 pub 推送）：
+ * {"equipId":"1","id":"9ee4ff8c4a061c61","isRead":"0","level":2,"msg":"1飞入禁飞区",
+ *  "round":1,"time":"2026:09:24 15:01:08","title":"禁飞区告警","ts":1790233268418,
+ *  "type":"0","typeName":"plane"}
+ *
+ * 字段映射：id→alarmId；level 数字枚举 1紧急→red / 2警告→orange / 3提示→blue
+ * （同时兼容字符串 'red'/'orange'/'blue' 旧格式）；msg→detail；isRead("0"未读/"1"已读)
+ * →acknowledged；equipId→deviceId（用于面板设备名展示）；ts→occurredAt（缺省回退解析
+ * time 字符串，其日期分隔符为冒号需归一化后再 Date.parse，再缺省取到达时刻）。
+ */
+function mapAlarmItem(data: unknown): ServerMessage[] {
+  const d = (data ?? {}) as Record<string, unknown>
+  const alarmId =
+    typeof d.id === 'string' && d.id
+      ? d.id
+      : typeof d.alarmId === 'string'
+        ? d.alarmId
+        : String(d.id ?? d.alarmId ?? '')
+  if (!alarmId) return []
+  // 告警级别归一：数字 1/2/3 → red/orange/blue；字符串色值直通；未知归蓝
+  const rawLevel = d.level
+  let level: AlarmLevel = 'blue'
+  if (rawLevel === 1 || rawLevel === '1') level = 'red'
+  else if (rawLevel === 2 || rawLevel === '2') level = 'orange'
+  else if (rawLevel === 3 || rawLevel === '3') level = 'blue'
+  else if (rawLevel === 'red' || rawLevel === 'orange' || rawLevel === 'blue')
+    level = rawLevel as AlarmLevel
+  // 已读/已确认归一：isRead "1"/1 视为已确认（兼容旧 acknowledged 布尔字段）
+  const acknowledged =
+    d.isRead !== undefined ? String(d.isRead) === '1' : bool(d.acknowledged)
+  // 发生时间：优先 ts/occurredAt 数值毫秒；回退解析 time（"2026:09:24 15:01:08" 日期段
+  // 冒号分隔需归一化为连字符才能被 Date.parse 解析）；再回退消息到达时刻
+  let occurredAt = num(d.ts ?? d.occurredAt, NaN)
+  if (!Number.isFinite(occurredAt) && typeof d.time === 'string') {
+    const parsed = Date.parse(d.time.replace(/^(\d{4}):(\d{1,2}):(\d{1,2})/, '$1-$2-$3'))
+    if (Number.isFinite(parsed)) occurredAt = parsed
+  }
+  if (!Number.isFinite(occurredAt)) occurredAt = Date.now()
+  const alarm: AlarmPayload = {
+    alarmId,
+    level,
+    title: typeof d.title === 'string' && d.title ? d.title : '未命名告警',
+    detail: typeof d.msg === 'string' && d.msg ? d.msg : typeof d.detail === 'string' ? d.detail : '',
+    occurredAt,
+    acknowledged,
+  }
+  // 关联设备：equipId（真实报文）/ deviceId（旧格式）均可
+  const deviceId = typeof d.equipId === 'string' && d.equipId ? d.equipId : d.deviceId
+  if (typeof deviceId === 'string' && deviceId) alarm.deviceId = deviceId
+  return [{ type: 'alarm', payload: alarm, ts: Date.now() }]
+}
+
+/** 单帧 swarmState → 内部消息（telemetry + deviceStatus） */
+function mapSwarmStateItem(data: unknown): ServerMessage[] {
+  const d = (data ?? {}) as Record<string, unknown>
+  const planeId = typeof d.planeId === 'string' ? d.planeId : String(d.planeId ?? '')
+  if (!planeId) return []
+
+  // 业务模式 99 = 飞机离线：除 planeId/model 外字段无效，仅下发离线状态，不采信遥测
+  if (num(d.model, -1) === 99) {
+    const offline: DeviceStatusPayload = {
+      deviceId: planeId,
+      name: `无人机-${planeId}`,
+      status: 'offline',
+    }
+    return [{ type: 'deviceStatus', payload: offline, ts: Date.now() }]
+  }
+
+  const east = num(d.velocityEast)
+  const north = num(d.velocityNorth)
+  const sampleTs = Number(d.time) || Date.now()
+
+  const telemetry: TelemetryPayload = {
+    deviceId: planeId,
+    longitude: num(d.longitude),
+    latitude: num(d.latitude),
+    altitude: num(d.height), // 相对起飞点高度
+    elevation: num(d.altitude), // 海拔
+    velocityY: Math.hypot(east, north), // 地速 = 水平速度合矢量
+    yaw: num(d.angleYaw),
+    pitch: num(d.anglePitch),
+    roll: num(d.angleRoll),
+    battery: 0, // 后端暂无电量百分比（仅电压），UI 以电压展示为准
+    voltage: num(d.voltage),
+    delay: 0,
+    gps: `${num(d.usedGPS)} 颗`,
+    sampleTs,
+  }
+  const deviceStatus: DeviceStatusPayload = {
+    deviceId: planeId,
+    name: `无人机-${planeId}`,
+    status: bool(d.inAir) ? 'tasking' : 'standby',
+  }
+  return [
+    { type: 'telemetry', payload: telemetry, ts: sampleTs },
+    { type: 'deviceStatus', payload: deviceStatus, ts: sampleTs },
+  ]
 }

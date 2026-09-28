@@ -1,0 +1,656 @@
+/*
+ * LoginDrones.css —— 登录页「无人集群」装饰动画层。
+ * 元素：四旋翼无人机 ×3（螺旋桨旋转 + 缓慢巡航 + 探照扫描）、
+ *       机械狗 ×1（对角小跑 + 地面巡逻 + 尾尖信号灯）、
+ *       巡航轨迹虚线（无人机尾部拉出）、地面投影光斑。
+ * 风格：与页面一致的青色 HUD 线框（rgba(135,235,255,*)）+ 少量青绿点缀。
+ * 层级：z-index 1（与 hex/meteor 同层，低于登录卡片所在 stage 文档流），
+ *       pointer-events: none，不遮挡表单交互。
+ */
+
+/* ====== 容器 ====== */
+
+.login-drones {
+  position: absolute;
+  inset: 0;
+  /* z-index 3：盖过 vignette（z-index 2 暗角），仍在登录卡片 stage（z-index 5）之下 */
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* ====== 无人机（四旋翼线框） ====== */
+
+.login-drone {
+  position: absolute;
+  width: clamp(72px, 8vw, 108px);
+  color: rgba(170, 248, 255, 0.92);
+  /* perf: drop-shadow removed */
+  will-change: transform;
+}
+
+.login-drone--1 {
+  left: 14%;
+  top: 22%;
+  animation: login-drone-cruise-a 26s ease-in-out infinite alternate;
+}
+
+.login-drone--2 {
+  right: 13%;
+  top: 15%;
+  width: clamp(54px, 5.6vw, 80px);
+  color: rgba(56, 242, 209, 0.88);
+  /* perf: drop-shadow removed */
+  animation: login-drone-cruise-b 21s ease-in-out infinite alternate;
+}
+
+.login-drone--3 {
+  left: 42%;
+  bottom: 16%;
+  width: clamp(46px, 5vw, 68px);
+  color: rgba(170, 248, 255, 0.78);
+  animation: login-drone-cruise-c 18s ease-in-out infinite alternate;
+}
+
+/* 机身整体轻微俯仰摇摆（叠加在巡航位移外层，包一层实现双动画） */
+.login-drone__body {
+  display: block;
+  animation: login-drone-bob 4.2s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+
+.login-drone--2 .login-drone__body {
+  animation-duration: 3.4s;
+  animation-delay: -1.2s;
+}
+
+.login-drone--3 .login-drone__body {
+  animation-duration: 5s;
+  animation-delay: -2s;
+}
+
+/* 螺旋桨：SVG 内四组桨叶，CSS 驱动旋转（正/反桨对角同向） */
+.login-drone__prop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: login-prop-spin 0.28s linear infinite;
+}
+
+.login-drone__prop--ccw {
+  animation-direction: reverse;
+}
+
+/* 无人机探照扫描锥（向下扩散淡光，仅 1 号机） */
+.login-drone__cone {
+  position: absolute;
+  left: 50%;
+  top: 78%;
+  width: clamp(90px, 10vw, 150px);
+  height: clamp(90px, 10vw, 150px);
+  transform: translateX(-50%);
+  background: conic-gradient(
+    from 180deg at 50% 0%,
+    transparent 38deg,
+    rgba(135, 235, 255, 0.12) 50deg,
+    transparent 62deg
+  );
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  opacity: 0;
+  animation: login-drone-cone 5.6s ease-in-out infinite;
+}
+
+/* 尾部巡航轨迹：无人机身后拉出的虚线光带（绝对定位跟随各自区域） */
+.login-trail {
+  position: absolute;
+  height: 2px;
+  transform-origin: left center;
+  background-image: linear-gradient(
+    90deg,
+    rgba(135, 235, 255, 0.55),
+    rgba(135, 235, 255, 0.18) 55%,
+    transparent
+  );
+  mask: linear-gradient(90deg, transparent, #000 30%);
+  -webkit-mask: linear-gradient(90deg, transparent, #000 30%);
+  animation: login-trail-pulse 3.2s ease-in-out infinite;
+}
+
+.login-trail--1 {
+  left: calc(14% - 130px);
+  top: calc(22% + 8px);
+  width: 130px;
+  transform: rotate(-4deg);
+}
+
+.login-trail--2 {
+  right: calc(13% - 110px);
+  top: calc(15% + 5px);
+  width: 110px;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(46, 230, 197, 0.16) 45%,
+    rgba(46, 230, 197, 0.5)
+  );
+  transform: rotate(178deg);
+  animation-delay: -1.4s;
+}
+
+.login-trail--3 {
+  left: calc(42% - 90px);
+  bottom: calc(16% - 10px);
+  width: 90px;
+  transform: rotate(2deg);
+  animation-delay: -0.8s;
+}
+
+/* ====== 机械狗（Spot / Go2 风格线框，对角小跑） ====== */
+
+.login-robo {
+  position: absolute;
+  left: 68%;
+  bottom: 12%;
+  width: clamp(96px, 10vw, 140px);
+  color: rgba(170, 248, 255, 0.85);
+  /* perf: drop-shadow removed */
+  animation: login-robo-patrol 30s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* 躯干起伏 + 腿部摆动都在 SVG 内部 group 上（见 icons.tsx RoboDogUnit） */
+.login-robo__torso {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: login-robo-bob 1.6s ease-in-out infinite;
+}
+
+/* 整腿摆动：origin 在 fill-box 顶部中心（髋部） */
+.login-robo__leg {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: login-robo-leg 0.8s ease-in-out infinite;
+}
+
+/* 对角小跑（trot）：--fl/--br 同相，--fr/--bl 反相 */
+.login-robo__leg--fr,
+.login-robo__leg--bl {
+  animation-delay: -0.4s;
+}
+
+/* 小腿：绕膝关节（origin 在 fill-box 顶部中心）轻微屈伸，与所属腿同相 */
+.login-robo__shank {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: login-robo-shank 0.8s ease-in-out infinite;
+}
+
+.login-robo__leg--fr .login-robo__shank,
+.login-robo__leg--bl .login-robo__shank {
+  animation-delay: -0.4s;
+}
+
+/* 尾尖信号灯：挂在尾巴上翘末端（SVG 左上），闪烁光点 */
+.login-robo__beacon {
+  position: absolute;
+  left: 16.8%;
+  top: 23.6%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #2ee6c5;
+  box-shadow: 0 0 10px 2px rgba(46, 230, 197, 0.7);
+  animation: login-robo-beacon 1.8s steps(1) infinite;
+}
+
+/* 地面投影光斑：落在四足足垫下方（足部约分布在 22%–68% 区间） */
+.login-robo__shadow {
+  position: absolute;
+  left: 20%;
+  right: 30%;
+  bottom: -6px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(135, 235, 255, 0.22), transparent 70%);
+  animation: login-robo-bob 1.6s ease-in-out infinite;
+}
+
+/* ====== 关键帧 ====== */
+
+@keyframes login-drone-cruise-a {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-2deg);
+  }
+  30% {
+    transform: translate3d(6vw, -3vh, 0) rotate(2deg);
+  }
+  65% {
+    transform: translate3d(11vw, 2vh, 0) rotate(-1deg);
+  }
+  100% {
+    transform: translate3d(5vw, -5vh, 0) rotate(2deg);
+  }
+}
+
+@keyframes login-drone-cruise-b {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(2deg);
+  }
+  40% {
+    transform: translate3d(-7vw, 3vh, 0) rotate(-2deg);
+  }
+  75% {
+    transform: translate3d(-12vw, -2vh, 0) rotate(1deg);
+  }
+  100% {
+    transform: translate3d(-4vw, 4vh, 0) rotate(-2deg);
+  }
+}
+
+@keyframes login-drone-cruise-c {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(8vw, -4vh, 0);
+  }
+  100% {
+    transform: translate3d(-3vw, -2vh, 0);
+  }
+}
+
+@keyframes login-drone-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(0.6deg);
+  }
+}
+
+@keyframes login-prop-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes login-drone-cone {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translateX(-50%) scaleY(0.9);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  55% {
+    opacity: 0.35;
+  }
+  72%,
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scaleY(1.05);
+  }
+}
+
+@keyframes login-trail-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes login-robo-patrol {
+  0% {
+    transform: translate3d(0, 0, 0) scaleX(1);
+  }
+  46% {
+    transform: translate3d(-9vw, 0, 0) scaleX(1);
+  }
+  50% {
+    transform: translate3d(-9.5vw, 0, 0) scaleX(-1);
+  }
+  96% {
+    transform: translate3d(0, 0, 0) scaleX(-1);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scaleX(1);
+  }
+}
+
+@keyframes login-robo-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2.5px);
+  }
+}
+
+@keyframes login-robo-leg {
+  0%,
+  100% {
+    transform: rotate(12deg);
+  }
+  50% {
+    transform: rotate(-12deg);
+  }
+}
+
+@keyframes login-robo-shank {
+  0%,
+  100% {
+    transform: rotate(7deg);
+  }
+  50% {
+    transform: rotate(-9deg);
+  }
+}
+
+@keyframes login-robo-beacon {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0.15;
+  }
+}
+
+/* ====== 响应式：窄屏隐藏，避免遮挡登录卡片 ====== */
+
+@media (max-width: 900px) {
+  .login-drone--2,
+  .login-trail--2,
+  .login-robo,
+  .login-drone--3,
+  .login-trail--3 {
+    display: none;
+  }
+}
+
+/* ====== 减少动态效果：静止展示，仅保留极低频呼吸 ====== */
+
+@media (prefers-reduced-motion: reduce) {
+  .login-drone,
+  .login-drone__body,
+  .login-drone__prop,
+  .login-drone__cone,
+  .login-trail,
+  .login-robo,
+  .login-robo__torso,
+  .login-robo__leg,
+  .login-robo__shank,
+  .login-robo__beacon,
+  .login-robo__shadow {
+    animation: none;
+  }
+
+  .login-drone__cone {
+    opacity: 0.5;
+  }
+
+  .login-trail {
+    opacity: 0.5;
+  }
+}
+/* perf: freeze drones on login success */
+.login-page--success .login-drone,
+.login-page--success .login-drone__body,
+.login-page--success .login-drone__prop,
+.login-page--success .login-drone__cone,
+.login-page--success .login-trail,
+.login-page--success .login-robo,
+.login-page--success .login-robo__torso,
+.login-page--success .login-robo__leg,
+.login-page--success .login-robo__shank,
+.login-page--success .login-robo__beacon,
+.login-page--success .login-robo__shadow {
+  animation-play-state: paused;
+}
+
+/*
+ * LoginCard.css —— 登录卡片容器 / 3D 倾斜舞台 / 卡片头部 / Logo / 标题
+ * 自 LoginPage partN 机械拆分文件按功能归组：规则内容未改动，仅调整文件归属。
+ */
+
+.login-card {
+  position: relative;
+  width: min(400px, 92vw);
+  padding: 2px; /* 流光描边厚度 */
+  border-radius: 10px;
+  background: rgba(135, 235, 255, 0.14);
+  clip-path: polygon(
+    18px 0,
+    calc(100% - 18px) 0,
+    100% 18px,
+    100% calc(100% - 18px),
+    calc(100% - 18px) 100%,
+    18px 100%,
+    0 calc(100% - 18px),
+    0 18px
+  );
+  animation: login-card-in 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+
+.login-tilt:hover .login-card__inner::after {
+  opacity: 1;
+}
+
+.login-card--success {
+  animation: login-card-success 0.6s ease both;
+}
+
+.login-stage {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 3vh 16px;
+  perspective: 1100px; /* 卡片 3D 视差透视 */
+}
+
+.login-tilt {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform 0.25s ease-out;
+  will-change: transform;
+}
+
+.login-tilt:hover {
+  transition: transform 0.08s ease-out;
+}
+
+@keyframes login-beam-rotate {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes login-hud-blink {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes login-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(34px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.login-head {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin-bottom: clamp(22px, 3.4vh, 32px);
+}
+
+.login-logo {
+  position: relative;
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  color: #87ebff;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 12px rgba(135, 235, 255, 0.65));
+}
+
+.login-title {
+  font-family: 'MiSans-Semibold';
+  font-size: clamp(18px, 1.5vw, 22px);
+  letter-spacing: 0.16em;
+  margin-right: -0.16em; /* 抵消末字间距，保证视觉居中 */
+  background: linear-gradient(
+    100deg,
+    #9feaff 0%,
+    #f2fdff 28%,
+    #6fe3ff 55%,
+    #f2fdff 82%,
+    #9feaff 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: login-title-flow 5.5s linear infinite;
+}
+
+@keyframes login-title-flow {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+.login-title::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.login-title::before {
+  color: #46f0ff;
+  animation: login-title-glitch-a 4s steps(1) infinite;
+}
+
+.login-title::after {
+  color: #ff5ce1;
+  animation: login-title-glitch-b 4s steps(1) infinite;
+}
+
+@keyframes login-title-glitch-a {
+  0%,
+  88%,
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+  89% {
+    opacity: 0.75;
+    transform: translate(-2.5px, 1.5px);
+    clip-path: inset(12% 0 58% 0);
+  }
+  91% {
+    opacity: 0.75;
+    transform: translate(2px, -1px);
+    clip-path: inset(62% 0 8% 0);
+  }
+  93% {
+    opacity: 0.75;
+    transform: translate(-1.5px, 0);
+    clip-path: inset(38% 0 34% 0);
+  }
+  94% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes login-title-glitch-b {
+  0%,
+  88%,
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+  90% {
+    opacity: 0.6;
+    transform: translate(2.5px, -1.5px);
+    clip-path: inset(52% 0 22% 0);
+  }
+  92% {
+    opacity: 0.6;
+    transform: translate(-2px, 1px);
+    clip-path: inset(8% 0 72% 0);
+  }
+  93.5% {
+    opacity: 0.6;
+    transform: translate(1.5px, 0);
+    clip-path: inset(70% 0 6% 0);
+  }
+  94.5% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+.login-title {
+  position: relative;
+}
+
+@media (max-width: 720px) {
+  .login-dial {
+    width: min(460px, 96vw);
+  }
+
+  .login-circuit,
+  .login-crosshair {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-hud-top,
+  .login-shockwave__ring,
+  .login-title__cursor,
+  .login-dot--ok,
+  .login-submit__charge,
+  .login-circuit__flow,
+  .login-dial,
+  .login-dial__ticks,
+  .login-dial__ring,
+  .login-crosshair__ring {
+    animation: none;
+  }
+
+  .login-circuit {
+    animation: none;
+    opacity: 1;
+  }
+
+  .login-crosshair {
+    display: none;
+  }
+}

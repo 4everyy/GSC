@@ -1,22 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
+<<<<<<< HEAD
 import { createPortal } from 'react-dom'
 import { targetTypeOptions, type TargetItem } from '../../config/targets'
 import { deviceImages } from '../../assets/images/device'
 import { homeImages } from '../../assets/images/home'
+=======
+import { targetTypeOptions, type TargetItem } from '../../config/index'
+import { deviceImages } from '../../assets/images/device/index'
+import { homeImages } from '../../assets/images/home/index'
+>>>>>>> e0d64aa4cad7ec509f4176a189ec7648212dc7c9
 import { useTargetLinkStore } from '../../stores/targetLinkStore'
+import { TargetDeleteDialog } from './TargetDeleteDialog'
 import './TargetListPanel.css'
-import './TargetListPanel.clear.css'
-import './TargetListPanel.add.css'
+
 
 interface TargetListPanelProps {
   onClose: () => void
   visible?: boolean
-}
-
-/** 目标类型 → 行首图标（车辆 → tank / 人员 → people） */
-const typeIcon: Record<TargetItem['type'], string> = {
-  车辆: deviceImages.tank,
-  人员: deviceImages.people,
 }
 
 /** 刷新动画持续时长（毫秒），与 CSS 中 animation 时长保持一致 */
@@ -39,18 +39,14 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
   const [expandedId, setExpandedId] = useState<string | null>(null)
   // ===== 态势图目标图标联动（targetLinkStore 全局共享，与地图图标双向同步）=====
   // 重点标记的目标 id 集合（旗标图标切换 + 地图图标标记背景同步）
-  const markedIds = useTargetLinkStore((s) => s.markedIds)
   const toggleMarked = useTargetLinkStore((s) => s.toggleMarked)
   // 「假删除」（软删除）：确认删除仅打标记（mock 数据保留，刷新可恢复）
   const softDeleteTargets = useTargetLinkStore((s) => s.softDeleteTargets)
   const restoreTargets = useTargetLinkStore((s) => s.restoreTargets)
   const deletedIds = useTargetLinkStore((s) => s.deletedTargetIds)
   // hover 中的目标 id（行背景三态与设备管理面板一致：选中蓝 > hover 橙 > 普通灰）
-  const hoveredId = useTargetLinkStore((s) => s.hoveredTargetId)
   const setHoveredId = useTargetLinkStore((s) => s.setHoveredTargetId)
   // 点击行联动态目标 id（行与地图图标双向同步，再次点击解除）
-  const clickedTargetId = useTargetLinkStore((s) => s.clickedTargetId)
-  const toggleClickedTarget = useTargetLinkStore((s) => s.toggleClickedTarget)
   // 行勾选状态迁移至全局 store（与设备面板 selectedDevices 同模式）：
   // 地图图标单击与列表勾选框共用 toggleTarget，首页图标选中态双向同步
   const selectedIds = useTargetLinkStore((s) => s.selectedTargetIds)
@@ -177,23 +173,47 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
     return () => window.cancelAnimationFrame(raf)
   }, [focusTargetRequest, targets, deletedIds, typeFilter, clearFocusTargetRequest])
 
+<<<<<<< HEAD
   /** 点击刷新：按钮图标旋转 1.2 秒，列表顶部提示「刷新中」→「刷新完成」，停留 1.6 秒后自动消失 */
+=======
+  /** 刷新收尾：切「刷新完成/失败」提示，停留 REFRESH_DONE_MS/REFRESH_FAIL_MS 后自动消失 */
+  const finishRefresh = (status: 'done' | 'failed') => {
+    setRefreshStatus(status)
+    const stayMs = status === 'done' ? REFRESH_DONE_MS : REFRESH_FAIL_MS
+    if (refreshDoneTimer.current !== null) window.clearTimeout(refreshDoneTimer.current)
+    refreshDoneTimer.current = window.setTimeout(() => {
+      refreshDoneTimer.current = null
+      setRefreshStatus('idle')
+    }, stayMs)
+  }
+
+  /** 点击刷新：纯前端 mock 刷新（取消全选 + 恢复「假删除」目标）；
+   *  按钮图标旋转 1.2 秒，之后提示「刷新完成」停留片刻自动消失 */
+>>>>>>> e0d64aa4cad7ec509f4176a189ec7648212dc7c9
   const handleRefresh = () => {
     if (refreshStatus === 'refreshing') return
     if (refreshTimer.current !== null) window.clearTimeout(refreshTimer.current)
     if (refreshDoneTimer.current !== null) window.clearTimeout(refreshDoneTimer.current)
     // 刷新时取消所有行的选中状态（走 store，同步取消地图图标选中态）
     replaceSelectedIds(new Set())
+<<<<<<< HEAD
     // 刷新从 mock 态恢复全部「假删除」的目标（清空软删除标记，列表与地图图标重现）
+=======
+    // 恢复全部「假删除」的目标（mock 数据保留在 store，刷新恢复显示）
+>>>>>>> e0d64aa4cad7ec509f4176a189ec7648212dc7c9
     restoreTargets()
     setRefreshStatus('refreshing')
     refreshTimer.current = window.setTimeout(() => {
       refreshTimer.current = null
+<<<<<<< HEAD
       setRefreshStatus('done')
       refreshDoneTimer.current = window.setTimeout(() => {
         refreshDoneTimer.current = null
         setRefreshStatus('idle')
       }, REFRESH_DONE_MS)
+=======
+      finishRefresh('done')
+>>>>>>> e0d64aa4cad7ec509f4176a189ec7648212dc7c9
     }, REFRESH_SPIN_MS)
   }
 
@@ -433,9 +453,133 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
               <span>暂无目标</span>
             </div>
           ) : (
-            filteredTargets.map((t) => {
+            filteredTargets.map((t) => (
+              <TargetRow
+                key={t.id}
+                target={t}
+                isExpanded={expandedId === t.id}
+                onToggleSelect={toggleSelect}
+                onToggleMark={toggleMark}
+                onToggleExpand={toggleExpand}
+                onDeleteRequest={openDeleteDialog}
+              />
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* 删除确认弹窗（设计稿 box_27）：portal 到 body 的全局弹窗，遮罩覆盖整个页面并打断底层操作，视口正中 */}
+      {deleteDialogOpen && (
+          <TargetDeleteDialog
+            count={pendingDeleteIds.length}
+            onConfirm={handleDeleteConfirm}
+            onClose={closeDeleteDialog}
+          />
+        )}
+
+      {/* 底部操作：刷新 / 新增 / 删除 */}
+      <div className="target-panel__actions">
+        <button className="target-panel__action-btn" type="button" onClick={handleRefresh}>
+          <img
+            src={deviceImages.iconRefresh}
+            alt=""
+            className={refreshStatus === 'refreshing' ? 'target-panel__icon--spinning' : undefined}
+          />
+          刷新
+        </button>
+        {/* 新增：点击后按钮上方划出类型抽屉（人员 / 车辆），再点击按钮或点击面板外收起 */}
+        <div className="target-panel__add-wrap">
+          <div
+            className={`target-panel__add-menu${addMenuOpen ? ' target-panel__add-menu--open' : ''}`}
+            role="menu"
+            aria-label="新增目标类型"
+            aria-hidden={!addMenuOpen}
+          >
+            {/* TODO: 选项点击后接入真实新增流程，当前仅收起抽屉 */}
+            <div
+              className="target-panel__add-menu-item"
+              role="menuitem"
+              onClick={(e) => {
+                e.stopPropagation()
+                setAddMenuOpen(false)
+              }}
+            >
+              <img src={typeIcon['人员']} alt="" draggable={false} />
+              <span>人员</span>
+            </div>
+            <div
+              className="target-panel__add-menu-item"
+              role="menuitem"
+              onClick={(e) => {
+                e.stopPropagation()
+                setAddMenuOpen(false)
+              }}
+            >
+              <img src={typeIcon['车辆']} alt="" draggable={false} />
+              <span>车辆</span>
+            </div>
+          </div>
+          <button
+            className={`target-panel__action-btn${addMenuOpen ? ' target-panel__action-btn--open' : ''}`}
+            type="button"
+            aria-expanded={addMenuOpen}
+            onClick={(e) => {
+              e.stopPropagation()
+              setAddMenuOpen((v) => !v)
+            }}
+          >
+            <img src={deviceImages.iconAdd} alt="" />
+            新增
+          </button>
+        </div>
+        {/* 未选中任何行时置灰不可点击（disabled 阻断点击 + :disabled 样式置灰） */}
+        <button
+          className="target-panel__action-btn"
+          type="button"
+          disabled={selectedIds.size === 0}
+          aria-disabled={selectedIds.size === 0}
+          onClick={() => openDeleteDialog(Array.from(selectedIds))}
+        >
+          <img src={homeImages.iconDelete} alt="" />
+          删除
+        </button>
+      </div>
+    </div>
+  )
+}
+
+
+/** 目标类型 → 行首图标（车辆 → tank / 人员 → people） */
+export const typeIcon: Record<TargetItem['type'], string> = {
+  车辆: deviceImages.tank,
+  人员: deviceImages.people,
+}
+
+interface TargetRowProps {
+  target: TargetItem
+  isExpanded: boolean
+  onToggleSelect: (id: string) => void
+  onToggleMark: (id: string) => void
+  onToggleExpand: (id: string) => void
+  onDeleteRequest: (ids: string[]) => void
+}
+
+/** 目标列表行：行背景多态（选中(蓝) > 点击联动(蓝) > hover(橙) > 普通(灰)）+ 行内展开详情 */
+export function TargetRow({
+  target: t,
+  isExpanded,
+  onToggleSelect,
+  onToggleMark,
+  onToggleExpand,
+  onDeleteRequest,
+}: TargetRowProps) {
+  const selectedIds = useTargetLinkStore((s) => s.selectedTargetIds)
+  const hoveredId = useTargetLinkStore((s) => s.hoveredTargetId)
+  const setHoveredId = useTargetLinkStore((s) => s.setHoveredTargetId)
+  const clickedTargetId = useTargetLinkStore((s) => s.clickedTargetId)
+  const toggleClickedTarget = useTargetLinkStore((s) => s.toggleClickedTarget)
+  const markedIds = useTargetLinkStore((s) => s.markedIds)
               const isSelected = selectedIds.has(t.id)
-              const isExpanded = expandedId === t.id
               const isClicked = clickedTargetId === t.id
               // 行背景多态与设备管理面板一致：
               // 选中(蓝) > 点击联动(蓝) > hover(橙) > 普通(灰)
@@ -458,44 +602,47 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                     onClick={() => toggleClickedTarget(t.id)}
                   >
                     <img className="target-row__bg" src={bgImage} alt="" draggable={false} />
-                    <div
-                      className={`target-row__checkbox${isSelected ? ' target-row__checkbox--checked' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleSelect(t.id)
-                      }}
-                      role="checkbox"
-                      aria-checked={isSelected}
-                      tabIndex={0}
-                      onKeyDown={(e) => e.key === ' ' && (e.preventDefault(), toggleSelect(t.id))}
-                    >
-                      {isSelected && (
-                        <svg
-                          viewBox="0 0 12 12"
-                          width="10"
-                          height="10"
-                          fill="none"
-                          stroke="#fff"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="2,6 5,9 10,3" />
-                        </svg>
-                      )}
+                    {/* 行首三列组（复选框/类型图标/名称）：组内间距固定 8px，整组作为行内单一 flex 项 */}
+                    <div className="target-row__lead">
+                      <div
+                        className={`target-row__checkbox${isSelected ? ' target-row__checkbox--checked' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onToggleSelect(t.id)
+                        }}
+                        role="checkbox"
+                        aria-checked={isSelected}
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === ' ' && (e.preventDefault(), onToggleSelect(t.id))}
+                      >
+                        {isSelected && (
+                          <svg
+                            viewBox="0 0 12 12"
+                            width="10"
+                            height="10"
+                            fill="none"
+                            stroke="#fff"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="2,6 5,9 10,3" />
+                          </svg>
+                        )}
+                      </div>
+                      <img
+                        className="target-row__icon"
+                        src={typeIcon[t.type]}
+                        alt={t.type}
+                        title={t.type}
+                        draggable={false}
+                      />
+                      <span className="target-row__name" title={t.name}>
+                        {t.name}
+                      </span>
                     </div>
-                    <img
-                      className="target-row__icon"
-                      src={typeIcon[t.type]}
-                      alt={t.type}
-                      title={t.type}
-                      draggable={false}
-                    />
-                    <span className="target-row__name" title={t.name}>
-                      {t.name}
-                    </span>
-                    <span className="target-row__model" title={t.model}>
-                      {t.model}
+                    <span className="target-row__model" title={t.model ?? '—'}>
+                      {t.model ?? '—'}
                     </span>
                     <span className="target-row__value" title={t.value}>
                       {t.value}
@@ -503,39 +650,42 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                     <span className="target-row__status" title={t.status}>
                       {t.status}
                     </span>
-                    <img
-                      className="target-row__action target-row__action--locate"
-                      src={markedIds.has(t.id) ? deviceImages.flagMarked : deviceImages.flag}
-                      alt={markedIds.has(t.id) ? '取消重点标记' : '标记为重点'}
-                      title={markedIds.has(t.id) ? '取消重点标记' : '标记为重点'}
-                      draggable={false}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleMark(t.id)
-                      }}
-                    />
-                    <img
-                      className="target-row__action target-row__action--delete"
-                      src={homeImages.iconDelete}
-                      alt="删除"
-                      title="删除"
-                      draggable={false}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        openDeleteDialog([t.id])
-                      }}
-                    />
-                    <img
-                      className="target-row__action target-row__action--more"
-                      src={isExpanded ? deviceImages.upArrow : deviceImages.downArrow}
-                      alt={isExpanded ? '收起详情' : '展开详情'}
-                      title={isExpanded ? '收起详情' : '展开详情'}
-                      draggable={false}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleExpand(t.id)
-                      }}
-                    />
+                    {/* 行尾操作图标组（标记/删除/展开详情）：组内间距固定 8px，整组作为行内单一 flex 项 */}
+                    <div className="target-row__actions">
+                      <img
+                        className="target-row__action target-row__action--locate"
+                        src={markedIds.has(t.id) ? deviceImages.flagMarked : deviceImages.flag}
+                        alt={markedIds.has(t.id) ? '取消重点标记' : '标记为重点'}
+                        title={markedIds.has(t.id) ? '取消重点标记' : '标记为重点'}
+                        draggable={false}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onToggleMark(t.id)
+                        }}
+                      />
+                      <img
+                        className="target-row__action target-row__action--delete"
+                        src={homeImages.iconDelete}
+                        alt="删除"
+                        title="删除"
+                        draggable={false}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDeleteRequest([t.id])
+                        }}
+                      />
+                      <img
+                        className="target-row__action target-row__action--more"
+                        src={isExpanded ? deviceImages.upArrow : deviceImages.downArrow}
+                        alt={isExpanded ? '收起详情' : '展开详情'}
+                        title={isExpanded ? '收起详情' : '展开详情'}
+                        draggable={false}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onToggleExpand(t.id)
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {/* ====== 行内目标详情（设计稿 434×308 基准） ====== */}
@@ -558,7 +708,7 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                         <span className="target-row__detail-value">{t.strikeMode}</span>
                         <span className="target-row__detail-bar" />
                         <span className="target-row__detail-label">直角坐标系</span>
-                        <span className="target-row__detail-value">{t.coordinates}</span>
+                        <span className="target-row__detail-value">{t.coordinates ?? '—'}</span>
                       </div>
 
                       {/* 图片预览区：宽度与信息行一致、高 146px，四角放置角标图（原图为右上角预设，通过 rotate 旋转适配四角） */}
@@ -631,117 +781,4 @@ export function TargetListPanel({ onClose, visible = true }: TargetListPanelProp
                   )}
                 </div>
               )
-            })
-          )}
-        </div>
-      </div>
-
-      {/* 删除确认弹窗（设计稿 box_27）：portal 到 body 的全局弹窗，遮罩覆盖整个页面并打断底层操作，视口正中 */}
-      {deleteDialogOpen &&
-        createPortal(
-          <div className="target-panel__delete-overlay" onClick={closeDeleteDialog}>
-            <div
-              className="target-panel__delete-dialog"
-              role="dialog"
-              aria-modal="true"
-              aria-label="删除目标确认"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="target-panel__delete-dialog-accent" aria-hidden="true" />
-              <span className="target-panel__delete-dialog-title">删除</span>
-              <span className="target-panel__delete-dialog-message">
-                {pendingDeleteIds.length > 1
-                  ? `是否删除选中的 ${pendingDeleteIds.length} 个目标`
-                  : '是否删除该目标'}
-              </span>
-              <div className="target-panel__delete-dialog-actions">
-                <button
-                  className="target-panel__delete-dialog-btn target-panel__delete-dialog-btn--confirm"
-                  type="button"
-                  onClick={handleDeleteConfirm}
-                >
-                  确认
-                </button>
-                <button
-                  className="target-panel__delete-dialog-btn target-panel__delete-dialog-btn--cancel"
-                  type="button"
-                  onClick={closeDeleteDialog}
-                >
-                  取消
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
-
-      {/* 底部操作：刷新 / 新增 / 删除 */}
-      <div className="target-panel__actions">
-        <button className="target-panel__action-btn" type="button" onClick={handleRefresh}>
-          <img
-            src={deviceImages.iconRefresh}
-            alt=""
-            className={refreshStatus === 'refreshing' ? 'target-panel__icon--spinning' : undefined}
-          />
-          刷新
-        </button>
-        {/* 新增：点击后按钮上方划出类型抽屉（人员 / 车辆），再点击按钮或点击面板外收起 */}
-        <div className="target-panel__add-wrap">
-          <div
-            className={`target-panel__add-menu${addMenuOpen ? ' target-panel__add-menu--open' : ''}`}
-            role="menu"
-            aria-label="新增目标类型"
-            aria-hidden={!addMenuOpen}
-          >
-            {/* TODO: 选项点击后接入真实新增流程，当前仅收起抽屉 */}
-            <div
-              className="target-panel__add-menu-item"
-              role="menuitem"
-              onClick={(e) => {
-                e.stopPropagation()
-                setAddMenuOpen(false)
-              }}
-            >
-              <img src={typeIcon['人员']} alt="" draggable={false} />
-              <span>人员</span>
-            </div>
-            <div
-              className="target-panel__add-menu-item"
-              role="menuitem"
-              onClick={(e) => {
-                e.stopPropagation()
-                setAddMenuOpen(false)
-              }}
-            >
-              <img src={typeIcon['车辆']} alt="" draggable={false} />
-              <span>车辆</span>
-            </div>
-          </div>
-          <button
-            className={`target-panel__action-btn${addMenuOpen ? ' target-panel__action-btn--open' : ''}`}
-            type="button"
-            aria-expanded={addMenuOpen}
-            onClick={(e) => {
-              e.stopPropagation()
-              setAddMenuOpen((v) => !v)
-            }}
-          >
-            <img src={deviceImages.iconAdd} alt="" />
-            新增
-          </button>
-        </div>
-        {/* 未选中任何行时置灰不可点击（disabled 阻断点击 + :disabled 样式置灰） */}
-        <button
-          className="target-panel__action-btn"
-          type="button"
-          disabled={selectedIds.size === 0}
-          aria-disabled={selectedIds.size === 0}
-          onClick={() => openDeleteDialog(Array.from(selectedIds))}
-        >
-          <img src={homeImages.iconDelete} alt="" />
-          删除
-        </button>
-      </div>
-    </div>
-  )
 }
