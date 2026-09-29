@@ -260,10 +260,9 @@ export const MOCK_TASK_AREA_LIST: TaskAreaRaw[] = [
  *  "round":1,"time":"2026:09:24 15:01:08","title":"禁飞区告警","ts":1790233268418,
  *  "type":"0","typeName":"plane"}
  *
- * 消费方式：仅在后端 WS 长连接不可达（离线兜底）时由 wsClient.startRealtime 注入——
+ * 消费方式：由 wsClient.startRealtime 启动即注入（常显，不随链路状态移除）——
  * 走 mapBackendMessage → mapAlarmItem 同一映射管线（id→alarmId、level 1/2/3→
- * red/orange/blue、isRead→acknowledged、equipId→deviceId），告警面板零适配直接渲染；
- * 链路恢复（连接 open）后按 alarmId 精确移除，不污染真实告警流。
+ * red/orange/blue、isRead→acknowledged、equipId→deviceId），告警面板零适配直接渲染。
  */
 
 /** mock 告警帧：与 WS alert 频道推送帧同构（ch 信封 + data 单帧，字段口径见 mapAlarmItem） */
@@ -275,7 +274,7 @@ export interface MockAlertFrame {
   data: Record<string, unknown>
 }
 
-/** 两条离线兜底告警：一条二级警告（橙，禁飞区，与真实样例帧一致）+ 一条一级紧急（红，低电量） */
+/** 两条常显告警：一条二级警告（橙，禁飞区，与真实样例帧一致）+ 一条一级紧急（红，低电量） */
 export const MOCK_WS_ALERT_FRAMES: MockAlertFrame[] = [
   {
     ch: 'alert',

@@ -152,11 +152,6 @@
   height: clamp(20px, 2.08vw, 40px);
 }
 
-.signal {
-  width: clamp(18px, 1.88vw, 36px);
-  height: auto;
-}
-
 /* ====== 地图工具栏 ====== */
 .map-toolbar-wrapper {
   position: absolute;

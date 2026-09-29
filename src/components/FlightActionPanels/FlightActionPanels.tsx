@@ -527,10 +527,11 @@ export function OrbitFlightPanel({
 /**
  * WaypointFlightPanel —— 航点飞行面板（底部条第 8 段按钮「航点飞行」）。
  *
- * 与指点返航面板结构完全一致（参数设置区块头 + 高度步进 + 航点信息 + 确认/航线生成/取消），
- * 仅标题（航点飞行）、高度标签（飞行高度）与按钮置灰透传几处不同，
- * 飞行高度数值框支持手动键入（editable）且不设上限，故直接复用参数化后的
- * TapReturnPanel，不重复任何样式。
+ * 参数仅「飞行高度 + 航点信息」（PRD DC-P0-06：航点飞行高度数控框默认 10m +
+ * 航点经纬度），与环绕飞行不同——无盘旋半径行。「确认」下发航点飞行指令
+ * （actionType=48，geopoint 携带飞行高度与航点 WGS84 经纬度）。
+ * 数值框支持手动键入（editable）且不设上限，复用参数化后的 TapReturnPanel，
+ * 不重复任何样式。
  */
 
 export interface WaypointFlightPanelProps {

@@ -58,6 +58,10 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
   const [dragging, setDragging] = useState(false)
   // 「选择区域类型」面板当前选中类型（定格后展示；确定时随顶点一并写入 addArea）
   const [areaType, setAreaType] = useState<string>(DEFAULT_AREA_TYPE)
+  // 确定（addNewTaskArea 上送）进行中：面板按钮禁用防重复提交
+  const [submitting, setSubmitting] = useState(false)
+  // 同步 ref（confirmArea 闭包读取，防 await 期间重复触发）
+  const submittingRef = useRef(false)
 
   // ===== 确认态（「确定」后保留绘制区域） =====
   // 已确认区域 id（store 草稿；TaskAreaLayer 跳过其渲染，由本遮罩继续展示）
@@ -302,7 +306,12 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
         offMoveRef.current()
         offMoveRef.current = null
       }
-      // 兜底清空编辑态标记（未在编辑时为 no-op）：区域恢复持久样式
+      // 兜底退出编辑（未在编辑时为 no-op）：先提交区域编辑（Esc/卸载路径无右键
+      // 确认机会，顶点修改仅在本地 store，持久化统一在此补上送 updTaskArea），
+      // 再清空编辑态标记让区域恢复持久样式
+      if (editingRef.current && confirmedIdRef.current) {
+        useTaskAreaStore.getState().commitAreaEdit(confirmedIdRef.current)
+      }
       useTaskAreaStore.getState().setEditingArea(null)
       document.body.style.cursor = 'none'
       requestAnimationFrame(() => {
@@ -354,8 +363,13 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
   }, [forceCursorRecompute])
 
   /** 清理确认态挂起资源（onMove 监听/refs），不动绘制几何（供删除/退出复用）；
-   *  同步清空 store 编辑态标记（TaskAreaLayer 恢复该区域持久样式） */
+    *  编辑中调用（「添加区域」再触发/区域删光退出）先提交区域编辑再退出——
+    *  顶点修改仅在本地 store，持久化延迟到这里统一上送（commitAreaEdit）；
+    *  同步清空 store 编辑态标记（TaskAreaLayer 恢复该区域持久样式） */
   const clearConfirmed = useCallback(() => {
+    if (editingRef.current && confirmedIdRef.current) {
+      useTaskAreaStore.getState().commitAreaEdit(confirmedIdRef.current)
+    }
     if (offMoveRef.current) {
       offMoveRef.current()
       offMoveRef.current = null
@@ -408,15 +422,20 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
     return () => window.removeEventListener('mouseup', onMouseUp)
   }, [dragging, finishDrag])
 
-  // 编辑态右键退出本地编辑并保留全部编辑内容（window 级监听：确认态遮罩根
-  // pointer-events none，地图上的右键不会进入遮罩）：拖点/插点/删点均已实时
-  // 提交 store，直接置回 editingAreaId=null 即「退出并保留」——恢复持久样式
-  // 与全亮地图，「编辑 | 删除」面板重新可见
+  // 编辑态右键确认编辑并退出（window 级监听：确认态遮罩根 pointer-events none，
+  // 地图上的右键不会进入遮罩）：先 commitAreaEdit 上送 updTaskArea——拖点/插点/
+  // 删点此前仅本地提交 store（不逐次上送），持久化统一延迟到右键确认时刻，
+  // 成功后 refresh()（queryTaskAreaList）刷新区域列表与态势图（2026-09-29 反馈）；
+  // 再置回 editingAreaId=null 即「退出并保留」——恢复持久样式与全亮地图，
+  // 「编辑 | 删除」面板重新可见
   useEffect(() => {
     if (!editing) return
     const onCtx = (e: MouseEvent) => {
       e.preventDefault()
       if (!editingRef.current) return
+      if (confirmedIdRef.current) {
+        useTaskAreaStore.getState().commitAreaEdit(confirmedIdRef.current)
+      }
       useTaskAreaStore.getState().setEditingArea(null)
       editingRef.current = false
       setEditing(false)
@@ -427,34 +446,41 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
   }, [editing, forceCursorRecompute])
 
   /**
-   * 确定（定格态）：按六边形 6 顶点经纬度 + 所选类型本地新增任务区域；
-   * 随即自动开启「任务区域」图层（TaskAreaLayer 立即以持久样式渲染该区域）
+   * 确定（定格态）：按六边形 6 顶点经纬度 + 所选类型上送 addNewTaskArea
+   * （store.addArea：成功后 refresh 以后端数据为准，返回新建区域后端 id）；
+   * 成功随即自动开启「任务区域」图层（TaskAreaLayer 立即以持久样式渲染该区域）
    * 并进入确认态——遮罩收起截图蒙版/信息卡并放行鼠标到地图，右下顶点右侧挂
    * 「编辑 | 删除」面板；注册 onMove 地理锚定（面板位置随平移/缩放跟随）。
+   * 失败（含顶点不足）时 store 内 message.error 提示，留在定格态可重试/取消；
+   * 提交期间 submitting 置真禁用面板按钮防重复提交。
    */
-  const confirmArea = () => {
+  const confirmArea = async () => {
     const h = hexRef.current
     if (!adapter || !h) {
       onExit()
       return
     }
+    if (submittingRef.current) return
+    submittingRef.current = true
+    setSubmitting(true)
     const bounds = adapter.getContainer().getBoundingClientRect()
     const vertices = hexVertices(h).map((v) => {
       const ll = adapter.unproject({ x: v.x - bounds.left, y: v.y - bounds.top })
       return { latitude: ll.lat, longitude: ll.lng }
     })
-    // 不标记草稿：TaskAreaLayer 立即以持久样式渲染（类型色填充/禁飞区斜线/
-    // 名称标签/降落区中心图标），遮罩不再绘制六边形（避免绘制视觉覆盖持久样式）
-    const id = useTaskAreaStore.getState().addArea(vertices, areaType)
-    if (!id) {
-      onExit()
-      return
-    }
+    // 上送接口并以后端数据刷新列表（失败 store 内 toast，返回 null 留在定格态）
+    const id = await useTaskAreaStore.getState().addArea(vertices, areaType)
+    submittingRef.current = false
+    setSubmitting(false)
+    if (!id) return
     // 自动开启「任务区域」图层：退出确认态后（或列表中）区域持久可见
     const layer = useLayerStore.getState()
     if (!layer.taskAreaVisible) layer.setTaskAreaVisible(true)
-    // 进入确认态：记录顶点经纬度 + 区域 id，注册 onMove 重投影
-    confirmedVerticesLLRef.current = vertices
+    // 进入确认态：记录顶点经纬度 + 区域 id，注册 onMove 重投影（以后端返回
+    // 顶点为准对齐持久渲染）
+    const created = useTaskAreaStore.getState().areas.find((a) => a.id === id)
+    const vsLL = created ? created.vertices : vertices
+    confirmedVerticesLLRef.current = vsLL
     confirmedIdRef.current = id
     setConfirmedId(id)
     setEditing(false)
@@ -725,13 +751,14 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
           </div>
         </div>
       )}
-      {/* 「选择区域类型」面板：仅定格态展示（确定=confirmArea 进入确认态/
-          取消=清除重画；编辑态不展示——右键退出编辑并保留内容），详见
-          HexagonTypePanel */}
+      {/* 「选择区域类型」面板：仅定格态展示（确定=confirmArea 上送接口成功后
+          进入确认态/取消=清除重画；编辑态不展示——右键退出编辑并保留内容；
+          submitting 期间按钮禁用防重复提交），详见 HexagonTypePanel */}
       {fixed && typePanelPos && (
         <HexagonTypePanel
           pos={typePanelPos}
           areaType={areaType}
+          submitting={submitting}
           onSelect={setAreaType}
           onConfirm={confirmArea}
           onCancel={resetDrawing}

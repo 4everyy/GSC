@@ -62,6 +62,21 @@ export interface MarkerOptions {
   onClick?: () => void
 }
 
+/** 沿线方向箭头选项：图标沿折线按段自动旋转（指向行进方向），叠加在线上方 */
+export interface PolylineArrowsOptions {
+  /** 箭头贴图资源 URL（svg/png 均可；适配器负责异步加载并注册为引擎贴图） */
+  iconUrl: string
+  /** 箭头逻辑渲染尺寸（px，正方形贴图边长，默认 24） */
+  iconSize?: number
+  /** 沿线箭头间距（px，默认 100） */
+  spacing?: number
+  /** 箭头闪烁开关：开启后箭头按正弦呼吸脉动（透明度 0.45~1 + 尺寸 1~1.15
+   * 轻微放大），密集排布时呈流光闪烁效果（如巡检航线方向指示） */
+  pulse?: boolean
+  /** 闪烁呼吸周期（ms，默认 1400）：一个完整明暗呼吸循环时长 */
+  pulsePeriod?: number
+}
+
 /** 折线（Polyline）创建选项 */
 export interface PolylineOptions {
   /** 线宽（像素） */
@@ -78,6 +93,8 @@ export interface PolylineOptions {
   glowWidth?: number
   /** 是否虚线（如测距橡皮筋预览）。MapLibre 用 line-dasharray 实现 */
   dash?: boolean
+  /** 沿线方向箭头（可选）：图标沿折线自动旋转指向行进方向（如巡检航线指示） */
+  arrows?: PolylineArrowsOptions
 }
 
 /** 折线悬停交互选项（setPolylineInteractive 用） */

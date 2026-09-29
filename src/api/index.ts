@@ -224,9 +224,7 @@ export function parseTaskAreaVertex(vertex: string): TaskAreaVertex[] {
   try {
     const arr = JSON.parse(vertex) as TaskAreaVertex[]
     if (!Array.isArray(arr)) return []
-    return arr.filter(
-      (v) => v && typeof v.latitude === 'number' && typeof v.longitude === 'number',
-    )
+    return arr.filter((v) => v && typeof v.latitude === 'number' && typeof v.longitude === 'number')
   } catch {
     return []
   }
@@ -257,13 +255,91 @@ export async function fetchTaskAreaList(): Promise<TaskAreaRaw[]> {
 }
 
 /**
+ * 新增任务区域（POST /api/v1/control/addNewTaskArea，2026-09-28 接入）。
+ *
+ * 入参（后端联调文档口径）：
+ * - area：区域面积，单位 m²（字符串数值；前端按经纬度包围盒估算，向上取整后转字符串上送）；
+ * - name：区域名称（沿用列表既有「01区域名称/02区域名称…」递增编号格式）；
+ * - typeDict：区域类型字典（TeamReconnaissance/NoFlyArea/assembleArea/
+ *   enclosureArea/TeamLand 枚举值直传；本地旧值 taskArea/landingArea 统一
+ *   映射为 TeamReconnaissance/TeamLand，见 toTaskAreaTypeDict）；
+ * - vertex：多边形顶点数组（WGS84 经纬度，顺序保持绘制顺序）。
+ * 鉴权头 Authorization: Bearer <token> 由 apiPost 统一注入；
+ * 成功返回 code === 0（信封由 apiPost 解析，失败抛 ApiError 由调用方处理）。
+ */
+
+/** addNewTaskArea 请求体 */
+export interface AddTaskAreaPayload {
+  /** 区域面积（m²，字符串数值，与列表 TaskAreaRaw.area 口径一致） */
+  area: string
+  /** 区域名称 */
+  name: string
+  /** 区域类型字典（按枚举值传，见 toTaskAreaTypeDict） */
+  typeDict: string
+  /** 多边形顶点（WGS84 经纬度，顺序保持绘制顺序） */
+  vertex: TaskAreaVertex[]
+}
+
+/** 本地旧类型值 → 后端 typeDict 枚举映射（后端不识别 taskArea/landingArea） */
+const TASK_AREA_TYPE_DICT_MAP: Record<string, string> = {
+  taskArea: 'TeamReconnaissance',
+  landingArea: 'TeamLand',
+}
+
+/** 区域类型值归一化为后端 typeDict 枚举（未知值原样透传） */
+export function toTaskAreaTypeDict(type: string): string {
+  return TASK_AREA_TYPE_DICT_MAP[type] ?? type
+}
+
+/** 新增任务区域：绘制遮罩「选择区域类型」面板点「确定」后调用 */
+export async function createTaskArea(payload: AddTaskAreaPayload): Promise<void> {
+  await apiPost<unknown>('/v1/control/addNewTaskArea', payload)
+}
+
+/**
+ * 更新任务区域（POST /api/v1/control/updTaskArea，2026-09-29 接入）。
+ *
+ * 入参（后端联调文档口径）：按 id 定位区域、其余字段全量上送——
+ * - area：区域面积，单位 m²（字符串数值；前端按经纬度包围盒估算，向上取整后
+ *   转字符串上送，与 addNewTaskArea 同口径）；
+ * - id：区域 ID（queryTaskAreaList → TaskAreaRaw.id，通过区域 ID 更新相应
+ *   区域的其他字段）；
+ * - name：区域名称；
+ * - typeDict：区域类型字典（按枚举值传字符串；本地旧值经 toTaskAreaTypeDict
+ *   归一化为后端枚举）；
+ * - vertex：多边形顶点数组（WGS84 经纬度，顺序保持绘制顺序）。
+ * 鉴权头 Authorization: Bearer <token> 由 apiPost 统一注入；
+ * 成功返回 code === 0（信封由 apiPost 解析，失败抛 ApiError 由调用方处理）。
+ */
+
+/** updTaskArea 请求体（全量字段：id 定位区域，其余字段整体覆盖） */
+export interface UpdateTaskAreaPayload {
+  /** 区域面积（m²，字符串数值，与列表 TaskAreaRaw.area 口径一致） */
+  area: string
+  /** 区域 ID（通过区域 ID 更新相应区域的其他字段） */
+  id: string
+  /** 区域名称 */
+  name: string
+  /** 区域类型字典（按枚举值传字符串） */
+  typeDict: string
+  /** 多边形顶点（WGS84 经纬度，顺序保持绘制顺序） */
+  vertex: TaskAreaVertex[]
+}
+
+/** 更新任务区域：编辑区域（顶点拖拽/删点/重命名/改类型）提交时调用 */
+export async function updateTaskArea(payload: UpdateTaskAreaPayload): Promise<void> {
+  await apiPost<unknown>('/v1/control/updTaskArea', payload)
+}
+
+/**
  * 删除任务区域（POST /api/v1/control/delTaskArea，2026-09-23 接入）。
- * 入参 { id }（区域 ID）；鉴权头 Authorization: Bearer <token> 由 apiPost 统一注入。
+ * 入参 { id: string[] }（区域 ID 数组，支持批量删除；2026-09-29 后端入参
+ * 口径由单个 id 调整为数组上送）；鉴权头 Authorization: Bearer <token> 由 apiPost 统一注入。
  * 后端为逻辑删除，成功返回 code === 0（信封由 apiPost 解析，失败抛 ApiError，
  * 由调用方决定是否保留本地数据）。
  */
-export async function deleteTaskArea(id: string): Promise<void> {
-  await apiPost<unknown>('/v1/control/delTaskArea', { id })
+export async function deleteTaskArea(ids: string[]): Promise<void> {
+  await apiPost<unknown>('/v1/control/delTaskArea', { id: ids })
 }
 
 /** TaskAreaRaw -> 前端 TaskArea（已删除 del='1' 或有效顶点 < 3 的记录返回 null） */
@@ -470,7 +546,9 @@ export function mapPlaneToDevice(raw: PlaneRaw): Device {
     typeId: raw.typeId ?? '1',
     status,
     statusText:
-      (raw.planeStatusCode !== undefined ? PLANE_STATUS_CODE_TEXT[raw.planeStatusCode] : undefined) ||
+      (raw.planeStatusCode !== undefined
+        ? PLANE_STATUS_CODE_TEXT[raw.planeStatusCode]
+        : undefined) ||
       raw.planeStatus ||
       '--',
     altitudeValue: fmt(raw.height, 3, 'm'),
@@ -539,6 +617,8 @@ export const POD_CONTROL_ACTION = {
   orbit: 47,
   /** 航点飞行（geopoint: { height, longitude, latitude }） */
   waypoint: 48,
+  /** 一键创建任务（height 固定 200；vertex 为任务区顶点二维数组；planeId 为执行对象数组） */
+  oneClickCreate: 77,
 } as const
 
 /**
@@ -611,4 +691,81 @@ export async function podControlOrbit(planeId: string, point: PodCirclePoint): P
     },
     planeId,
   })
+}
+
+/**
+ * 一键创建任务指令（actionType=77，2026-09-29 接入，创建任务面板「一键创建」按钮触发）。
+ *
+ * 载荷口径（后端联调文档）：
+ * - data.height：飞行高度（m），当前固定传 200（number）；
+ * - data.vertex：任务区顶点二维数组——每个选中的任务区一组顶点（WGS84 经纬度，
+ *   顺序保持绘制顺序），多个任务区时依次追加；
+ * - planeId：执行对象 ID 数组，按执行对象数量生成——1 台传 ['1']、2 台传
+ *   ['1','2']、4 台传 ['1','2','3','4']（即 1..n 递增字符串，见 planeIdsByCount）。
+ * 成功返回预设巡检航线：podControl 走宽容信封（响应体无 code 字段，apiPost
+ * 直接返回载荷），plane_line 字段为 number[][][]——外层为航线条数、中层为一条
+ * 线的点序列、内层为 [纬度, 经度] 二元组；经 parsePlaneLines 解析为
+ * RouteLinePoint[][]（每条线按顺序连线）。数据口径：每条线首点为该机起飞点
+ * （后端按飞机当前位置生成，位于巡检区外），第二个点起才是巡检折线——消费方
+ * 画线/动效需跳过首点。无 plane_line 字段时返回 []。
+ */
+
+/** 一键创建任务固定飞行高度（m，后端当前约定固定 200） */
+export const POD_ONE_CLICK_CREATE_HEIGHT = 200
+
+/** 按执行对象数量生成 planeId 数组：1→['1']、2→['1','2']、4→['1','2','3','4'] */
+export function planeIdsByCount(count: number): string[] {
+  return Array.from({ length: Math.max(0, Math.floor(count)) }, (_, i) => String(i + 1))
+}
+
+/** 巡检航线点（WGS84；与 TaskAreaVertex 同构，独立命名以区分「航线点」语义） */
+export interface RouteLinePoint {
+  latitude: number
+  longitude: number
+}
+
+/** 一键创建接口原始响应（宽容信封直接载荷）：data 为回执文案，plane_line 为预设航线 */
+interface OneClickCreateRaw {
+  data?: string
+  plane_line?: number[][][]
+}
+
+/**
+ * 解析一键创建返回的 plane_line（number[][][]，内层 [纬度, 经度]）为
+ * RouteLinePoint[][]：剔除非法点与不足 2 点的线（单点无法连线，LineString
+ * 至少需要 2 个坐标）；非数组输入返回 []。
+ */
+export function parsePlaneLines(planeLine: number[][][] | undefined): RouteLinePoint[][] {
+  if (!Array.isArray(planeLine)) return []
+  return planeLine
+    .map((line) =>
+      Array.isArray(line)
+        ? line.filter(
+            (pt): pt is [number, number] =>
+              Array.isArray(pt) &&
+              pt.length >= 2 &&
+              Number.isFinite(pt[0]) &&
+              Number.isFinite(pt[1]),
+          )
+        : [],
+    )
+    .filter((line) => line.length >= 2)
+    .map((line) => line.map(([lat, lng]) => ({ latitude: lat, longitude: lng })))
+}
+
+/** 下发一键创建任务指令：vertex 为任务区顶点二维数组（每个任务区一组顶点）；
+ *  成功返回解析后的预设巡检航线（plane_line → RouteLinePoint[][]，无则 []） */
+export async function podControlOneClickCreate(
+  planeIds: string[],
+  vertex: TaskAreaVertex[][],
+): Promise<RouteLinePoint[][]> {
+  const raw = await apiPost<OneClickCreateRaw>('/v1/control/podControl', {
+    data: {
+      actionType: POD_CONTROL_ACTION.oneClickCreate,
+      height: POD_ONE_CLICK_CREATE_HEIGHT,
+      vertex,
+    },
+    planeId: planeIds,
+  })
+  return parsePlaneLines(raw?.plane_line)
 }

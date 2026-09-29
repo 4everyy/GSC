@@ -134,6 +134,12 @@ export function useExclusivePanels() {
     width: number
     height: number
   } | null>(null)
+  // 集结区域四角经纬度（WGS84，框选确认时由视口坐标换算）：地理锚定用——
+  // 地图拖拽/缩放后经 adapter.project 重投影回当前视口，使区域框、集结坪图标、
+  // 航线与落坪飞机始终钉在原地理位置不漂移；与 rect 同生共死（成对创建/清除）
+  const [rallyPointRectGeo, setRallyPointRectGeo] = useState<
+    { lat: number; lng: number }[] | null
+  >(null)
   // 进入框选模式时清零上一轮遗留的选区状态（起点/终点/拖动标记），
   // 确保每次进入均为空白可绘制状态（兜底：任何退出路径未清干净也不影响再次绘制）
   useEffect(() => {
@@ -154,7 +160,10 @@ export function useExclusivePanels() {
 
   const [waypointFlightOpen, setWaypointFlightOpen] = useState(false)
   // 航点飞行二次确认：面板「确认」先暂存飞行高度并弹出滑动确认弹窗，滑到最右才真正执行
-  const [waypointSlide, setWaypointSlide] = useState<{ open: boolean; height: number }>({
+  const [waypointSlide, setWaypointSlide] = useState<{
+    open: boolean
+    height: number
+  }>({
     open: false,
     height: 10,
   })
@@ -690,6 +699,8 @@ export function useExclusivePanels() {
     setAreaSelectSource,
     rallyPointRect,
     setRallyPointRect,
+    rallyPointRectGeo,
+    setRallyPointRectGeo,
     hoverOpen,
     setHoverOpen,
     waypointFlightOpen,

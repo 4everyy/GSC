@@ -435,10 +435,12 @@ export interface HexagonTypePanelProps {
   areaType: string
   /** 单选切换（父组件 setState → 六边形实时预览新类型视觉） */
   onSelect: (type: string) => void
-  /** 确定：按 6 顶点经纬度 + 所选类型写入 store，进入确认态 */
+  /** 确定：按 6 顶点经纬度 + 所选类型上送 addNewTaskArea，成功后进入确认态 */
   onConfirm: () => void
   /** 取消：清除六边形回到绘制态 */
   onCancel: () => void
+  /** 确定（接口上送）进行中：按钮禁用 + 文案「提交中…」防重复提交 */
+  submitting?: boolean
 }
 
 export function HexagonTypePanel({
@@ -447,6 +449,7 @@ export function HexagonTypePanel({
   onSelect,
   onConfirm,
   onCancel,
+  submitting = false,
 }: HexagonTypePanelProps) {
   return (
     <div
@@ -490,15 +493,21 @@ export function HexagonTypePanel({
         )
       })}
       <div className='hexagon-area-type-panel__actions'>
-        <button type='button' className='hexagon-area-type-panel__btn' onClick={onCancel}>
+        <button
+          type='button'
+          className='hexagon-area-type-panel__btn'
+          onClick={onCancel}
+          disabled={submitting}
+        >
           取消
         </button>
         <button
           type='button'
           className='hexagon-area-type-panel__btn hexagon-area-type-panel__btn--primary'
           onClick={onConfirm}
+          disabled={submitting}
         >
-          确定
+          {submitting ? '提交中…' : '确定'}
         </button>
       </div>
     </div>

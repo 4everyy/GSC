@@ -25,13 +25,20 @@ export interface Aircraft {
 }
 
 /* 态势图飞机图标换为「机身 + 底部光晕」组合（与设备管理面板同素材）：
-   红=任务中 / 蓝=待命 / 灰=离线 / 黄≈原橙色（素材无橙色，取视觉最接近的黄色） */
+   红=任务中 / 蓝=待命 / 灰=离线 / 黄≈原橙色（素材无橙色，取视觉最接近的黄色）。
+   扩展至 9 架：queryPlaneStatus 实测返回 9 架无人机（deviceIndex 0-8），
+   06-09 号机默认蓝（待命）——运行时图标颜色随接口 status 动态切换
+   （见 AircraftLayer STATUS_PLANE_ICON），此处仅为无接口数据时的静态回退 */
 export const aircraft: Aircraft[] = [
   { src: deviceImages.redPlane, bottomSrc: deviceImages.redBottom, className: 'aircraft aircraft--red', label: '01设备', deviceIndex: 0 },
   { src: deviceImages.yellowPlane, bottomSrc: deviceImages.yellowBottom, className: 'aircraft aircraft--orange', label: '03设备', deviceIndex: 2 },
   { src: deviceImages.bluePlane, bottomSrc: deviceImages.blueBottom, className: 'aircraft aircraft--blue', label: '04设备', deviceIndex: 3 },
   { src: deviceImages.grayPlane, bottomSrc: deviceImages.grayBottom, className: 'aircraft aircraft--gray', label: '02设备', deviceIndex: 1 },
   { src: deviceImages.bluePlane, bottomSrc: deviceImages.blueBottom, className: 'aircraft aircraft--blue2', label: '05设备', deviceIndex: 4 },
+  { src: deviceImages.bluePlane, bottomSrc: deviceImages.blueBottom, className: 'aircraft aircraft--blue', label: '06设备', deviceIndex: 5 },
+  { src: deviceImages.bluePlane, bottomSrc: deviceImages.blueBottom, className: 'aircraft aircraft--blue', label: '07设备', deviceIndex: 6 },
+  { src: deviceImages.bluePlane, bottomSrc: deviceImages.blueBottom, className: 'aircraft aircraft--blue', label: '08设备', deviceIndex: 7 },
+  { src: deviceImages.bluePlane, bottomSrc: deviceImages.blueBottom, className: 'aircraft aircraft--blue', label: '09设备', deviceIndex: 8 },
 ]
 
 /**

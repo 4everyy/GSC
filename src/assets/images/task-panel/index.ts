@@ -1,6 +1,7 @@
 import addAreaIcon from '../device/icon-add.png'
 import areaIndexIcon from './area-index-icon.png'
 import backArrow from './back-arrow.svg'
+import routeDirectionArrow from './Rectangle 191.svg'
 import checkIcon from './step-check.svg'
 import checkboxUnchecked from './checkbox-unchecked.png'
 import closeIcon from '../device/close-btn.png'
@@ -40,6 +41,7 @@ export const taskPanelImages = {
   addAreaIcon,
   areaIndexIcon,
   backArrow,
+  routeDirectionArrow,
   checkIcon,
   checkboxUnchecked,
   closeIcon,

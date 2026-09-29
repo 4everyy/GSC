@@ -482,6 +482,22 @@
   background: rgba(75, 188, 249, 0.4);
 }
 
+/* 提交中（addNewTaskArea 上送）禁用：压暗去交互光标，防重复提交 */
+.hexagon-area-type-panel__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hexagon-area-type-panel__btn:disabled:hover {
+  background: rgba(75, 188, 249, 0.1);
+  box-shadow: none;
+}
+
+.hexagon-area-type-panel__btn--primary:disabled:hover {
+  background-color: #0ea7f9;
+  box-shadow: none;
+}
+
 /* 主按钮「确定」：实心蓝底（与区域面板「添加区域」主按钮同款视觉） */
 .hexagon-area-type-panel__btn--primary {
   background-color: #0ea7f9;

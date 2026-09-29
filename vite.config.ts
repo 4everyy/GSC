@@ -1,12 +1,19 @@
-﻿import { defineConfig, loadEnv, type Plugin } from 'vite'
+/**
+ * GSC 地面站 Vite 配置。
+ */
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { createReadStream, existsSync, readFileSync, stat, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 /**
- * 寮€鍙戞ā寮忔敞鍏ワ紙浠?dev server 鐢熸晥锛屼笉褰卞搷 build锛夛細
- * 涓庣嚎涓?nginx sub_filter 涓€鑷粹€斺€斿姞杞?deploy/inject 涓嬬殑瀹氬埗 CSS/JS锛?
- * 浣?`npm run dev`锛堜换鎰忕鍙?5173/5174鈥︼級涓?https://localhost / :8081 瑙嗚琛ㄧ幇涓€鑷淬€?
+ * 开发模式注入（仅 dev server 生效，不影响 build）：
+ * 与线上 nginx sub_filter 一致——加载 deploy/inject 下的定制 CSS/JS，
+ * 使 npm run dev（任意端口 5173/5174…）与 https://localhost / :8081 视觉表现一致。
+ *
+ * 2026-09-28 深度修复：deploy/inject 目录可能不存在（被清理 / 克隆后未同步），
+ * 此时若仍注入标签会产生两个 404 请求，污染页面加载；
+ * 现改为目录存在性探测——缺失时跳过注入并打印一次提示。
  */
 function gscDevInject(): Plugin {
   const injectDir = resolve(process.cwd(), 'deploy/inject')
@@ -14,7 +21,7 @@ function gscDevInject(): Plugin {
     name: 'gsc-dev-inject',
     apply: 'serve',
     configureServer(server) {
-      // 鎻愪緵 /inject/* 闈欐€佹湇鍔★紙婧愭枃浠跺湪 deploy/inject锛宒ev 涓嬫棤闇€鎷疯礉锛?
+      // 提供 /inject/* 静态服务（源文件在 deploy/inject，dev 下无需拷贝）
       server.middlewares.use((req, res, next) => {
         const m = req.url?.match(/^\/inject\/([\w.-]+)$/)
         if (!m) return next()
@@ -29,20 +36,30 @@ function gscDevInject(): Plugin {
       })
     },
     transformIndexHtml() {
-      return [
-        {
+      // 目录缺失（或关键文件缺失）时不注入：避免 404 资源污染页面加载
+      const cssOk = existsSync(join(injectDir, 'hide-offline-import.css'))
+      const jsOk = existsSync(join(injectDir, 'import-progress.js'))
+      if (!cssOk && !jsOk) {
+        console.warn('[gsc-dev-inject] deploy/inject not found (' + injectDir + ') - skip injecting.')
+        return []
+      }
+      const tags: Array<{ tag: string; attrs: Record<string, string>; injectTo: 'head' }> = []
+      if (cssOk) {
+        tags.push({
           tag: 'link',
           attrs: { rel: 'stylesheet', href: '/inject/hide-offline-import.css' },
           injectTo: 'head',
-        },
-        { tag: 'script', attrs: { src: '/inject/import-progress.js' }, injectTo: 'head' },
-      ]
+        })
+      }
+      if (jsOk) {
+        tags.push({ tag: 'script', attrs: { src: '/inject/import-progress.js' }, injectTo: 'head' })
+      }
+      return tags
     },
   }
 }
 
-
-/** dev 闈欐€佹湇鍔″ /maps/*.mbtiles 鎻愪緵 HTTP Range 鏀寔锛堢洿璇?GB 绾х绾垮寘蹇呴渶锛?*/
+/** dev 静态服务对 /maps/*.mbtiles 提供 HTTP Range 支持（数 GB 级离线包必需） */
 function gscMbtilesRangePlugin(): Plugin {
   return {
     name: 'gsc-mbtiles-range',
@@ -67,11 +84,11 @@ function gscMbtilesRangePlugin(): Plugin {
           const start = range[1] ? Number(range[1]) : 0
           const end = Math.min(range[2] ? Number(range[2]) : size - 1, size - 1)
           if (start < 0 || start > end) {
-            send(416, { 'Content-Range': `bytes */${size}` })
+            send(416, { 'Content-Range': 'bytes */' + size })
             res.end()
             return
           }
-          send(206, { 'Content-Range': `bytes ${start}-${end}/${size}`, 'Content-Length': end - start + 1 })
+          send(206, { 'Content-Range': 'bytes ' + start + '-' + end + '/' + size, 'Content-Length': end - start + 1 })
           createReadStream(file, { start, end }).pipe(res)
         })
       })
@@ -87,7 +104,7 @@ function gscMbtilesRangePlugin(): Plugin {
  * 推导地址。该地址是运行时字符串拼接，打包器无法静态分析：
  * - dev：optimizeDeps.exclude 让浏览器按 node_modules 原始路径加载，推导正确；
  * - build：主包被打进 /assets/vendor-*.js，推导出的 /assets/maplibre-gl-worker.mjs
- *   在 dist 中不存在 → Worker 加载 404 → 地图 load 永不触发 → 离线地图空白。
+ *   在 dist 中不存在，Worker 加载 404，地图 load 永不触发，离线地图空白。
  *
  * 修复：应用侧显式设置 config.WORKER_URL = '/maplibre/maplibre-gl-worker.mjs'
  * （见 src/features/offline-map/index.ts），本插件保证该路径两端可达：
@@ -119,7 +136,7 @@ function gscMaplibreWorkerPlugin(): Plugin {
       for (const f of MAPLIBRE_WORKER_FILES) {
         this.emitFile({
           type: 'asset',
-          fileName: `maplibre/${f}`,
+          fileName: 'maplibre/' + f,
           source: readFileSync(join(process.cwd(), 'node_modules', 'maplibre-gl', 'dist', f)),
         })
       }
@@ -135,89 +152,90 @@ export default defineConfig(({ mode }) => {
   const wsTarget = env.VITE_WS_PROXY_TARGET || 'ws://192.168.120.43:2222'
   const apiTarget = env.VITE_API_PROXY_TARGET || 'http://192.168.120.43:2222'
   return {
-  plugins: [gscMbtilesRangePlugin(), gscMaplibreWorkerPlugin(), react(), gscDevInject()],
-  // maplibre-gl 鍐呴儴浣跨敤 Web Worker锛岃嫢琚?Vite 渚濊禆棰勬墦鍖呬細鐮村潖 worker 寮曠敤
-  // (maplibre-gl-worker.mjs)锛屽鑷?map 'load' 浜嬩欢姘镐笉瑙﹀彂銆乁I 鍗″湪"鍔犺浇涓?銆?
-  // 鎺掗櫎鍚庤娴忚鍣ㄧ洿鎺ユ寜鍘熷璺緞鍔犺浇 worker銆?
-  optimizeDeps: {
-    exclude: ['maplibre-gl'],
-  },
-  worker: {
-    format: 'es',
-  },
-  build: {
-    sourcemap: true,
-    target: 'es2020',
-    cssCodeSplit: true,
-    rolldownOptions: {
-      output: {
-        // rolldown锛坴ite 8锛変笅鍑芥暟寮?manualChunks 鍏煎灞備笉淇濊瘉鍒嗙粍缁撴灉
-        // 锛堝疄娴?React 鏍稿績琚苟鍏?antd chunk锛岀櫥褰曢〉浠嶉渶鍔犺浇 380KB+ antd锛夛紝
-        // 鏀圭敤鍘熺敓 advancedChunks 鏄惧紡鍒嗙粍锛?
-        // - react 鐙珛鎴愮粍锛氱櫥褰曢〉棣栧睆浠呴渶 entry(30KB)+react锛屼笉鍐嶆嫋鍏?antd锛?
-        // - 鍖归厤蹇呴』闄愬畾鍖呮牴鐩綍锛岄伩鍏?rc-util/es/react 绛夊瓙璺緞璇叆 react 缁勩€?
-        advancedChunks: {
-          groups: [
-            { name: 'react', test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 10 },
-            { name: 'antd', test: /[\\/]node_modules[\\/](antd|@ant-design|@rc-component)[\\/]/ },
-            { name: 'zustand', test: /[\\/]node_modules[\\/]zustand[\\/]/ },
-            { name: 'vendor', test: /[\\/]node_modules[\\/]/ },
-          ],
+    plugins: [gscMbtilesRangePlugin(), gscMaplibreWorkerPlugin(), react(), gscDevInject()],
+    // maplibre-gl 内部使用 Web Worker，若被 Vite 依赖预打包会破坏 worker 引用
+    // (maplibre-gl-worker.mjs)，导致 map 'load' 事件永不触发、UI 卡在加载中。
+    // 排除后让浏览器直接按原始路径加载 worker。
+    optimizeDeps: {
+      exclude: ['maplibre-gl'],
+    },
+    worker: {
+      format: 'es',
+    },
+    build: {
+      sourcemap: true,
+      target: 'es2020',
+      cssCodeSplit: true,
+      rolldownOptions: {
+        output: {
+          // rolldown（vite 8）下函数式 manualChunks 兼容层不保证分组结果
+          // （实测 React 核心被并入 antd chunk，登录页仍需加载 380KB+ antd），
+          // 改用原生 advancedChunks 显式分组：
+          // - react 独立成组：登录页首屏仅需 entry(30KB)+react，不再拖入 antd；
+          // - 匹配必须限定包根目录，避免 rc-util/es/react 等子路径误入 react 组。
+          advancedChunks: {
+            groups: [
+              { name: 'react', test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 10 },
+              { name: 'antd', test: /[\\/]node_modules[\\/](antd|@ant-design|@rc-component)[\\/]/ },
+              { name: 'zustand', test: /[\\/]node_modules[\\/]zustand[\\/]/ },
+              { name: 'vendor', test: /[\\/]node_modules[\\/]/ },
+            ],
+          },
         },
       },
     },
-  },
-  server: {
-    host: true,
-    // 绂荤嚎鍦板浘鍖呬綋绉ぇ锛堟暟鍗亊鏁扮櫨 MB锛夛紝chokidar 鐩戝惉澶嶅埗涓殑澶ф枃浠朵細 EBUSY 宕╂簝
-    // dev server锛涚摝鐗囨寜闇€ fetch锛屾棤闇€鐑洿鏂帮紝鐩存帴蹇界暐銆?
-    watch: {
-      ignored: ['**/maps/**/*.mbtiles'],
-    },
-    proxy: {
-      // WebSocket 寮€鍙戜唬鐞嗭細鍓嶇缁熶竴杩炲悓婧?/ws 璺緞锛岀敱 dev server 杞彂鍒板悗绔€?
-      // 鐩爣鍦板潃浼樺厛璇荤幆澧冨彉閲?VITE_WS_PROXY_TARGET锛岄粯璁ゆ寚鍚戣仈璋冨悗绔€?
-      // 鍚庣鍦板潃鍙樻洿鏃讹紝鍦?.env.local 涓缃細
-      //   VITE_WS_PROXY_TARGET=ws://<鍚庣IP>:<绔彛>
-      '/ws': {
-        target: wsTarget,
-        ws: true,
-        changeOrigin: true,
-        // WS 上游不可达/拒绝升级时打印到 dev 终端：静默挂起极难排查
-        // （浏览器侧表现为 WS 永远停在 CONNECTING，2026-09-24 排障实测）
-        configure(proxy) {
-          proxy.on('error', (err, req) => {
-            console.error(
-              `[ws-proxy] ${req?.url ?? ''} upgrade failed: ${err.message}` +
-                ` (upstream ${wsTarget} unreachable; start backend or set VITE_WS_PROXY_TARGET in .env.local)`,
-            )
-          })
+    server: {
+      host: true,
+      // 离线地图包体积大（数百 MB），chokidar 监听复制中的大文件会 EBUSY 崩溃
+      // dev server；瓦片按需 fetch，无需热更新，直接忽略。
+      watch: {
+        ignored: ['**/maps/**/*.mbtiles'],
+      },
+      proxy: {
+        // WebSocket 开发代理：前端统一连同源 /ws 路径，由 dev server 转发到后端。
+        // 目标地址优先读环境变量 VITE_WS_PROXY_TARGET，默认指向联调后端。
+        // 后端地址变更时，在 .env.local 中设置：
+        //   VITE_WS_PROXY_TARGET=ws://<后端IP>:<端口>
+        '/ws': {
+          target: wsTarget,
+          ws: true,
+          changeOrigin: true,
+          // WS 上游不可达/拒绝升级时打印到 dev 终端：静默挂起极难排查
+          // （浏览器侧表现为 WS 永远停在 CONNECTING，2026-09-24 排障实测）
+          configure(proxy) {
+            proxy.on('error', (err, req) => {
+              console.error(
+                '[ws-proxy] ' + (req?.url ?? '') + ' upgrade failed: ' + err.message +
+                  ' (upstream ' + wsTarget + ' unreachable; start backend or set VITE_WS_PROXY_TARGET in .env.local)',
+              )
+            })
+          },
+        },
+        // HTTP API 开发代理：/api/* 转发到后端（默认 http://192.168.120.43:2222，
+        // 可用 .env.local 的 VITE_API_PROXY_TARGET 覆盖；生产环境由 nginx 反代）。
+        '/api': {
+          target: apiTarget,
+          changeOrigin: true,
+          // 上游不可达时快速失败（默认挂到 OS 级超时~30s+，登录按钮长时间无响应）
+          timeout: 5000,
+          proxyTimeout: 5000,
+          // 上游不可达时浏览器只看到 502，真实原因打印到 dev 终端，
+          // 便于区分「后端未启动」与「账号密码错误」。
+          configure(proxy) {
+            proxy.on('error', (err, req) => {
+              console.error(
+                '[api-proxy] ' + (req?.method ?? '') + ' ' + (req?.url ?? '') + ' forward failed: ' + err.message +
+                  ' (upstream ' + apiTarget + ' unreachable;' +
+                  ' start backend or set VITE_API_PROXY_TARGET in .env.local)',
+              )
+            })
+          },
         },
       },
-      // HTTP API 寮€鍙戜唬鐞嗭細/api/* 杞彂鑷冲悗绔紙榛樿 http://192.168.120.43:2222锛?
-      // 鍙敤 .env.local 鐨?VITE_API_PROXY_TARGET 瑕嗙洊锛涚敓浜х幆澧冪敱 nginx 鍙嶄唬锛夈€?
-      '/api': {
-        target: apiTarget,
-        changeOrigin: true,
-        // 涓婃父涓嶅彲杈炬椂蹇€熷け璐ワ紙榛樿鎸傚埌 OS 绾ц秴鏃?~30s+锛岀櫥褰曟寜閽暱鏃堕棿鏃犲搷搴旓級
-        timeout: 5000,
-        proxyTimeout: 5000,
-        // 涓婃父涓嶅彲杈炬椂娴忚鍣ㄥ彧鐪嬪埌 502锛岀湡瀹炲師鍥犳墦鍗板埌 dev 缁堢锛?
-        // 渚夸簬鍖哄垎銆屽悗绔湭鍚姩銆嶄笌銆岃处鍙峰瘑鐮侀敊璇€嶃€?
-        configure(proxy) {
-          proxy.on('error', (err, req) => {
-            console.error(
-              `[api-proxy] ${req?.method ?? ''} ${req?.url ?? ''} forward failed: ${err.message}` +
-                ` (upstream ${apiTarget} unreachable;` +
-                ` start backend or set VITE_API_PROXY_TARGET in .env.local)`,
-            )
-          })
-        },
-      },
     },
-  },
-  preview: {
-    host: true,
-  },
+    preview: {
+      host: true,
+    },
   }
 })
+

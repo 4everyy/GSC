@@ -485,7 +485,7 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
 
 
 interface AreaSelectOverlayProps extends
-  Pick<Panels, 'setAreaLandingOpen' | 'setRallyPointOpen' | 'setAreaLandingRect' | 'setAreaLandingCorners' | 'setAreaLandingRouteGenerated' | 'setAreaLandingConfirmed' | 'areaSelectMode' | 'setAreaSelectMode' | 'areaSelectAnchor' | 'setAreaSelectAnchor' | 'areaSelectEnd' | 'setAreaSelectEnd' | 'areaSelectDragging' | 'setAreaSelectDragging' | 'areaSelectHover' | 'setAreaSelectHover' | 'areaSelectSource' | 'setRallyPointRect' | 'setRallyPointRouteGenerated'>,
+  Pick<Panels, 'setAreaLandingOpen' | 'setRallyPointOpen' | 'setAreaLandingRect' | 'setAreaLandingCorners' | 'setAreaLandingRouteGenerated' | 'setAreaLandingConfirmed' | 'areaSelectMode' | 'setAreaSelectMode' | 'areaSelectAnchor' | 'setAreaSelectAnchor' | 'areaSelectEnd' | 'setAreaSelectEnd' | 'areaSelectDragging' | 'setAreaSelectDragging' | 'areaSelectHover' | 'setAreaSelectHover' | 'areaSelectSource' | 'setRallyPointRect' | 'setRallyPointRectGeo' | 'setRallyPointRouteGenerated'>,
   Pick<Anims, 'stopRallyPointFlights'> {
   adapter: ReturnType<typeof useMapEngine>['adapter']
 }
@@ -510,6 +510,7 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
     setAreaSelectHover,
     areaSelectSource,
     setRallyPointRect,
+    setRallyPointRectGeo,
     setRallyPointRouteGenerated,
     stopRallyPointFlights,
     adapter,
@@ -578,6 +579,7 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                     setAreaSelectDragging(false)
                   if (areaSelectSource === 'rally-point') {
                     setRallyPointRect(null)
+                    setRallyPointRectGeo(null)
                     setRallyPointRouteGenerated(false)
                     stopRallyPointFlights()
                   } else if (areaSelectSource === 'area-landing') {
@@ -597,6 +599,7 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                   stopRallyPointFlights()
                   setRallyPointRouteGenerated(false)
                   setRallyPointRect(null)
+                  setRallyPointRectGeo(null)
                   setRallyPointOpen(false)
                 } else if (areaSelectSource === 'area-landing') {
                   setAreaLandingRect(null)
@@ -650,6 +653,24 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                                 // 供后续航线生成业务使用
                                 if (areaSelectSource === 'rally-point') {
                                   setRallyPointRect({ left, top, width, height })
+                                  // 同步换算选区四角经纬度（视口 → 地图容器 → WGS84）：
+                                  // 地理锚定数据源——地图拖拽/缩放后重投影回视口，
+                                  // 区域框/集结坪/航线/落坪飞机钉在原地理位置不漂移
+                                  let rallyCorners: { lat: number; lng: number }[] | null = null
+                                  if (adapter) {
+                                    const b = adapter.getContainer().getBoundingClientRect()
+                                    const corner = (x: number, y: number) => {
+                                      const ll = adapter.unproject({ x: x - b.left, y: y - b.top })
+                                      return { lat: ll.lat, lng: ll.lng }
+                                    }
+                                    rallyCorners = [
+                                      corner(left, top),
+                                      corner(left + width, top),
+                                      corner(left + width, top + height),
+                                      corner(left, top + height),
+                                    ]
+                                  }
+                                  setRallyPointRectGeo(rallyCorners)
                                   // 重绘新区域后旧航线/集结坪失效，需重新点「航线生成」
                                   setRallyPointRouteGenerated(false)
                                   stopRallyPointFlights()
@@ -705,6 +726,7 @@ export function AreaSelectOverlay(props: AreaSelectOverlayProps) {
                                 setAreaSelectDragging(false)
                                 if (areaSelectSource === 'rally-point') {
                                   setRallyPointRect(null)
+                                  setRallyPointRectGeo(null)
                                   setRallyPointRouteGenerated(false)
                                   stopRallyPointFlights()
                                 } else if (areaSelectSource === 'area-landing') {

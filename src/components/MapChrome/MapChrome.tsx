@@ -64,7 +64,6 @@ export function StatusHeader() {
           </span>
         ))}
         <img className="avatar" src={homeImages.userAvatar} alt="用户" />
-        <img className="signal" src={homeImages.signalIcon} alt="信号" />
       </div>
     </header>
   )

@@ -12,7 +12,7 @@
   font-size: 14px;
 }
 
-/* 错误卡片：垂直堆叠标题 / 信息 / 重试按钮，宽度受限便于阅读 */
+/* 错误卡片：垂直堆叠标题 / 信息 / 按钮组，宽度受限便于阅读 */
 .error-boundary__card {
   display: flex;
   flex-direction: column;
@@ -40,6 +40,12 @@
   opacity: 0.85;
 }
 
+/* 按钮组：水平排列「重试 / 刷新页面」 */
+.error-boundary__actions {
+  display: flex;
+  gap: 12px;
+}
+
 /* 重试按钮：高对比度，便于在错误态下引导恢复 */
 .error-boundary__retry {
   padding: 6px 20px;
@@ -54,5 +60,22 @@
 
 .error-boundary__retry:hover {
   background: #4a9eff;
+  color: #fff;
+}
+
+/* 刷新页面按钮：模块链失效（旧 chunk 404 / dev 编辑中间态）的终极恢复手段 */
+.error-boundary__reload {
+  padding: 6px 20px;
+  border: 1px solid rgba(255, 107, 107, 0.7);
+  border-radius: 4px;
+  background: rgba(255, 107, 107, 0.12);
+  color: #ff6b6b;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.error-boundary__reload:hover {
+  background: #ff6b6b;
   color: #fff;
 }

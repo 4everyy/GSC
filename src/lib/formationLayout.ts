@@ -2,15 +2,19 @@ import { type DragPosition } from '../hooks/index'
 import { type RallyPointFormation, type FormationFlightFormation } from '../components/FlightActionPanels/FlightActionPanels'
 import { type AreaLandingFormation } from '../components/AreaPanels/AreaPanels'
 import { homeImages } from '../assets/images/home/index'
-import { type AlarmColor } from '../config'
+import { type AlarmColor, type Device } from '../config'
 import { type LngLat } from '../map-engines/types'
+import { resolvePlaneSrc } from './planeIcons'
 
 /* 编队布局纯函数（自 HomePage.tsx 拆出）：集结点集结坪 / 编队飞行降落点 / 区域降落降落坪
  * 的视口坐标布置算法——航线渲染（绿色实线 + 图标）与模拟飞行共用同一套布局。 */
 
 // 集结点集结坪布局纯函数：按集结队形在已确认集结区域内布置 count 个集结坪（视口坐标），
 // 组件内 rallyPointSpots memo 与队形下拉变更即时重排共用同一算法；
-// 布置后整体左对齐——集结坪簇贴近区域左缘（朝向左侧原始无人机图标一侧），不横向铺满全区
+// 三种队形样式（人字形 V 形两翼 / 一字型水平一行 / 三角型 1+2+3…行容量）与编队飞行
+// layoutFormationFlightSpots 共用同一套固定间距相对形状，队形整体平移缩放后
+// 水平垂直居中于绘制区域——队形包围盒中心与区域中心对齐（不再铺满整个区域）；
+// 队形超出区域可用范围（四周留 30px 边距）时等比缩小，形状不变不溢出
 export function getRallyPointSpots(
   rect: { left: number; top: number; width: number; height: number } | null,
   formation: RallyPointFormation,
@@ -20,53 +24,31 @@ export function getRallyPointSpots(
   const { left, top, width, height } = rect
   const n = count
   if (n <= 0) return []
-  let spots: { x: number; y: number }[]
-  if (formation === '三角型') {
-    // 行容量 1、2、3…：第 k 行放 k 个（末行可不满），纵向等距、行内水平等距
-    const rows: number[] = []
-    let remain = n
-    while (remain > 0) {
-      const size = rows.length + 1
-      rows.push(Math.min(size, remain))
-      remain -= size
-    }
-    const gapY = height / (rows.length + 1)
-    spots = []
-    rows.forEach((countInRow, k) => {
-      const y = top + gapY * (k + 1)
-      // 行内间距优先固定 100px（区域过窄时区内自适应），配合整体左对齐使集结坪聚拢左侧
-      const gapX = Math.min(width / (countInRow + 1), 100)
-      for (let j = 0; j < countInRow; j++) spots.push({ x: left + gapX * (j + 1), y })
-    })
-  } else if (formation === '一字型') {
-    // 水平一行等距分布：间距优先固定 100px（区域过窄时区内自适应），不横向铺满全区
-    const gap = Math.min(width / (n + 1), 100)
-    spots = Array.from({ length: n }, (_, i) => ({ x: left + gap * (i + 1), y: top + height / 2 }))
-  } else {
-    // 人字形（默认）：V 形两翼交替排布——首机居区域上中（人字顶点），之后奇数号位
-    // 左翼、偶数号位右翼，两翼沿斜线逐个向左下/右下外推
-    const cx = left + width / 2
-    const apexY = top + height * 0.25
-    const spanX = (width / 2) * 0.9
-    const spanY = height * 0.7
-    const wingCount = Math.floor((n - 1) / 2) + 1
-    const gapX = Math.min(spanX / wingCount, 100)
-    const gapY = spanY / wingCount
-    spots = Array.from({ length: n }, (_, i) => {
-      if (i === 0) return { x: cx, y: apexY }
-      const wing = Math.ceil(i / 2)
-      const side = i % 2 === 1 ? -1 : 1
-      return { x: cx + side * wing * gapX, y: apexY + wing * gapY }
-    })
-  }
-  // 整体左对齐：让最左集结坪落在区域左缘（距边 40px，朝向左侧原始无人机图标一侧），
-  // 队形形状不变、仅整体平移；单点亦直接落于左缘
-  const minSpotX = Math.min(...spots.map((s) => s.x))
-  const shiftX = left + 40 - minSpotX
-  spots.forEach((s) => {
-    s.x += shiftX
-  })
-  return spots
+  // 单机：水平垂直居中于绘制区域中心
+  if (n === 1) return [{ x: left + width / 2, y: top + height / 2 }]
+  // 以原点为锚点生成队形相对坐标：与编队飞行同一形状——人字形顶点居首、两翼交替
+  // 斜向展开；一字型水平一行等距；三角型行容量 1、2、3…逐行水平居中，
+  // 保证集结队形与编队飞行队形观感一致
+  const rel = layoutFormationFlightSpots({ x: 0, y: 0 }, formation, n)
+  // 队形包围盒：超出区域可用范围（四周留 30px 边距）时整体等比缩小，队形形状不变
+  const minX = Math.min(...rel.map((s) => s.x))
+  const maxX = Math.max(...rel.map((s) => s.x))
+  const minY = Math.min(...rel.map((s) => s.y))
+  const maxY = Math.max(...rel.map((s) => s.y))
+  const pad = 30
+  const bboxW = maxX - minX
+  const bboxH = maxY - minY
+  const scale = Math.min(
+    bboxW > 0 ? Math.max(width - pad * 2, 0) / bboxW : 1,
+    bboxH > 0 ? Math.max(height - pad * 2, 0) / bboxH : 1,
+    1,
+  )
+  // 整体平移：队形包围盒中心对齐绘制区域中心（水平垂直居中）
+  const bcx = (minX + maxX) / 2
+  const bcy = (minY + maxY) / 2
+  const cx = left + width / 2
+  const cy = top + height / 2
+  return rel.map((s) => ({ x: cx + (s.x - bcx) * scale, y: cy + (s.y - bcy) * scale }))
 }
 
 // 编队飞行降落点布局纯函数：以锚点（最左选中飞机图标正上方一定距离处）为队形顶点，
@@ -178,6 +160,8 @@ export function computeFormationFlightGeometry(
   selectedDevices: Set<number>,
   aircraftPositions: DragPosition[],
   formation: FormationFlightFormation,
+  /** 设备状态快照（usePlaneStatusStore.devices）：按接口状态取机身切图；缺省回退静态配置色 */
+  devices: readonly (Device | undefined)[] = [],
 ): {
   planes: { x: number; y: number }[]
   spots: { x: number; y: number }[]
@@ -194,7 +178,7 @@ export function computeFormationFlightGeometry(
   const planes = picked.map(({ item, index }) => ({
     x: stage.left + (aircraftPositions[index].x / 100) * stage.width + 24,
     y: stage.top + (aircraftPositions[index].y / 100) * stage.height + 24,
-    icon: item.src,
+    icon: resolvePlaneSrc(devices, item.deviceIndex, item.src),
   }))
   const minX = Math.min(...planes.map((p) => p.x))
   const minY = Math.min(...planes.map((p) => p.y))
@@ -227,6 +211,159 @@ export function computeFormationFlightGeometry(
   }
 }
 
+/** 三点方向判定（带容差）：返回 1 / -1 / 0（逆时针 / 顺时针 / 共线或近共线） */
+function orient(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+): number {
+  const cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+  const eps = 1e-9
+  if (cross > eps) return 1
+  if (cross < -eps) return -1
+  return 0
+}
+
+/** 线段 AB 与 CD 是否真交叉（proper crossing）：仅当两线段内部相交才计，
+ *  端点接触 / 共线重叠不算——配对是一一映射（端点互不重合），只需消除内部交叉 */
+function segmentsCross(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  c: { x: number; y: number },
+  d: { x: number; y: number },
+): boolean {
+  const o1 = orient(a.x, a.y, b.x, b.y, c.x, c.y)
+  const o2 = orient(a.x, a.y, b.x, b.y, d.x, d.y)
+  const o3 = orient(c.x, c.y, d.x, d.y, a.x, a.y)
+  const o4 = orient(c.x, c.y, d.x, d.y, b.x, b.y)
+  return o1 * o2 < 0 && o3 * o4 < 0
+}
+
+// 最小总代价指派求解（经典 O(n³) 匈牙利算法，对偶势 + 最短增广路实现）：
+// 输入 n×n 代价方阵 cost，返回 ans——第 i 行匹配的列号（0-based），全部匹配对
+// 代价之和取全局最小。集结点飞机数 ≤ 9，O(n³) 每次调用可忽略不计（<0.1ms）
+function solveAssignment(cost: number[][]): number[] {
+  const n = cost.length
+  const INF = Number.POSITIVE_INFINITY
+  // u/v：行/列对偶势；p：列 → 已匹配行（0 = 未匹配）；way：增广路径前驱列
+  const u = new Array<number>(n + 1).fill(0)
+  const v = new Array<number>(n + 1).fill(0)
+  const p = new Array<number>(n + 1).fill(0)
+  const way = new Array<number>(n + 1).fill(0)
+  for (let i = 1; i <= n; i++) {
+    p[0] = i
+    let j0 = 0
+    const minv = new Array<number>(n + 1).fill(INF)
+    const used = new Array<boolean>(n + 1).fill(false)
+    do {
+      used[j0] = true
+      const i0 = p[j0]
+      let delta = INF
+      let j1 = 0
+      for (let j = 1; j <= n; j++) {
+        if (!used[j]) {
+          const cur = cost[i0 - 1][j - 1] - u[i0] - v[j]
+          if (cur < minv[j]) {
+            minv[j] = cur
+            way[j] = j0
+          }
+          if (minv[j] < delta) {
+            delta = minv[j]
+            j1 = j
+          }
+        }
+      }
+      for (let j = 0; j <= n; j++) {
+        if (used[j]) {
+          u[p[j]] += delta
+          v[j] -= delta
+        } else {
+          minv[j] -= delta
+        }
+      }
+      j0 = j1
+    } while (p[j0] !== 0)
+    // 沿增广路径回溯翻转匹配，直到回到虚拟列 0
+    do {
+      const j1 = way[j0]
+      p[j0] = p[j1]
+      j0 = j1
+    } while (j0 !== 0)
+  }
+  // 行 → 列：第 p[j] 行匹配第 j 列（方阵完美匹配，每列必有行）
+  const ans = new Array<number>(n).fill(-1)
+  for (let j = 1; j <= n; j++) {
+    if (p[j] > 0) ans[p[j] - 1] = j - 1
+  }
+  return ans
+}
+
+// 集结点航线最优配对纯函数：飞机与集结坪按欧氏距离求「总航程最小」的一一配对，
+// 返回 perm——第 i 架飞机连接第 perm[i] 个集结坪；perm[i] 为 -1 表示无对应集结坪
+// （跳过连线）。
+// 无交叉数学保证：总长最小的匹配中任意两条航线段必然不相交——若线段 AB 与 CD
+// 交叉于 P，由三角形不等式 |AC|+|BD| ≤ |AP|+|PC|+|BP|+|PD| = |AB|+|CD|（真交叉时
+// 严格小于），交换配对端点后总长不增，与最优性矛盾。距离平局（等长替代方案）时
+// 求解器可能仍返回交叉解，故求最优后再做一轮「去交叉」后处理：扫描全部配对，
+// 一旦发现真交叉即交换两机的集结坪——每次交换严格缩短总长（保证终止），最终
+// 配对既总航程最短、又无任何航线几何交叉（优于原「双方按 x 排序同序号配对」——
+// 飞机与集结坪纵向分布差异大时后者仍会出现交叉航线）。
+// 飞机与集结坪数量不等时以零代价虚拟行列补齐方阵：多余飞机（无集结坪可配）自然
+// 落在虚拟列上映射回 -1，且被放弃的是配对代价最高的那些。
+// 航线渲染（绿色实线）与模拟飞行（滑窗确认启动 / 队形变更续飞）共用同一配对，
+// 保证动画终点与画出的航线一一对应。
+export function pairRallyPointSpots(
+  planes: ReadonlyArray<{ x: number; y: number }>,
+  spots: ReadonlyArray<{ x: number; y: number }>,
+): number[] {
+  const n = planes.length
+  const m = spots.length
+  if (n === 0) return []
+  if (m === 0) return planes.map(() => -1)
+  // 补齐方阵：size = max(n, m)，虚拟行/列代价 0（不影响真实配对的总长最优性）
+  const size = Math.max(n, m)
+  const cost: number[][] = Array.from({ length: size }, (_, i) =>
+    Array.from(
+      { length: size },
+      (_, j) =>
+        i < n && j < m
+          ? Math.hypot(planes[i].x - spots[j].x, planes[i].y - spots[j].y)
+          : 0,
+    ),
+  )
+  const assign = solveAssignment(cost)
+  const perm = planes.map((_, i) => {
+    const j = assign[i]
+    return j >= 0 && j < m ? j : -1
+  })
+  // 去交叉后处理：真交叉的两条配对交换集结坪后总长严格变短（三角形不等式），
+  // 循环扫描直至无交叉；n ≤ 9 交换次数上界极小，guard 兜底防御性退出
+  let swapped = true
+  let guard = 0
+  const maxSwaps = size * (size - 1)
+  while (swapped && guard < maxSwaps) {
+    swapped = false
+    for (let i = 0; i < n && !swapped; i++) {
+      if (perm[i] < 0) continue
+      for (let k = i + 1; k < n; k++) {
+        if (perm[k] < 0) continue
+        if (segmentsCross(planes[i], spots[perm[i]], planes[k], spots[perm[k]])) {
+          const t = perm[i]
+          perm[i] = perm[k]
+          perm[k] = t
+          swapped = true
+          guard++
+          break
+        }
+      }
+    }
+  }
+  return perm
+}
+
 
 // 飞机初始位置（百分比），与 HomePage.css 中 .aircraft--xxx 的 left/top 保持一致。
 // 拖拽后通过内联 style 覆盖 CSS 定位，实现自由拖动。
@@ -238,6 +375,12 @@ export const AIRCRAFT_INITIAL_POSITIONS: DragPosition[] = [
   { x: 26, y: 48 }, // blue (04设备)：左中
   { x: 48, y: 58 }, // gray (02设备·离线)：中下
   { x: 38, y: 36 }, // blue2 (05设备)：中部
+  // 06-09 号机（queryPlaneStatus 实测 9 架扩容）：右下侧空白带网格铺开，
+  // 与上方 5 架簇保持间距不重叠（间距 ≥ 8%，1080p 下 ≥ 150px）
+  { x: 64, y: 42 }, // 06设备：中部偏右
+  { x: 72, y: 30 }, // 07设备：右上
+  { x: 80, y: 46 }, // 08设备：右中
+  { x: 68, y: 58 }, // 09设备：中下偏右
 ]
 
 /**
@@ -256,13 +399,19 @@ export const AIRCRAFT_ANCHOR_OFFSETS: LngLat[] = [
   { lng: -0.0108, lat: 0.0007 }, // blue (04设备)：左中
   { lng: -0.0009, lat: -0.0028 }, // gray (02设备·离线)：中下
   { lng: -0.0054, lat: 0.0049 }, // blue2 (05设备)：中部
+  // 06-09 号机：与百分比布局同源换算（1% 宽 ≈ 0.00045° lng、1% 高 ≈ 0.00035° lat，
+  // y 取反；相对簇中心 (-0.004, 0.005) 的右下侧空白带），全部落在 zoom 14 视口内
+  { lng: 0.0014, lat: -0.0032 }, // 06设备：中部偏右
+  { lng: 0.005, lat: 0.001 }, // 07设备：右上
+  { lng: 0.0086, lat: -0.0046 }, // 08设备：右中
+  { lng: 0.0023, lat: -0.0102 }, // 09设备：中下偏右
 ]
 
 /**
  * 接口目标回退布局：无人机图标簇附近空白带的偏移池（相对当前离线地图包中心）。
  *
  * 接口目标携带的真实经纬度可能远离离线地图包（如后端测试数据落在其它城市），
- * 直接锚定会把图标投影视口之外；此类目标按序取本池偏移播种到无人机簇
+ * 直接锚定会把图标投影视口之外；此类目标按序取本池偏移播种到无人机簇
  * （AIRCRAFT_ANCHOR_OFFSETS，簇中心约 (-0.004, 0.005)，居中偏左上）右下侧
  * 空白带——3 列网格（列距 0.003° ≈ 128px、行距 0.004° ≈ 123px@1080p），
  * 与全部无人机锚点及目标彼此间均保持 ≥ 84px 图标直径 + 间隙不重叠，

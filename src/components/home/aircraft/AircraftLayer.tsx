@@ -8,8 +8,48 @@
 import { memo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react'
 import { computePanelPlacement, placementToClasses } from '../../../utils/index'
 import batteryMidIcon from '../../../assets/images/device/battery-mid.png'
+import { STATUS_PLANE_ICON } from '../../../lib/planeIcons'
 import { useDeviceLinkStore, useFlightAnimStore, usePlaneStatusStore } from '../../../stores/index'
 import { useRealtimeStore } from '../../../features/realtime/wsClient'
+import { useShallow } from 'zustand/react/shallow'
+
+type FlightAnimSnapshot = ReturnType<typeof useFlightAnimStore.getState>
+
+/** 从 flightAnimStore 派生「飞行动效已接管呈现」的目标设备主键数组：
+ *  航点/航线/环绕单机动画的 planeId + 集结点/编队多机动画的 planeId 并集。
+ *  配合 useShallow（数组元素逐一浅比较）：rAF 每帧 tick 更新多机坐标但
+ *  planeId 数组内容与顺序不变（单机快照 planeId 恒定、多机数组顺序稳定），
+ *  AircraftLayer 不因坐标帧重渲染；数组内容变化（动画启停/多机增减）时
+ *  才触发重渲染 */
+const collectFlyingPlaneIds = (s: FlightAnimSnapshot): string[] => {
+  const ids: string[] = []
+  const single = s.waypointFlight ?? s.routeFlightFlight ?? s.orbitFlight
+  if (single?.planeId !== undefined) ids.push(single.planeId)
+  for (const f of s.rallyPointFlights) if (f.planeId !== undefined) ids.push(f.planeId)
+  for (const f of s.formationFlightFlights) if (f.planeId !== undefined) ids.push(f.planeId)
+  // recon 巡检机不在此列：其地面图标整体隐藏（见下方 reconPlaneIds），比仅隐藏标注更强
+  return ids
+}
+
+/** 从 flightAnimStore 派生「巡检巡航中」的目标设备主键数组（reconFlights keys
+ *  = rawPlanes[].id）：这些机已由 ReconFlightOverlay 的飞行动效（DroneFlightIcon
+ *  + 实时高度标注 + 灰色已飞轨迹线）完全接管呈现，原起飞点地面图标整体隐藏。
+ *  useShallow：rAF 逐帧写入 reconFlights 坐标但 keys 集合不变，不触发重渲染；
+ *  巡检启动（startReconFlights）/停止·卸载（stopReconFlights 清空）时才变化 */
+const collectReconPlaneIds = (s: FlightAnimSnapshot): string[] => Object.keys(s.reconFlights)
+
+/** 从 flightAnimStore 派生「集结任务已完成、落地定格」的目标设备主键数组：
+ *  仅取 rallyPointFlights 中 landed=true 的 planeId（落坪末帧写入的完成标记）。
+ *  同样配合 useShallow 结构共享：坐标帧更新不改变数组内容不触发重渲染，
+ *  仅任务完成（逐机置 landed）/续飞（landed 复位）/取消·删除重绘（清空）时重渲染 */
+const collectLandedRallyPlaneIds = (s: FlightAnimSnapshot): string[] => {
+  const ids: string[] = []
+  for (const f of s.rallyPointFlights)
+    if (f.landed === true && f.planeId !== undefined) ids.push(f.planeId)
+  return ids
+}
+
+/* STATUS_PLANE_ICON: moved to lib/planeIcons */
 
 export interface AircraftItem {
   label: string
@@ -57,14 +97,19 @@ function AircraftLayerInner({
   // （起飞指令 podControlTakeoff 同源主键），与 deviceIndex（planeList 下标）经 rawPlanes 对应。
   const wsTelemetry = useRealtimeStore((s) => s.telemetry)
   const rawPlanes = usePlaneStatusStore((s) => s.rawPlanes)
-  // 航点/环绕飞行进行中的目标设备主键（flightAnimStore.waypointFlight 与
-  // orbitFlight 的 planeId；两面板互斥，动效快照不同时存在，?? 取当前生效者）：
-  // 该机已由飞行动效图标（DroneFlightIcon + WaypointAltitudeOverlay）接管呈现，
-  // 原地面图标的高度垂线/数值标注（起飞前冻结的 0.000m）随之隐藏，避免两套
-  // 0.000m 标注并存重复——沿用同一套 .aircraft-altitude 样式仅渲染一处实时标注
-  const flyingPlaneId = useFlightAnimStore(
-    (s) => (s.waypointFlight ?? s.routeFlightFlight ?? s.orbitFlight)?.planeId,
-  )
+  // 飞行动效已接管呈现的目标设备主键集合（航点/航线/环绕单机动画的 planeId +
+  // 集结点/编队多机动画的 planeId）：这些机已由飞行动效图标（DroneFlightIcon +
+  // 高度标注层）接管呈现，原地面图标的高度垂线/数值标注（起飞前冻结的 0.000m）
+  // 随之隐藏，避免两套标注并存重复——沿用同一套 .aircraft-altitude 样式
+  // 仅渲染一处实时标注。多机集合每帧动画 tick 变化，useShallow 结构共享下
+  // 引用稳定（rallyPointFlights 元素引用逐帧更新，集合内容变化才触发重渲染）
+  const flyingPlaneIds = useFlightAnimStore(useShallow(collectFlyingPlaneIds))
+  // 巡检巡航中的机：已由 ReconFlightOverlay 飞行动效完全接管呈现
+  // （DroneFlightIcon + 实时高度标注 + 灰色已飞轨迹），原地面图标整体隐藏
+  const reconPlaneIds = useFlightAnimStore(useShallow(collectReconPlaneIds))
+  // 集结任务已完成的落地定格机：原起飞点地面图标（图标/标签/hover 面板/垂线）
+  // 整体隐藏，地图上仅保留集结坪图标与落坪定格的飞行动效飞机（保留当前位置）
+  const landedRallyPlaneIds = useFlightAnimStore(useShallow(collectLandedRallyPlaneIds))
   return (
     <>
       {aircraft.map((item, index) => {
@@ -81,6 +126,14 @@ function AircraftLayerInner({
         // 钉在原位置、顶端连到空中飞机中心（分段线性不设总封顶，见下方 liftPx）
         const device = devices[item.deviceIndex]
         const planeId = rawPlanes[item.deviceIndex]?.id
+        // 集结任务完成：该机已按队形精准落坪定格（飞行动效图标接管呈现，位置
+        // 保留在集结坪上），原起飞点地面图标整体不再渲染；队形变更续飞时随
+        // 新快照 landed=false 复位恢复，取消面板/删除重绘时随 store 清空恢复
+        if (planeId !== undefined && landedRallyPlaneIds.includes(planeId)) return null
+        // 巡检巡航中：该机已由 ReconFlightOverlay 飞行动效（飞行图标/实时高度
+        // 标注/已飞轨迹）完全接管，原起飞点地面图标（图标/标签/hover 面板/垂线）
+        // 整体不再渲染；巡检停止或组件卸载时 reconFlights 清空自动恢复显示
+        if (planeId !== undefined && reconPlaneIds.includes(planeId)) return null
         const liveAltitude = planeId !== undefined ? wsTelemetry[planeId]?.altitude : undefined
         const hasLiveAltitude = liveAltitude !== undefined && Number.isFinite(liveAltitude)
         // 标签以设备管理面板的设备名称为准（queryPlaneStatus → mapPlaneToDevice
@@ -91,6 +144,11 @@ function AircraftLayerInner({
         const isOffline =
           !hasLiveAltitude &&
           (!device || device.status === 'offline' || device.altitudeValue === '--')
+        // 图标切图：接口状态驱动（红=任务中 / 蓝=待命·充电 / 灰=离线），
+        // 设备数据缺失（接口未返回该机）时回退静态配置切图（config.aircraft 预设色）
+        const statusIcon = device ? STATUS_PLANE_ICON[device.status] : undefined
+        const planeSrc = statusIcon?.src ?? item.src
+        const planeBottomSrc = statusIcon?.bottomSrc ?? item.bottomSrc
         // 数值格式与 HTTP fmt(height, 3, 'm') 对齐（如 31.000m）；显示层取整——
         // 小数点后三位恒为 .000（爬升/降落动画逐帧浮点高度仅驱动下方 liftPx 平滑位移，
         // 与 WaypointAltitudeOverlay 飞行标注 Math.floor 同规则）
@@ -126,13 +184,13 @@ function AircraftLayerInner({
             <span className="aircraft-icon">
               <img
                 className="aircraft-icon__bottom"
-                src={item.bottomSrc}
+                src={planeBottomSrc}
                 alt=""
                 draggable={false}
               />
               <img
                 className="aircraft-icon__top"
-                src={item.src}
+                src={planeSrc}
                 alt={labelText}
                 draggable={false}
               />
@@ -144,7 +202,7 @@ function AircraftLayerInner({
                 离线设备无遥测高度，不渲染垂线与高度标注；
                 航点/环绕飞行中的该机（flyingPlaneId）已由飞行动效图标侧实时标注接管，
                 原地面 0.000m 冻结标注隐藏去重 */}
-            {!isOffline && planeId !== flyingPlaneId && (
+            {!isOffline && !flyingPlaneIds.includes(planeId) && (
               <span className="aircraft-altitude" aria-hidden="true">
                 <span className="aircraft-altitude__stick" />
                 <span className="aircraft-altitude__value">{altitudeText}</span>
@@ -170,8 +228,10 @@ function AircraftLayerInner({
                 </span>
               </span>
             )}
-            {/* 离线设备 Hover 面板（灰色）—— 聚焦时隐藏，避免与聚焦面板同时出现 */}
-            {item.className.includes('gray') && focusedAircraft !== index && (
+            {/* 离线设备 Hover 面板（灰色）—— 聚焦时隐藏，避免与聚焦面板同时出现。
+                显隐由接口状态判定（isOffline）驱动，与静态 className 解耦：机位
+                颜色随 queryPlaneStatus / WS 实时状态切换，面板随之联动 */}
+            {isOffline && focusedAircraft !== index && (
               <div className="aircraft-hover-panel" data-hover-panel>
                 <div className="aircraft-hover-panel__top">
                   <div className="aircraft-hover-panel__header">
@@ -190,7 +250,7 @@ function AircraftLayerInner({
               </div>
             )}
             {/* 在线设备 Hover 面板（蓝色，统一样式）—— 聚焦时隐藏，避免与聚焦面板同时出现 */}
-            {!item.className.includes('gray') && focusedAircraft !== index && (
+            {!isOffline && focusedAircraft !== index && (
               <div className="aircraft-info-panel" data-hover-panel>
                 <div className="aircraft-info-panel__top">
                   <div className="aircraft-info-panel__header">

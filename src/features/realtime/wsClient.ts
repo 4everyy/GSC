@@ -773,6 +773,47 @@ export function observeDownlink(durationMs: number, label: string): Promise<Down
   })
 }
 
+// ==================== 指令 WS 回执等待（动效启动门控）====================
+
+/**
+ * 等待单机操控指令的服务端 WS 回执（动效启动门控：HTTP 下发成功 ≠ 飞机已受理）。
+ *
+ * 满足以下任一条件即视为收到回执：
+ * 1. cmd 频道推送 cmdAck——REST podControl 不携带 reqId，后端回执可能无 reqId
+ *    （mapCmdAckItem 会合成 unknown-<ts>），无法精确关联，采用宽口径：等待窗口内
+ *    到达的任意 cmdAck 均视为本指令回执（单机操控场景同一时刻仅一条指令在途）；
+ * 2. 该设备的新遥测帧——服务端受理指令后推送状态，同样构成回执证据，且遥测是
+ *    航点飞行动效的数据源（收到即动效可驱动）。
+ *
+ * @param planeId 目标设备主键（telemetry deviceId 匹配用）
+ * @param timeoutMs 等待超时（毫秒），超时返回 null（调用方决定兜底行为）
+ * @returns 回执来源：'cmdAck' | 'telemetry'；超时返回 null
+ */
+export function waitForCommandReceipt(
+  planeId: string,
+  timeoutMs = 5_000,
+): Promise<'cmdAck' | 'telemetry' | null> {
+  return new Promise((resolve) => {
+    let settled = false
+    let offMessage: () => void = () => {}
+    let timer = 0
+    const finish = (receipt: 'cmdAck' | 'telemetry' | null) => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(timer)
+      offMessage()
+      resolve(receipt)
+    }
+    // 监听映射后的内部消息（wsClient.onMessage 广播口径）：cmdAck 或该设备遥测帧
+    offMessage = wsClient.onMessage((msg) => {
+      const m = msg as { type?: string; payload?: { deviceId?: unknown } }
+      if (m.type === 'cmdAck') finish('cmdAck')
+      else if (m.type === 'telemetry' && m.payload?.deviceId === planeId) finish('telemetry')
+    })
+    timer = window.setTimeout(() => finish(null), timeoutMs)
+  })
+}
+
 // ==================== 实时数据 Store（原 realtimeStore.ts 并入）====================
 
 /**
@@ -1034,12 +1075,9 @@ const useRealtimeStore = create<RealtimeStore>((set, get) => ({
   },
 }))
 
-// ==================== 离线兜底：WS 告警 mock 注入（链路恢复自动移除）====================
+// ==================== 常显：WS 告警 mock 注入（启动即注入，不随链路状态移除）====================
 
-/** mock 告警 alarmId 集合（mapAlarmItem 的 id→alarmId 映射结果，用于恢复链路后精确剔除） */
-const MOCK_ALARM_IDS: string[] = MOCK_WS_ALERT_FRAMES.map((f) => String(f.data.id ?? '')).filter(Boolean)
-
-/** mock 告警是否已注入：重连循环中每次 reconnecting 只注一次；open 后复位 */
+/** mock 告警是否已注入：模块生命周期内只注一次（StrictMode 双挂载不重复注入） */
 let mockAlertsInjected = false
 
 /** 注入 mock 告警：走 mapBackendMessage → applyMessage 同一映射管线，与真实 WS 帧零差异 */
@@ -1047,24 +1085,12 @@ function injectMockAlerts(): void {
   if (mockAlertsInjected) return
   mockAlertsInjected = true
   console.warn(
-    `[ws] 后端 WS 不可达，注入离线兜底告警 ×${MOCK_WS_ALERT_FRAMES.length}` +
-      '（mock-data.ts 2026-09-24 联调快照，链路恢复后自动移除）',
+    `[ws] 注入常显 mock 告警 ×${MOCK_WS_ALERT_FRAMES.length}` +
+      '（mock-data.ts 2026-09-24 联调快照，不随链路状态移除）',
   )
   MOCK_WS_ALERT_FRAMES.forEach((frame) => {
     mapBackendMessage(frame).forEach((m) => useRealtimeStore.getState().applyMessage(m))
   })
-}
-
-/** 移除 mock 告警：真实链路恢复（open）后按 alarmId 精确剔除，不污染真实告警流 */
-function removeMockAlerts(): void {
-  if (!mockAlertsInjected) return
-  mockAlertsInjected = false
-  const { alarms } = useRealtimeStore.getState()
-  const remaining = alarms.filter((a) => !MOCK_ALARM_IDS.includes(a.alarmId))
-  if (remaining.length !== alarms.length) {
-    useRealtimeStore.setState({ alarms: remaining })
-    console.info('[ws] 链路恢复，已移除离线兜底告警，恢复真实告警流')
-  }
 }
 
 /**
@@ -1075,15 +1101,10 @@ export function startRealtime(): () => void {
   const offMessage = wsClient.onMessage((msg) => useRealtimeStore.getState().applyMessage(msg))
   const offStatus = wsClient.onStatus((status) => {
     useRealtimeStore.getState().setStatus(status)
-    // 离线兜底：首次连接失败（connecting → close → reconnecting）或重连超限（closed）
-    // 时注入 mock 告警；连接恢复 open 后按 alarmId 精确移除。仅影响告警列表，
-    // 不参与任何成功路径。
-    if (status === 'open') {
-      removeMockAlerts()
-    } else if (status === 'reconnecting' || status === 'closed') {
-      injectMockAlerts()
-    }
   })
+  // 常显 mock 告警：启动即注入，不随连接状态变化移除
+  //（store 内同一 alarmId 原地替换，即使重复注入也不会出现重复条目）
+  injectMockAlerts()
   wsClient.connect()
   return () => {
     offMessage()

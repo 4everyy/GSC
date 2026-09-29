@@ -21,6 +21,8 @@ import { useOfflineMap } from '../../features/offline-map/index'
 import { type AircraftListItem, FlightCommandPanels, WaypointFlightPanels } from '../../components/home/panels/FlightCommandPanels'
 import './HomePage.css'
 import { TaskAreaLayer, getAreaBounds } from '../../components/home/zones/TaskAreaLayer'
+import { InspectionRouteLayer } from '../../components/home/zones/InspectionRouteLayer'
+import { ReconFlightOverlay } from '../../components/home/overlays/ReconFlightOverlay'
 import AircraftLayer from '../../components/home/aircraft/AircraftLayer'
 import { TargetMarkerLayer } from '../../components/home/targets/TargetMarkerLayer'
 import { FlightMissionPanels } from '../../components/home/panels/FlightMissionPanels'
@@ -78,6 +80,7 @@ export function HomePage() {
     orbitPoint,
     rallyPointRect,
     setRallyPointRect,
+    setRallyPointRectGeo,
     setRallyPointRouteGenerated,
     rallyPointFormation,
     formationFlightPoint,
@@ -415,6 +418,9 @@ export function HomePage() {
         selectedDevices,
         aircraftPositions,
         formation ?? formationFlightFormation,
+        // 机身切图按接口状态动态取色（与 AircraftLayer 地面图标同口径），调用时经
+        // getState 一次性快照读取（不引入订阅重渲染）
+        usePlaneStatusStore.getState().devices,
       ),
     // aircraft 为模块常量；选中集合/拖拽坐标/队形变化时才重建（传递给 memo 子组件）
     [selectedDevices, aircraftPositions, formationFlightFormation],
@@ -494,6 +500,12 @@ export function HomePage() {
               areaSelectActive：任意绘制/框选遮罩激活时抑制图层自带的常态
               hover「编辑 | 删除」面板（避免与遮罩确认态面板叠加/干扰取点） */}
           {taskAreaVisible && <TaskAreaLayer adapter={adapter} areaSelectActive={areaSelectMode} />}
+          {/* 区域巡检预设航线：一键创建成功返回的 plane_line 连线（4px， */}
+          {/* inspectionRouteStore 驱动，随 adapter 就绪挂载 */}
+          <InspectionRouteLayer adapter={adapter} />
+          {/* 巡检任务飞行动效：一键创建成功后执行飞机自当前位置爬升→转场至航线起点→
+              40m/s 沿线循环巡航（reconFlights 快照驱动 DroneFlightIcon + 高度标注） */}
+          <ReconFlightOverlay adapter={adapter} />
           {/* 橙色禁飞区：待接入功能（SHOW_PENDING_PANELS=false 暂隐藏，非开关图层） */}
           {SHOW_PENDING_PANELS && <div className="restricted-zone restricted-zone--orange" />}
           {/* 目标图标层：目标列表每行对应一个态势图图标（车辆 tank / 人员 people），
@@ -577,6 +589,7 @@ export function HomePage() {
             setAreaSelectHover={setAreaSelectHover}
             areaSelectSource={areaSelectSource}
             setRallyPointRect={setRallyPointRect}
+    setRallyPointRectGeo={setRallyPointRectGeo}
             setRallyPointRouteGenerated={setRallyPointRouteGenerated}
             stopRallyPointFlights={stopRallyPointFlights}
             adapter={adapter}

@@ -22,10 +22,16 @@ export interface FlightState {
    *  原地面高度标注（起飞前冻结的 0.000m），改由飞行图标侧实时标注呈现；
    *  航点/航线/环绕飞行写，其余动画不写 */
   planeId?: string
-  /** 实时高度（m，视觉插值已向遥测对齐）：航点/航线/环绕飞行高度标注用；其余动画不写 */
+  /** 实时高度（m，视觉插值已向遥测对齐）：航点/航线/环绕飞行高度标注用；
+   *  集结点飞行亦写（三阶段动效标注 + 队形变更续飞快照）；其余动画不写 */
   altitude?: number
   /** 地面轨迹点视口 y（未含升空偏移）：高度虚线从图标 (y) 垂直延伸到地面 (groundY) */
   groundY?: number
+  /** 集结点飞行完成标记：阶段四「精准落坪定格」置 true（其余阶段恒 false）——
+   *  渲染层据此判定任务完成：隐藏绿色航线、原起飞点飞机图标与 0.000m 高度标注，
+   *  仅保留定格飞机与集结坪（保留当前位置）；队形变更续飞随新快照 landed=false
+   *  复位，取消面板/删除重绘时随 store 清除整体恢复 */
+  landed?: boolean
 }
 
 /** 航点/航线飞行动效所需的最小地图适配器能力（经纬度 ↔ 容器像素；结构化兼容 MapLibreAdapter） */
@@ -97,29 +103,33 @@ export function useFlightAnimations() {
     }
     useFlightAnimStore.getState().setWaypointFlight(null)
   }, [])
-  // 航点飞行（真实指令链路动效）：滑动确认下发航点指令后启动，两阶段连贯过渡——
-  // 阶段一「高度调整」（climbing/descending）：自当前高度（遥测实测 → mock 设备
-  // rawPlanes.altitude → 0m 兜底）以恒定 20m/s 垂直速度爬升/下降至面板设定飞行高度
-  // （时长 = 高度差 / 20m/s，严格按 20m/s 增长不做时长压缩；高度差 <0.5m 视为
-  // 已到位，直接跳过进入阶段二）；水平钉在起飞点地面位置不移动，视觉升空量与
-  // AircraftLayer 同比例 0.3px/m，两处动效观感一致连贯，实时高度逐帧写入 store
-  // 供 WaypointAltitudeOverlay 标注层渲染；
-  // 阶段二「航点平飞」（following）：严格等待阶段一到达设定高度后才启动，以恒定
-  // 50m/s 地速向目标点匀速飞行（地理空间
-  // 等距圆柱近似按 dt 步进，遥测可用时以遥测位置为目标；mock 离线无遥测时直接
-  // 飞向航点），每帧经地图适配器 project 重投影为视口坐标，机头自起飞即指向
-  // 航线方向、全程对准飞行方向（底座固定 + 机身转向：航向旋转下沉到机身层，
-  // 底座正置不随转）；地图平移/缩放时当前位置与目标位置每帧重投影保持地理贴地
-  // （步进在经纬度空间进行，图标精确钉在地理位置上不随缩放漂移）；
-  // 仅无适配器时才退回纯屏幕插值（演示兜底）。
-  // 状态机：idle → climbing/descending → following，无缝衔接（同一 rAF 循环内切换）。
-  // 中断路径：stopWaypointFlight（取消/面板收起/互斥切换/急停·返航·降落下发时调用）；
-  // 遥测断流看门狗：收到过遥测后进入 following 且超过 5s 无新遥测帧则终止动画
-  // 并回 idle（遥测 ts 取自帧到达时间，断流即飞机失联，动效不应继续悬挂）；
-  // mock 离线场景全程无遥测，看门狗不生效，动效自驱动直至抵达航点悬停。
+  // 航点飞行（真实指令链路动效）：HTTP 指令下发成功并收到服务端 WS 回执
+  //（cmdAck / 该机遥测帧，由调用方 waitForCommandReceipt 门控）后启动。
+  // 两阶段连贯动效（与航线/环绕/集结点飞行「先到高度再平飞」同口径）：
+  // 阶段一「高度调整」：垂直于初始态无人机图标向上或向下移动——水平位置钉住
+  // 起飞点（启动时由飞机图标当前位置反投影锚定，每帧经适配器重投影保持地图
+  // 平移/缩放贴地；无适配器时钉住图标屏幕坐标），高度自
+  // 起始高度（遥测实测 → mock 设备 rawPlanes.altitude → 0m 兜底）以恒定 20m/s
+  // 线性爬升/下降至面板设定飞行高度（时长 = 高度差 / 20m/s，差值 <0.5m 视为
+  // 已到位直接跳过；视觉升空量与 AircraftLayer 同比例 0.3px/m）；机头全程
+  // 预对准「起飞点 → 航点」航线方向。遥测高度提前贴近设定值（|Δ|<0.5m，与
+  // 航线/环绕飞行到位判定同口径）或停滞 3s 且仍在设定值 1m 内（模拟器爬升
+  // 欠冲停在 199.x 等）时提前切入阶段二；恒速爬升时间线走完即确定性切入——
+  // 保证「先提升到指定高度、再平飞」动效必现；
+  // 阶段二「航点平飞」：机头对准航点，以服务端遥测地速（velocityY，m/s）沿
+  // 「当前位置 → 航点」在经纬度空间匀速逼近（每帧按 地速×dt 步进，τ≈800ms
+  // 指数平滑消除 1~2Hz 遥测的速度阶梯），到达航点后钉在航点悬停（图标不再
+  // 移动，高度继续跟随遥测）——与 mock 版「到达航点悬停」动效一致；
+  // 平飞速度兜底：遥测速度字段缺失/非正值时维持上次平滑值（从未有效则
+  // 15m/s 观感兜底），仅防呆不推进航线；
+  // 遥测断流看门狗：曾收到遥测后 >5s 无新帧（链路失联）终止动效回 idle。
+  // 状态机：idle → altitude（高度调整：恒速垂直爬升/下降）→ follow（航点平飞）。
+  // 中断路径：stopWaypointFlight（取消/面板收起/互斥切换/急停·返航·降落下发时调用）。
+  // 演示兜底：无 planeId（未解析到设备主键）时退回屏幕插值飞向航点（高度
+  // 不变），仅用于无后端的纯前端演示；有 planeId 时数据源一律为服务端遥测。
   const startWaypointFlight = useCallback(
     (params: {
-      /** 目标设备主键（WS telemetry 键）；缺省时仅做屏幕插值演示 */
+      /** 目标设备主键（WS telemetry 键）；缺省时仅做屏幕插值演示兜底 */
       planeId?: string
       /** 飞行图标切图 */
       icon: string
@@ -127,9 +137,9 @@ export function useFlightAnimations() {
       adapter?: WaypointFlightMapAdapter | null
       /** 航点：图钉视口坐标 + WGS84 经纬度 */
       waypoint: { x: number; y: number; lng: number; lat: number }
-      /** 面板设定飞行高度（米，相对起飞点） */
+      /** 面板设定飞行高度（米，相对起飞点）：阶段一恒速爬升/下降目标 */
       targetHeight: number
-      /** 起飞时飞机图标中心视口坐标（未含升空偏移，与 AircraftLayer 布局同源） */
+      /** 启动时飞机图标中心视口坐标：反投影为经纬度，作为水平轨迹的锚定起点 */
       aircraftX: number
       aircraftY: number
     }) => {
@@ -137,27 +147,13 @@ export function useFlightAnimations() {
       if (waypointFlightRaf.current !== null) cancelAnimationFrame(waypointFlightRaf.current)
       const { planeId, icon, adapter, waypoint, targetHeight, aircraftX, aircraftY } = params
 
-      // 起飞点经纬度：优先实时遥测实测值；无遥测时由飞机图标中心经适配器反投影
+      // 启动快照：当前最新遥测帧（回执门控保证已收到 cmdAck 或遥测之一；若仅
+      // cmdAck 则此处可能尚无遥测——动效保持不动直至首帧遥测到达）；仅用于起始
+      // 高度取数与断流看门狗基线，不再参与水平位置锚定（见下方 groundLL 注释）
       const snapshot =
         planeId !== undefined ? useRealtimeStore.getState().telemetry[planeId] : undefined
-      let startLng: number | undefined
-      let startLat: number | undefined
-      if (
-        snapshot &&
-        Number.isFinite(snapshot.longitude) &&
-        Number.isFinite(snapshot.latitude) &&
-        (snapshot.longitude !== 0 || snapshot.latitude !== 0)
-      ) {
-        startLng = snapshot.longitude
-        startLat = snapshot.latitude
-      } else if (adapter) {
-        const rect = adapter.getContainer().getBoundingClientRect()
-        const ll = adapter.unproject({ x: aircraftX - rect.left, y: aircraftY - rect.top })
-        startLng = ll.lng
-        startLat = ll.lat
-      }
-      // 起始高度口径：优先 WS 遥测实测高度；无遥测（mock 离线兜底）时取设备状态
-      // rawPlanes 中该 mock 无人机的当前高度（与设备面板展示同源）；均无则兜底 0m
+      // 起始高度口径（与航线/环绕飞行同源）：优先 WS 遥测实测高度；无遥测时取
+      // 设备状态 rawPlanes 中该 mock 无人机的当前高度；均无则兜底 0m
       const rawPlane =
         planeId !== undefined
           ? usePlaneStatusStore.getState().rawPlanes.find((p) => p.id === planeId)
@@ -169,47 +165,59 @@ export function useFlightAnimations() {
           : Number.isFinite(mockAlt)
             ? mockAlt
             : 0
+      // 初始显示高度：起始高度（阶段一自该值恒速爬升/下降至设定高度）
+      let visualAlt = startAlt
+      // 高度显示平滑（参考起飞动效 AircraftLayer 的 CSS transition 0.8s ease）：
+      // 新遥测高度到达时自当前显示高度经 800ms easeOut 分段过渡到新值——遥测
+      // 间隔小于过渡时长时自当前显示值重定向（与 CSS transition 重定向行为
+      // 一致），1~2Hz 遥测下爬升连续平滑不阶梯；无新帧则显示保持不动
+      let altFrom = visualAlt
+      let altTo = visualAlt
+      let altT0 = performance.now()
+      const ALT_EASE_MS = 800
+      const updateVisualAlt = (frameNow: number, target: number) => {
+        if (Math.abs(target - altTo) > 1e-6) {
+          altFrom = visualAlt
+          altTo = target
+          altT0 = frameNow
+        }
+        const k = Math.min(1, (frameNow - altT0) / ALT_EASE_MS)
+        const eased = 1 - Math.pow(1 - k, 3)
+        visualAlt = altFrom + (altTo - altFrom) * eased
+      }
+      // 遥测高度停滞检测：liveAlt 较上次记录变化 >0.1m 时刷新时间戳——用于
+      // 阶段一切换兜底（爬升欠冲停在设定值附近且不再变化时防止永不切入 follow）
+      let lastSeenAlt = snapshot && Number.isFinite(snapshot.altitude) ? snapshot.altitude : null
+      let lastAltChangeAt = performance.now()
+      // 阶段一「高度调整」时间线：高度差 / 20m/s 恒速爬升/下降（与航线/环绕/
+      // 集结点飞行同口径）；高度差 <0.5m 视为已到位直接跳过（时长 0）
       const deltaH = targetHeight - startAlt
-
-      // 全程速度口径（任务要求）：阶段一按 20m/s 垂直速度爬升/下降至设定高度，
-      // 到达指定高度后才切入阶段二，按 50m/s 地速平飞至航点
       const CLIMB_SPEED_MS = 20
-      const CRUISE_SPEED_MS = 50
-      // 阶段一时长：高度差 / 20m/s（严格恒速增长，不做时长压缩）；高度差可忽略时直接进入平飞
       const climbDuration =
         Math.abs(deltaH) < 0.5 ? 0 : (Math.abs(deltaH) / CLIMB_SPEED_MS) * 1000
-      // 阶段一方向标记（日志与语义用：deltaH>0 爬升 climbing / <0 下降 descending）
-      const climbPhase = deltaH >= 0 ? 'climbing' : 'descending'
-      // 遥测断流看门狗：最后一次收到该设备遥测帧的时刻（阶段一启动时刷新为任务起点）
+      const climbStartAt = performance.now()
+      // 遥测到位确认标记：阶段一内遥测高度贴近/停滞兜底切入时置 true——阶段二
+      // 高度显示随遥测联动；恒速时间线兜底切入时保持 false（高度钉在设定值平飞，
+      // 阶段二内遥测后续贴近设定值再解锁联动，避免陈旧遥测把图标拖回地面）
+      let telemetryConfirmed = false
+      // 水平轨迹（经纬度）：启动时以飞机图标当前位置（aircraftX/Y 视口坐标，未含
+      // 升空偏移）反投影锚定——地图图标是用户布设/可拖拽的展示位置，与设备真实
+      // 遥测 GPS 无关；此前误用遥测快照 GPS 锚定，动效起点会瞬移到真实机位的
+      // 投影点（表现为自原图标斜下方很远处跳变后再飞向航点）。无适配器时保持
+      // null：阶段一钉住图标屏幕坐标、阶段二走屏幕插值兜底。
+      let groundLL: { lng: number; lat: number } | null = null
+      if (adapter) {
+        const rect = adapter.getContainer().getBoundingClientRect()
+        const ll = adapter.unproject({ x: aircraftX - rect.left, y: aircraftY - rect.top })
+        groundLL = { lng: ll.lng, lat: ll.lat }
+      }
+      // 平飞速度（m/s 地速）：遥测 velocityY 的平滑值；SPEED_FALLBACK_MS 为
+      // 遥测从未给出有效速度时的观感兜底（防呆，不代表服务端数据）
+      const SPEED_FALLBACK_MS = 15
+      let speedSmooth = SPEED_FALLBACK_MS
+      // 遥测断流看门狗：最后收到新帧时刻（曾收到过遥测后才生效）
       let lastTelemetryAt = performance.now()
-      // 上一次遥测帧序号：用于检测「新帧到达」（后端 1~2Hz 推送，同帧不刷新看门狗）
-      let lastTelemetrySeq: unknown = snapshot
-      // 是否收到过真实遥测帧：mock 离线场景全程无遥测（动效自驱动飞向航点），
-      // 断流看门狗仅在「收到过遥测后断流」时生效，避免 mock 飞行被误判失联终止
-      let everHadTelemetry = false
-
-      // 初始航向：起飞点 → 航点图钉的航线方向（切图机头朝右，rotate = atan2 屏幕角）——
-      // 机头自起飞即对准航线飞行方向（底座固定 + 机身转向：仅飞机图标旋转对准航线）
-      const routeHeading =
-        (Math.atan2(waypoint.y - aircraftY, waypoint.x - aircraftX) * 180) / Math.PI
-      // 渲染状态：地面轨迹点（视口坐标）+ 视觉高度（米，0.3px/m 折算升空像素）
-      let ground = { x: aircraftX, y: aircraftY }
-      // 平滑状态量（经纬度）：平飞段插值在地理空间进行，随后每帧重投影为视口坐标——
-      // 地图平移/缩放时图标与地理位置精确贴合不漂移；无起始经纬度时为 null（退回屏幕插值）
-      let groundLL =
-        startLng !== undefined && startLat !== undefined
-          ? { lng: startLng, lat: startLat }
-          : null
-      let visualAlt = startAlt
-      let angle = routeHeading
-      // 目标航向（度）：起飞即指向航线方向；平飞段刷新为「当前位置 → 平滑目标」
-      // 方向（即后续运动方向），机头全程对准航线轨迹
-      let targetHeading: number | null = routeHeading
-      let lastNow = performance.now()
-      let arrivalLogged = false
-      let phaseSwitchLogged = false
-      // 是否已切入阶段二：首帧将视觉高度精确钳位到设定值（消除爬升末帧尾差）
-      let enteredFollowing = false
+      let everHadTelemetry = snapshot !== undefined
 
       // 经纬度 → 视口坐标（容器像素 + 容器视口偏移；每帧重算以跟随地图平移/缩放）
       const projectToViewport = (lng: number, lat: number) => {
@@ -219,148 +227,189 @@ export function useFlightAnimations() {
         return { x: rect.left + pt.x, y: rect.top + pt.y }
       }
 
-      const startTime = performance.now()
+      // 渲染状态：地面轨迹点（视口坐标，无适配器锚定时取图标屏幕坐标）+ 航向角
+      let ground = { x: aircraftX, y: aircraftY }
+      if (groundLL) {
+        const g0 = projectToViewport(groundLL.lng, groundLL.lat)
+        if (g0) ground = g0
+      }
+      // 初始航向：起飞点 → 航点图钉方向（切图机头朝右，rotate = atan2 屏幕角）；
+      // 阶段一垂直爬升/下降全程预对准航线方向，follow 阶段刷新为「当前位置 → 航点」
+      let angle = (Math.atan2(waypoint.y - aircraftY, waypoint.x - aircraftX) * 180) / Math.PI
+      let targetHeading: number | null = angle
+      // 阶段标记与一次性日志
+      let phase: 'altitude' | 'follow' = 'altitude'
+      let arrivalLogged = false
+      // 新帧检测：store 每设备仅存最新一帧（覆盖写），以对象引用判等
+      let lastTelemetrySeq: unknown = snapshot
+      let lastNow = performance.now()
+
       const step = (now: number) => {
         const dt = Math.min(100, now - lastNow)
         lastNow = now
-        const elapsed = now - startTime
         const live =
           planeId !== undefined ? useRealtimeStore.getState().telemetry[planeId] : undefined
-        // 遥测断流看门狗（仅 following 阶段生效）：>5s 无新遥测帧判定失联，
-        // 终止动效回 idle（渲染面由 FlightSimulationOverlays 因状态清空自动消失）
+        // 新帧检测（对象引用判等）+ 遥测断流看门狗：曾收到遥测后 >5s 无新帧判定
+        // 链路失联，终止动效回 idle（渲染面随状态清空自动消覆，与返航/降落等
+        // 真实指令链路动效同语义；mock 演示兜底从未有遥测，看门狗不生效）
         if (live !== undefined && live !== lastTelemetrySeq) {
           lastTelemetrySeq = live
           lastTelemetryAt = now
           everHadTelemetry = true
         }
-        if (
-          everHadTelemetry &&
-          elapsed >= climbDuration &&
-          now - lastTelemetryAt > 5000 &&
-          planeId !== undefined
-        ) {
-          console.warn(
-            `[waypoint-flight] ${planeId} 遥测断流 >5s，航点跟飞动效终止回 idle`,
-          )
+        if (everHadTelemetry && planeId !== undefined && now - lastTelemetryAt > 5000) {
+          console.warn(`[waypoint-flight] ${planeId} 遥测断流 >5s，航点飞行动效终止回 idle`)
           stopWaypointFlight()
           return
         }
-        // 平滑系数：与帧时长解耦的指数平滑（τ=450ms）——平飞段高度向遥测对齐、
-        // 无适配器屏幕兜底插值仍在使用
-        const alpha = 1 - Math.exp(-dt / 450)
+        // 屏幕兜底插值平滑系数（视觉滤波，τ=250ms；地理平飞不使用，按地速步进）
+        const alpha = 1 - Math.exp(-dt / 250)
 
-        if (elapsed < climbDuration) {
-          // —— 阶段一：恒速高度调整 —— 水平钉在起飞点地面位置，
-          // 高度以恒定 20m/s 线性增长/下降逼近设定值（实时高度逐帧写入 store 标注）
-          const t = Math.min(1, elapsed / climbDuration)
-          visualAlt = startAlt + deltaH * t
-          if (startLng !== undefined && startLat !== undefined) {
-            const g = projectToViewport(startLng, startLat)
+        // 最新遥测数值（字段见 protocol.ts TelemetryPayload：altitude 相对高度 /
+        // velocityY 地速 m/s；经纬度不参与水平锚定——图标为用户布设位置，用遥测
+        // GPS 锚定会造成起点跳变，见启动处 groundLL 注释）
+        const liveAlt = live && Number.isFinite(live.altitude) ? live.altitude : null
+        const liveSpeed =
+          live && Number.isFinite(live.velocityY) && live.velocityY > 0.1 ? live.velocityY : null
+
+        // 遥测高度停滞时间戳刷新（变化 >0.1m 视为仍在爬升/下降）
+        if (liveAlt !== null && (lastSeenAlt === null || Math.abs(liveAlt - lastSeenAlt) > 0.1)) {
+          lastSeenAlt = liveAlt
+          lastAltChangeAt = now
+        }
+        // 阶段一 → 阶段二切换（三路择先）：①遥测高度贴近面板设定飞行高度
+        // （|Δ|<0.5m，与航线/环绕飞行「高度差 <0.5m 视为到位」同口径）；②遥测
+        // 高度停滞 3s 且仍在设定值 1m 内（模拟器爬升欠冲停在 199.x 等）；③恒速
+        // 爬升时间线走完（无遥测确认时的确定性兜底，保证「先提升到指定高度、
+        // 再平飞」动效必现）。①②切入时同步显示高度至遥测实测（消除过渡滞后，
+        // 避免「设 200m 才 199m 就平飞」观感）并置 telemetryConfirmed（阶段二
+        // 高度继续随遥测联动）；③切入时显示高度恰为设定值，阶段二高度钉在设定值
+        const altReached = liveAlt !== null && Math.abs(liveAlt - targetHeight) < 0.5
+        const altStalled =
+          liveAlt !== null && Math.abs(liveAlt - targetHeight) < 1 && now - lastAltChangeAt > 3000
+        const climbDone = now - climbStartAt >= climbDuration
+        if (phase === 'altitude' && (altReached || altStalled || climbDone)) {
+          phase = 'follow'
+          telemetryConfirmed = altReached || altStalled
+          if (telemetryConfirmed && liveAlt !== null) {
+            visualAlt = liveAlt
+            altFrom = liveAlt
+            altTo = liveAlt
+          }
+          const climbReason = altReached
+            ? '遥测高度贴近设定值（|Δ|<0.5m）'
+            : altStalled
+              ? '遥测高度停滞 3s 兜底（|Δ|<1m）'
+              : `恒速 20m/s 垂直${deltaH >= 0 ? '爬升' : '下降'}到位（${startAlt.toFixed(1)}m → ${targetHeight.toFixed(1)}m）`
+          console.info(
+            `[waypoint-flight] ${planeId} 高度调整完成（${climbReason}），切入航点平飞${telemetryConfirmed ? '（高度与地速均由服务端遥测驱动）' : '（高度钉在设定值，地速由服务端遥测驱动）'}`,
+          )
+        }
+
+        if (phase === 'altitude') {
+          // —— 阶段一「高度调整」：水平钉住起飞点（启动时已由飞机图标位置反投影
+          // 锚定，每帧重投影保持地图平移/缩放贴地；无适配器则钉住图标屏幕坐标），
+          // 高度以恒定 20m/s 自起始高度线性爬升/下降至设定值——图标垂直于初始态
+          // 向上或向下移动
+          if (groundLL) {
+            const g = projectToViewport(groundLL.lng, groundLL.lat)
             if (g) ground = g
           }
+          const ct = climbDuration > 0 ? Math.min(1, (now - climbStartAt) / climbDuration) : 1
+          visualAlt = startAlt + deltaH * ct
+        } else if (planeId === undefined) {
+          // —— 阶段二演示兜底（无设备主键）：屏幕插值飞向航点（高度保持设定值），
+          // 仅前端演示用
+          ground = {
+            x: ground.x + (waypoint.x - ground.x) * alpha,
+            y: ground.y + (waypoint.y - ground.y) * alpha,
+          }
+          const hdx = waypoint.x - ground.x
+          const hdy = waypoint.y - ground.y
+          if (Math.hypot(hdx, hdy) > 2) {
+            targetHeading = (Math.atan2(hdy, hdx) * 180) / Math.PI
+          }
         } else {
-          // —— 阶段二：航点平飞 —— WS 遥测经纬度驱动地面轨迹点；
-          // 遥测未就绪时目标退化为航点经纬度（图标平滑滑向航点，链路不中断）
-          const liveLL =
-            live &&
-            Number.isFinite(live.longitude) &&
-            Number.isFinite(live.latitude) &&
-            (live.longitude !== 0 || live.latitude !== 0)
-              ? { lng: live.longitude, lat: live.latitude }
-              : null
-          const targetLL = liveLL ?? { lng: waypoint.lng, lat: waypoint.lat }
+          // —— 阶段二「航点平飞」：高度保持设定值平飞（遥测确认到位后随遥测联动，
+          // 800ms easeOut 分段过渡）；水平以遥测地速 velocityY（平滑值）沿
+          // 「当前位置 → 航点」在经纬度空间匀速逼近（等距圆柱近似，每帧按
+          // 地速×dt 步进），地图平移/缩放时逐帧重投影贴地不漂移；
+          // 到达航点后钉在航点悬停（图标不再移动，高度随遥测联动）
+          // 遥测后续确认到位（阶段一恒速时间线先走完的情形）：解锁高度随遥测联动；
+          // 未确认则高度钉在设定值（避免未执行指令的陈旧遥测把图标拖回地面）
+          if (!telemetryConfirmed && liveAlt !== null && Math.abs(liveAlt - targetHeight) < 0.5) {
+            telemetryConfirmed = true
+          }
+          if (telemetryConfirmed && liveAlt !== null) updateVisualAlt(now, liveAlt)
+          // 平飞速度：遥测地速平滑（τ≈800ms）消除 1~2Hz 遥测的速度阶梯；
+          // 速度字段缺失/非正值时维持上次平滑值（从未有效则保持兜底值）
+          if (liveSpeed !== null) {
+            speedSmooth += (liveSpeed - speedSmooth) * (1 - Math.exp(-dt / 800))
+          }
           if (groundLL && adapter) {
-            // 恒速平飞（50m/s 地速）：等距圆柱近似求剩余地面距离，每帧按
-            // 地速 × dt 步进逼近目标点（到达即钉在目标点悬停）；
-            // 步进在经纬度空间进行、每帧重投影为视口坐标——地图平移/缩放时
-            // 当前点与目标点同时重投影，图标精确钉在其地理位置上不漂移/滞留屏幕
-            const stepMeters = (CRUISE_SPEED_MS * dt) / 1000
-            const midLatRad = ((groundLL.lat + targetLL.lat) / 2) * (Math.PI / 180)
-            const dLngM = (targetLL.lng - groundLL.lng) * 111320 * Math.cos(midLatRad)
-            const dLatM = (targetLL.lat - groundLL.lat) * 110540
+            // 地理空间匀速步进：剩余距离 → 本帧步长比例（到达后 ratio=1 钉住）
+            const stepMeters = (speedSmooth * dt) / 1000
+            const midLatRad = ((groundLL.lat + waypoint.lat) / 2) * (Math.PI / 180)
+            const dLngM = (waypoint.lng - groundLL.lng) * 111320 * Math.cos(midLatRad)
+            const dLatM = (waypoint.lat - groundLL.lat) * 110540
             const distM = Math.hypot(dLngM, dLatM)
             const ratio = distM > 1e-6 ? Math.min(1, stepMeters / distM) : 1
             groundLL = {
-              lng: groundLL.lng + (targetLL.lng - groundLL.lng) * ratio,
-              lat: groundLL.lat + (targetLL.lat - groundLL.lat) * ratio,
+              lng: groundLL.lng + (waypoint.lng - groundLL.lng) * ratio,
+              lat: groundLL.lat + (waypoint.lat - groundLL.lat) * ratio,
             }
             const g = projectToViewport(groundLL.lng, groundLL.lat)
-            const t = projectToViewport(targetLL.lng, targetLL.lat)
+            const w = projectToViewport(waypoint.lng, waypoint.lat)
             if (g) ground = g
-            // 机头对准航线轨迹：航向取「当前位置 → 平滑目标」投影方向（后续运动方向），
-            // 距目标 >2px 才刷新，收敛后航向锁定不抖动
-            if (g && t) {
-              const hdx = t.x - g.x
-              const hdy = t.y - g.y
+            // 机头对准「当前位置 → 航点」方向（>2px 才刷新，到达后航向锁定不抖动）
+            if (g && w) {
+              const hdx = w.x - g.x
+              const hdy = w.y - g.y
               if (Math.hypot(hdx, hdy) > 2) {
                 targetHeading = (Math.atan2(hdy, hdx) * 180) / Math.PI
               }
             }
-            // 到达航点（平滑目标投影点距航点投影 <10px）记录一次日志
-            if (!arrivalLogged && t) {
-              const w = projectToViewport(waypoint.lng, waypoint.lat)
-              if (w && Math.hypot(t.x - w.x, t.y - w.y) < 10) {
-                arrivalLogged = true
-                console.info(
-                  `[waypoint-flight] ${planeId ?? '无人机'} 已到达航点 (${waypoint.lng.toFixed(6)}, ${waypoint.lat.toFixed(6)}) 高度 ${visualAlt.toFixed(1)}m`,
-                )
-              }
+            // 到达航点（当前投影点距航点投影 <10px）记录一次日志，此后钉住悬停
+            if (!arrivalLogged && g && w && Math.hypot(w.x - g.x, w.y - g.y) < 10) {
+              arrivalLogged = true
+              console.info(
+                `[waypoint-flight] ${planeId} 已到达航点 (${waypoint.lng.toFixed(6)}, ${waypoint.lat.toFixed(6)}) 高度 ${visualAlt.toFixed(1)}m，钉住航点悬停（高度继续跟随遥测）`,
+              )
             }
           } else {
-            // 无地理锚定（无适配器且无起始经纬度）：退回屏幕空间插值（兼容旧调用）
-            const target = { x: waypoint.x, y: waypoint.y }
+            // 无适配器（无锚定经纬度）：退回屏幕指数插值飞向航点（兼容兜底）
             ground = {
-              x: ground.x + (target.x - ground.x) * alpha,
-              y: ground.y + (target.y - ground.y) * alpha,
+              x: ground.x + (waypoint.x - ground.x) * alpha,
+              y: ground.y + (waypoint.y - ground.y) * alpha,
             }
-            const hdx = target.x - ground.x
-            const hdy = target.y - ground.y
+            const hdx = waypoint.x - ground.x
+            const hdy = waypoint.y - ground.y
             if (Math.hypot(hdx, hdy) > 2) {
               targetHeading = (Math.atan2(hdy, hdx) * 180) / Math.PI
             }
           }
-          // 首帧切入平飞：视觉高度精确钳位到设定值——爬升末帧 t<1（离散 rAF 帧定格在
-          // climbDuration 前）会残留 <1m 尾差（如设定 200m 实际 199.x m 就切入平飞），
-          // 若再经指数平滑缓慢收敛，标注将长时间停留在 199m 才跳 200m，观感即「到
-          // 199m 就平飞」；首帧直接对齐设定值，随后再向遥测实测高度平滑收敛
-          if (!enteredFollowing) {
-            enteredFollowing = true
-            visualAlt = targetHeight
-          }
-          // 视觉高度向遥测实测高度渐近对齐（实测与设定值的偏差平滑收敛）
-          const altTarget = live ? live.altitude : targetHeight
-          visualAlt += (altTarget - visualAlt) * alpha
         }
 
-        // 航向角短弧平滑转向（切图机头朝右为 0°，rotate = atan2 屏幕角）：
-        // 起飞即指向航线方向（高度过渡段沿该航向垂直爬升/下降）；切入平飞后刷新为
-        // 「当前位置 → 平滑目标」方向，以 τ≈180ms 指数平滑转向（恒取最短弧），
-        // 机头全程对准航线飞行方向不跳变
+        // 航向角短弧平滑转向（切图机头朝右为 0°）：向目标航向以 τ≈180ms 指数
+        // 平滑转向（恒取最短弧），机头全程对准运动方向不跳变
         if (targetHeading !== null) {
           const delta = ((targetHeading - angle + 540) % 360) - 180
           angle += delta * (1 - Math.exp(-dt / 180))
         }
 
-        // 视口坐标 = 地面轨迹点 - 升空像素（与 AircraftLayer 的 --aircraft-lift 同公式）
+        // 视口坐标 = 地面轨迹点 - 升空像素（与 AircraftLayer 的 --aircraft-lift 同
+        // 公式，0.3px/m 仅视觉升空折算非数据 mock）；高度标注随动画 tick 实时刷新
+        // （渲染平滑值，逐帧向遥测高度收敛），WaypointAltitudeOverlay 按整米取整显示
         setWaypointFlight({
           x: ground.x,
           y: ground.y - visualAlt * 0.3,
           angle,
           icon,
-          // 目标设备主键：AircraftLayer 据此隐藏该机原地面 0.000m 冻结标注（去重）
+          // 目标设备主键：AircraftLayer 据此隐藏该机原地面冻结标注（去重）
           planeId,
-          // 高度标注随动画 tick 实时刷新：store 保留浮点原值驱动垂直位移平滑，
-          // 标注层按整米取整显示（20m/s ≙ 每 50ms 步进 1m，无小数位跳动）
           altitude: visualAlt,
           groundY: ground.y,
         })
-        // 阶段切换日志（一次性）：climbing/descending → following 衔接留痕
-        if (!phaseSwitchLogged && elapsed >= climbDuration) {
-          phaseSwitchLogged = true
-          console.info(
-            `[waypoint-flight] ${planeId ?? '无人机'} 高度调整完成（${climbPhase} 20m/s：${startAlt.toFixed(1)}m → ${targetHeight.toFixed(1)}m），切入 50m/s 恒速平飞`,
-          )
-        }
 
         waypointFlightRaf.current = requestAnimationFrame(step)
       }
@@ -411,20 +460,15 @@ export function useFlightAnimations() {
         targetHeight = 0,
       } = options ?? {}
       const geo = !!adapter && points.every((p) => p.lng !== undefined && p.lat !== undefined)
-      // 起飞点经纬度（地理锚定）：优先 WS 遥测实测值；无遥测时由飞机图标中心反投影
+      // 起飞点经纬度（地理锚定）：由飞机图标中心视口坐标反投影——地图图标是用户
+      // 布设/可拖拽的展示位置，与设备真实遥测 GPS 无关；此前优先用遥测 GPS 锚定
+      // 会让动效起点瞬移到真实机位投影点（与航点飞行同源的「斜下方跳变」缺陷）。
+      // snapshot 仅用于起始高度取数（遥测实测高度优先）。
       const snapshot =
         planeId !== undefined ? useRealtimeStore.getState().telemetry[planeId] : undefined
       let startLng: number | undefined
       let startLat: number | undefined
-      if (
-        snapshot &&
-        Number.isFinite(snapshot.longitude) &&
-        Number.isFinite(snapshot.latitude) &&
-        (snapshot.longitude !== 0 || snapshot.latitude !== 0)
-      ) {
-        startLng = snapshot.longitude
-        startLat = snapshot.latitude
-      } else if (geo && adapter) {
+      if (geo && adapter) {
         const rect = adapter.getContainer().getBoundingClientRect()
         const ll = adapter.unproject({ x: aircraftX - rect.left, y: aircraftY - rect.top })
         startLng = ll.lng
@@ -724,31 +768,194 @@ export function useFlightAnimations() {
     const { rallyPointFlights, setRallyPointFlights } = useFlightAnimStore.getState()
     if (rallyPointFlights.length > 0) setRallyPointFlights([])
   }, [])
-  // 集结点模拟飞行：各选中无人机沿「飞机图标中心 → 对应集结坪」航线同步循环飞行
-  // （单程约 4s + 集结坪停留 600ms 为一个周期，多机并行），到达后回到起点重飞——
-  // 无限循环，直至取消面板/删除重绘/重新生成终止；仅前端演示，待接入真实指令链路后由实时遥测驱动
+  // 集结点模拟飞行（真实指令链路动效口径，与航点/环绕飞行「先到高度再平飞」一致，
+  // 按面板参数驱动三阶段）：
+  // 阶段一「高度调整」：各机水平钉在起飞点地面位置，以恒定 20m/s 自当前高度
+  // （WS 遥测实测 → mock rawPlanes → 0m 兜底，与航点飞行同口径）爬升至面板设定
+  // 「起飞高度」（时长 = 高度差 / 20m/s；差值 <0.5m 视为已到位直接跳过），
+  // 机头预对准「起点 → 对应集结坪」航线方向（到达后无缝转入转场），
+  // 实时高度逐帧写入 store 供多机高度标注层渲染；
+  // 阶段二「按集结速度转场」：到达起飞高度后各机以面板设定「集结速度」（m/s）沿
+  // 航线飞向按所选「集结队形」布置的对应集结坪——像素速度按 10m/s ≈ 100px/s
+  // 观感折算（speed × 0.01 px/ms，下限 0.01 防零速除零），各机航程不同、先后到达，
+  // 全程保持起飞高度；
+  // 阶段三「落坪对齐」：到达对应集结坪上空后边下降（视觉升空量 → 0、高度标注
+  // 同步归 0）边将机头平滑旋转至集结坪预设无人机图标的朝向（图标切图机头朝上
+  // = 屏幕角 -90°，最短路径转向）；
+  // 阶段四「精准落坪定格」：飞机中心与集结坪预设图标中心完全重合（x/y 精确等于
+  // 集结坪中心）、机头朝向与图标一致，多机按所选队形就位；全部落地后动画自然
+  // 结束——末帧定格状态保留在 store，取消面板/删除重绘/重新生成时经 stop 清除；
+  // 队形变更续飞（resume=true）：自各机当前快照位置/高度续飞新队形集结坪
+  // （已完成的爬升段不重放）；仅前端演示，待接入真实指令链路后由实时遥测驱动
   const startRallyPointFlights = useCallback(
-    (flights: { x1: number; y1: number; x2: number; y2: number; icon: string }[]) => {
+    (
+      flights: {
+        x1: number
+        y1: number
+        x2: number
+        y2: number
+        icon: string
+        /** 目标设备主键（WS telemetry 键）：爬升段起始高度取数（遥测 → mock → 0m） */
+        planeId?: string
+      }[],
+      params: {
+        /** 面板设定起飞高度（米，相对起飞点）：阶段一恒速 20m/s 爬升目标 */
+        targetHeight: number
+        /** 面板设定集结速度（m/s）：阶段二转场速度（10m/s ≈ 100px/s 观感折算） */
+        speed: number
+        /** 队形变更续飞：自各机当前快照位置/高度续飞新集结坪（不重放爬升段） */
+        resume?: boolean
+        /** 终态机头朝向（屏幕角，0°=正右）：默认 -90°=朝上，与集结坪预设无人机图标机头一致 */
+        finalHeading?: number
+      },
+    ) => {
+      // 续飞快照须在 stop 清空 store 前捕获（各机当前地面轨迹点与实时高度）
+      const prevFlights = params.resume ? useFlightAnimStore.getState().rallyPointFlights : []
       const { setRallyPointFlights } = useFlightAnimStore.getState()
       stopRallyPointFlights()
       if (flights.length === 0) return
-      const duration = 4000
-      const holdAtEnd = 600
-      const cycle = duration + holdAtEnd
+      const { targetHeight, speed } = params
+      // 终态机头朝向：与集结坪预设无人机图标机头方向一致——图标切图机头朝上，
+      // atan2 屏幕角口径（0°=正右、顺时针为正）下「上」= -90°
+      const finalHeading = params.finalHeading ?? -90
+      // 落坪对齐段时长：下降（视觉升空量 → 0）与机头旋转至图标朝向同时完成
+      const LAND_MS = 900
+      // 高度调整垂直速度（与航点/航线/环绕飞行同口径 20m/s）
+      const CLIMB_SPEED_MS = 20
+      // 转场像素速度：集结速度（m/s）× 0.01 → 10m/s ≈ 100px/s（屏幕观感口径）；
+      // 下限 0.01 px/ms 防止面板速度为 0 时除零（转场时长无穷大）
+      const pxPerMs = Math.max(0.01, speed * 0.01)
+      const rawPlanes = usePlaneStatusStore.getState().rawPlanes
+      // 各机分段参数：起点（续飞快照 / 飞机图标中心）、起始高度（快照 → 遥测 →
+      // mock rawPlanes → 0m 兜底）、爬升时长（高度差 / 20m/s）、转场时长（航程 / 速度）
+      const segs = flights.map((f, i) => {
+        const prev = prevFlights[i]
+        const ground =
+          prev && prev.groundY !== undefined
+            ? { x: prev.x, y: prev.groundY }
+            : { x: f.x1, y: f.y1 }
+        const prevAlt = prev?.altitude
+        let startAlt: number
+        if (prevAlt !== undefined && Number.isFinite(prevAlt)) {
+          startAlt = prevAlt
+        } else {
+          const snapshot =
+            f.planeId !== undefined
+              ? useRealtimeStore.getState().telemetry[f.planeId]
+              : undefined
+          const mockAlt =
+            f.planeId !== undefined
+              ? Number(rawPlanes.find((p) => p.id === f.planeId)?.altitude)
+              : NaN
+          startAlt =
+            snapshot && Number.isFinite(snapshot.altitude)
+              ? snapshot.altitude
+              : Number.isFinite(mockAlt)
+                ? mockAlt
+                : 0
+        }
+        const deltaH = targetHeight - startAlt
+        return {
+          ground,
+          startAlt,
+          climbMs: Math.abs(deltaH) < 0.5 ? 0 : (Math.abs(deltaH) / CLIMB_SPEED_MS) * 1000,
+          cruiseMs: Math.hypot(f.x2 - ground.x, f.y2 - ground.y) / pxPerMs,
+          // 机头全程对准「起点 → 对应集结坪」航线方向（切图机头朝右，atan2 屏幕角）
+          heading: (Math.atan2(f.y2 - ground.y, f.x2 - ground.x) * 180) / Math.PI,
+          // 落坪段机头旋转量：heading → finalHeading 最短路径（归一化到 ±180°）
+          turnDelta:
+            ((finalHeading -
+              (Math.atan2(f.y2 - ground.y, f.x2 - ground.x) * 180) / Math.PI +
+              540) %
+              360) -
+            180,
+        }
+      })
       const startTime = performance.now()
-      // 各航线航向角（切图机头默认朝右，rotate = atan2 屏幕角）
-      const angles = flights.map((f) => (Math.atan2(f.y2 - f.y1, f.x2 - f.x1) * 180) / Math.PI)
+      let arrivalLogged = false
       const step = (now: number) => {
-        // 周期取模实现无限循环：0~4s 飞行 → 集结坪停留 600ms → 回到起点重飞
-        const t = Math.min(1, ((now - startTime) % cycle) / duration)
+        const elapsed = now - startTime
+        let allArrived = true
         setRallyPointFlights(
-          flights.map((f, i) => ({
-            x: f.x1 + (f.x2 - f.x1) * t,
-            y: f.y1 + (f.y2 - f.y1) * t,
-            angle: angles[i],
-            icon: f.icon,
-          })),
+          flights.map((f, i) => {
+            const s = segs[i]
+            // —— 阶段一：恒速高度调整 —— 水平钉在起点地面位置，
+            // 高度线性逼近起飞高度（视觉升空量与 AircraftLayer 同比例 0.3px/m）
+            if (elapsed < s.climbMs) {
+              allArrived = false
+              const t = elapsed / s.climbMs
+              const alt = s.startAlt + (targetHeight - s.startAlt) * t
+              return {
+                x: s.ground.x,
+                y: s.ground.y - alt * 0.3,
+                angle: s.heading,
+                icon: f.icon,
+                altitude: alt,
+                groundY: s.ground.y,
+              }
+            }
+            // —— 阶段二：按集结速度转场 —— 保持起飞高度沿「起点 → 对应集结坪」
+            // 航线匀速飞行（各机航程不同、先后到达），高度不变
+            const cruiseElapsed = elapsed - s.climbMs
+            if (cruiseElapsed < s.cruiseMs) {
+              allArrived = false
+              const t = cruiseElapsed / s.cruiseMs
+              const gx = s.ground.x + (f.x2 - s.ground.x) * t
+              const gy = s.ground.y + (f.y2 - s.ground.y) * t
+              return {
+                x: gx,
+                y: gy - targetHeight * 0.3,
+                angle: s.heading,
+                icon: f.icon,
+                altitude: targetHeight,
+                groundY: gy,
+              }
+            }
+            // —— 阶段三：落坪对齐 —— 到达集结坪上空后边下降边转向：视觉升空量与
+            // 高度标注同步降为 0，机头沿最短路径旋转至图标朝向（smoothstep 缓动）
+            const landElapsed = elapsed - s.climbMs - s.cruiseMs
+            if (landElapsed < LAND_MS) {
+              allArrived = false
+              const t = landElapsed / LAND_MS
+              const ease = t * t * (3 - 2 * t)
+              return {
+                x: f.x2,
+                y: f.y2 - targetHeight * 0.3 * (1 - ease),
+                angle: s.heading + s.turnDelta * ease,
+                icon: f.icon,
+                altitude: targetHeight * (1 - ease),
+                groundY: f.y2,
+              }
+            }
+            // —— 阶段四：精准落坪定格 —— 飞机中心与集结坪预设图标中心完全重合，
+            // 机头朝向与图标一致（-90°=朝上），多机按所选队形就位；
+            // landed=true 标记任务完成：渲染层据此隐藏绿色航线与原起飞点飞机图标
+            return {
+              x: f.x2,
+              y: f.y2,
+              angle: finalHeading,
+              icon: f.icon,
+              // 目标设备主键：AircraftLayer 据此关联原地面图标（任务完成后隐藏）
+              planeId: f.planeId,
+              altitude: 0,
+              groundY: f.y2,
+              landed: true,
+            }
+          }),
         )
+        if (allArrived) {
+          // 全部到达：动画循环自然结束，末帧悬停状态保留在 store；rAF 句柄归位，
+          // rallyPointFlyingRef 保持 true——队形变更仍可触发续飞，取消面板/
+          // 删除重绘时经 stopRallyPointFlights 统一清除
+          rallyPointFlightRaf.current = null
+          if (!arrivalLogged) {
+            arrivalLogged = true
+            console.info(
+              `[rally-point] ${segs.length} 机已按队形精准落坪：飞机中心与集结坪预设图标重合、机头对齐图标朝向（${finalHeading}°），起飞高度 ${targetHeight}m / 集结速度 ${speed}m/s`,
+            )
+          }
+          return
+        }
         rallyPointFlightRaf.current = requestAnimationFrame(step)
       }
       rallyPointFlyingRef.current = true

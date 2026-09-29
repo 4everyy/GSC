@@ -7,7 +7,8 @@ import { SlideConfirmDialog } from '../../PanelKit/PanelKit'
 import { podControlOrbit } from '../../../api/index'
 import { observeDownlink } from '../../../features/realtime/wsClient'
 import { aircraft } from '../../../config/index'
-import { getRallyPointSpots, computeFormationFlightGeometry } from '../../../lib/formationLayout'
+import { getRallyPointSpots, computeFormationFlightGeometry, pairRallyPointSpots } from '../../../lib/formationLayout'
+import { resolvePlaneSrc } from '../../../lib/planeIcons'
 import { type useExclusivePanels } from '../../../hooks/useExclusivePanels'
 import { type useFlightAnimations } from '../../../hooks/useFlightAnimations'
 import { type useMapEngine } from '../../../hooks/index'
@@ -231,7 +232,12 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
                       lat: orbitPoint.lat,
                     },
                     radius,
-                    icon: aircraft[idx].src,
+                    // 机身切图按接口状态取色（与地面图标同口径，动效不再偏蓝）
+                    icon: resolvePlaneSrc(
+                      usePlaneStatusStore.getState().devices,
+                      aircraft[idx].deviceIndex,
+                      aircraft[idx].src,
+                    ),
                     adapter,
                     planeId,
                     targetHeight: orbitSlide.height,
@@ -263,25 +269,48 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
               // 对应集结坪并无限循环，直至取消面板/删除重绘/重新生成终止
               const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
               if (rallyPointRouteGenerated && rallyPointSpots.length > 0 && stage) {
-                // 选中飞机按设备序号升序与集结坪一一对应（与航线渲染的 picked 完全一致）
+                // 选中飞机按设备序号升序取出，再按「总航程最小指派」配对集结坪
+                // （与航线渲染的 picked/perm 完全一致）：最短总长匹配天然无几何
+                // 交叉（三角形不等式保证），多条航线互不相交且总航程最短
                 const pickedFlights = aircraft
                   .map((item, index) => ({ item, index }))
                   .filter(({ item }) => selectedDevices.has(item.deviceIndex))
                   .sort((a, b) => a.item.deviceIndex - b.item.deviceIndex)
+                const flightPerm = pairRallyPointSpots(
+                  pickedFlights.map(({ index }) => ({
+                    x: stage.left + (aircraftPositions[index].x / 100) * stage.width + 24,
+                    y: stage.top + (aircraftPositions[index].y / 100) * stage.height + 24,
+                  })),
+                  rallyPointSpots,
+                )
                 startRallyPointFlights(
-                  pickedFlights.flatMap(({ item, index }, i) =>
-                    rallyPointSpots[i]
+                  pickedFlights.flatMap(({ item, index }, i) => {
+                    const spot = flightPerm[i] >= 0 ? rallyPointSpots[flightPerm[i]] : undefined
+                    return spot
                       ? [
                           {
                             x1: stage.left + (aircraftPositions[index].x / 100) * stage.width + 24,
                             y1: stage.top + (aircraftPositions[index].y / 100) * stage.height + 24,
-                            x2: rallyPointSpots[i].x,
-                            y2: rallyPointSpots[i].y,
-                            icon: item.src,
+                            x2: spot.x,
+                            y2: spot.y,
+                            // 机身切图按接口状态取色（红=任务中/蓝=待命/灰=离线）
+                            icon: resolvePlaneSrc(
+                              usePlaneStatusStore.getState().devices,
+                              item.deviceIndex,
+                              item.src,
+                            ),
+                            // 目标设备主键：爬升段起始高度取数（遥测 → mock → 0m）
+                            planeId: usePlaneStatusStore.getState().rawPlanes[item.deviceIndex]?.id,
                           },
                         ]
-                      : [],
-                  ),
+                      : []
+                  }),
+                  // 面板参数驱动三阶段：先爬升至面板「起飞高度」（20m/s），
+                  // 再按「集结速度」转场至对应集结坪，最后按队形悬停定格
+                  {
+                    targetHeight: rallyPointSlide.height ?? 10,
+                    speed: rallyPointSlide.speed ?? 10,
+                  },
                 )
               }
               setRallyPointConfirmed(true)
@@ -349,20 +378,44 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
                   .filter(({ item }) => selectedDevices.has(item.deviceIndex))
                   .sort((a, b) => a.item.deviceIndex - b.item.deviceIndex)
                 const spots = getRallyPointSpots(rallyPointRect, f, picked.length)
+                // 续飞同样按「总航程最小指派」配对集结坪，保证动画终点与航线渲染
+                // 一致（最短总长匹配天然无几何交叉）
+                const resumePerm = pairRallyPointSpots(
+                  picked.map(({ index }) => ({
+                    x: stage.left + (aircraftPositions[index].x / 100) * stage.width + 24,
+                    y: stage.top + (aircraftPositions[index].y / 100) * stage.height + 24,
+                  })),
+                  spots,
+                )
                 startRallyPointFlights(
-                  picked.flatMap(({ item, index }, i) =>
-                    spots[i]
+                  picked.flatMap(({ item, index }, i) => {
+                    const spot = resumePerm[i] >= 0 ? spots[resumePerm[i]] : undefined
+                    return spot
                       ? [
                           {
                             x1: stage.left + (aircraftPositions[index].x / 100) * stage.width + 24,
                             y1: stage.top + (aircraftPositions[index].y / 100) * stage.height + 24,
-                            x2: spots[i].x,
-                            y2: spots[i].y,
-                            icon: item.src,
+                            x2: spot.x,
+                            y2: spot.y,
+                            // 机身切图按接口状态取色（红=任务中/蓝=待命/灰=离线）
+                            icon: resolvePlaneSrc(
+                              usePlaneStatusStore.getState().devices,
+                              item.deviceIndex,
+                              item.src,
+                            ),
+                            // 目标设备主键：续飞起始高度快照（遥测 → mock → 0m）
+                            planeId: usePlaneStatusStore.getState().rawPlanes[item.deviceIndex]?.id,
                           },
                         ]
-                      : [],
-                  ),
+                      : []
+                  }),
+                  // 续飞：自各机当前快照位置/高度按面板速度飞向新队形集结坪
+                  // （已完成的爬升段不重放）；高度/速度取确认时暂存值，兜底面板默认
+                  {
+                    targetHeight: rallyPointSlide.height ?? 10,
+                    speed: rallyPointSlide.speed ?? 10,
+                    resume: true,
+                  },
                 )
               }}
               onConfirm={(height, speed, formation) => {

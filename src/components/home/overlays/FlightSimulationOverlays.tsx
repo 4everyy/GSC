@@ -4,6 +4,8 @@ import { aircraft } from '../../../config/index'
 import { useFlightAnimStore } from '../../../stores/index'
 import { DroneFlightIcon } from './DroneFlightIcon'
 import { WaypointAltitudeOverlay } from './WaypointAltitudeOverlay'
+import { RallyPointAltitudeOverlay } from './RallyPointAltitudeOverlay'
+import { pairRallyPointSpots } from '../../../lib/formationLayout'
 import { useEffect, useState } from 'react'
 
 /**
@@ -41,6 +43,11 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
   const routeFlightFlight = useFlightAnimStore((s) => s.routeFlightFlight)
   const areaLandingFlights = useFlightAnimStore((s) => s.areaLandingFlights)
   const rallyPointFlights = useFlightAnimStore((s) => s.rallyPointFlights)
+  // 集结任务完成判定：存在飞行快照且全部落地定格（altitude≤0，与
+  // drone-flight--landed 同口径）——完成后隐藏绿色航线连线与起飞点原图标，
+  // 仅保留集结坪图标与定格飞机（保留当前位置）
+  const rallyPointLanded =
+    rallyPointFlights.length > 0 && rallyPointFlights.every((f) => f.landed === true)
   // 集结点「删除重绘」按钮需要终止循环动画（事件期调用，稳定引用）
   const stopRallyPointFlights = anims.stopRallyPointFlights
   // 航线定格航点地理锚定：地图拖动/旋转/缩放的每一帧都触发 move 事件，
@@ -66,6 +73,9 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
           {/* 航点飞行高度实时标注：高度虚线自飞行图标延伸至地面轨迹点，
               数值随遥测逐帧刷新（mock 起飞/飞行高度默认 20m/s 变化），全程跟随 */}
           <WaypointAltitudeOverlay />
+          {/* 集结点多机高度标注：与航点单机标注同款样式，随各机飞行动效
+              图标（上方 rallyPointFlights.map）逐帧实时标注（爬升/转场/悬停） */}
+          <RallyPointAltitudeOverlay />
 
           {/* 航线飞行航线：航点1 → 航点2 → …（1px #00FF95，不与飞机连线），
               取点中全部连线保持虚线，点击「航线生成」后定格为实线；
@@ -260,35 +270,46 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
           {/* 集结点集结坪编队 + 航线（点击「航线生成」后）：在已确认集结区域内按所选
               集结队形布置「数量=选中飞机数」的集结坪图标（area-landing-spot），并用
               1px #00FF95 绿色实线连接各选中飞机中心与其对应集结坪；队形/选区/选中
-              飞机数变化时联动重排，重绘区域/取消/删除重绘时随状态清除 */}
+              飞机数变化时联动重排，重绘区域/取消/删除重绘时随状态清除；
+              任务完成（全部落地定格）后绿色航线隐藏，仅保留集结坪与定格飞机 */}
           {rallyPointRect &&
             rallyPointRouteGenerated &&
             rallyPointSpots.length > 0 &&
             (() => {
               const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
               if (!stage) return null
-              // 选中飞机按设备序号升序与集结坪一一对应（第 i 架 → 第 i 个集结坪）
+              // 选中飞机按设备序号升序取出，再按「总航程最小指派」配对集结坪：
+              // 飞机与集结坪按欧氏距离求最小总长一一配对，最短总长匹配天然无
+              // 几何交叉（三角形不等式保证），多条航线互不相交且总航程最短
               const picked = aircraft
                 .map((item, index) => ({ item, index }))
                 .filter(({ item }) => selectedDevices.has(item.deviceIndex))
                 .sort((a, b) => a.item.deviceIndex - b.item.deviceIndex)
+              const planeCenters = picked.map(({ index }) => ({
+                x: stage.left + (aircraftPositions[index].x / 100) * stage.width + 24,
+                y: stage.top + (aircraftPositions[index].y / 100) * stage.height + 24,
+              }))
+              const perm = pairRallyPointSpots(planeCenters, rallyPointSpots)
               return (
                 <>
-                  <svg className="area-landing-route" aria-hidden="true">
-                    {picked.map(({ index }, i) =>
-                      rallyPointSpots[i] ? (
-                        <line
-                          key={index}
-                          x1={stage.left + (aircraftPositions[index].x / 100) * stage.width + 24}
-                          y1={stage.top + (aircraftPositions[index].y / 100) * stage.height + 24}
-                          x2={rallyPointSpots[i].x}
-                          y2={rallyPointSpots[i].y}
-                          stroke="#00FF95"
-                          strokeWidth={1}
-                        />
-                      ) : null,
-                    )}
-                  </svg>
+                  {/* 任务完成后隐藏绿色航线连线（续飞/取消/删除重绘时随动画状态恢复） */}
+                  {!rallyPointLanded && (
+                    <svg className="area-landing-route" aria-hidden="true">
+                      {picked.map(({ index }, i) =>
+                        perm[i] >= 0 && rallyPointSpots[perm[i]] ? (
+                          <line
+                            key={index}
+                            x1={planeCenters[i].x}
+                            y1={planeCenters[i].y}
+                            x2={rallyPointSpots[perm[i]].x}
+                            y2={rallyPointSpots[perm[i]].y}
+                            stroke="#00FF95"
+                            strokeWidth={1}
+                          />
+                        ) : null,
+                      )}
+                    </svg>
+                  )}
                   {rallyPointSpots.map((spot, i) => (
                     <img
                       key={i}
@@ -303,8 +324,11 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
               )
             })()}
 
-          {/* 集结点模拟飞行无人机：确认后各机沿航线连线循环飞向对应集结坪
-              （fixed 视口定位 + 航向旋转，多机并行无限循环播放，取消面板/删除重绘后消失） */}
+          {/* 集结点模拟飞行无人机：确认后各机三阶段飞向对应集结坪（爬升/转场/落坪
+              对齐 + 终态精准定格）；终态（altitude=0）叠加 drone-flight--landed 类
+              提升 z-index 至 1503——飞机完整显示在集结坪预设无人机图标(z=1502)之上，
+              实现「飞机精准落在预设图标上、机头朝向与图标一致」的视觉承诺；
+              飞行中保持原层级（1501）不遮挡其他标记 */}
           {rallyPointFlights.map((flight, i) => (
             <DroneFlightIcon
               key={i}
@@ -312,6 +336,7 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
               y={flight.y}
               angle={flight.angle}
               icon={flight.icon}
+              className={flight.landed === true ? 'drone-flight--landed' : undefined}
             />
           ))}
 

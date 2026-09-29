@@ -11,6 +11,15 @@
  *           会导致整个根组件树卸载 → 整页白屏（如「启用苏州离线包即白屏」事故）。
  *           本组件作为最后防线，避免同类问题再次造成不可恢复的白屏。
  *
+ * 重试联动（2026-09-28）：可选 onReset 回调在点击「重试」时随内部状态一并调用——
+ *       用于联动外层重建懒加载资源（如 App.tsx 的 React.lazy 实例：动态 import
+ *       失败的 rejection 会被 lazy 永久缓存，须重建实例才能重新发起模块加载）。
+ *
+ * 自愈联动（2026-09-28 深度修复）：可选 onError 回调在捕获错误时上报错误 message——
+ *       供外层按错误类型自动恢复（如动态模块失效时自动整页刷新重建模块图）；
+ *       同时提供「刷新页面」按钮，作为模块链失效（旧 chunk 404 / dev 编辑中间态）的
+ *       终极恢复手段——「重试」仅重建 lazy 实例，无法清掉浏览器已缓存的失效模块图。
+ *
  * 限制：不捕获事件回调、异步代码（setTimeout / Promise rejection）、SSR 错误。
  */
 import { Component, type ErrorInfo, type ReactNode } from 'react'
@@ -18,6 +27,10 @@ import './ErrorBoundary.css'
 
 interface Props {
   children: ReactNode
+  /** 点击「重试」时回调（先于内部状态重置）：联动外层重建懒加载实例等资源 */
+  onReset?: () => void
+  /** 捕获渲染错误时回调（携带错误 message）：供外层按错误类型自愈（模块失效自动刷新等） */
+  onError?: (message: string) => void
 }
 interface State {
   hasError: boolean
@@ -31,13 +44,17 @@ export class ErrorBoundary extends Component<Props, State> {
   // 改用构造函数直接赋值，登录首屏不再拉取 antd。
   declare state: State
   private declare handleRetry: () => void
+  private declare handleReload: () => void
 
   constructor(props: Props) {
     super(props)
     this.state = { hasError: false, message: '' }
     this.handleRetry = () => {
+      // 先通知外层（重建 lazy 实例等），再重置内部 error 态重新挂载子树
+      this.props.onReset?.()
       this.setState({ hasError: false, message: '' })
     }
+    this.handleReload = () => window.location.reload()
   }
 
   static getDerivedStateFromError(error: Error): State {
@@ -47,6 +64,8 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo): void {
     // 输出到控制台，便于开发期定位真实堆栈（不依赖任何外部日志服务，严格离线友好）。
     console.error('[ErrorBoundary] 子组件渲染崩溃：', error, info)
+    // 上报外层：按错误类型自愈（如动态模块失效 → App 自动整页刷新，见 App.tsx）
+    this.props.onError?.(error?.message ?? String(error))
   }
 
   render(): ReactNode {
@@ -56,9 +75,14 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="error-boundary__card">
             <div className="error-boundary__title">页面渲染出错</div>
             <div className="error-boundary__msg">{this.state.message}</div>
-            <button type="button" className="error-boundary__retry" onClick={this.handleRetry}>
-              重试
-            </button>
+            <div className="error-boundary__actions">
+              <button type="button" className="error-boundary__retry" onClick={this.handleRetry}>
+                重试
+              </button>
+              <button type="button" className="error-boundary__reload" onClick={this.handleReload}>
+                刷新页面
+              </button>
+            </div>
           </div>
         </div>
       )

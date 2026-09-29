@@ -317,6 +317,13 @@
   z-index: 1502;
 }
 
+/* 集结点精准落坪终态：飞机图标叠加层提升至 1503——显示在集结坪预设无人机
+   图标（area-landing-spot，z=1502）之上，实现「飞机落在预设图标上、机头
+   朝向与图标一致」的视觉承诺；仅集结点终态（altitude=0）叠加本类 */
+.drone-flight--landed {
+  z-index: 1503;
+}
+
 /* BottomBar —— 底部操作栏与水平居中按钮条
    自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
    HomePage.css 按拆分前的层叠顺序 @import 各文件。 */

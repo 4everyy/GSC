@@ -98,6 +98,50 @@ function circleCoordinates(center: LngLat, radiusMeters: number, steps = 64): nu
   return coords
 }
 
+/** 沿线箭头贴图栅格化像素比（2x：保证高清屏下箭头边缘清晰） */
+const ICON_PIXEL_RATIO = 2
+
+/** 图标栅格缓存（url#尺寸 → ImageData）：同一资源多处复用免重复加载/重绘 */
+const iconRasterCache = new Map<string, ImageData>()
+
+/**
+ * 图标异步栅格化：Image 加载（svg/png 同一入口）→ 按逻辑尺寸 × 像素比放大
+ * 重绘到 canvas。SVG 原始 viewBox 通常极小（如 4×4），直接 addImage 会被
+ * 栅格成 4×4 位图、放大显示后模糊；先重绘放大保证沿线箭头边缘清晰。
+ * 同参数请求命中缓存（含 setStyle 重放后的再次注册）。
+ */
+function rasterizeIcon(
+  url: string,
+  sizePx: number,
+  pixelRatio: number,
+): Promise<ImageData> {
+  const cacheKey = `${url}#${sizePx}`
+  const cached = iconRasterCache.get(cacheKey)
+  if (cached) return Promise.resolve(cached)
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(sizePx * pixelRatio)
+        canvas.height = Math.round(sizePx * pixelRatio)
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('canvas 2d context unavailable')
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        // 导出 ImageData：MapLibre addImage 的 StyleImageSource 仅接受
+        // ImageData | HTMLImageElement（HTMLCanvasElement 类型不兼容）
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        iconRasterCache.set(cacheKey, data)
+        resolve(data)
+      } catch (err) {
+        reject(err instanceof Error ? err : new Error(String(err)))
+      }
+    }
+    img.onerror = () => reject(new Error(`icon load failed: ${url}`))
+    img.src = url
+  })
+}
+
 /**
  * 根据像素锚点（相对元素左上角）与元素尺寸，推断最匹配的 MapLibre 九宫格锚点字符串。
  *
@@ -352,12 +396,70 @@ export class MapLibreAdapter implements MapAdapter {
       },
     })
 
-    this.overlays.set(id, {
+    const entry: MapLibreOverlayEntry = {
       kind: 'polyline',
       sourceId,
       layerIds,
       recreate: () => this.addPolyline(id, points, opts),
-    })
+    }
+    this.overlays.set(id, entry)
+
+    // 沿线方向箭头（可选，异步）：symbol-placement:'line' 使箭头沿折线逐段
+    // 自动旋转（图标 x 轴对齐切线 → 指向点序行进方向），叠加在主线之上。
+    // 贴图异步栅格化，挂层前校验覆盖物未被移除/重建、source 未被清
+    // （setStyle 热切换），避免孤儿 layer/image；箭头层 id 事后并入
+    // entry.layerIds 由 removeOverlay 统一清理
+    if (opts?.arrows) {
+      const { iconUrl, iconSize = 24, spacing = 100, pulse = false, pulsePeriod = 1400 } = opts.arrows
+      const arrowLayerId = nextId('arrow')
+      const imageId = `polyline-arrow-${iconSize}`
+      rasterizeIcon(iconUrl, iconSize, ICON_PIXEL_RATIO)
+        .then((icon) => {
+          if (this.overlays.get(id) !== entry || !this.map.getSource(sourceId)) return
+          if (!this.map.hasImage(imageId)) {
+            this.map.addImage(imageId, icon, { pixelRatio: ICON_PIXEL_RATIO })
+          }
+          this.map.addLayer({
+            id: arrowLayerId,
+            type: 'symbol',
+            source: sourceId,
+            layout: {
+              'symbol-placement': 'line',
+              'symbol-spacing': spacing,
+              'icon-image': imageId,
+              'icon-allow-overlap': true,
+              'icon-ignore-placement': true,
+            },
+            paint: { 'icon-opacity': opts.opacity ?? 1 },
+          })
+          layerIds.push(arrowLayerId)
+          // 箭头闪光呼吸动画（可选）：rAF 按正弦脉动 icon-opacity（0.45~1 × 基准
+          // 不透明度）与 icon-size（1~1.15 轻微放大），密排时呈流光闪烁效果。
+          // 循环自终止：覆盖物被移除/重建（entry 引用失效）或箭头层随 setStyle
+          // 被清时停止，无需显式 cancel
+          if (pulse) {
+            const baseOpacity = opts.opacity ?? 1
+            const startTime = performance.now()
+            const tick = () => {
+              if (this.overlays.get(id) !== entry || !this.map.getLayer(arrowLayerId)) return
+              const wave =
+                (Math.sin(((performance.now() - startTime) / pulsePeriod) * Math.PI * 2) + 1) / 2
+              this.map.setPaintProperty(
+                arrowLayerId,
+                'icon-opacity',
+                (0.45 + 0.55 * wave) * baseOpacity,
+              )
+              this.map.setLayoutProperty(arrowLayerId, 'icon-size', 1 + 0.15 * wave)
+              requestAnimationFrame(tick)
+            }
+            requestAnimationFrame(tick)
+          }
+        })
+        .catch((err: unknown) => {
+          console.warn('[MapLibreAdapter] 沿线箭头贴图加载失败，跳过箭头层：', err)
+        })
+    }
+
     return { raw: { sourceId, layerIds }, id, engine: 'maplibre' }
   }
 

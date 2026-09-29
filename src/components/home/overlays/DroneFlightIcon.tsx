@@ -38,9 +38,12 @@ interface DroneFlightIconProps {
   angle: number
   /** 飞机机身切图（与静止标记同套：blue/red/yellow/gray_plane.png） */
   icon: string
+  /** 附加类名（如 drone-flight--landed）：调用方按动效阶段叠加修饰类
+   *  （集结点精准落坪态提升 z-index，飞机显示在集结坪预设图标之上） */
+  className?: string
 }
 
-function DroneFlightIconImpl({ x, y, angle, icon }: DroneFlightIconProps) {
+function DroneFlightIconImpl({ x, y, angle, icon, className }: DroneFlightIconProps) {
   const bottomSrc = PLANE_BOTTOM_MAP.get(icon) ?? deviceImages.blueBottom
   // 位置锚定：容器仅做 left/top 定位（居中平移由 CSS 的 translate 承担），
   // 航向旋转下沉到机身层——底座正置固定，仅飞机图标转向对准航线轨迹切线方向
@@ -49,7 +52,11 @@ function DroneFlightIconImpl({ x, y, angle, icon }: DroneFlightIconProps) {
     top: y,
   }
   return (
-    <span className="drone-flight" style={style} aria-hidden="true">
+    <span
+      className={className ? `drone-flight ${className}` : 'drone-flight'}
+      style={style}
+      aria-hidden="true"
+    >
       <img className="drone-flight__base" src={bottomSrc} alt="" draggable={false} />
       <img
         className="drone-flight__plane"

@@ -446,6 +446,11 @@
   flex-shrink: 0;
 }
 
+/* 单选模式工具栏（任务类型=区域巡检·任务区单选）：无全选按钮，「添加任务区」右对齐 */
+.task-create__area-toolbar--single {
+  justify-content: flex-end;
+}
+
 .task-create__select-all {
   display: flex;
   align-items: center;
@@ -593,6 +598,34 @@
 .task-create__area-checkbox--checked {
   background-color: rgba(75, 163, 228, 1);
 }
+
+/* ====== 行内单选框（任务类型=区域巡检·任务区单选） ======
+   16x16 圆形，纯 CSS 绘制（切图资源无单选框），配色与复选框选中蓝一致 */
+.task-create__area-radio {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: transparent;
+  transition: border-color 0.15s ease;
+}
+
+/* 选中态：蓝色描边 + 中心 8px 蓝色实心圆点（内沿 14px，上下左右各留 3px） */
+.task-create__area-radio--checked {
+  border-color: rgba(75, 163, 228, 1);
+}
+
+.task-create__area-radio--checked::before {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 8px;
+  margin: 3px;
+  border-radius: 50%;
+  background-color: rgba(75, 163, 228, 1);
+}
 /* 全选框三态容器（通用规范：部分选中 indeterminate = 蓝底 + 白色横线） */
 .task-create__tri-state {
   position: relative;
@@ -654,6 +687,35 @@
   flex-shrink: 0;
 }
 
+/* ====== 区域巡检模式（--single）列自适应：序号列固定，其余三列平分 ======
+   序号列（单选框 + 序号）间距保持不变：margin-left 4px + gap 8px，flex-shrink: 0 不参与伸缩；
+   名称/类型/面积三列 flex: 1 1 0 平分剩余空间、自适应等宽，超长以省略号截断，
+   行右侧留 8px 内边距避免贴边/被滚动条遮挡 */
+.task-create__area-list--single .task-create__area-item {
+  padding-right: 8px;
+}
+
+.task-create__area-list--single .task-create__area-col--name {
+  margin-left: 16px;
+  width: auto;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.task-create__area-list--single .task-create__area-col--type {
+  margin-left: 12px;
+  width: auto;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.task-create__area-list--single .task-create__area-col--area {
+  margin-left: 12px;
+  width: auto;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 /* ====== 目标选择列表（任务类型=目标打击时替换任务区列表） ====== */
 /* 目标编号列：与任务区名称列同宽/同间距（距序号列 49px、宽 56px） */
 .task-create__area-col--code {
@@ -700,6 +762,16 @@
 
 .task-create__area-list::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* 空列表占位（区域巡检：区域列表接口无 TeamReconnaissance 类型数据 / 目标打击：暂无目标） */
+.task-create__area-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
 }
 
 /* ====== 底部操作区（group_36：渐变底 + 双按钮） ====== */

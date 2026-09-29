@@ -1,8 +1,22 @@
 import { create } from 'zustand'
+import { message } from 'antd'
 import { type FlightState } from '../hooks/useFlightAnimations'
 import { ALARM_COLLAPSE_MS } from '../lib/formationLayout'
 import { type Device } from '../config/index'
-import { fetchPlaneStatus, mapPlaneToDevice, fetchTaskAreaList, mapTaskArea, deleteTaskArea, type PlaneRaw, type PlaneStatusData, type TaskArea, type TaskAreaVertex } from '../api/index'
+import {
+  fetchPlaneStatus,
+  mapPlaneToDevice,
+  fetchTaskAreaList,
+  mapTaskArea,
+  deleteTaskArea,
+  createTaskArea,
+  updateTaskArea,
+  toTaskAreaTypeDict,
+  type PlaneRaw,
+  type PlaneStatusData,
+  type TaskArea,
+  type TaskAreaVertex,
+} from '../api/index'
 
 /**
  * layerStore —— 首页图层显隐全局状态。
@@ -125,6 +139,12 @@ interface FlightAnimState {
   areaLandingFlights: FlightState[]
   rallyPointFlights: FlightState[]
   formationFlightFlights: FlightState[]
+  // ---- 巡检任务（一键创建，遥测驱动） ----
+  /** 巡检任务飞行状态：planeId → 最新快照（经纬度/高度来自实时遥测，视口坐标由
+   *  覆盖层按 project 重投影渲染；键为 WS telemetry deviceId） */
+  reconFlights: Record<string, FlightState>
+  /** 巡检任务进行中的设备主键（一键创建回执到达后写入，驱动巡检渲染循环；空数组=未在巡检） */
+  reconFlightIds: string[]
   // ---- 写入器（rAF tick 调用） ----
   setTapReturnFlight: (s: FlightState | null) => void
   setWaypointFlight: (s: FlightState | null) => void
@@ -134,6 +154,16 @@ interface FlightAnimState {
   setAreaLandingFlights: (s: FlightState[]) => void
   setRallyPointFlights: (s: FlightState[]) => void
   setFormationFlightFlights: (s: FlightState[]) => void
+  /** 巡检任务：整体写入全部飞行快照（每帧遥测驱动） */
+  setReconFlights: (s: Record<string, FlightState>) => void
+  /** 巡检任务：清除单机快照（落地/指令超时/面板关闭时） */
+  clearReconFlight: (planeId: string) => void
+  /** 巡检任务：清空全部巡检飞行（取消任务/面板关闭时） */
+  clearReconFlights: () => void
+  /** 巡检任务：回执到达后启动（写入 ids 并清空旧快照） */
+  startReconFlights: (ids: string[]) => void
+  /** 巡检任务：停止巡检（清空 ids 与快照，取消任务/重新创建时调用） */
+  stopReconFlights: () => void
 }
 
 export const useFlightAnimStore = create<FlightAnimState>((set) => ({
@@ -145,6 +175,8 @@ export const useFlightAnimStore = create<FlightAnimState>((set) => ({
   areaLandingFlights: [],
   rallyPointFlights: [],
   formationFlightFlights: [],
+  reconFlights: {},
+  reconFlightIds: [],
   setTapReturnFlight: (s) => set({ tapReturnFlight: s }),
   setWaypointFlight: (s) => set({ waypointFlight: s }),
   setRouteFlightFlight: (s) => set({ routeFlightFlight: s }),
@@ -153,6 +185,17 @@ export const useFlightAnimStore = create<FlightAnimState>((set) => ({
   setAreaLandingFlights: (s) => set({ areaLandingFlights: s }),
   setRallyPointFlights: (s) => set({ rallyPointFlights: s }),
   setFormationFlightFlights: (s) => set({ formationFlightFlights: s }),
+  setReconFlights: (s) => set({ reconFlights: s }),
+  clearReconFlight: (planeId) =>
+    set((state) => {
+      if (!(planeId in state.reconFlights)) return state
+      const next = { ...state.reconFlights }
+      delete next[planeId]
+      return { reconFlights: next }
+    }),
+  clearReconFlights: () => set({ reconFlights: {} }),
+  startReconFlights: (ids) => set({ reconFlightIds: ids, reconFlights: {} }),
+  stopReconFlights: () => set({ reconFlightIds: [], reconFlights: {} }),
 }))
 
 /**
@@ -418,20 +461,31 @@ interface TaskAreaState {
    */
   removeArea: (id: string) => Promise<boolean>
   /**
-   * 本地新增区域（区域列表「添加区域」六边形绘制「确定」后调用）；
-   * type 为「选择区域类型」面板所选类型字典值（禁飞区/任务区/集结区/降落区），
-   * 未传时默认「集群侦察」；列表（AreaListPanel）与态势图（TaskAreaLayer）
-   * 即时同步展示（TaskAreaLayer 立即以持久样式渲染新区域）。
-   * 返回新建区域 id（顶点不足 3 个时返回 null）
+   * 新增区域（区域列表「添加区域」六边形绘制「确定」后调用，2026-09-28 接口化）：
+   * POST /api/v1/control/addNewTaskArea 成功后 refresh()（queryTaskAreaList）以后端
+   * 数据为准刷新列表与态势图，再按顶点匹配出新建区域并返回其后端 id（供绘制遮罩
+   * 进入确认态）；type 为「选择区域类型」面板所选类型字典值（禁飞区/任务区/集结区/
+   * 降落区，本地旧值经 toTaskAreaTypeDict 归一化为后端枚举），未传时默认「集群侦察」。
+   * 失败保帧（不新增本地数据）+ message.error 提示并记录 lastError，返回 null；
+   * 顶点不足 3 个同样返回 null。
    */
-  addArea: (vertices: TaskAreaVertex[], type?: string) => string | null
+  addArea: (vertices: TaskAreaVertex[], type?: string) => Promise<string | null>
   /** 修改区域类型（绘制遮罩「编辑」后再次「确定」时仅更新类型，不重复建区） */
   updateAreaType: (id: string, type: string) => void
   /**
    * 修改区域顶点（编辑态拖拽节点结束时提交：顶点/中点手柄拖拽改变绘制区域，
-   * mouseup 时一次性写入最新顶点数组并重算面积；拖拽全程零 store 更新保证丝滑）
+   * mouseup 时一次性写入最新顶点数组并重算面积；拖拽全程零 store 更新保证丝滑）。
+   * 仅本地提交不上送（一次编辑可能连续多次拖点/插点/删点），持久化统一延迟到
+   * 编辑「确认」时（右键退出编辑等路径）经 commitAreaEdit 上送 updTaskArea
    */
   updateAreaVertices: (id: string, vertices: TaskAreaVertex[]) => void
+  /**
+   * 确认提交区域编辑（编辑态右键确认/退出编辑等路径调用，2026-09-29 反馈补充）：
+   * 按该区域最新本地数据（顶点/名称/类型/面积）异步上送 updTaskArea，成功后
+   * refresh()（queryTaskAreaList）以后端数据刷新区域列表与态势图；失败由
+   * pushAreaUpdate 内部 message.error 提示并回滚（fire-and-forget，不抛错）
+   */
+  commitAreaEdit: (id: string) => void
   /**
    * 重命名区域（区域列表面板行内名称双击进入编辑、失焦/回车提交时调用）。
    * 名称 trim 后为空（纯空格/未输入）时静默忽略、保留原名称。
@@ -493,16 +547,22 @@ export const useTaskAreaStore = create<TaskAreaState>((set, get) => ({
       console.warn('[taskArea] queryTaskAreaList 请求失败：', message)
     }
   },
-  updateAreaType: (id, type) =>
-    set((s) => ({ areas: s.areas.map((a) => (a.id === id ? { ...a, type } : a)) })),
-  renameArea: (id, name) =>
-    set((s) => {
-      const trimmed = name.trim()
-      // 空名（纯空格/未输入）不写入，保留原名称（列表行失焦保存的回退约定）
-      if (!trimmed) return {}
-      return { areas: s.areas.map((a) => (a.id === id ? { ...a, name: trimmed } : a)) }
-    }),
-  updateAreaVertices: (id, vertices) =>
+  // 编辑持久化策略（2026-09-29 反馈调整）：renameArea/updateAreaType 乐观更新本地
+  // 后立即 pushAreaUpdate 上送；updateAreaVertices 仅本地提交（拖点/删点高频操作
+  // 不逐次上送），持久化统一延迟到编辑「确认」时（右键退出编辑等路径）经
+  // commitAreaEdit → pushAreaUpdate 上送；上送成功后统一 refresh() 刷新列表
+  updateAreaType: (id, type) => {
+    set((s) => ({ areas: s.areas.map((a) => (a.id === id ? { ...a, type } : a)) }))
+    void pushAreaUpdate(id)
+  },
+  renameArea: (id, name) => {
+    const trimmed = name.trim()
+    // 空名（纯空格/未输入）不写入，保留原名称（列表行失焦保存的回退约定）
+    if (!trimmed) return
+    set((s) => ({ areas: s.areas.map((a) => (a.id === id ? { ...a, name: trimmed } : a)) }))
+    void pushAreaUpdate(id)
+  },
+  updateAreaVertices: (id, vertices) => {
     set((s) => ({
       areas: s.areas.map((a) => {
         if (a.id !== id || vertices.length < 3) return a
@@ -515,7 +575,15 @@ export const useTaskAreaStore = create<TaskAreaState>((set, get) => ({
         const heightM = (Math.max(...lats) - Math.min(...lats)) * 110_540
         return { ...a, vertices, areaKm2: Math.abs((widthM * heightM) / 1_000_000) }
       }),
-    })),
+    }))
+    // 不在此处上送：一次编辑可能连续多次拖点/插点/删点，持久化统一延迟到编辑
+    // 「确认」时（右键退出编辑等路径）由绘制遮罩调用 commitAreaEdit 上送
+  },
+  // 确认提交区域编辑：fire-and-forget（上送/成功后刷新/失败提示回滚均在
+  // pushAreaUpdate 内处理，见文件末尾）
+  commitAreaEdit: (id) => {
+    void pushAreaUpdate(id)
+  },
   toggleHidden: (id) =>
     set((s) => {
       const next = new Set(s.hiddenIds)
@@ -529,7 +597,7 @@ export const useTaskAreaStore = create<TaskAreaState>((set, get) => ({
   removeArea: async (id) => {
     // 先走后端逻辑删除（鉴权头由 apiPost 统一注入），失败时保帧不删本地数据
     try {
-      await deleteTaskArea(id)
+      await deleteTaskArea([id])
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       set({ lastError: message })
@@ -567,35 +635,93 @@ export const useTaskAreaStore = create<TaskAreaState>((set, get) => ({
   requestFocusArea: (id) =>
     set({ areaFocusRequest: { id, nonce: (get().areaFocusRequest?.nonce ?? 0) + 1 } }),
   clearAreaFocusRequest: () => set({ areaFocusRequest: null }),
-  addArea: (vertices, type) => {
-    // 在 set 闭包外捕获新建 id，返回给调用方（绘制遮罩记录为确认态区域）
-    let createdId: string | null = null
-    set((s) => {
-      // 顶点不足 3 个无法构成多边形，静默忽略（防御兜底）
-      if (vertices.length < 3) return {}
-      // 面积按经纬度包围盒估算（米）：经度每度 ≈111320·cos(纬度)，纬度每度 ≈110540
-      const lats = vertices.map((v) => v.latitude)
-      const lngs = vertices.map((v) => v.longitude)
-      const avgLat = (Math.max(...lats) + Math.min(...lats)) / 2
-      const widthM =
-        (Math.max(...lngs) - Math.min(...lngs)) * 111_320 * Math.cos((avgLat * Math.PI) / 180)
-      const heightM = (Math.max(...lats) - Math.min(...lats)) * 110_540
-      const areaKm2 = Math.abs((widthM * heightM) / 1_000_000)
-      const id = `local-area-${Date.now()}`
-      createdId = id
-      const area: TaskArea = {
-        id,
-        // 命名沿用列表既有格式（01区域名称/02区域名称…），按当前列表长度递增编号
-        name: `${String(s.areas.length + 1).padStart(2, '0')}区域名称`,
-        // 「选择区域类型」面板所选类型（未传时默认「集群侦察」）
-        type: type ?? 'TeamReconnaissance',
-        areaKm2,
-        priority: '2',
-        createTime: Date.now(),
-        vertices,
-      }
-      return { areas: [...s.areas, area] }
-    })
-    return createdId
+  addArea: async (vertices, type) => {
+    // 顶点不足 3 个无法构成多边形，静默忽略（防御兜底）
+    if (vertices.length < 3) return null
+    // 面积按经纬度包围盒估算（米）：经度每度 ≈111320·cos(纬度)，纬度每度 ≈110540
+    const lats = vertices.map((v) => v.latitude)
+    const lngs = vertices.map((v) => v.longitude)
+    const avgLat = (Math.max(...lats) + Math.min(...lats)) / 2
+    const widthM =
+      (Math.max(...lngs) - Math.min(...lngs)) * 111_320 * Math.cos((avgLat * Math.PI) / 180)
+    const heightM = (Math.max(...lats) - Math.min(...lats)) * 110_540
+    const areaKm2 = Math.abs((widthM * heightM) / 1_000_000)
+    // 命名沿用列表既有格式（01区域名称/02区域名称…），按当前列表长度递增编号
+    const name = `${String(get().areas.length + 1).padStart(2, '0')}区域名称`
+    // 先落库后展示：POST /api/v1/control/addNewTaskArea（鉴权头由 apiPost 统一注入，
+    // typeDict 本地旧值已归一化为后端枚举）；失败保帧（不新增本地数据）+
+    // message.error 全局提示并记录 lastError，返回 null 由调用方留在定格态重试。
+    try {
+      await createTaskArea({
+        // 接口 area 单位 m²（估算 areaKm2 为 km²），向上取整后转字符串上送
+        area: String(Math.ceil(areaKm2 * 1_000_000)),
+        name,
+        typeDict: toTaskAreaTypeDict(type ?? 'TeamReconnaissance'),
+        vertex: vertices,
+      })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      set({ lastError: msg })
+      console.warn('[taskArea] addNewTaskArea 请求失败：', msg)
+      message.error(`新增区域失败：${msg}`)
+      return null
+    }
+    // 成功后 refresh()（queryTaskAreaList）以后端数据为准刷新列表与态势图
+    // （真实 id/名称/面积口径）；刷新失败 refresh 内部保帧并记录 lastError
+    await get().refresh()
+    // 按顶点匹配回填新建区域（顶点经 JSON 字符串往返，浮点精确，仍留 1e-9 容差），
+    // 返回其后端 id 供绘制遮罩进入确认态（顶点相同的多区域取首个，可接受）
+    const created = get().areas.find(
+      (a) =>
+        a.vertices.length === vertices.length &&
+        a.vertices.every(
+          (v, i) =>
+            Math.abs(v.latitude - vertices[i].latitude) < 1e-9 &&
+            Math.abs(v.longitude - vertices[i].longitude) < 1e-9,
+        ),
+    )
+    return created?.id ?? null
   },
 }))
+
+/**
+ * 区域编辑持久化（POST /api/v1/control/updTaskArea，2026-09-29 接入）。
+ *
+ * 编辑操作（updateAreaType / renameArea 即时触发；顶点编辑经 commitAreaEdit 在
+ * 「右键确认」等退出编辑路径统一触发）先乐观更新本地（编辑视觉/列表即时反馈），
+ * 再经此函数按最新本地数据组装全量载荷异步上送：
+ * - id：区域 ID（后端按 id 更新相应区域的其他字段）；
+ * - name / typeDict / vertex：名称 / 类型字典（本地旧值经 toTaskAreaTypeDict
+ *   归一化为后端枚举）/ 顶点序列（WGS84，顺序保持绘制顺序）；
+ * - area：面积 m² 字符串（本地 areaKm2 为 km² 估算值，×1e6 向上取整转字符串，
+ *   与 addNewTaskArea 上送口径一致）。
+ * 鉴权头 Authorization: Bearer <token> 由 apiPost 统一注入；上送成功后拉一次
+ * queryTaskAreaList（refresh）以后端数据刷新区域列表与态势图（2026-09-29 反馈）；
+ * 失败 message.error 提示、记录 lastError 并同样 refresh() 以后端数据回滚本地
+ * 乐观修改（refresh 失败时内部保帧并记录 lastError）。函数自身不抛错（调用方
+ * fire-and-forget）。
+ */
+async function pushAreaUpdate(id: string): Promise<void> {
+  const area = useTaskAreaStore.getState().areas.find((a) => a.id === id)
+  // 区域已不存在（删除竞态等）无需上送
+  if (!area) return
+  try {
+    await updateTaskArea({
+      id,
+      name: area.name,
+      typeDict: toTaskAreaTypeDict(area.type),
+      area: String(Math.ceil(area.areaKm2 * 1_000_000)),
+      vertex: area.vertices,
+    })
+    // 上送成功后拉一次 queryTaskAreaList：以后端数据为准刷新区域列表与态势图
+    //（刷新失败时 refresh 内部保帧并记录 lastError）
+    await useTaskAreaStore.getState().refresh()
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    useTaskAreaStore.setState({ lastError: msg })
+    console.warn('[taskArea] updTaskArea 请求失败：', msg)
+    message.error(`更新区域失败：${msg}`)
+    // 以后端数据为准回滚本次乐观修改；刷新失败时 refresh 内部保帧
+    await useTaskAreaStore.getState().refresh()
+  }
+}

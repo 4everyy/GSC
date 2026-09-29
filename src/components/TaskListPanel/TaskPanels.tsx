@@ -1,5 +1,13 @@
 import { useState, type CSSProperties } from 'react'
 import { type TaskType } from '../../config/index'
+import { useTaskAreaStore, useLayerStore } from '../../stores/index'
+import { useInspectionRouteStore } from '../../stores/inspectionRoute'
+import {
+  planeIdsByCount,
+  podControlOneClickCreate,
+  taskAreaTypeMeta,
+  type TaskArea,
+} from '../../api/index'
 import { taskPanelImages } from '../../assets/images/task-panel'
 import iconFormation from '../../assets/images/home/icon-formation-crop.png'
 import { deviceImages } from '../../assets/images/device'
@@ -44,7 +52,11 @@ const CreateIMAGES = {
   targetRightIcon: taskPanelImages.targetRightIcon,
 } as const
 
-/** 任务区 mock 数据（01-07 共 7 行：名称/类型/面积） */
+/** 面积展示格式化：km² → m²（1km² = 1,000,000m²），取整加千分位，如 1.86 → '1,860,000m²' */
+const fmtAreaM2 = (km2: number) => `${Math.round(km2 * 1_000_000).toLocaleString('zh-CN')}m²`
+
+/** 任务区 mock 数据（01-07 共 7 行：名称/类型/面积；创建任务基础表单任务区列表已改用
+ *  区域列表接口数据，本 mock 仅专业模式步骤 3「任务分配」仍作演示数据） */
 const AREAS = [
   { id: 'a1', name: '厂区北侧', type: '巡检区', area: '2.4km²' },
   { id: 'a2', name: '厂区南侧', type: '巡检区', area: '1.8km²' },
@@ -129,15 +141,35 @@ export function TaskCreatePanel({ visible, onClose, onSubmit, onProMode }: TaskC
     巡检任务: [],
     打击任务: [],
   })
+  /** 任务区数据源（接口化）：区域列表接口 queryTaskAreaList（useTaskAreaStore 首帧拉取，
+   *  与区域列表面板/态势图为同一份数据）中筛选区域类型 TeamReconnaissance（任务区）的数据 */
+  const reconAreas = useTaskAreaStore((s) => s.areas).filter((a) => a.type === 'TeamReconnaissance')
+  /** 「添加任务区」进入地图六边形绘制：与区域列表「添加区域」按钮同款跨层级信号——
+ *  本面板挂载于 MapToolbar 内、与 HomePage 平级无法经 props 传递，点击时
+ *  addAreaRequests 计数 +1，HomePage 监听计数变化进入 area-list 绘制模式挂载
+ *  HexagonAreaOverlay；绘制确认时类型选「任务区」，新建区域经上方
+ *  TeamReconnaissance 筛选自然出现在本列表中 */
+  const requestAddArea = useTaskAreaStore((s) => s.requestAddArea)
+  /** 任务区单选聚焦联动信号：与区域列表面板行复选框勾选同款跨层级信号——
+   *  单选选中某一任务区时请求态势图平滑聚焦（HomePage 监听 areaFocusRequest
+   *  后 fitBounds 完整框入该区域）；再点取消不触发；隐藏或图层关闭的区域
+   *  不触发——态势图上无对应渲染，聚焦无意义 */
+  const requestFocusArea = useTaskAreaStore((s) => s.requestFocusArea)
+  /** 选中任务区时按显示状态请求聚焦（与 AreaListPanel.focusIfVisible 同款判断） */
+  const focusIfVisible = (id: string) => {
+    if (!useLayerStore.getState().taskAreaVisible) return
+    if (useTaskAreaStore.getState().hiddenIds.has(id)) return
+    requestFocusArea(id)
+  }
 
   /* 挂载即默认值：父组件按 createOpen 条件挂载/卸载本面板，重新打开自然回到崭新表单；
    * 进入专业模式期间本面板保持挂载仅隐藏（visible=false），返回上一步时已填数据保留（PRD TSK-P0-03 验收 7） */
 
   if (!visible) return null
 
-  /** 任务类型=目标打击时，列表切换为目标数据源 */
+  /** 任务类型=目标打击时，列表切换为目标数据源；区域巡检为接口任务区数据 */
   const isStrike = taskType === '打击任务'
-  const listItems = isStrike ? TARGETS : AREAS
+  const listItems = isStrike ? TARGETS : reconAreas
 
   /** 当前类型的选中集合（派生），仅更新当前类型对应数组 */
   const selectedAreaIds = selectedByType[taskType]
@@ -153,10 +185,17 @@ export function TaskCreatePanel({ visible, onClose, onSubmit, onProMode }: TaskC
   /** 部分选中（indeterminate）：全选框显示蓝底白横线 */
   const someChecked = selectedAreaIds.length > 0 && !allChecked
 
+  /** 行点击切换选中：区域巡检=任务区单选（选中即替换，可再点取消）；目标打击=目标多选 */
   const toggleArea = (id: string) => {
-    setSelectedAreaIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    )
+    if (isStrike) {
+      setSelectedAreaIds((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      )
+    } else {
+      // 单选选中新任务区时联动聚焦态势图（再点取消不触发，与区域列表面板勾选聚焦同款约定）
+      if (!selectedAreaIds.includes(id)) focusIfVisible(id)
+      setSelectedAreaIds((prev) => (prev.includes(id) ? [] : [id]))
+    }
   }
 
   const toggleAll = () => {
@@ -168,6 +207,29 @@ export function TaskCreatePanel({ visible, onClose, onSubmit, onProMode }: TaskC
     if (!name.trim()) {
       setNameError('请输入任务名称')
       return
+    }
+    // 一键创建指令下发（POST /v1/control/podControl，actionType=77）：height 固定
+    // 200；vertex 为选中任务区顶点的二维数组（每个任务区一组顶点，仅区域巡检有
+    // 任务区几何数据——目标打击选中项为目标、无经纬度顶点，不下发指令）；
+    // planeId 按执行对象数量生成（1→['1']、2→['1','2']、4→['1','2','3','4']，
+    // 见 planeIdsByCount）。fire-and-forget：成功/失败记录日志（toast 反馈待接入）
+    if (!isStrike) {
+      const vertex = reconAreas
+        .filter((a) => selectedAreaIds.includes(a.id))
+        .map((a) => a.vertices)
+      if (vertex.length > 0) {
+        const planeIds = planeIdsByCount(targetCount)
+        podControlOneClickCreate(planeIds, vertex)
+          .then((routes) => {
+            // 成功返回预设巡检航线：整体写入 store，态势图 InspectionRouteLayer
+            // 监听后按线渲染（覆盖旧航线，重新创建即刷新）
+            useInspectionRouteStore.getState().setInspectionRoutes(routes)
+            console.info(
+              `[task-create] 一键创建指令已发送：执行对象 [${planeIds.join(',')}]，任务区 ${vertex.length} 个，高度 200m，返回预设航线 ${routes.length} 条`,
+            )
+          })
+          .catch((err) => console.error('[task-create] 一键创建指令下发失败：', err))
+      }
     }
     onSubmit({
       name: name.trim(),
@@ -286,31 +348,43 @@ export function TaskCreatePanel({ visible, onClose, onSubmit, onProMode }: TaskC
         </span>
       </div>
 
-      <div className="task-create__area-toolbar">
-        <button type="button" className="task-create__select-all" onClick={toggleAll}>
-          <span
-            className={[
-              'task-create__tri-state',
-              allChecked ? 'task-create__tri-state--checked' : '',
-              someChecked ? 'task-create__tri-state--indeterminate' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-          >
-            <img
-              className={
-                allChecked
-                  ? 'task-create__area-checkbox task-create__area-checkbox--checked'
-                  : 'task-create__area-checkbox'
-              }
-              src={allChecked ? CreateIMAGES.areaIndexIcon : CreateIMAGES.checkboxUnchecked}
-              alt=""
-            />
-          </span>
-          <span>全选</span>
-        </button>
+      {/* 工具栏：目标打击=全选（多选）；区域巡检=任务区单选无全选，仅保留「添加任务区」并右对齐 */}
+      <div
+        className={`task-create__area-toolbar${
+          !isStrike ? ' task-create__area-toolbar--single' : ''
+        }`}
+      >
+        {isStrike && (
+          <button type="button" className="task-create__select-all" onClick={toggleAll}>
+            <span
+              className={[
+                'task-create__tri-state',
+                allChecked ? 'task-create__tri-state--checked' : '',
+                someChecked ? 'task-create__tri-state--indeterminate' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              <img
+                className={
+                  allChecked
+                    ? 'task-create__area-checkbox task-create__area-checkbox--checked'
+                    : 'task-create__area-checkbox'
+                }
+                src={allChecked ? CreateIMAGES.areaIndexIcon : CreateIMAGES.checkboxUnchecked}
+                alt=""
+              />
+            </span>
+            <span>全选</span>
+          </button>
+        )}
         {!isStrike && (
-          <button type="button" className="task-create__add-area">
+          <button
+            type="button"
+            className="task-create__add-area"
+            onClick={requestAddArea}
+            title="添加任务区：在地图上绘制六边形新增任务区"
+          >
             <span className="task-create__add-area-inner">
               <img src={CreateIMAGES.addAreaIcon} alt="" />
               <span>添加任务区</span>
@@ -320,29 +394,41 @@ export function TaskCreatePanel({ visible, onClose, onSubmit, onProMode }: TaskC
       </div>
 
 
-      {/* 选择列表：任务类型=区域巡检时为任务区列表，目标打击时为目标列表 */}
-      <div className="task-create__area-list">
+      {/* 选择列表：任务类型=区域巡检时为任务区列表（接口数据筛选 TeamReconnaissance），目标打击时为目标列表 */}
+      <div
+        className={`task-create__area-list${!isStrike ? ' task-create__area-list--single' : ''}`}
+      >
+        {listItems.length === 0 && (
+          <div className="task-create__area-empty">{isStrike ? '暂无目标' : '暂无任务区'}</div>
+        )}
         {listItems.map((a, idx) => {
           const checked = selectedAreaIds.includes(a.id)
           return (
             <button
               type="button"
-              role="checkbox"
+              role={isStrike ? 'checkbox' : 'radio'}
               aria-checked={checked}
               className="task-create__area-item"
               key={a.id}
               onClick={() => toggleArea(a.id)}
             >
               <span className="task-create__area-col task-create__area-col--index">
-                <img
-                  className={
-                    checked
-                      ? 'task-create__area-checkbox task-create__area-checkbox--checked'
-                      : 'task-create__area-checkbox'
-                  }
-                  src={checked ? CreateIMAGES.areaIndexIcon : CreateIMAGES.checkboxUnchecked}
-                  alt=""
-                />
+                {isStrike ? (
+                  <img
+                    className={
+                      checked
+                        ? 'task-create__area-checkbox task-create__area-checkbox--checked'
+                        : 'task-create__area-checkbox'
+                    }
+                    src={checked ? CreateIMAGES.areaIndexIcon : CreateIMAGES.checkboxUnchecked}
+                    alt=""
+                  />
+                ) : (
+                  <span
+                    className={`task-create__area-radio${checked ? ' task-create__area-radio--checked' : ''}`}
+                    aria-hidden="true"
+                  />
+                )}
                 {String(idx + 1).padStart(2, '0')}
               </span>
               {isStrike ? (
@@ -357,12 +443,20 @@ export function TaskCreatePanel({ visible, onClose, onSubmit, onProMode }: TaskC
                 </>
               ) : (
                 <>
-                  <span className="task-create__area-col task-create__area-col--name">
-                    {(a as (typeof AREAS)[number]).name}
+                  <span
+                    className="task-create__area-col task-create__area-col--name"
+                    title={(a as TaskArea).name}
+                  >
+                    {(a as TaskArea).name}
                   </span>
-                  <span className="task-create__area-col task-create__area-col--type">{a.type}</span>
-                  <span className="task-create__area-col task-create__area-col--area">
-                    {(a as (typeof AREAS)[number]).area}
+                  <span className="task-create__area-col task-create__area-col--type">
+                    {taskAreaTypeMeta((a as TaskArea).type).label}
+                  </span>
+                  <span
+                    className="task-create__area-col task-create__area-col--area"
+                    title={`区域面积：${fmtAreaM2((a as TaskArea).areaKm2)}`}
+                  >
+                    {fmtAreaM2((a as TaskArea).areaKm2)}
                   </span>
                 </>
               )}
