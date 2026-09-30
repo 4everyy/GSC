@@ -12,9 +12,9 @@
  *               20m/s 爬升至任务高度 200m；②以 60m/s 转场平飞至巡检折线起点；
  *               ③到达起点后以 40m/s 沿折线循环巡航（末点停留 600ms 后回起点
  *               重飞，无限循环直至重新创建/清空航线）。已飞轨迹：走过路径按
- *               10m 间距逐点采样，以 #C9C9C9 灰线叠加在 #00FF95 航线上方
+ *               10m 间距逐点采样，以 #C9C9C9 灰线叠加在区域配色航线上方
  *               （后建覆盖物居上层；灰线与航线同宽 8px 且不透明，完全覆盖已飞部分的
- *               绿色航线），巡航回绕重飞一圈时
+ *               区域配色航线，见 InspectionRouteLayer.LINE_COLORS），巡航回绕重飞一圈时
  *               轨迹清零重新累积；任务重建/清空时随动效一并清除。全程地理锚定：
  *               每帧经 adapter.project 重投影，地图平移/缩放时图标钉在航线
  *               地理位置上。飞行快照逐帧写入 flightAnimStore.reconFlights
@@ -49,9 +49,10 @@ const HOLD_AT_END_MS = 600
 const ALT_VISUAL_SCALE = 0.3
 /** 已飞轨迹采点间距（m）：走过路径每移动该距离补一个轨迹顶点 */
 const TRAIL_STEP_M = 10
-/** 已飞轨迹视觉：灰色 #C9C9C9（航线本体 #00FF95）；线宽与航线同宽 8px（与
+/** 已飞轨迹视觉：灰色 #C9C9C9（航线本体按区域配色，见
+ *  InspectionRouteLayer.LINE_COLORS）；线宽与航线同宽 8px（与
  *  InspectionRouteLayer.LINE_WIDTH 保持同步）且不透明度 1——同宽全遮盖，
- *  走过的部分不再从两侧露出绿色航线 */
+ *  走过的部分不再从两侧露出区域配色航线 */
 const TRAIL_COLOR = '#C9C9C9'
 const TRAIL_WIDTH = 8
 /** 已飞轨迹覆盖物 id 前缀（与航线 inspection-route-line- 命名空间隔离） */
@@ -234,8 +235,8 @@ export function ReconFlightOverlay({ adapter }: ReconFlightOverlayProps) {
     }
 
     // 已飞轨迹采点：距上一顶点 ≥ TRAIL_STEP_M 时追加当前地理锚点并增量更新
-    // 覆盖物（首点惰性创建）。#C9C9C9 灰线叠加在 #00FF95 航线上方，与航线同宽
-    // 8px + 不透明度 1，完全遮盖已飞部分的绿色航线
+    // 覆盖物（首点惰性创建）。#C9C9C9 灰线叠加在区域配色航线上方，与航线同宽
+    // 8px + 不透明度 1，完全遮盖已飞部分的区域配色航线
     const pushTrail = (di: number, geo: { lng: number; lat: number }) => {
       const r = rt[di]
       const last = r.pts[r.pts.length - 1]

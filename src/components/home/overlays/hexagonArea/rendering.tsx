@@ -3,37 +3,35 @@ import { TYPE_PANEL_WIDTH, TYPE_PANEL_HEIGHT, EDIT_VERTEX_HOLE_R, EDIT_MID_HOLE_
 import { type RefObject, type MouseEvent as ReactMouseEvent } from 'react'
 
 /**
- * HexagonAreaOverlay（六边形区域绘制遮罩）几何工具与命令式 DOM 辅助。
- *
- * 全部为无状态纯函数（除 buildEditHandleElement/syncEditHandles 操作 DOM），
- * 供主组件与编辑交互逻辑共用。
+ * HexagonAreaOverlay（四边形区域绘制遮罩）几何工具与命令式 DOM 辅助。
  */
 
-/** 正六边形顶点方位角（度；pointy-top：自正上方起每 60°，中心对称） */
-const HEX_VERTEX_ANGLES = [90, 30, -30, -90, -150, 150]
+/** 正四边形（正方形）顶点方位角（度；四角位于 45° 方位、边与屏幕坐标轴对齐，
+ *  自左上角起顺时针，中心对称） */
+const QUAD_VERTEX_ANGLES = [135, 45, -45, -135]
 /** 顶点单位向量（屏幕坐标：x 右为正、y 下为正），模块加载时预计算一次 */
-export const HEX_UNITS = HEX_VERTEX_ANGLES.map((deg) => {
+export const QUAD_UNITS = QUAD_VERTEX_ANGLES.map((deg) => {
   const rad = (deg * Math.PI) / 180
   return { x: Math.cos(rad), y: -Math.sin(rad) }
 })
 /**
- * 右下顶点（-30°，HEX_VERTEX_ANGLES[2]）单位向量。
- * 拖动时六边形平移至「右下顶点 = 光标」：center = mouse - radius * BR_UNIT。
+ * 右下顶点（-45°，QUAD_VERTEX_ANGLES[2]）单位向量。
+ * 拖动时四边形平移至「右下顶点 = 光标」：center = mouse - radius * BR_UNIT。
  */
-export const BR_UNIT = HEX_UNITS[2]
-/** 右上顶点（30°，HEX_VERTEX_ANGLES[1]）单位向量：「选择区域类型」面板定位锚点 */
-export const TR_UNIT = HEX_UNITS[1]
+export const BR_UNIT = QUAD_UNITS[2]
+/** 右上顶点（45°，QUAD_VERTEX_ANGLES[1]）单位向量：「选择区域类型」面板定位锚点 */
+export const TR_UNIT = QUAD_UNITS[1]
 
-/** 六边形几何（中心 + 外接圆半径，视口坐标） */
+/** 四边形几何（中心 + 外接圆半径，视口坐标） */
 export interface HexGeometry {
   cx: number
   cy: number
   r: number
 }
 
-/** 由中心 + 半径计算 6 顶点（视口坐标，正上方起顺时针） */
+/** 由中心 + 半径计算 4 顶点（视口坐标，左上角起顺时针） */
 export function hexVertices(hex: HexGeometry) {
-  return HEX_UNITS.map((u) => ({ x: hex.cx + hex.r * u.x, y: hex.cy + hex.r * u.y }))
+  return QUAD_UNITS.map((u) => ({ x: hex.cx + hex.r * u.x, y: hex.cy + hex.r * u.y }))
 }
 
 /** 顶点序列 → SVG path d 字符串（自动 Z 闭环；任意顶点数通用） */
@@ -169,7 +167,7 @@ export function syncEditHandles(
 }
 
 /**
- * 「选择区域类型」面板定位：置于锚点（六边形右上顶点）右侧 8px、与顶点垂直
+ * 「选择区域类型」面板定位：置于锚点（四边形右上顶点）右侧 8px、与顶点垂直
  * 居中；右侧空间不足时翻转到顶点左侧（面板右缘距顶点 8px），上下视口钳制防溢出。
  * 定格态与编辑态共用（编辑态由 onMove 每帧重算命令式更新）。
  */
@@ -182,6 +180,7 @@ export function computeTypePanelPos(tr: { x: number; y: number }, vw: number, vh
     top: Math.max(8, Math.min(tr.y - TYPE_PANEL_HEIGHT / 2, vh - TYPE_PANEL_HEIGHT - 8)),
   }
 }
+
 /** 定格后右下顶点信息卡数据：经纬度（顶点真实反投影）+ 面积（与
  *  taskAreaStore.addArea 包围盒估算同口径，确保确认后列表面积与本卡一致） */
 export interface HexInfo {
@@ -192,7 +191,7 @@ export interface HexInfo {
   area: string
 }
 
-/** 由六边形几何 + adapter 反投影计算信息卡数据（主组件 useMemo 低频调用） */
+/** 由四边形几何 + adapter 反投影计算信息卡数据（主组件 useMemo 低频调用） */
 export function computeHexInfo(
   hex: HexGeometry,
   unproject: (p: { x: number; y: number }) => { lat: number; lng: number },
@@ -221,27 +220,27 @@ export function computeHexInfo(
 }
 
 /**
- * HexagonDrawingSvg —— 六边形绘制阶段全幅 SVG 画布（蒙版/六边形/顶点圆点）。
+ * HexagonDrawingSvg —— 四边形绘制阶段全幅 SVG 画布（蒙版/四边形/顶点圆点）。
  *
- * 仅绘制阶段挂载（含按住拉伸与定格态；确认态整体卸载——六边形交
+ * 仅绘制阶段挂载（含按住拉伸与定格态；确认态整体卸载——四边形交
  * TaskAreaLayer 持久渲染，防绘制视觉覆盖持久样式）。拖动期间父组件经
  * maskRef/polyRef/dotsRef 命令式直写 d/cx/cy（零 React 重渲染，丝滑关键）。
  */
 
 export interface HexagonDrawingSvgProps {
-  /** 六边形几何（挂载/重挂载初值；拖动帧经 ref 命令式更新） */
+  /** 四边形几何（挂载/重挂载初值；拖动帧经 ref 命令式更新） */
   hex: HexGeometry
   /** 视口尺寸（蒙版外矩形宽度/高度） */
   viewSize: { w: number; h: number }
-  /** 六边形填充（定格后按所选类型：none / 斜线 pattern url / 半透明色） */
+  /** 四边形填充（定格后按所选类型：none / 斜线 pattern url / 半透明色） */
   polyFill: string
-  /** 六边形描边（默认紫 #7160f2；禁飞/降落/任务区为各自主题色） */
+  /** 四边形描边（默认紫 #7160f2；禁飞/降落/任务区为各自主题色） */
   polyStroke: string
-  /** 蒙版 path ref（外矩形 - 六边形镂空，截图式遮暗四周） */
+  /** 蒙版 path ref（外矩形 - 四边形镂空，截图式遮暗四周） */
   maskRef: RefObject<SVGPathElement | null>
-  /** 六边形本体 path ref */
+  /** 四边形本体 path ref */
   polyRef: RefObject<SVGPathElement | null>
-  /** 6 顶点圆点 refs（紫色描边白芯小圆点标记角点） */
+  /** 4 顶点圆点 refs（紫色描边白芯小圆点标记角点） */
   dotsRef: RefObject<(SVGCircleElement | null)[]>
 }
 
@@ -266,7 +265,7 @@ export function HexagonDrawingSvg({
     >
       <defs>
         {/* 禁飞区 45° 斜线阴影 pattern：8×8 平铺、从左下到右上的斜线
-            （stroke #BE070799 1.5px），充满整个六边形 */}
+            （stroke #BE070799 1.5px），充满整个四边形 */}
         <pattern
           id={NOFLY_HATCH_PATTERN_ID}
           width="8"
@@ -277,16 +276,16 @@ export function HexagonDrawingSvg({
           <line x1="0" y1="0" x2="0" y2="8" stroke={NOFLY_HATCH_COLOR} strokeWidth="1.5" />
         </pattern>
       </defs>
-      {/* 截图式变暗蒙层：外矩形 + 六边形组合路径 evenodd 直填 —— 六边形为镂空
+      {/* 截图式变暗蒙层：外矩形 + 四边形组合路径 evenodd 直填 —— 四边形为镂空
           亮区、四周 rgba(0,0,0,0.55) 变暗（与编辑态 HexagonEditVisuals 同暗度）。
           注：原先 <mask> 内黑 path + 裸 rect 的写法在亮度遮罩语义下（黑 / 未覆盖
           = 隐藏）使蒙层 rect 完全渲染不出，四周从未变暗；改为直填后拖动帧仍由
-          drawVertices 命令式重写 d（M0,0 外矩形 + 六边形 组合结构保持不变）。 */}
+          drawVertices 命令式重写 d（M0,0 外矩形 + 四边形 组合结构保持不变）。 */}
       <path ref={maskRef} d={maskD} fill="rgba(0,0,0,0.55)" fillRule="evenodd" />
-      {/* 六边形本体：默认无填充紫色描边（截图框选效果）；定格后按所选类型
+      {/* 四边形本体：默认无填充紫色描边（截图框选效果）；定格后按所选类型
           切换实时预览（禁飞区斜线/降落区绿/任务区蓝半透明） */}
       <path ref={polyRef} d={d} fill={polyFill} stroke={polyStroke} strokeWidth={2} />
-      {/* 6 顶点圆点（白芯 + 当前描边色描边；拖动期间命令式更新 cx/cy） */}
+      {/* 4 顶点圆点（白芯 + 当前描边色描边；拖动期间命令式更新 cx/cy） */}
       {vs.map((v, i) => (
         <circle
           key={i}
@@ -306,7 +305,7 @@ export function HexagonDrawingSvg({
 }
 
 /**
- * HexagonEditVisuals —— 六边形区域编辑态视觉（蒙层镂空/边框双层/手柄容器/
+ * HexagonEditVisuals —— 四边形区域编辑态视觉（蒙层镂空/边框双层/手柄容器/
  * 「删除锚点」按钮）。
  *
  * 编辑中挂载：区域外蒙层（mask 镂空多边形 + 动态镂空圆，区域内保持全亮）、
@@ -421,11 +420,11 @@ export function HexagonEditVisuals({
 }
 
 /**
- * HexagonTypePanel —— 六边形定格后「选择区域类型」面板（2×2 单选 + 确定/取消）。
+ * HexagonTypePanel —— 四边形定格后「选择区域类型」面板（2×2 单选 + 确定/取消）。
  *
- * 仅定格态展示：单选切换即时预览六边形填充视觉（父组件低频 setState）；
+ * 仅定格态展示：单选切换即时预览四边形填充视觉（父组件低频 setState）；
  * 「确定」写入 store 进入确认态、「取消」清除重画；位置由父组件
- * computeTypePanelPos 计算（六边形右上顶点右侧 8px、右侧空间不足翻转左侧）。
+ * computeTypePanelPos 计算（四边形右上顶点右侧 8px、右侧空间不足翻转左侧）。
  */
 
 export interface HexagonTypePanelProps {
@@ -433,11 +432,11 @@ export interface HexagonTypePanelProps {
   pos: { left: number; top: number }
   /** 当前选中类型 value（AREA_TYPE_OPTIONS 之一） */
   areaType: string
-  /** 单选切换（父组件 setState → 六边形实时预览新类型视觉） */
+  /** 单选切换（父组件 setState → 四边形实时预览新类型视觉） */
   onSelect: (type: string) => void
-  /** 确定：按 6 顶点经纬度 + 所选类型上送 addNewTaskArea，成功后进入确认态 */
+  /** 确定：按 4 顶点经纬度 + 所选类型上送 addNewTaskArea，成功后进入确认态 */
   onConfirm: () => void
-  /** 取消：清除六边形回到绘制态 */
+  /** 取消：清除四边形回到绘制态 */
   onCancel: () => void
   /** 确定（接口上送）进行中：按钮禁用 + 文案「提交中…」防重复提交 */
   submitting?: boolean

@@ -16,7 +16,7 @@ import { AlarmPanels } from '../../components/home/alarm/AlarmPanels'
 import { useMapEngine, useMapAnchorSync, usePanelClamp } from '../../hooks/index'
 import { aircraft } from '../../config/index'
 import { AircraftFocusPanel } from '../../components/AircraftFocusPanel/AircraftFocusPanel'
-import { useLayerStore, useDeviceLinkStore, useTaskAreaStore, usePlaneStatusStore } from '../../stores/index'
+import { useLayerStore, useDeviceLinkStore, useTaskAreaStore, usePlaneStatusStore, useFlightAnimStore } from '../../stores/index'
 import { useOfflineMap } from '../../features/offline-map/index'
 import { type AircraftListItem, FlightCommandPanels, WaypointFlightPanels } from '../../components/home/panels/FlightCommandPanels'
 import './HomePage.css'
@@ -80,6 +80,7 @@ export function HomePage() {
     orbitPoint,
     rallyPointRect,
     setRallyPointRect,
+    rallyPointRectGeo,
     setRallyPointRectGeo,
     setRallyPointRouteGenerated,
     rallyPointFormation,
@@ -204,6 +205,42 @@ export function HomePage() {
     () => getRallyPointSpots(rallyPointRect, rallyPointFormation, selectedAircraft.length),
     [rallyPointRect, rallyPointFormation, selectedAircraft.length],
   )
+
+  // 集结落坪完成标记（解锁编队飞行底部按钮的门槛）：集结模拟飞行全部落地定格
+  // （every landed，与 FlightSimulationOverlays 的 rallyPointLanded 同口径）才为 true。
+  // selector 返回布尔原始值——rAF 逐帧写入 rallyPointFlights 新数组但结果恒定，
+  // 仅「全部落坪」瞬间发生一次 false→true 变化触发重渲染，无每帧渲染开销
+  const rallyPointLandedAll = useFlightAnimStore(
+    (s) => s.rallyPointFlights.length > 0 && s.rallyPointFlights.every((f) => f.landed === true),
+  )
+
+  // 集结区域地理锚定：框选确认时记录的选区四角经纬度（rallyPointRectGeo，由
+  // AreaSelectOverlay 确认回调换算，与 rect 同生共死）在地图拖动/缩放/旋转的
+  // 每一帧经 adapter.project 重投影回当前视口，重建轴对齐包围盒写回
+  // rallyPointRect——区域框、集结坪图标（getRallyPointSpots 以 rect 为源）与
+  // 绿色航线连线随 rect 联动重排，始终钉在原地理位置不漂移；地图旋转产生的
+  // 非轴对齐四角以包围盒近似；Geo 为 null（未确认/已清除）时不订阅不写回
+  useEffect(() => {
+    if (!adapter || !rallyPointRectGeo || rallyPointRectGeo.length !== 4) return
+    const update = () => {
+      const b = adapter.getContainer().getBoundingClientRect()
+      const pts = rallyPointRectGeo.map((g) => {
+        const p = adapter.project({ lng: g.lng, lat: g.lat })
+        return { x: b.left + p.x, y: b.top + p.y }
+      })
+      const xs = pts.map((p) => p.x)
+      const ys = pts.map((p) => p.y)
+      const left = Math.min(...xs)
+      const top = Math.min(...ys)
+      setRallyPointRect({
+        left,
+        top,
+        width: Math.max(...xs) - left,
+        height: Math.max(...ys) - top,
+      })
+    }
+    return adapter.onMove(update)
+  }, [adapter, rallyPointRectGeo, setRallyPointRect])
 
 
   // 飞机图标拖拽 + 地理锚定：手动拖动图标+名称至首页任意位置；地图拖动/缩放时
@@ -412,8 +449,18 @@ export function HomePage() {
   // 原始无人机图标，并给出各机图标中心起点；航线渲染（绿色实线 + 降落点图标）与
   // 模拟飞行（滑窗确认后启动）共用同一算法；可传入队形覆盖当前状态（队形变更重启动画时使用新队形）
   const getFormationFlightGeometry = useCallback(
-    (formation?: FormationFlightFormation) =>
-      computeFormationFlightGeometry(
+    (formation?: FormationFlightFormation) => {
+      // 集结落坪续飞：集结任务全部落地定格（every landed）时，各机起点改用落坪
+      // 定格坐标（rallyPointFlights 末帧 x/y——与 compute 内 picked 同为设备序号
+      // 升序构建，按下标同序对齐），编队航线自「集结后的位置」起算；动画未启动/
+      // 未全部落坪时传 undefined，内部逐机回退原始图标中心投影。
+      // getState 事件期/渲染期快照读取，不引入订阅重渲染
+      const rallyFlights = useFlightAnimStore.getState().rallyPointFlights
+      const landedOrigins =
+        rallyFlights.length > 0 && rallyFlights.every((f) => f.landed === true)
+          ? rallyFlights.map((f) => ({ x: f.x, y: f.y }))
+          : undefined
+      return computeFormationFlightGeometry(
         aircraft,
         selectedDevices,
         aircraftPositions,
@@ -421,7 +468,9 @@ export function HomePage() {
         // 机身切图按接口状态动态取色（与 AircraftLayer 地面图标同口径），调用时经
         // getState 一次性快照读取（不引入订阅重渲染）
         usePlaneStatusStore.getState().devices,
-      ),
+        landedOrigins,
+      )
+    },
     // aircraft 为模块常量；选中集合/拖拽坐标/队形变化时才重建（传递给 memo 子组件）
     [selectedDevices, aircraftPositions, formationFlightFormation],
   )
@@ -589,7 +638,7 @@ export function HomePage() {
             setAreaSelectHover={setAreaSelectHover}
             areaSelectSource={areaSelectSource}
             setRallyPointRect={setRallyPointRect}
-    setRallyPointRectGeo={setRallyPointRectGeo}
+            setRallyPointRectGeo={setRallyPointRectGeo}
             setRallyPointRouteGenerated={setRallyPointRouteGenerated}
             stopRallyPointFlights={stopRallyPointFlights}
             adapter={adapter}
@@ -601,6 +650,9 @@ export function HomePage() {
             selectedDevices={selectedDevices}
             panelOpenState={panelOpenState}
             panelHandlers={panelHandlers}
+            // 编队飞行按钮解锁标记：集结任务全部落坪定格后才取消置灰（BottomBar 内
+            // 与选中数量条件叠加判定），编队自集结落坪位置续飞
+            formationFlightUnlocked={rallyPointLandedAll}
           />
 
           <footer className="map-footer">

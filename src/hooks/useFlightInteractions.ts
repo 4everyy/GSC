@@ -119,13 +119,17 @@ export function useFlightInteractions(
     }
   }, [areaLandingOpen, areaLandingRect, areaLandingRouteGenerated, stopAreaLandingFlights, setAreaLandingConfirmed])
   // 集结点面板关闭（取消/互斥切换）或航线失效（删除重绘/区域清除/重新生成）时终止循环飞行；
-  // 「确认」不再收起面板，因此确认后循环持续播放，仅手动取消可终止
+  // 「确认」不再收起面板，因此确认后循环持续播放，仅手动取消可终止。
+  // 例外：切换到编队飞行面板（formationFlightOpen=true）时保留集结动画/区域/确认态——
+  // 集结落坪定格后续飞编队场景需要落坪末帧坐标与集结区域矩形延续显示（编队航线自
+  // 落坪位置起算，见 HomePage getFormationFlightGeometry）；编队面板收起或再切到
+  // 其他面板时 formationFlightOpen 亦为 false，仍按原逻辑终止并复位
   useEffect(() => {
-    if (!rallyPointOpen || !rallyPointRect || !rallyPointRouteGenerated) {
+    if ((!rallyPointOpen && !formationFlightOpen) || !rallyPointRect || !rallyPointRouteGenerated) {
       stopRallyPointFlights()
       setRallyPointConfirmed(false)
     }
-  }, [rallyPointOpen, rallyPointRect, rallyPointRouteGenerated, stopRallyPointFlights, setRallyPointConfirmed])
+  }, [rallyPointOpen, formationFlightOpen, rallyPointRect, rallyPointRouteGenerated, stopRallyPointFlights, setRallyPointConfirmed])
   // 编队飞行面板关闭（取消/互斥切换）或航线失效时终止循环飞行；「确认」不收起面板，
   // 因此确认后循环持续播放，仅手动取消面板才终止
   useEffect(() => {

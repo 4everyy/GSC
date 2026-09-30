@@ -39,7 +39,7 @@ interface DroneFlightIconProps {
   /** 飞机机身切图（与静止标记同套：blue/red/yellow/gray_plane.png） */
   icon: string
   /** 附加类名（如 drone-flight--landed）：调用方按动效阶段叠加修饰类
-   *  （集结点精准落坪态提升 z-index，飞机显示在集结坪预设图标之上） */
+   *  （集结点精准落坪态提升 z-index，定格飞机显示在最上层） */
   className?: string
 }
 

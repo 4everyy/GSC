@@ -154,7 +154,9 @@ export function getAreaLandingSpots(
 // 按队形布置降落点——目的地尽量贴近左侧原始无人机图标；左缘防溢出整体右移补偿
 // （队形形状不变，确保最左降落点完整可见）；就近配对：飞机与降落点各自按水平位置
 // 升序后同序号配对（左边的飞机连靠左的降落点），避免航线左右交叉。
-// 航线渲染（绿色实线 + 降落点图标）与模拟飞行（滑窗确认后启动）共用同一算法
+// 航线渲染（绿色实线 + 降落点图标）与模拟飞行（滑窗确认后启动）共用同一算法。
+// 集结落坪续飞：传入 landedOrigins（与 picked 同序的落坪定格坐标）时各机起点改用
+// 集结落坪位置（编队自「集结后的位置」继续），条目缺失的机回退原始图标中心投影
 export function computeFormationFlightGeometry(
   aircraft: ReadonlyArray<{ src: string; deviceIndex: number }>,
   selectedDevices: Set<number>,
@@ -162,6 +164,10 @@ export function computeFormationFlightGeometry(
   formation: FormationFlightFormation,
   /** 设备状态快照（usePlaneStatusStore.devices）：按接口状态取机身切图；缺省回退静态配置色 */
   devices: readonly (Device | undefined)[] = [],
+  /** 集结落坪起点覆盖（可选）：与 picked（设备序号升序）同序的视口坐标——集结任务
+   *  全部落坪定格后续飞编队时，编队航线自各机落坪位置起算（landed 帧最终 x/y），
+   *  替代原始图标百分比位置的投影；缺省/条目不足时逐机回退原始投影 */
+  landedOrigins?: ReadonlyArray<{ x: number; y: number }>,
 ): {
   planes: { x: number; y: number }[]
   spots: { x: number; y: number }[]
@@ -174,10 +180,16 @@ export function computeFormationFlightGeometry(
     .filter(({ item }) => selectedDevices.has(item.deviceIndex))
     .sort((a, b) => a.item.deviceIndex - b.item.deviceIndex)
   if (!stage || picked.length === 0) return null
-  // 各选中飞机图标中心（视口坐标，48px 图标半宽 +24 与其他航线一致），携带各自切图
-  const planes = picked.map(({ item, index }) => ({
-    x: stage.left + (aircraftPositions[index].x / 100) * stage.width + 24,
-    y: stage.top + (aircraftPositions[index].y / 100) * stage.height + 24,
+  // 各选中飞机图标中心（视口坐标，48px 图标半宽 +24 与其他航线一致），携带各自切图；
+  // 集结落坪续飞：优先取 landedOrigins[i]（与 picked 设备序号升序同序对齐）的落坪
+  // 定格坐标，条目缺失（如选中集合已变化）时逐机回退原始图标中心投影
+  const planes = picked.map(({ item, index }, i) => ({
+    x:
+      landedOrigins?.[i]?.x ??
+      stage.left + (aircraftPositions[index].x / 100) * stage.width + 24,
+    y:
+      landedOrigins?.[i]?.y ??
+      stage.top + (aircraftPositions[index].y / 100) * stage.height + 24,
     icon: resolvePlaneSrc(devices, item.deviceIndex, item.src),
   }))
   const minX = Math.min(...planes.map((p) => p.x))

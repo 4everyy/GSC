@@ -38,14 +38,16 @@ const collectFlyingPlaneIds = (s: FlightAnimSnapshot): string[] => {
  *  巡检启动（startReconFlights）/停止·卸载（stopReconFlights 清空）时才变化 */
 const collectReconPlaneIds = (s: FlightAnimSnapshot): string[] => Object.keys(s.reconFlights)
 
-/** 从 flightAnimStore 派生「集结任务已完成、落地定格」的目标设备主键数组：
- *  仅取 rallyPointFlights 中 landed=true 的 planeId（落坪末帧写入的完成标记）。
+/** 从 flightAnimStore 派生「集结任务执行中（含落地定格）」的目标设备主键数组：
+ *  取 rallyPointFlights 全部 planeId——确认集结启动动画即隐藏原起飞点地面图标
+ *  （图标/标签/hover 面板/垂线整体不渲染，呈现由飞行动效图标接管），
+ *  直至取消面板/删除重绘清空动画后恢复。
  *  同样配合 useShallow 结构共享：坐标帧更新不改变数组内容不触发重渲染，
- *  仅任务完成（逐机置 landed）/续飞（landed 复位）/取消·删除重绘（清空）时重渲染 */
-const collectLandedRallyPlaneIds = (s: FlightAnimSnapshot): string[] => {
+ *  仅动画启停/多机增减（取消/删除重绘清空）时重渲染 */
+const collectRallyActivePlaneIds = (s: FlightAnimSnapshot): string[] => {
   const ids: string[] = []
   for (const f of s.rallyPointFlights)
-    if (f.landed === true && f.planeId !== undefined) ids.push(f.planeId)
+    if (f.planeId !== undefined) ids.push(f.planeId)
   return ids
 }
 
@@ -107,9 +109,25 @@ function AircraftLayerInner({
   // 巡检巡航中的机：已由 ReconFlightOverlay 飞行动效完全接管呈现
   // （DroneFlightIcon + 实时高度标注 + 灰色已飞轨迹），原地面图标整体隐藏
   const reconPlaneIds = useFlightAnimStore(useShallow(collectReconPlaneIds))
-  // 集结任务已完成的落地定格机：原起飞点地面图标（图标/标签/hover 面板/垂线）
-  // 整体隐藏，地图上仅保留集结坪图标与落坪定格的飞行动效飞机（保留当前位置）
-  const landedRallyPlaneIds = useFlightAnimStore(useShallow(collectLandedRallyPlaneIds))
+  // 集结任务执行中的机（爬升/转场/落坪定格全程）：原起飞点地面图标（图标/
+  // 标签/hover 面板/垂线）整体隐藏，呈现由飞行动效图标接管；取消面板/删除
+  // 重绘清空动画后自动恢复显示（上方 flyingPlaneIds 仅隐藏高度标注，口径弱于此）
+  const rallyActivePlaneIds = useFlightAnimStore(useShallow(collectRallyActivePlaneIds))
+  // 航点飞行跟飞中的机：已由航点飞行动效（DroneFlightIcon + WaypointAltitudeOverlay
+  // 实时高度标注）完全接管呈现，原起飞点地面图标整体隐藏（与巡检机同口径）；
+  // 取消面板/降落/返航指令/遥测断流等停止动效时随 store 清空自动恢复显示。
+  // 直接订阅原始值 planeId：rAF 每帧仅更新坐标，planeId 不变不触发本组件重渲染
+  const waypointFlightPlaneId = useFlightAnimStore((s) => s.waypointFlight?.planeId)
+  // 航线飞行巡航中的机：已由航线飞行动效（DroneFlightIcon + WaypointAltitudeOverlay
+  // 实时高度标注）完全接管呈现，原起飞点地面图标整体隐藏（与航点/巡检机同口径）；
+  // 取消面板/重新取点/删除航点等停止动效时随 store 清空自动恢复显示。
+  // 直接订阅原始值 planeId：rAF 每帧仅更新坐标，planeId 不变不触发本组件重渲染
+  const routeFlightPlaneId = useFlightAnimStore((s) => s.routeFlightFlight?.planeId)
+  // 环绕飞行盘旋中的机：已由环绕飞行动效（DroneFlightIcon + WaypointAltitudeOverlay
+  // 实时高度标注）完全接管呈现，原起飞点地面图标整体隐藏（与航点/航线/巡检机同口径）；
+  // 取消面板/重新取点/取消重绘等停止动效时随 store 清空自动恢复显示。
+  // 直接订阅原始值 planeId：rAF 每帧仅更新坐标，planeId 不变不触发本组件重渲染
+  const orbitFlightPlaneId = useFlightAnimStore((s) => s.orbitFlight?.planeId)
   return (
     <>
       {aircraft.map((item, index) => {
@@ -126,14 +144,26 @@ function AircraftLayerInner({
         // 钉在原位置、顶端连到空中飞机中心（分段线性不设总封顶，见下方 liftPx）
         const device = devices[item.deviceIndex]
         const planeId = rawPlanes[item.deviceIndex]?.id
-        // 集结任务完成：该机已按队形精准落坪定格（飞行动效图标接管呈现，位置
-        // 保留在集结坪上），原起飞点地面图标整体不再渲染；队形变更续飞时随
-        // 新快照 landed=false 复位恢复，取消面板/删除重绘时随 store 清空恢复
-        if (planeId !== undefined && landedRallyPlaneIds.includes(planeId)) return null
+        // 集结任务执行中：该机已由集结点飞行动效（DroneFlightIcon + 实时高度
+        // 标注 + 绿色航线）完全接管呈现，原起飞点地面图标整体不再渲染；
+        // 取消面板/删除重绘时随 store 清空自动恢复显示
+        if (planeId !== undefined && rallyActivePlaneIds.includes(planeId)) return null
         // 巡检巡航中：该机已由 ReconFlightOverlay 飞行动效（飞行图标/实时高度
         // 标注/已飞轨迹）完全接管，原起飞点地面图标（图标/标签/hover 面板/垂线）
         // 整体不再渲染；巡检停止或组件卸载时 reconFlights 清空自动恢复显示
         if (planeId !== undefined && reconPlaneIds.includes(planeId)) return null
+        // 航点飞行跟飞中：该机已由航点飞行动效图标（DroneFlightIcon + 实时高度
+        // 标注）完全接管，原起飞点地面图标（图标/标签/hover 面板/垂线）整体不再
+        // 渲染；取消面板/降落/返航指令/遥测断流等停止动效时随 store 清空自动恢复
+        if (planeId !== undefined && waypointFlightPlaneId === planeId) return null
+        // 航线飞行巡航中：该机已由航线飞行动效图标（DroneFlightIcon + 实时高度
+        // 标注）完全接管，原起飞点地面图标（图标/标签/hover 面板/垂线）整体不再
+        // 渲染；取消面板/重新取点/删除航点等停止动效时随 store 清空自动恢复
+        if (planeId !== undefined && routeFlightPlaneId === planeId) return null
+        // 环绕飞行盘旋中：该机已由环绕飞行动效图标（DroneFlightIcon + 实时高度
+        // 标注）完全接管，原起飞点地面图标（图标/标签/hover 面板/垂线）整体不再
+        // 渲染；取消面板/重新取点/取消重绘等停止动效时随 store 清空自动恢复
+        if (planeId !== undefined && orbitFlightPlaneId === planeId) return null
         const liveAltitude = planeId !== undefined ? wsTelemetry[planeId]?.altitude : undefined
         const hasLiveAltitude = liveAltitude !== undefined && Number.isFinite(liveAltitude)
         // 标签以设备管理面板的设备名称为准（queryPlaneStatus → mapPlaneToDevice

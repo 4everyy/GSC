@@ -307,10 +307,10 @@ export function TargetMarkerLayer({
               }
             }}
           >
-            {/* 运动轨迹：target-trail.svg 三枚条纹箭头仅作 CSS mask 形状
+      {/* 运动轨迹：target-motion-arrows.svg 三枚条纹箭头仅作 CSS mask 形状
                 模板，内部填充沿 135°（右下 45°，即箭头指向 = 目标运动
-                方向）流动的绿色光带渐变（见 CSS .target-marker__trail：
-                repeating-linear-gradient + background-position 无缝循环
+                方向）流动的金色光带渐变（见 CSS .target-marker__trail：
+                repeating-linear-gradient + background-position + opacity blink 无缝循环
                 动画），以"光带流向"指示目标运行线路；依附朝向按目标
                 id 哈希随机取四方向之一（右下/左下/左上/右上，每档 90°，
                 确定性哈希保证刷新后不跳变），贴身外挂、绘制在背景图

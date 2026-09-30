@@ -33,6 +33,7 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
     setRoutePinPinned,
     rallyPointRect,
     setRallyPointRect,
+    setRallyPointRectGeo,
     rallyPointRouteGenerated,
     setRallyPointRouteGenerated,
     setAreaSelectMode,
@@ -44,10 +45,15 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
   const areaLandingFlights = useFlightAnimStore((s) => s.areaLandingFlights)
   const rallyPointFlights = useFlightAnimStore((s) => s.rallyPointFlights)
   // 集结任务完成判定：存在飞行快照且全部落地定格（altitude≤0，与
-  // drone-flight--landed 同口径）——完成后隐藏绿色航线连线与起飞点原图标，
-  // 仅保留集结坪图标与定格飞机（保留当前位置）
+  // drone-flight--landed 同口径）——完成后隐藏绿色航线连线，
+  // 仅保留定格飞机与集结坪图标（起飞点原图标自确认执行起即整体隐藏，
+  // 见 AircraftLayer rallyActivePlaneIds）
   const rallyPointLanded =
     rallyPointFlights.length > 0 && rallyPointFlights.every((f) => f.landed === true)
+  // 编队模拟飞行动画运行中判定（仅取 length 原始值选择器）：rAF 逐帧写入新数组但
+  // length 不变，不触发本组件每帧重渲染，仅编队动画启停时变化一次；运行中时
+  // 下方集结落坪定格图标整体隐藏（由编队动画图标自落坪位置接管呈现，避免双份叠加）
+  const formationFlightCount = useFlightAnimStore((s) => s.formationFlightFlights.length)
   // 集结点「删除重绘」按钮需要终止循环动画（事件期调用，稳定引用）
   const stopRallyPointFlights = anims.stopRallyPointFlights
   // 航线定格航点地理锚定：地图拖动/旋转/缩放的每一帧都触发 move 事件，
@@ -267,11 +273,12 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
             />
           ))}
 
-          {/* 集结点集结坪编队 + 航线（点击「航线生成」后）：在已确认集结区域内按所选
-              集结队形布置「数量=选中飞机数」的集结坪图标（area-landing-spot），并用
-              1px #00FF95 绿色实线连接各选中飞机中心与其对应集结坪；队形/选区/选中
-              飞机数变化时联动重排，重绘区域/取消/删除重绘时随状态清除；
-              任务完成（全部落地定格）后绿色航线隐藏，仅保留集结坪与定格飞机 */}
+          {/* 集结点集结航线（点击「航线生成」后）：按所选集结队形在已确认集结区域内
+              排布集结点位（预设无人机图标），并用 1px #00FF95 绿色实线连接各选中
+              飞机中心与其对应集结点；队形/选区/选中飞机数变化时联动重排，
+              重绘区域/取消/删除重绘时随状态清除；确认执行后原起飞点地面图标
+              整体隐藏（AircraftLayer rallyActivePlaneIds 接管）；任务完成（全部
+              落地定格）后绿色航线隐藏，仅保留定格飞机与集结坪图标 */}
           {rallyPointRect &&
             rallyPointRouteGenerated &&
             rallyPointSpots.length > 0 &&
@@ -310,6 +317,8 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
                       )}
                     </svg>
                   )}
+                  {/* 集结坪预设图标：与区域降落降落坪同素材同尺寸，任务完成后仍保留
+                      （与落坪定格飞机同点位叠加，取消/删除重绘时随状态清除） */}
                   {rallyPointSpots.map((spot, i) => (
                     <img
                       key={i}
@@ -324,24 +333,28 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
               )
             })()}
 
-          {/* 集结点模拟飞行无人机：确认后各机三阶段飞向对应集结坪（爬升/转场/落坪
+          {/* 集结点模拟飞行无人机：确认后各机三阶段飞向对应集结点（爬升/转场/落坪
               对齐 + 终态精准定格）；终态（altitude=0）叠加 drone-flight--landed 类
-              提升 z-index 至 1503——飞机完整显示在集结坪预设无人机图标(z=1502)之上，
-              实现「飞机精准落在预设图标上、机头朝向与图标一致」的视觉承诺；
-              飞行中保持原层级（1501）不遮挡其他标记 */}
-          {rallyPointFlights.map((flight, i) => (
-            <DroneFlightIcon
-              key={i}
-              x={flight.x}
-              y={flight.y}
-              angle={flight.angle}
-              icon={flight.icon}
-              className={flight.landed === true ? 'drone-flight--landed' : undefined}
-            />
-          ))}
+              提升 z-index 至 1503——定格飞机完整显示在其他飞行中标记之上；
+              飞行中保持原层级（1501）不遮挡其他标记。
+              编队模拟飞行启动后（自集结落坪位置续飞）本层定格图标整体隐藏，由编队
+              动画图标（FlightMarkerOverlays formationFlightFlights）接管呈现，
+              避免同一飞机双份叠加；编队取消后随 length 归零恢复定格显示 */}
+          {formationFlightCount === 0 &&
+            rallyPointFlights.map((flight, i) => (
+              <DroneFlightIcon
+                key={i}
+                x={flight.x}
+                y={flight.y}
+                angle={flight.angle}
+                icon={flight.icon}
+                className={flight.landed === true ? 'drone-flight--landed' : undefined}
+              />
+            ))}
 
           {/* 集结点已确认区域：与区域降落同款截图式矩形（半透明紫色填充 + 删除重绘），
-              但不渲染中心圆形徽章与降落坪地面标记图标；重绘/面板取消/点击删除时清除 */}
+              但不渲染中心圆形徽章（集结坪预设图标由上方航线生成块渲染）；
+              重绘/面板取消/点击删除时清除 */}
           {rallyPointRect && (
             <div
               className="area-landing-confirmed"
@@ -356,9 +369,11 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
                 className="area-landing-confirmed__delete-btn"
                 onClick={() => {
                   // 删除重绘：终止循环动画并清除航线生成态与已确认区域
+                  //（Geo 同步清除，防止 HomePage 地理锚定 onMove 重投影复活区域）
                   stopRallyPointFlights()
                   setRallyPointRouteGenerated(false)
                   setRallyPointRect(null)
+                  setRallyPointRectGeo(null)
                   // 重新进入框选模式（与区域降落同款交互）：光标恢复停机坪图标
                   // 跟随鼠标，可立即重新绘制集结区域；绘制确认/取消后回到面板
                   setAreaSelectSource('rally-point')

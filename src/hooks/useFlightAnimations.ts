@@ -20,7 +20,7 @@ export interface FlightState {
   icon: string
   /** 飞行中目标设备主键（WS telemetry 键）：AircraftLayer 据此隐藏该机
    *  原地面高度标注（起飞前冻结的 0.000m），改由飞行图标侧实时标注呈现；
-   *  航点/航线/环绕飞行写，其余动画不写 */
+   *  航点/航线/环绕飞行与集结点飞行（全程各阶段）写，其余动画不写 */
   planeId?: string
   /** 实时高度（m，视觉插值已向遥测对齐）：航点/航线/环绕飞行高度标注用；
    *  集结点飞行亦写（三阶段动效标注 + 队形变更续飞快照）；其余动画不写 */
@@ -890,6 +890,8 @@ export function useFlightAnimations() {
                 y: s.ground.y - alt * 0.3,
                 angle: s.heading,
                 icon: f.icon,
+                // 全程携带目标设备主键：确认集结起飞即隐藏原起飞点地面图标
+                planeId: f.planeId,
                 altitude: alt,
                 groundY: s.ground.y,
               }
@@ -907,6 +909,8 @@ export function useFlightAnimations() {
                 y: gy - targetHeight * 0.3,
                 angle: s.heading,
                 icon: f.icon,
+                // 全程携带目标设备主键：转场飞行中原起飞点地面图标保持隐藏
+                planeId: f.planeId,
                 altitude: targetHeight,
                 groundY: gy,
               }
@@ -923,6 +927,8 @@ export function useFlightAnimations() {
                 y: f.y2 - targetHeight * 0.3 * (1 - ease),
                 angle: s.heading + s.turnDelta * ease,
                 icon: f.icon,
+                // 全程携带目标设备主键：落坪下降中原起飞点地面图标保持隐藏
+                planeId: f.planeId,
                 altitude: targetHeight * (1 - ease),
                 groundY: f.y2,
               }

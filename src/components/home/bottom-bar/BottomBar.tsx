@@ -1,11 +1,14 @@
 import { memo } from 'react'
 import { BOTTOM_BAR_ITEMS, type BottomBarPanel } from '../../../lib/formationLayout'
 
-/** 底部按钮条渲染 props：选中设备集合（禁用态判定）+ 各面板开合状态与互斥切换入口 */
+/** 底部按钮条渲染 props：选中设备集合（禁用态判定）+ 各面板开合状态与互斥切换入口；
+ *  formationFlightUnlocked——编队飞行按钮专属解锁标记：前置集结任务全部落坪定格后
+ *  为 true（HomePage rallyPointLandedAll 订阅），未完成集结时按钮保持置灰 */
 interface BottomBarProps {
   selectedDevices: Set<number>
   panelOpenState: Record<BottomBarPanel, boolean>
   panelHandlers: Record<BottomBarPanel, () => void>
+  formationFlightUnlocked: boolean
 }
 
 /* 底部水平居中按钮条（自 HomePage.tsx 拆出）：13 段背景图拼接，第 2~12 段叠加功能图标。
@@ -17,6 +20,7 @@ export const BottomBar = memo(function BottomBar({
   selectedDevices,
   panelOpenState,
   panelHandlers,
+  formationFlightUnlocked,
 }: BottomBarProps) {
   return (
     <nav className="bottom-bar" aria-label="底部功能按钮条">
@@ -25,10 +29,13 @@ export const BottomBar = memo(function BottomBar({
         // 不满足时按钮进入禁用态（禁用态切图替换默认背景，激活态视觉与 tooltip
         // 一并抑制）。不用原生 disabled 属性——它会抑制浏览器 :hover 匹配，
         // 导致置灰按钮 hover 不顶出；改用 aria-disabled 语义标记 + 点击拦截，
-        // 悬停反馈（置灰态顶出）仍可用
+        // 悬停反馈（置灰态顶出）仍可用。
+        // 编队飞行按钮附加门控：前置集结任务未完成（未全部落坪定格，编队需自集结
+        // 落坪位置续飞）时保持置灰，集结完成后解锁——此时仍需满足选中数量条件
         const disabled =
-          !!item.disabledBackground &&
-          (item.mode === 'single' ? selectedDevices.size !== 1 : selectedDevices.size < 1)
+          (!!item.disabledBackground &&
+            (item.mode === 'single' ? selectedDevices.size !== 1 : selectedDevices.size < 1)) ||
+          (item.panel === 'formation-flight' && !formationFlightUnlocked)
         return (
           <span
             className={`bottom-bar__item${

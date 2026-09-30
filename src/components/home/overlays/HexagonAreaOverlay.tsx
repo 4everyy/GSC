@@ -1,5 +1,5 @@
 /**
- * HexagonAreaOverlay —— 区域列表「添加区域」六边形绘制遮罩（area-list 绘制模式专用）。
+ * HexagonAreaOverlay —— 区域列表「添加区域」四边形绘制遮罩（area-list 绘制模式专用）。
  *
  * 截图式从点拉出六边形（与矩形框选同交互范式）：
  * - 进入绘制态不显示六边形，仅停机坪图标光标跟随；
@@ -72,7 +72,7 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
   const editingRef = useRef(false)
   // 已进入编辑的目标区域 id（StrictMode 重挂载/adapter 迟到时幂等重建编辑态）
   const enteredEditIdRef = useRef<string | null>(null)
-  // 确认区域 6 顶点经纬度（onMove 每帧 project 回视口坐标重绘，地理锚定）
+  // 确认区域 4 顶点经纬度（onMove 每帧 project 回视口坐标重绘，地理锚定）
   const confirmedVerticesLLRef = useRef<VertexLL[] | null>(null)
   // 确认态 onMove 取消句柄
   const offMoveRef = useRef<(() => void) | null>(null)
@@ -151,7 +151,7 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
   /**
    * 命令式按顶点绘制一帧（蒙版 + 本体 + 顶点圆点）：直写 d/cx/cy 属性，
    * 不触碰 React 状态——丝滑关键（无 diff、无重渲染）。
-   * 拖动帧（hexVertices 几何）与 resize 重绘共用（确认态六边形已交
+   * 拖动帧（hexVertices 几何）与 resize 重绘共用（确认态四边形已交
    * TaskAreaLayer 持久渲染，本函数不再参与）。
    */
   const drawVertices = useCallback((vs: { x: number; y: number }[]) => {
@@ -446,7 +446,7 @@ export function HexagonAreaOverlay({ adapter, onExit }: HexagonAreaOverlayProps)
   }, [editing, forceCursorRecompute])
 
   /**
-   * 确定（定格态）：按六边形 6 顶点经纬度 + 所选类型上送 addNewTaskArea
+   * 确定（定格态）：按四边形 4 顶点经纬度 + 所选类型上送 addNewTaskArea
    * （store.addArea：成功后 refresh 以后端数据为准，返回新建区域后端 id）；
    * 成功随即自动开启「任务区域」图层（TaskAreaLayer 立即以持久样式渲染该区域）
    * 并进入确认态——遮罩收起截图蒙版/信息卡并放行鼠标到地图，右下顶点右侧挂

@@ -59,6 +59,7 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
     setOrbitFlightConfirmed,
     rallyPointRect,
     setRallyPointRect,
+    setRallyPointRectGeo,
     rallyPointRouteGenerated,
     setRallyPointRouteGenerated,
     rallyPointConfirmed,
@@ -437,10 +438,12 @@ export function FlightMissionPanels({ panels, anims, adapter, aircraft, selected
                 setRallyPointRouteGenerated(true)
               }}
               onCancel={() => {
-                // 取消面板：终止循环动画并清理全部集结点状态（含已确认区域）
+                // 取消面板：终止循环动画并清理全部集结点状态（含已确认区域；
+                // Geo 同步清除，防止 HomePage 地理锚定 onMove 重投影复活区域）
                 stopRallyPointFlights()
                 setRallyPointRouteGenerated(false)
                 setRallyPointRect(null)
+                setRallyPointRectGeo(null)
                 setRallyPointOpen(false)
               }}
             />

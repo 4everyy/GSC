@@ -344,15 +344,15 @@
   height: 6.91px;
 }
 
-/* ====== 运动轨迹（条纹箭头 mask + 流动渐变动画 target-trail） ====== */
+/* ====== 运动轨迹（条纹箭头 mask + 流动渐变动画） ====== */
 
 /*
- * 动态渐变：target-trail.svg 三枚条纹箭头改作 CSS mask 形状模板
+ * 动态渐变：target-motion-arrows.svg 三枚条纹箭头改作 CSS mask 形状模板
  * （按 alpha 透出，源图条纹 0.9/0.2 的 alpha 差保留箭头内部纹理
  * 层次），内部填充沿 135°（右下 45° = 箭头指向 = 目标运动方向）
- * 流动的纯绿明暗光带：参考设计稿「270deg 绿 0.9↔0.2 交替」的
+ * 流动的金色明暗光带：参考设计稿「270deg 绿 亮1↔0.2 交替」的
  * 横向路线效果，轴向按运动方向换算为 135°——周期 28px（亮
- * rgba(41,167,73,.9) 14px ↔ 暗 .2 14px 交替），
+ * rgba(255,206,66,1) 14px ↔ 暗 .2 14px 交替），
  * background-position 每周期平移 (19.8px,19.8px)（轴向位移恰为
  * 28px：135° 轴单位向量 (0.707,0.707)），0.9s linear 无缝循环——
  * 光带持续向右下"奔流"，指示目标运行线路；渐变位于元素局部坐标系，
@@ -393,22 +393,22 @@
   width: 140px;
   height: 140px;
   transform: translate(-50%, -50%) rotate(var(--trail-angle)) translate(77px, 77px);
-  /* 流动渐变（参考设计稿 270deg 绿 0.9↔0.2 交替，轴向换算为运动方向
+   /* 流动渐变（参考设计稿 270deg 亮1↔0.2 交替（配色取自 target-motion-arrows.svg 金 #D79E00），轴向换算为运动方向
      135°）：周期 28px、亮/暗各半交替；首尾同亮色保证 repeating 无缝
      衔接。色标必须用 px（百分比会按渐变线全长≈198px 取周期，无法与
      平移量对齐做无缝循环） */
   background: repeating-linear-gradient(
     135deg,
-    rgba(41, 167, 73, 0.9) 0px,
-    rgba(41, 167, 73, 0.2) 14px,
-    rgba(41, 167, 73, 0.9) 28px
+    rgba(255, 206, 66, 1) 0px,
+    rgba(215, 158, 0, 0.2) 14px,
+    rgba(255, 206, 66, 1) 28px
   );
-  /* 形状 = target-trail.svg 三枚条纹箭头（alpha 模板，条纹透出层次） */
-  -webkit-mask: url('../../../assets/images/task-panel/target-trail.svg') center / 100% 100%
+  /* 形状 = target-motion-arrows.svg 三枚条纹箭头（alpha 模板，条纹透出层次） */
+  -webkit-mask: url('../../../assets/images/task-panel/target-motion-arrows.svg') center / 100% 100%
     no-repeat;
-  mask: url('../../../assets/images/task-panel/target-trail.svg') center / 100% 100% no-repeat;
+  mask: url('../../../assets/images/task-panel/target-motion-arrows.svg') center / 100% 100% no-repeat;
   pointer-events: none; /* 纯装饰，不参与图标交互热区 */
-  animation: target-trail-flow 0.9s linear infinite;
+  animation: target-trail-flow 0.9s linear infinite, target-trail-blink 0.8s ease-in-out infinite;
 }
 
 /* 光带沿运动方向（135° 轴）流动：每周期平移 (19.8px,19.8px)——
@@ -419,6 +419,19 @@
   }
   to {
     background-position: 19.8px 19.8px;
+  }
+}
+
+@keyframes target-trail-blink {
+  0%,
+  100% {
+    opacity: 1;
+    /* 亮态：提亮 + 金色光晕，突出闪烁峰值 */
+    filter: brightness(1.6) drop-shadow(0 0 10px rgba(255, 200, 60, 0.9));
+  }
+  50% {
+    opacity: 0.12;
+    filter: brightness(0.75);
   }
 }
 
