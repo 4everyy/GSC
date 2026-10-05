@@ -7,7 +7,7 @@
  */
 import { memo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react'
 import { computePanelPlacement, placementToClasses } from '../../../utils/index'
-import batteryMidIcon from '../../../assets/images/device/battery-mid.png'
+import batteryMidIcon from '../../../assets/device/battery-mid.png'
 import { STATUS_PLANE_ICON } from '../../../lib/planeIcons'
 import { useDeviceLinkStore, useFlightAnimStore, usePlaneStatusStore } from '../../../stores/index'
 import { useRealtimeStore } from '../../../features/realtime/wsClient'

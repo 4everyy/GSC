@@ -1,5 +1,5 @@
 import { type FlightOverlaysProps } from './FlightOverlays'
-import { homeImages } from '../../../assets/images/home/index'
+import { homeImages } from '../../../assets/home/index'
 import { aircraft } from '../../../config/index'
 import { useFlightAnimStore } from '../../../stores/index'
 import { DroneFlightIcon } from './DroneFlightIcon'

@@ -1,4 +1,4 @@
-import { homeImages } from '../../assets/images/home/index'
+import { homeImages } from '../../assets/home/index'
 import './FlightActionPanels.css'
 import { useState, useEffect, type ReactNode } from 'react'
 import { PanelShell, PanelTabs, type PanelTab, HeightStepper, FormationSelect } from '../PanelKit/PanelKit'

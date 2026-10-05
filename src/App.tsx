@@ -36,6 +36,7 @@
 import { Suspense, lazy, useCallback, useEffect, useState, type ComponentType } from 'react'
 import { LoginPage } from './pages/LoginPage/LoginPage'
 import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary'
+import { parseAppRoute, type AppRoute } from './utils/appNavigation'
 
 /* 主应用懒加载（独立 chunk）：登录页首屏不加载主应用代码。
  * 可重试加载器：成功后缓存 Promise（幂等，预取与懒加载复用同一结果）；
@@ -53,6 +54,21 @@ function loadMainApp(): Promise<{ default: ComponentType }> {
 
 /** 新建 MainApp lazy 实例：重试时调用——新实例才会重新执行 loadMainApp */
 const createMainApp = () => lazy(loadMainApp)
+
+/* 视频监测屏（第二屏）懒加载：独立 chunk，主屏首屏不加载视频屏代码 */
+let videoAppPromise: Promise<{ default: ComponentType }> | null = null
+function loadVideoApp(): Promise<{ default: ComponentType }> {
+  if (!videoAppPromise) {
+    videoAppPromise = import('./pages/VideoMonitorPage/VideoMonitorPage').catch((err: unknown) => {
+      videoAppPromise = null
+      throw err
+    })
+  }
+  return videoAppPromise
+}
+
+/** 新建视频监测屏 lazy 实例（可重试，同 createMainApp 策略） */
+const createVideoApp = () => lazy(loadVideoApp)
 
 /** 主应用 chunk 预取（幂等：已加载后复用同一 Promise；失败自动清缓存可重试） */
 const prefetchMainApp = () => {
@@ -90,12 +106,39 @@ function App() {
   // 默认跳过登录直接进入主应用（首页）；VITE_SKIP_LOGIN=false 时恢复登录门控
   const [loggedIn, setLoggedIn] = useState(SKIP_LOGIN)
   // 主应用 lazy 实例：动态 import 失败被 ErrorBoundary 捕获后，点「重试」
-  // 经 onReset 重建实例（lazy 缓存的 rejection 不会自行清除），重新发起加载
+  // 组件 onReset 重建实例（lazy 缓存的 rejection 不会自行清除），重新发起加载
   const [MainApp, setMainApp] = useState(createMainApp)
+  // 视频监测屏 lazy 实例（重试策略同上）
+  const [VideoApp, setVideoApp] = useState(createVideoApp)
+  // 双屏 hash 路由：登录门控之后按 hash 分发（#/ 主屏 / #/video 视频监测屏）
+  const [route, setRoute] = useState<AppRoute>(parseAppRoute)
+
+  // 监听 hashchange：两屏均为登录后内容，切换仅改 hash，不卸载登录态
+  useEffect(() => {
+    const onHashChange = () => setRoute(parseAppRoute())
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  // 当前路由为主屏时预取视频屏 chunk；为视频屏时预取主屏 chunk（登录页空闲预取已有，此处互补）
+  useEffect(() => {
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+    const prefetch = route === 'video' ? prefetchMainApp : () => void loadVideoApp()
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(prefetch, { timeout: 3000 })
+      return () => w.cancelIdleCallback?.(id)
+    }
+    const timer = window.setTimeout(prefetch, 1600)
+    return () => window.clearTimeout(timer)
+  }, [route])
 
   /** ErrorBoundary 重试联动：重建 lazy 实例以重新执行动态 import */
   const handleMainAppReset = useCallback(() => {
     setMainApp(createMainApp())
+    setVideoApp(createVideoApp())
   }, [])
 
   /**
@@ -142,7 +185,7 @@ function App() {
             </div>
           }
         >
-          <MainApp />
+          {route === 'video' ? <VideoApp /> : <MainApp />}
         </Suspense>
       ) : (
         <LoginPage onSuccess={() => setLoggedIn(true)} />

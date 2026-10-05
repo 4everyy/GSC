@@ -40,7 +40,7 @@
  * - adapter 为 null（引擎未就绪）时退化为纯拖放，不随地图移动。
  */
 import { useEffect, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { deviceImages } from '../../../assets/images/device'
+import { deviceImages } from '../../../assets/device'
 import { useTargetLinkStore, type TargetMarkerItem } from '../../../stores/targetLinkStore'
 import { type TargetType } from '../../../config/index'
 import { type LngLat, type MapAdapter } from '../../../map-engines/types'

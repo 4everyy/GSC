@@ -5,7 +5,7 @@ import { type FormationFlightFormation } from '../../FlightActionPanels/FlightAc
 import { computeFormationFlightGeometry } from '../../../lib/formationLayout'
 import { FlightSimulationOverlays } from './FlightSimulationOverlays'
 import { DroneFlightIcon } from './DroneFlightIcon'
-import { homeImages } from '../../../assets/images/home/index'
+import { homeImages } from '../../../assets/home/index'
 import { aircraft } from '../../../config/index'
 import { useFlightAnimStore } from '../../../stores/index'
 import { HexagonAreaOverlay } from './HexagonAreaOverlay'

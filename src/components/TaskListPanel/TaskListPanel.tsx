@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { taskList as initialTaskList, taskTypeOptions, type TaskItem, type TaskType, monitorTaskList, type MonitorTaskItem } from '../../config/index'
-import iconFormation from '../../assets/images/home/icon-formation.png'
-import { deviceImages } from '../../assets/images/device/index'
-import { taskPanelImages } from '../../assets/images/task-panel/index'
+import iconFormation from '../../assets/home/icon-formation.png'
+import { deviceImages } from '../../assets/device/index'
+import { taskPanelImages } from '../../assets/task-panel/index'
   import {
     TaskCreatePanel,
     type TaskCreateFormValue,
@@ -13,7 +13,7 @@ import './TaskListPanel.css'
 
 
 /**
- * 设计稿切图资源（src/assets/images/task-panel/，经 Vite 构建哈希化）。
+ * 设计稿切图资源（src/assets/task-panel/，经 Vite 构建哈希化）。
  * 任务行背景三态（常规灰/hover 橙/展开蓝）复用设备面板切图 deviceImages，
  * 与设备管理/目标列表面板视觉保持一致。
  */

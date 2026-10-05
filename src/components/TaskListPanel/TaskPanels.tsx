@@ -8,9 +8,9 @@ import {
   taskAreaTypeMeta,
   type TaskArea,
 } from '../../api/index'
-import { taskPanelImages } from '../../assets/images/task-panel'
-import iconFormation from '../../assets/images/home/icon-formation-crop.png'
-import { deviceImages } from '../../assets/images/device'
+import { taskPanelImages } from '../../assets/task-panel'
+import iconFormation from '../../assets/home/icon-formation-crop.png'
+import { deviceImages } from '../../assets/device'
 import './TaskCreatePanel.css'
 import './TaskProPanel.css'
 
@@ -38,7 +38,7 @@ export type ExecMode = '单次执行' | '周期执行'
 export type LostPolicy = '继续执行' | '返航'
 export type TaskCreateType = Extract<TaskType, '巡检任务' | '打击任务'>
 
-/** 设计稿切图资源（src/assets/images/task-panel/，经 Vite 构建哈希化） */
+/** 设计稿切图资源（src/assets/task-panel/，经 Vite 构建哈希化） */
 const CreateIMAGES = {
   addAreaIcon: taskPanelImages.addAreaIcon,
   backArrow: taskPanelImages.backArrow,
@@ -737,7 +737,7 @@ const INSPECT_TARGET_OPTIONS = [
   { key: '装备', disabled: true },
 ] as const
 
-/** 设计稿切图资源（src/assets/images/task-panel/） */
+/** 设计稿切图资源（src/assets/task-panel/） */
 const ProIMAGES = {
   backArrow: taskPanelImages.backArrow,
   check: taskPanelImages.checkIcon,

@@ -1,7 +1,7 @@
 import { type DragPosition } from '../hooks/index'
 import { type RallyPointFormation, type FormationFlightFormation } from '../components/FlightActionPanels/FlightActionPanels'
 import { type AreaLandingFormation } from '../components/AreaPanels/AreaPanels'
-import { homeImages } from '../assets/images/home/index'
+import { homeImages } from '../assets/home/index'
 import { type AlarmColor, type Device } from '../config'
 import { type LngLat } from '../map-engines/types'
 import { resolvePlaneSrc } from './planeIcons'

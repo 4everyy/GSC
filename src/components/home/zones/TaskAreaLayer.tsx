@@ -40,7 +40,7 @@ import { createPortal } from 'react-dom'
 import { type LngLatBounds, type MapAdapter } from '../../../map-engines/types'
 import { useTaskAreaStore } from '../../../stores/index'
 import { taskAreaTypeMeta, type TaskArea } from '../../../api/index'
-import { homeImages } from '../../../assets/images/home'
+import { homeImages } from '../../../assets/home'
 
 /** 覆盖物 id 前缀（隔离命名空间，避免与业务图层冲突） */
 const POLYGON_ID_PREFIX = 'task-area-polygon-'

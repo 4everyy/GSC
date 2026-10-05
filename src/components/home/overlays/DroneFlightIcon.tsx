@@ -1,5 +1,5 @@
 import { type CSSProperties, memo } from 'react'
-import { deviceImages } from '../../../assets/images/device/index'
+import { deviceImages } from '../../../assets/device/index'
 
 /**
  * DroneFlightIcon —— 模拟飞行动画专用组合图标（底座 + 飞机整体）。

@@ -1,4 +1,4 @@
-import { taskPanelImages } from '../../../../assets/images/task-panel/index'
+import { taskPanelImages } from '../../../../assets/task-panel/index'
 import { TYPE_PANEL_WIDTH, TYPE_PANEL_HEIGHT, EDIT_VERTEX_HOLE_R, EDIT_MID_HOLE_R, HEX_STROKE_COLOR, NOFLY_HATCH_PATTERN_ID, NOFLY_HATCH_COLOR, EDIT_MASK_ID, EDIT_STROKE_COLOR, EDIT_STROKE_WEIGHT, EDIT_DASH_COLOR, EDIT_DASH_WIDTH, AREA_TYPE_OPTIONS } from './hooks'
 import { type RefObject, type MouseEvent as ReactMouseEvent } from 'react'
 

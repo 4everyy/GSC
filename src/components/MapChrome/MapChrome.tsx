@@ -1,5 +1,5 @@
 import { ALARM_BADGES, toolbarItems } from '../../config/index'
-import { homeImages } from '../../assets/images/home/index'
+import { homeImages } from '../../assets/home/index'
 import {
   useAlarmPanelStore,
   useDeviceLinkStore,

@@ -1,5 +1,5 @@
-import { homeImages } from '../assets/images/home/index'
-import { deviceImages } from '../assets/images/device/index'
+import { homeImages } from '../assets/home/index'
+import { deviceImages } from '../assets/device/index'
 
 
 // 告警颜色（原 src/types.ts，合并至告警相关公共配置）

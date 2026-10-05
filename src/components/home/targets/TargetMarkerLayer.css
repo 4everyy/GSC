@@ -153,7 +153,7 @@
   margin: 0;
   padding: 0;
   border: none;
-  background: url('../../../assets/images/task-panel/orbit-segment.svg') center / 100% 100%
+  background: url('../../../assets/task-panel/orbit-segment.svg') center / 100% 100%
     no-repeat;
   /* 命中区 = 与扇环同弧的环形楔（内径 38/160、外径 80/160、跨 76.67°，
      沿外/内弧各取 5 点折线逼近弧线），旋转后三楔拼满马蹄带且内孔不拦截 */
@@ -404,9 +404,9 @@
     rgba(255, 206, 66, 1) 28px
   );
   /* 形状 = target-motion-arrows.svg 三枚条纹箭头（alpha 模板，条纹透出层次） */
-  -webkit-mask: url('../../../assets/images/task-panel/target-motion-arrows.svg') center / 100% 100%
+  -webkit-mask: url('../../../assets/task-panel/target-motion-arrows.svg') center / 100% 100%
     no-repeat;
-  mask: url('../../../assets/images/task-panel/target-motion-arrows.svg') center / 100% 100% no-repeat;
+  mask: url('../../../assets/task-panel/target-motion-arrows.svg') center / 100% 100% no-repeat;
   pointer-events: none; /* 纯装饰，不参与图标交互热区 */
   animation: target-trail-flow 0.9s linear infinite, target-trail-blink 0.8s ease-in-out infinite;
 }

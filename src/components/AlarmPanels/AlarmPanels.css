@@ -55,8 +55,8 @@
   width: clamp(7px, 0.73vw, 14px);
   height: clamp(7px, 0.73vw, 14px);
   background-color: #f32c30;
-  -webkit-mask: url('../../assets/images/home/alarm-detail-icon.png') center / contain no-repeat;
-  mask: url('../../assets/images/home/alarm-detail-icon.png') center / contain no-repeat;
+  -webkit-mask: url('../../assets/home/alarm-detail-icon.png') center / contain no-repeat;
+  mask: url('../../assets/home/alarm-detail-icon.png') center / contain no-repeat;
 }
 
 /* 图标右缘（28+14=42px）+ 3px 间距 = 45px（1920 基准）；文字 16px */
@@ -97,7 +97,7 @@
   border: 1px solid #46dce7;
   border-radius: clamp(1px, 0.104vw, 2px);
   padding: 0 clamp(9px, 0.94vw, 18px) 0 clamp(2px, 0.21vw, 4px);
-  background: rgba(255, 255, 255, 0.08) url('../../assets/images/device/dropdown.png')
+  background: rgba(255, 255, 255, 0.08) url('../../assets/device/dropdown.png')
     right center / clamp(8px, 0.833vw, 16px) clamp(8px, 0.833vw, 16px) no-repeat;
   font-family: MiSans, MiSans;
   font-size: clamp(6px, 0.625vw, 12px);
@@ -285,7 +285,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: url('../../assets/images/home/alarm-detail-bg.png') 0 bottom / 100%
+  background: url('../../assets/home/alarm-detail-bg.png') 0 bottom / 100%
     clamp(316px, 32.9vw, 632px) no-repeat;
   opacity: 0.8;
   pointer-events: none;
@@ -555,7 +555,7 @@
   top: 50%;
   transform: translateY(-50%);
   height: clamp(14px, 1.458vw, 28px); /* 固定高 28px（1920 基准等比），行内垂直居中 */
-  background: url('../../assets/images/home/alarm-detail-filter-bar.png') 0 0 / 100% 100% no-repeat;
+  background: url('../../assets/home/alarm-detail-filter-bar.png') 0 0 / 100% 100% no-repeat;
   opacity: 0;
   transition: opacity 0.15s ease;
   pointer-events: none;

@@ -35,6 +35,7 @@ import { loadScopedAnchors } from '../../utils/index'
 import { type LngLat } from '../../map-engines/types'
 import { FlightOverlays, AreaSelectOverlay } from '../../components/home/overlays/FlightOverlays'
 import { BottomBar } from '../../components/home/bottom-bar/BottomBar'
+import { navigateToRoute } from '../../utils/appNavigation'
 
 export function HomePage() {
   // 告警面板状态机已抽离（WB-PF-002）：activeAlarm/pendingAlarm/alarmCollapsing 及
@@ -512,6 +513,39 @@ export function HomePage() {
         />
 
         <StatusHeader />
+
+        {/* 双屏视角入口：切换到视频监测屏（智能无人集群图传系统，#/video） */}
+        <button
+          type="button"
+          aria-label="打开视频监测屏"
+          title="视频监测屏（智能无人集群图传系统）"
+          onClick={() => navigateToRoute('video')}
+          style={{
+            position: 'absolute',
+            top: 20,
+            right: 24,
+            zIndex: 40,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            height: 40,
+            padding: '0 18px',
+            borderRadius: 6,
+            border: '1px solid rgba(30, 218, 223, 0.55)',
+            background: 'rgba(8, 20, 34, 0.72)',
+            color: '#1edadf',
+            fontSize: 15,
+            letterSpacing: '0.08em',
+            cursor: 'pointer',
+            backdropFilter: 'blur(6px)',
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+            <rect x="2.5" y="5.5" width="13" height="13" rx="1.6" />
+            <path d="M15.5 10.5l6-3.5v10l-6-3.5z" />
+          </svg>
+          视频监测屏
+        </button>
 
         <section className="map-stage">
           {offlineStatus === 'error' && (

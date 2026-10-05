@@ -33,7 +33,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { type MapAdapter } from '../../../map-engines/types'
-import { homeImages } from '../../../assets/images/home'
+import { homeImages } from '../../../assets/home'
 import { useTaskAreaStore, useLayerStore } from '../../../stores/index'
 import { MIN_RADIUS, DEFAULT_AREA_TYPE, HEX_STROKE_COLOR, NOFLY_HATCH_PATTERN_ID, NOFLY_STROKE_COLOR, TASK_FILL_COLOR, TASK_STROKE_COLOR, LANDING_FILL_COLOR, LANDING_STROKE_COLOR, EDIT_AREA_PAD, useConfirmedPanel, projectVertices, type VertexLL, useEditHandles, useEditAreaRequest } from './hexagonArea/hooks'
 import { BR_UNIT, TR_UNIT, hexVertices, hexPathD, padPolygon, syncEditHandles, computeTypePanelPos, computeHexInfo, type HexGeometry, HexagonDrawingSvg, HexagonEditVisuals, HexagonTypePanel } from './hexagonArea/rendering'

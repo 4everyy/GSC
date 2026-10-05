@@ -1,4 +1,4 @@
-import { measureIcons } from '../../assets/images/measure/index'
+import { measureIcons } from '../../assets/measure/index'
 import { type LngLat, type MapAdapter, type MarkerHandle, type PolylineHandle } from '../../map-engines'
 import { type CommittedMeasurement } from './index'
 

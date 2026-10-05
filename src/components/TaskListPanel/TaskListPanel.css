@@ -221,7 +221,7 @@
      行数不足 4 时自动裁掉残留的空白背景 */
   padding-bottom: 11px;
   box-sizing: border-box;
-  background: url('../../assets/images/task-panel/monitor-detail-bg.png') 100% no-repeat;
+  background: url('../../assets/task-panel/monitor-detail-bg.png') 100% no-repeat;
   background-size: 100% 100%;
   overflow: hidden;
 }

@@ -5,7 +5,7 @@
   flex-direction: column;
   width: 100%;
   min-height: clamp(200px, 17vw, 265px);
-  background: url('../../assets/images/task-panel/detail-bg.png')
+  background: url('../../assets/task-panel/detail-bg.png')
     100% no-repeat;
   background-size: 100% 100%;
   border-radius: 2px;

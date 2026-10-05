@@ -4,9 +4,9 @@ import { LandingPanel, ReturnHomePanel, TakeoffPanel, TapReturnPanel, WaypointFl
 import { aircraft } from '../../../config/index'
 import { type useExclusivePanels } from '../../../hooks/useExclusivePanels'
 import { type useFlightAnimations } from '../../../hooks/useFlightAnimations'
-import { homeImages } from '../../../assets/images/home/index'
+import { homeImages } from '../../../assets/home/index'
 import '../../PanelKit/PanelKit.css'
-import { deviceImages } from '../../../assets/images/device/index'
+import { deviceImages } from '../../../assets/device/index'
 import { podControlLand, podControlTakeoff, podControlWaypoint } from '../../../api/index'
 import { observeDownlink, waitForCommandReceipt } from '../../../features/realtime/wsClient'
 import { usePlaneStatusStore } from '../../../stores/index'
@@ -168,7 +168,7 @@ export function FlightCommandPanels({ panels, anims, aircraft, selectedAircraft,
               // 返航高度支持手动键入；面板族默认不设上限（TapReturnPanel 内置，最低 1m）
               editable
               confirmMuted={!tapReturnRouteReady || tapReturnConfirmed}
-              // 缃伆鏉′欢锛氳埅绾垮凡鐢熸垚 鎴?钀界偣鏈‘璁わ紙灏氭湭鐐瑰嚮鍥鹃拤涓嬫柟銆岀‘瀹氥€嶆寜閽潯锛夋椂
+              // 置灰条件：航线已生成 或 落点未确认（尚未点击图钉下方「确定」按钮）时
               // Muted when route already generated or landing point not yet confirmed
               middleMuted={tapReturnRouteReady || !tapReturnPointConfirmed}
               onConfirm={(height) => {

@@ -1,4 +1,4 @@
-import { deviceImages } from '../assets/images/device/index'
+import { deviceImages } from '../assets/device/index'
 import { type DeviceStatus, type Device } from '../config'
 
 /* 状态驱动飞机切图（自 AircraftLayer 拆出为公共取色口径）：地面静止图标与

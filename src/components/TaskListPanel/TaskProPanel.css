@@ -202,7 +202,7 @@
    + step-active-ring.svg（48×48 渐变描边光圈，::after）+ step-active-glow.svg（80×80 模糊光晕，::before） */
 .task-pro__step--active .task-pro__step-num {
   border: none;
-  background: url('../../assets/images/task-panel/step-active-dot.svg') center / 32px 32px no-repeat;
+  background: url('../../assets/task-panel/step-active-dot.svg') center / 32px 32px no-repeat;
   color: #fff;
 }
 
@@ -211,7 +211,7 @@
   content: '';
   position: absolute;
   inset: -24px; /* (80−32)/2，光晕层 80×80 与圆心对齐 */
-  background: url('../../assets/images/task-panel/step-active-glow.svg') center / contain no-repeat;
+  background: url('../../assets/task-panel/step-active-glow.svg') center / contain no-repeat;
   pointer-events: none;
 }
 
@@ -220,7 +220,7 @@
   content: '';
   position: absolute;
   inset: -8px; /* (48−32)/2，光圈层 48×48 与圆心对齐 */
-  background: url('../../assets/images/task-panel/step-active-ring.svg') center / contain no-repeat;
+  background: url('../../assets/task-panel/step-active-ring.svg') center / contain no-repeat;
   pointer-events: none;
 }
 

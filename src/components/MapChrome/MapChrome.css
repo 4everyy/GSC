@@ -13,7 +13,7 @@
   padding: 0 clamp(12px, 1.2vw, 24px);
   overflow: visible;
   background-color: transparent;
-  background-image: url('../../assets/images/home/status-bar-bg.png');
+  background-image: url('../../assets/home/status-bar-bg.png');
   background-repeat: no-repeat;
   background-size: 100% 100%;
   background-position: center clamp(-34px, -1.77vw, -18.13px);
@@ -485,7 +485,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background-image: url('../../assets/images/home/map-button-normal.png');
+  background-image: url('../../assets/home/map-button-normal.png');
   background-repeat: no-repeat;
   background-size: 100% 100%;
   opacity: 0.8;
@@ -493,12 +493,12 @@
 }
 
 .view-controls button:hover::before {
-  background-image: url('../../assets/images/home/map-button-hover.png');
+  background-image: url('../../assets/home/map-button-hover.png');
 }
 
 .view-controls button:active::before,
 .view-controls button.active::before {
-  background-image: url('../../assets/images/home/map-button-active.png');
+  background-image: url('../../assets/home/map-button-active.png');
 }
 
 .view-controls img,
@@ -530,7 +530,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background-image: url('../../assets/images/home/map-button-normal.png');
+  background-image: url('../../assets/home/map-button-normal.png');
   background-repeat: no-repeat;
   background-size: 100% 100%;
   opacity: 0.8;
@@ -548,11 +548,11 @@
 }
 
 .zoom-controls:has(button:hover)::before {
-  background-image: url('../../assets/images/home/map-button-hover.png');
+  background-image: url('../../assets/home/map-button-hover.png');
 }
 
 .zoom-controls:has(button:active)::before {
-  background-image: url('../../assets/images/home/map-button-active.png');
+  background-image: url('../../assets/home/map-button-active.png');
 }
 
 .zoom-controls button img {

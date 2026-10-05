@@ -1,7 +1,7 @@
 /* AircraftLayer —— 飞行器图标 / 设备联动高亮 / 返航标记 / 在线离线设备 Hover 面板
    自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
    HomePage.css 按拆分前的层叠顺序 @import 各文件。 */
-/* ====== 椋炶鍣?====== */
+/* ====== 飞行器 ====== */
 .aircraft {
   position: absolute;
   z-index: 4;
@@ -11,31 +11,31 @@
      拖拽写 left/top，与本 translateY 独立叠加互不干扰 */
   transform: translateY(calc(-1 * var(--aircraft-lift, 0px)));
   transition: transform 0.8s ease;
-  display: flex; /* 鏀逛负 flex 浠ユ敮鎸佸浘鏍?鏍囩鍨傜洿鎺掑垪 */
+  display: flex; /* 改为 flex 以支持图标、标签垂直排列 */
   flex-direction: column;
   align-items: center;
-  width: auto; /* 瀹藉害鑷€傚簲鍐呭 */
+  width: auto; /* 宽度自适应内容 */
 }
 
-/* 鍙嫋鎷介琛屽櫒锛氶紶鏍囨墜鍔?+ 绂佹閫変腑鏂囨湰锛岄槻姝㈡嫋鎷芥椂楂樹寒鏂囧瓧 */
+/* 可拖拽飞行器：鼠标手型 + 禁止选中文本，防止拖拽时高亮文字 */
 .aircraft--draggable {
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
 }
 
-/* 鎷栨嫿杩涜涓細鏀圭敤 grabbing 鍏夋爣 */
+/* 拖拽进行中：改用 grabbing 光标 */
 .aircraft--draggable:active {
   cursor: grabbing;
 }
 
-/* ====== 璁惧鑱斿姩楂樹寒锛堜笌璁惧绠＄悊闈㈡澘鍙屽悜鍚屾锛?====== */
-/* hover 楂樹寒锛氶潰鏉胯 hover 鎴栭椤靛浘鏍?hover 鏃讹紝鍥炬爣闈掕壊鍙戝厜 */
+/* ====== 设备联动高亮（与设备管理面板双向同步）====== */
+/* hover 高亮：面板行 hover 或首页图标 hover 时，图标青色发光 */
 .aircraft.aircraft--hovered img {
   filter: drop-shadow(0 0 8px rgba(135, 235, 255, 0.95));
 }
 
-/* 閫変腑楂樹寒锛氶潰鏉垮閫夋鍕鹃€夋垨棣栭〉鍥炬爣鍗曞嚮閫変腑鏃讹紝鍥炬爣甯镐寒鍏夊湀 + 鏍囩鍙橀潚鑹?*/
+/* 选中高亮：面板行选中勾选或首页图标单击选中时，图标常亮光圈 + 标签变青色 */
 .aircraft.aircraft--selected img {
   filter:
     drop-shadow(0 0 4px rgba(135, 235, 255, 1))
@@ -98,15 +98,15 @@
   }
 }
 
-/* 鎵€鏈夐琛屽櫒鍐呴儴鐨?img 缁熶竴濉弧瀹瑰櫒骞朵繚鎸佹瘮渚嬶紝
-   閬垮厤鍥剧墖鍘熷灏哄婧㈠嚭瀵艰嚧瑙嗚澶у皬涓嶄竴鑷?*/
+/* 所有飞行器内部的 img 统一限定容器并保持比例，
+   避免图片原始尺寸溢出导致视觉大小不一 */
 .aircraft img {
-  width: 48px; /* 缁熶竴鍥炬爣灏哄 */
+  width: 48px; /* 统一图标尺寸 */
   height: 48px;
   object-fit: contain;
 }
 
-/* 椋炶鍣ㄥ悕绉版爣绛?*/
+/* 飞行器名称标签 */
 .aircraft-label {
   display: block;
   margin-top: 4px;
@@ -158,13 +158,13 @@
   height: 24px;
 }
 
-/* 绂荤嚎璁惧锛歨over 闈㈡澘瀹氫綅涓婁笅鏂?*/
+/* 离线设备：hover 面板定位上下文 */
 .aircraft--gray {
   left: 48%;
   top: 58%;
 }
 
-/* 鏃嬭浆鍙綔鐢ㄤ簬鍥炬爣锛屼笉褰卞搷鏍囩 */
+/* 旋转仅用于图标，不影响标签 */
 .aircraft--red img {
   transform: rotate(-45deg);
 }
@@ -181,11 +181,11 @@
   transform: rotate(95deg);
 }
 
-/* ====== 绂荤嚎璁惧 Hover 淇℃伅闈㈡澘锛堣璁＄绮剧‘杩樺師锛?==== */
+/* ====== 离线设备 Hover 信息面板（设计稿精确还原）====== */
 .aircraft-hover-panel {
   position: absolute;
   left: calc(100% + 12px);
-  /* 闈㈡澘搴曢儴瀵归綈椋炴満鍥炬爣鐨勫瀭鐩翠腑蹇冪嚎锛堝浘鏍?48px 楂橈紝涓績鍦?24px 澶勶級 */
+  /* 面板底部对齐飞机图标的垂直中心线（图标 48px 高，即中点 24px 处） */
   top: 24px;
   transform: translateY(-100%);
   width: 203px;
@@ -206,37 +206,37 @@
   font-family: 'MiSans-Regular';
 }
 
-/* hover 鏃舵樉绀洪潰鏉?*/
+/* hover 时显示面板 */
 .aircraft--gray:hover .aircraft-hover-panel {
   opacity: 1;
   visibility: visible;
 }
 
-/* 闈㈡澘鏁翠綋锛歠lex 绾靛悜甯冨眬锛岃涓嬫柟鍐呭鍖鸿嚜鍔ㄥ～鍏呭苟鍨傜洿灞呬腑 */
+/* 面板整体：flex 纵向布局，下方内容区自动填充并垂直居中 */
 .aircraft-hover-panel {
   display: flex;
   flex-direction: column;
 }
 
-/* 涓婂崐閮ㄥ垎锛氬ご閮?+ 鍒嗛殧绾匡紙鍥哄畾楂樺害锛?*/
+/* 上半部分：头部 + 分隔线（固定高度） */
 .aircraft-hover-panel__top {
   flex-shrink: 0;
 }
 
-/* 涓嬪崐閮ㄥ垎锛氫俊鎭鍖哄煙锛堣嚜鍔ㄥ～鍏呭墿浣欑┖闂达紝浠呭瀭鐩村眳涓紝淇濇寔宸﹀榻愶級 */
+/* 下半部分：信息行区域（自动填充剩余空间，仅垂直居中并保持左对齐） */
 .aircraft-hover-panel__bottom {
   flex: 1;
   display: flex;
-  align-items: center; /* 鍨傜洿灞呬腑 */
+  align-items: center; /* 垂直居中 */
 }
 
-/* 闈㈡澘澶撮儴锛氬悕绉?+ 鐘舵€侊紙涓庝笅鏂逛俊鎭宸﹀彸瀵归綈锛?*/
+/* 面板头部：名称 + 状态（与下方信息行左右对齐） */
 .aircraft-hover-panel__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* 涓嶈 padding-left锛氳"08鍙锋棤浜烘満"涓庝笅鏂圭珫绾垮乏绔榻愶紙鍧囧湪鍐呭鍖烘渶宸︿晶锛夛紝
-     "绂荤嚎"浠嶈创鍙充晶涓嶅彉 */
+  /* 不加 padding-left：让"08号无人机"与下方竖线左对齐（均在内容区最左侧），
+     "离线"仍贴右侧不变 */
 }
 
 .aircraft-hover-panel__name {
@@ -261,24 +261,24 @@
   white-space: nowrap;
 }
 
-/* 鍒嗛殧绾匡細璐┛闈㈡澘鍏ㄥ锛屾棤鍓嶅悗闂磋窛 */
+/* 分隔线：贯穿面板全宽，无前后间距 */
 .aircraft-hover-panel__divider {
   height: 1px;
   background: rgba(198, 198, 198, 0.5);
   border-radius: 0;
-  margin: 6px -12px; /* 鎶垫秷闈㈡澘宸﹀彸 padding锛屽疄鐜伴棴鐜?*/
+  margin: 6px -12px; /* 抵消面板左右 padding，实现闭合 */
 }
 
-/* 淇℃伅琛?*/
+/* 信息行 */
 .aircraft-hover-panel__info {
   display: flex;
   align-items: center;
-  width: 100%; /* 鍗犳弧鍐呭鍖猴紝閰嶅悎涓嬫柟 time 鐨?margin-left:auto锛?
-                            灏嗘椂闂村€兼帹鍒版渶鍙崇锛屼笌涓婃柟"绂荤嚎"鍙崇瀵归綈 */
+  width: 100%; /* 占满内容区，配合下方 time 的 margin-left:auto，
+                            将时间串推到最右侧，与上方"离线"右对齐 */
   white-space: nowrap;
 }
 
-/* 绔栫嚎瑁呴グ锛氫笌涓婃柟"08鍙锋棤浜烘満"鏂囧瓧宸︾瀵归綈锛屼笌鍙充晶"绂荤嚎鏃堕棿锛?闂撮殧 4px */
+/* 竖线装饰：与上方"08号无人机"文字左对齐，与右侧"离线时间"间隔 4px */
 .aircraft-hover-panel__bar {
   width: 2px;
   height: 8px;
@@ -288,7 +288,7 @@
   margin-right: 4px;
 }
 
-/* "绂荤嚎鏃堕棿锛?鏍囩 */
+/* "离线时间"标签 */
 .aircraft-hover-panel__label {
   font-family: 'MiSans-Regular';
   font-weight: 400;
@@ -300,7 +300,7 @@
   flex-shrink: 0;
 }
 
-/* 鏃ユ湡鏃堕棿鍊?*/
+/* 日期时间串 */
 .aircraft-hover-panel__time {
   font-family: 'MiSans-Regular';
   font-weight: 400;
@@ -309,17 +309,17 @@
   text-align: left;
   font-style: normal;
   text-transform: none;
-  /* 灏嗘椂闂村€兼帹鑷宠灏撅紝涓庝笂鏂瑰ご閮ㄧ殑"绂荤嚎"鐘舵€佸彸绔榻愶紱
-     宸︿晶"绔栫嚎 + 绂荤嚎鏃堕棿锛?鍒欎笌"08鍙锋棤浜烘満"宸︾瀵归綈锛?
-     浠庤€屽疄鐜颁袱琛屾枃妗堝乏鍙充袱绔榻?*/
+  /* 将时间串推至末尾，与上方头部的"离线"状态右对齐；
+     左侧"竖线 + 离线时间"则与"08号无人机"左对齐，
+     从而实现两行文案左右两端对齐 */
   margin-left: auto;
 }
 
-/* ====== 鍦ㄧ嚎璁惧 Hover 淇℃伅闈㈡澘锛堣摑鑹诧紝璁捐绋跨簿纭繕鍘燂級 ====== */
+/* ====== 在线设备 Hover 信息面板（蓝色，设计稿精确还原） ====== */
 .aircraft-info-panel {
   position: absolute;
   left: calc(100% + 12px);
-  /* 闈㈡澘搴曢儴瀵归綈椋炴満鍥炬爣鐨勫瀭鐩翠腑蹇冪嚎锛堝浘鏍?48px 楂橈紝涓績鍦?24px 澶勶級 */
+  /* 面板底部对齐飞机图标的垂直中心线（图标 48px 高，即中点 24px 处） */
   top: 24px;
   transform: translateY(-100%);
   width: 229px;
@@ -337,28 +337,28 @@
   pointer-events: none;
   color: #fff;
   font-family: 'MiSans-Regular';
-  /* 鏁翠綋 flex 绾靛悜甯冨眬锛氶《閮ㄥ浐瀹氾紝搴曢儴涓夎鑷姩濉厖骞跺瀭鐩村眳涓?*/
+  /* 整体 flex 纵向布局：顶部固定，底部三行信息并垂直居中 */
   display: flex;
   flex-direction: column;
 }
 
-/* hover 鏃舵樉绀猴細鎵€鏈夐潪 gray 鐨勫湪绾块琛屽櫒 */
+/* hover 时显示：所有非 gray 的在线飞行器 */
 .aircraft--draggable:not(.aircraft--gray):hover .aircraft-info-panel {
   opacity: 1;
   visibility: visible;
 }
 
-/* 椤堕儴锛氭爣棰樿 + 鍒嗛殧绾匡紙鍥哄畾楂樺害锛?*/
+/* 顶部：标题行 + 分隔线（固定高度） */
 .aircraft-info-panel__top {
   flex-shrink: 0;
 }
 
-/* 鏍囬琛岋細鍚嶇О鍦ㄥ乏锛岀數閲?淇″彿鎸囩ず鍣ㄥ湪鍙炽€?
-   - 淇濇寔鍥哄畾 height:18px锛堢揣鍑戣瑙夛級锛屾斁澶х殑鐢垫睜鍥炬爣閫氳繃 overflow:visible 瀵圭О婧㈠嚭锛?
-     涓嶉€氳繃澧炲姞楂樺害鏉?鎾戝紑"瀵归綈绌洪棿锛?
-   - align-items:center 璁╂墍鏈夊厓绱犳寜瀹瑰櫒涓績瀵归綈锛?
-   - 淇″彿鍋忎笅闂鐢?.aircraft-info-panel__signal-icon 鐨?display:block 鍗曠嫭淇
-     锛堟秷闄?SVG 榛樿 inline baseline 鐨?descender 鍋忕Щ锛夛紝鑰岄潪闈犲鍔?header 楂樺害銆?*/
+/* 标题行：名称在左，电池/信号指示器在右
+   - 保持固定 height:18px（紧凑视觉），放大的电池图标通过 overflow:visible 对称溢出，
+     不必通过增加高度来撑开"对齐空间"
+   - align-items:center 让所有元素按容器居中对齐
+   - 信号偏下问题由 .aircraft-info-panel__signal-icon 的 display:block 单独修复
+     （消除 SVG 默认 inline baseline 的 descender 偏移），而非靠增加 header 高度。 */
 .aircraft-info-panel__header {
   display: flex;
   align-items: center;
@@ -372,7 +372,7 @@
   color: #fff;
   white-space: nowrap;
   line-height: 16px;
-  /* 灏嗘寚绀哄櫒鎺ㄨ嚦鍙充晶 */
+  /* 将指示器推至右侧 */
   margin-right: auto;
 }
 
@@ -383,13 +383,13 @@
   margin-left: 8px;
 }
 
-/* 鎻愬崌鐗瑰紓鎬т互瑕嗙洊 .aircraft img (0,1,1) 鍜?.aircraft--{color} img (0,2,1) 瑙勫垯銆?
-   閫夋嫨鍣?.aircraft-info-panel img.aircraft-info-panel__battery-icon = (0,2,1)锛?
-   涓?.aircraft--red img 鍚岀壒寮傛€э紝浣嗘湰瑙勫垯瀹氫箟鍦ㄥ叾鍚庯紝鏁呬紭鍏堢骇鏇撮珮銆?
-    battery-mid.png 鍘熷浘涓?24脳24锛屽唴閮ㄧ數姹犲浘褰㈡湰灏辩珫鍚戠粯鍒讹紙杈圭晫妗?10脳18锛夛細
-    - 浣跨敤绔栧悜鐩掓ā鍨?20脳33锛岀數姹犺嚜鐒剁珫鍚戞樉绀猴紙涓庤璁＄涓€鑷达紝涓嶅啀鏀惧ぇ锛夛紱
-    - 蹇呴』鏄惧紡 transform:none锛岃鐩栫埗绾?.aircraft--{color} img 鐨勬棆杞鍒?
-      (rotate -45/45/100/95/135deg)锛屽惁鍒欑數姹犲浘鏍囦細琚埗绾ф棆杞垚鍊炬枩/妯悜銆?*/
+/* 提升特异性以覆盖 .aircraft img (0,1,1) 与 .aircraft--{color} img (0,2,1) 规则。
+   选择器 .aircraft-info-panel img.aircraft-info-panel__battery-icon = (0,2,1)，
+   与 .aircraft--red img 同特异性，但本规则定义在其后，故优先级更高。
+   battery-mid.png 原图 24×24，内部电池图形本就竖向绘制（边界约 10×18）：
+   - 使用竖向盒模型 20×33，电池自然竖向显示（与设计稿一致，不再放大）；
+   - 必须显式 transform:none，覆盖父级 .aircraft--{color} img 的旋转规则
+     (rotate -45/45/100/95/135deg)，否则电池图标会被强制旋转成倾斜/横向。 */
 .aircraft-info-panel img.aircraft-info-panel__battery-icon {
   flex-shrink: 0;
   width: 20px;
@@ -408,25 +408,25 @@
 .aircraft-info-panel__signal-icon {
   flex-shrink: 0;
   margin-left: 4px;
-  /* 淇"淇″彿鍋忎笅"锛?
-   - display:block 娑堥櫎 SVG 浣滀负 inline 鍏冪礌鍦?flex 涓殑 baseline 娈嬬暀锛?
-   - align-self:center 鏄惧紡鍨傜洿灞呬腑锛?
-   - translateY(-2px) 瑙嗚琛ュ伩鈥斺€擲VG 鍐?4 鏍逛俊鍙锋潯搴曢儴瀵归綈鍒?viewBox 搴曢儴锛?
-     瀹炲績闆嗕腑鍦ㄤ笅鍗婇儴锛岃瑙夐噸蹇冨亸涓嬶紝涓婄Щ 2px 璁╁叾涓庣數姹犲浘鏍?46%鏂囧瓧瑙嗚瀵归綈锛?
-   - 鍏ㄧ▼涓嶅鍔?header/indicators 瀹瑰櫒楂樺害銆?*/
+  /* 修复"信号偏下"：
+   - display:block 消除 SVG 作为 inline 元素在 flex 中的 baseline 残留；
+   - align-self:center 显式垂直居中；
+   - translateY(-2px) 视觉补偿——SVG 4 根信号条底部对齐 viewBox 底部，
+     实心集中在下半部，视觉重心偏下，上移 2px 让其与电池图标 46% 文字视觉对齐；
+   - 全程不改动 header/indicators 容器高度。 */
   display: block;
   align-self: center;
   transform: translateY(-2px);
 }
 
-/* 鍒嗛殧绾匡細璐┛闈㈡澘鍏ㄥ */
+/* 分隔线：贯穿面板全宽 */
 .aircraft-info-panel__divider {
   height: 1px;
   background: rgba(75, 188, 249, 0.5);
   margin: 6px 1px 0;
 }
 
-/* 搴曢儴锛氫綅缃?閫熷害/妯″紡+鐘舵€?涓夎锛屽瀭鐩村眳涓～鍏呭墿浣欑┖闂?*/
+/* 底部：位置/速度/模式+状态三行，垂直居中填充剩余空间 */
 .aircraft-info-panel__bottom {
   flex: 1;
   display: flex;
@@ -435,7 +435,7 @@
   gap: 8px;
 }
 
-/* 淇℃伅琛?*/
+/* 信息行 */
 .aircraft-info-panel__row {
   display: flex;
   align-items: center;
@@ -443,7 +443,7 @@
   white-space: nowrap;
 }
 
-/* 绔栫嚎瑁呴グ鏉★紙闈掕壊锛?*/
+/* 竖线装饰条（青色） */
 .aircraft-info-panel__bar {
   width: 2px;
   height: 8px;
@@ -466,7 +466,7 @@
   margin-left: 8px;
 }
 
-/* 鍙屽垪琛岋紙妯″紡 + 鐘舵€侊級锛氱浜岀粍绔栫嚎涓庡墠涓€缁勪繚鎸?73px 闂撮殧 */
+/* 双列行（模式 + 状态）：第二组竖线与前一组保持 73px 间隔 */
 .aircraft-info-panel__row--dual .aircraft-info-panel__bar--gap {
   margin-left: 73px;
 }

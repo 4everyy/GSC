@@ -21,7 +21,7 @@
 import { useEffect, useRef } from 'react'
 import { type MapAdapter } from '../../../map-engines/types'
 import { useInspectionRouteStore } from '../../../stores/inspectionRoute'
-import { taskPanelImages } from '../../../assets/images/task-panel'
+import { taskPanelImages } from '../../../assets/task-panel'
 import type { RouteLinePoint } from '../../../api/index'
 
 /** 覆盖物 id 前缀（隔离命名空间，避免与业务图层冲突） */

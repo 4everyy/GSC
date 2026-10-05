@@ -20,7 +20,7 @@
   cursor: none;
 }
 
-/* 鎸囩偣杩旇埅钀界偣鍥鹃拤鏍囪锛?2脳56 鍒囧浘锛夛細鍥哄畾瀹氫綅锛岄拤灏栧鍑嗗彇鐐逛綅缃?*/
+/* 指点返航落点图钉标记（32x56 切图）：固定定位，钉尖对准取点位 */
 .tap-return-marker {
   position: fixed;
   z-index: 1500;
@@ -42,9 +42,9 @@
   height: 100%;
 }
 
-/* 鎸囩偣杩旇埅钀界偣姝ｄ笅鏂硅繑鑸尯鍩熷渾鍦堬紙璁捐绋?image-wrapper_4锛夛細
-   48脳48銆乺gba(255,255,255,0.2) 濉厖銆?px 鐧芥弿杈瑰渾褰紝flex 灞呬腑 20脳24 鍋滄満鍧浘鏍囷紱
-   鍦嗗湀椤堕儴璺濊惤鐐?60px锛堝浘閽夐珮 56px + 4px 闂撮殭锛夛紝涓庡浘閽夊瀭鐩存帓鍒?*/
+/* 指点返航落点正下方返航区域圆圈（设计稿 image-wrapper_4）：
+   48x48、rgba(255,255,255,0.2) 填充、2px 白描边圆形，flex 居中 20x24 停机坪图标；
+   圆圈顶部距落点 60px（图钉高 56px + 4px 间隙），与图钉垂直排列 */
 .tap-return-zone {
   position: fixed;
   z-index: 1499;
@@ -326,10 +326,10 @@
 /* BottomBar —— 底部操作栏与水平居中按钮条
    自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
    HomePage.css 按拆分前的层叠顺序 @import 各文件。 */
-/* ====== 搴曢儴鎿嶄綔鏍?====== */
+/* ====== 底部操作栏 ====== */
 .map-footer {
-  /* 瀹瑰櫒涓嶆帴鏀堕紶鏍囦簨浠讹細閫忔槑鐩掓í鍚戦摵婊″簳閮紝浼氶伄鎸℃按骞冲眳涓寜閽潯鐨?hover 鍛戒腑锛?
-     浠呭瓙鍏冪礌锛堝簲鎬ユ寜閽?姣斾緥灏猴級鎭㈠鎺ユ敹 */
+  /* 容器不接收鼠标事件：透明盒横向铺满底部会遮挡水平居中按钮条的 hover 命中区，
+     仅子元素（应急按钮/比例尺）恢复接收 */
   pointer-events: none;
   position: absolute;
   right: clamp(80px, 5.2vw, 100px);
@@ -351,12 +351,12 @@
   height: clamp(16px, 1.67vw, 32px);
   border: 0;
   color: #fff;
-  background: url('../../assets/images/home/emergency-btn-bg.png') center / 100% 100%;
+  background: url('../../assets/home/emergency-btn-bg.png') center / 100% 100%;
   font-size: clamp(6px, 0.63vw, 12px);
 }
 
 .emergency-actions .danger {
-  background-image: url('../../assets/images/home/stop-btn-bg.png');
+  background-image: url('../../assets/home/stop-btn-bg.png');
 }
 
 .scale {
@@ -364,7 +364,7 @@
   justify-items: center;
   color: #ffffff66;
   font-size: clamp(7px, 0.73vw, 14px);
-  /* 姣斾緥灏哄搴︾幇鐢?MapScale 缁勪欢鏍规嵁缂╂斁绾у埆鍔ㄦ€佽绠楀苟鍐呰仈璁剧疆 */
+  /* 比例尺宽度由 MapScale 组件根据缩放级别动态计算并内联设置 */
 }
 
 .scale span {
@@ -376,9 +376,9 @@
 }
 
 
-/* ====== 搴曢儴姘村钩灞呬腑鎸夐挳鏉?====== */
-/* 13 娈靛姬褰㈣儗鏅垏鍥炬嫾鎺ワ細瀹瑰櫒缁濆瀹氫綅浜庡簳閮ㄦ按骞冲眳涓紝涓?.map-footer 鍚屼竴搴曢儴鍩虹嚎锛?
-   鍚勫垏缂濅负鏂滆竟锛屾寜鍒囩紳瑙掗€愮紳琛ュ伩姘村钩闂磋窛浣垮瀭鐩寸紳瀹借瑙夌浉绛夛紙瑙佷笅鏂?nth-child 瑙勫垯锛?*/
+/* ====== 底部水平居中按钮条 ====== */
+/* 13 段弧形背景切图拼接：容器绝对定位于底部水平居中，与 .map-footer 同一底部基线，
+   各切缝为斜边，按切缝角度逐缝补偿水平间距使垂直缝宽视觉相等（见下方 nth-child 规则） */
 .bottom-bar {
   position: absolute;
   left: 50%;
@@ -386,45 +386,45 @@
   transform: translateX(-50%);
   z-index: 5;
   display: flex;
-  /* 涓嶄娇鐢ㄧ粺涓€ gap锛氬悇娈靛垏鍥捐嚜甯︿笉鐩哥瓑鐨勯€忔槑鍐呰竟璺濓紝涓斿垏缂濅负鍊捐涓嶅悓鐨勬枩杈?
-     锛堢閮ㄧ害 45掳銆佷腑閮ㄨ繎鍨傜洿锛夛紝缁熶竴姘村钩闂磋窛鏃犳硶寰楀埌鐩哥瓑鐨勮瑙夌紳瀹斤紝
-     鏀逛负涓嬫柟 .bottom-bar__item:nth-child 閫愮紳 margin-right 绮剧‘琛ュ伩 */
+  /* 不使用统一 gap：各段切图自带不相等的透明内边距，且切缝为倾斜不同的斜边，
+     （端部约 45 度、中部近垂直），统一水平间距无法得到相等的视觉缝宽，
+     改为下方 .bottom-bar__item:nth-child 逐缝 margin-right 精确补偿 */
 }
 
-/* 鍚勬澶栧眰 wrapper锛氭壙鎷呴€愮紳璐?margin 骞舵壙杞戒腑鏂?tooltip銆傛暣浣?pointer-events:none
-   锛堣嚜韬笉鍙備笌鍛戒腑娴嬭瘯锛夛紝鍛戒腑瀹屽叏鐢卞唴閮?button 鐨?clip-path 澶氳竟褰㈠喅瀹氾紝
-   閬垮厤 wrapper 鐭╁舰鍦ㄨ礋 margin 閲嶅彔鍖烘嫤鎴浉閭绘鐨勯紶鏍囦簨浠?*/
+/* 各段外层 wrapper：承担逐缝负 margin 并承载居中 tooltip。整体 pointer-events:none
+   （自身不参与命中测试），命中完全由内层 button 的 clip-path 多边形决定，
+   避免 wrapper 矩形在负 margin 重叠区拦截相邻段的鼠标事件 */
 .bottom-bar__item {
   position: relative;
   display: block;
   pointer-events: none;
 }
 
-/* 閫愮紳姘村钩闂磋窛锛氫互"鍨傜洿浜庢枩缂濇柟鍚戠殑瑙嗚缂濆缁熶竴涓?12px"涓虹洰鏍囥€?
-   margin = 12 / cos(鍒囩紳瑙?胃) 鈭?闆堕棿璺濇嫾鎺ユ按骞崇紳瀹?h0锛沨0 涓?胃 鐢?
-   scripts/equalize_bottom_bar_gaps.py 瀵瑰悇鍒囧浘涓嶉€忔槑杈圭紭鍋氭渶灏忎簩涔樻嫙鍚堟眰寰椼€?
-   鍒囧浘鑷甫澶ч噺涓嶇浉绛夌殑閫忔槑鍐呰竟璺濓紙绔儴缂?h0 杈?61px銆佷腑閮ㄤ粎 9px锛夛紝鏁呭鏁?
-   margin 涓鸿礋鍊尖€斺€斾粎閲嶅彔鐩搁偦鍒囧浘鐨勯€忔槑鍖哄煙锛屼笉閬尅瀹炰綋鍍忕礌銆?
-   clamp 缂╂斁鏇茬嚎涓庢寜閽珮搴?clamp(36px, 3.75vw, 72px) 涓€鑷达細
-   1920px 瑙嗗彛鍙栬璁″€硷紙缁濆鍊煎ぇ鐨勪竴绔級锛?60px 鏈€灏忚鍙ｅ彇鍏朵竴鍗?*/
-.bottom-bar__item:nth-child(1) { margin-right: clamp(-44.43px, -2.3141vw, -22.21px); } /* 缂濊绾?5.4掳 */
-.bottom-bar__item:nth-child(2) { margin-right: clamp(-22.57px, -1.1755vw, -11.29px); } /* 绾?3.7掳 */
-.bottom-bar__item:nth-child(3) { margin-right: clamp(-14.58px, -0.7594vw, -7.29px); } /* 绾?6.6掳 */
-.bottom-bar__item:nth-child(4) { margin-right: clamp(-14.58px, -0.7594vw, -7.29px); } /* 绾?6.6掳 */
-.bottom-bar__item:nth-child(5) { margin-right: clamp(-6.02px, -0.3135vw, -3.01px); } /* 绾?8.4掳 */
-.bottom-bar__item:nth-child(6) { margin-right: clamp(1.33px, 0.1391vw, 2.67px); } /* 绾?.4掳 */
-.bottom-bar__item:nth-child(7) { margin-right: clamp(1.42px, 0.1474vw, 2.83px); } /* 绾?.5掳 */
-.bottom-bar__item:nth-child(8) { margin-right: clamp(-6.07px, -0.3161vw, -3.04px); } /* 绾?8.6掳 */
-.bottom-bar__item:nth-child(9) { margin-right: clamp(-14.08px, -0.7333vw, -7.04px); } /* 绾?6.6掳 */
-.bottom-bar__item:nth-child(10) { margin-right: clamp(-14.59px, -0.7599vw, -7.29px); } /* 绾?6.5掳 */
-.bottom-bar__item:nth-child(11) { margin-right: clamp(-22.58px, -1.176vw, -11.29px); } /* 绾?3.7掳 */
-.bottom-bar__item:nth-child(12) { margin-right: clamp(-44.45px, -2.3151vw, -22.23px); } /* 绾?5.4掳 */
+/* 逐缝水平间距：以"垂直于斜缝方向的视觉缝宽统一为 12px"为目标，
+   margin = 12 / cos(切缝角) 减去零间距拼接的水平缝宽 h0；h0 随角度变化，
+   scripts/equalize_bottom_bar_gaps.py 对各切图不透明边缘做最小二乘拟合求得；
+   切图自带大量不相等的透明内边距（端部缝 h0 约 61px、中部仅 9px），故多数
+   margin 为负值——仅重叠相邻切图的透明区域，不遮挡实体像素。
+   clamp 缩放曲线与按钮高度 clamp(36px, 3.75vw, 72px) 一致：
+   1920px 视口取设计值（绝对值大的一端），960px 最小视口取其一半 */
+.bottom-bar__item:nth-child(1) { margin-right: clamp(-44.43px, -2.3141vw, -22.21px); } /* 缝角 5.4 度 */
+.bottom-bar__item:nth-child(2) { margin-right: clamp(-22.57px, -1.1755vw, -11.29px); } /* 缝 3.7 度 */
+.bottom-bar__item:nth-child(3) { margin-right: clamp(-14.58px, -0.7594vw, -7.29px); } /* 缝 6.6 度 */
+.bottom-bar__item:nth-child(4) { margin-right: clamp(-14.58px, -0.7594vw, -7.29px); } /* 缝 6.6 度 */
+.bottom-bar__item:nth-child(5) { margin-right: clamp(-6.02px, -0.3135vw, -3.01px); } /* 缝 8.4 度 */
+.bottom-bar__item:nth-child(6) { margin-right: clamp(1.33px, 0.1391vw, 2.67px); } /* 缝 0.4 度 */
+.bottom-bar__item:nth-child(7) { margin-right: clamp(1.42px, 0.1474vw, 2.83px); } /* 缝 0.5 度 */
+.bottom-bar__item:nth-child(8) { margin-right: clamp(-6.07px, -0.3161vw, -3.04px); } /* 缝 8.6 度 */
+.bottom-bar__item:nth-child(9) { margin-right: clamp(-14.08px, -0.7333vw, -7.04px); } /* 缝 6.6 度 */
+.bottom-bar__item:nth-child(10) { margin-right: clamp(-14.59px, -0.7599vw, -7.29px); } /* 缝 6.5 度 */
+.bottom-bar__item:nth-child(11) { margin-right: clamp(-22.58px, -1.176vw, -11.29px); } /* 缝 3.7 度 */
+.bottom-bar__item:nth-child(12) { margin-right: clamp(-44.45px, -2.3151vw, -22.23px); } /* 缝 5.4 度 */
 
-/* 鍛戒腑灞?button锛氶珮 72px锛? 60px 鍙 + 12px 椤跺嚭棰勭暀锛夛紝瀹藉害鐢卞唴鑱?
-   aspect-ratio锛堝垏鍥惧師濮嬪 / 72锛夎仈鍔ㄤ繚鎸佷笌 60px 鏂规瀹屽叏涓€鑷淬€?
-   鑷韩闈欐涓嶅姩鈥斺€旀棤璁哄唴閮ㄨ瑙夊眰椤跺嚭涓庡惁锛屽懡涓尯锛坈lip-path 骞堕泦杞粨锛?
-   淇濇寔涓嶅彉锛岄紶鏍囦笉浼氬洜鎸夐挳涓婄Щ鑰岃劚绂?hover锛堥伩鍏嶆姈鍔ㄥ惊鐜級锛?
-   pointer-events:auto 鎭㈠鍛戒腑锛坵rapper 鏁翠綋绂佺敤锛?*/
+/* 命中层 button：高 72px（= 60px 视觉高 + 12px 顶出预留），宽度由内容
+   aspect-ratio（切图原始宽 / 72）联动保持与 60px 方案完全一致。
+   自身静止不动——无论内部视觉层顶出与否，命中区（clip-path 并集轮廓）
+   保持不变，鼠标不会因按钮上移而脱离 hover（避免抖动循环）；
+   pointer-events:auto 恢复命中（wrapper 整体禁用） */
 .bottom-bar__btn {
   position: relative;
   display: block;
@@ -436,19 +436,19 @@
   pointer-events: auto;
 }
 
-/* 瑙嗚灞傦細鎵胯浇鍒囧浘鑳屾櫙 + 鍔熻兘鍥炬爣锛屽簳閮ㄥ榻愬懡涓眰锛堥潤姝㈡椂涓庡師 60px 鏂规
-   鍍忕礌绾т竴鑷达級銆俬over 鏃朵互鍥炲脊鏇茬嚎鍚戜笂椤跺嚭 12px锛?920 鍩哄噯锛岄殢 clamp 缂╂斁锛夛紱
-   :active 鎸夊帇鏃跺洖钀戒竴鍗婂苟鍘嬫殫锛屾ā鎷?鎸変笅"鎵嬫劅 */
+/* 视觉层：承载切图背景 + 功能图标，底部对齐命中盒（静止时与原 60px 方案
+   像素级一致）。hover 时以回弹曲线向上顶出 12px（1920 基准，随 clamp 缩放）；
+   :active 按压时回落一半并压暗，模拟按下"手感" */
 .bottom-bar__visual {
   position: absolute;
   left: 0;
   bottom: 0;
   width: 100%;
-  height: calc(100% * 60 / 72); /* 60px 璁捐鍩哄噯 / 72px 鍛戒腑灞?*/
+  height: calc(100% * 60 / 72); /* 60px 设计基准 / 72px 命中盒 */
   background-color: transparent;
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  /* 鍗婇€忔槑鏁堟灉锛氭墍鏈夋锛堝惈棣栧熬鍥哄畾瑁呴グ娈碉級榛樿绾?85% 涓嶉€忔槑搴︼紱涓棿鍔熻兘鎸夐挳鎮仠鎭㈠涓嶉€忔槑锛岄灏鹃潤鎬佹鎭掑畾鍗婇€忔槑 */
+  /* 半透明效果：所有段（含首尾固定装饰段）默认为 85% 不透明度；中间功能按钮 hover 恢复不透明，首尾静态段恒定半透明 */
   opacity: 0.85;
   transform: translateY(0);
   transition:
@@ -459,13 +459,13 @@
 }
 
 .bottom-bar__btn:not(.bottom-bar__btn--static):not(.bottom-bar__btn--disabled):hover .bottom-bar__visual {
-  /* 12px @1920 鈫?6px @960锛屼笌鍛戒腑灞?clamp 鍚屾洸绾跨缉鏀?*/
+  /* 12px @1920 减 6px @960，与命中盒 clamp 同曲线缩放 */
   transform: translateY(clamp(-12px, -0.625vw, -6px));
   opacity: 1;
 }
 
 .bottom-bar__btn:active .bottom-bar__visual {
-  /* 鎸夊帇鍥炶惤涓€鍗?+ 杞诲井鍘嬫殫锛氬厛椤跺嚭鍐嶇偣鍑绘椂鍙"鎸変笅"鏁堟灉 */
+  /* 按压回落一半 + 轻微压暗：先顶出再点击时模拟"按下"效果 */
   transform: translateY(clamp(-5px, -0.26vw, -2.5px));
   filter: brightness(0.9);
   transition:
@@ -473,9 +473,9 @@
     filter 0.1s ease-out;
 }
 
-/* Hover 鍐呭彂鍏夛細鍙犲湪瑙嗚灞備笂锛岄殢鍏朵竴鍚岃 button clip-path 瑁佸壀鍒?
-   骞堕泦杞粨鍐咃紝涓嶅婧㈡寜閽竟妗嗐€傚悇娈靛垏鍥鹃€忔槑搴?浜害涓嶄竴锛屽崟绾?brightness
-   鍦ㄦ繁鑹叉鍑犱箮涓嶅彲瑙侊紝鍐呭彂鍏夋柟妗?13 涓寜閽弽棣堝畬鍏ㄤ竴鑷?*/
+/* Hover 内发光：叠在视觉层上，随其一同被 button clip-path 裁剪，
+   并随轮廓收缩，不溢出按钮边框。各段切图透明度大致不一，单独 brightness
+   在深色段几乎不可见，内发光方案 13 个按钮反馈完全一致 */
 .bottom-bar__visual::after {
   content: '';
   position: absolute;
@@ -490,8 +490,8 @@
   opacity: 1;
 }
 
-/* 棣栧熬鍥哄畾瑁呴グ娈碉紙bottom-bar__btn--static锛屾棤鍔熻兘鍥炬爣锛夛細绾楗帮紝鎮仠/鎸夊帇鏃犱换浣曞弽棣堚€斺€?
-   涓嶉《鍑恒€佷笉鍘嬫殫銆佹棤鍐呭彂鍏夈€佹棤杩囨浮鍔ㄧ敾锛屽厜鏍囨仮澶嶉粯璁ょ澶?*/
+/* 首尾固定装饰段（bottom-bar__btn--static，无功能图标）：纯装饰，hover/按压无任何反馈，
+   不顶出、不压暗、无内发光、无过渡动画，光标恢复默认样式 */
 .bottom-bar__btn--static {
   cursor: default;
 }
@@ -514,23 +514,23 @@
   opacity: 0;
 }
 
-/* 绂佺敤鎬佹寜閽紙绗?2~12 娈靛姛鑳芥寜閽笉鍙敤鏃讹級锛氳儗鏅凡鐢?TSX 鍒囨崲涓虹鐢ㄦ€佸垏鍥?
-   锛堣鏍间笌榛樿娈典竴鑷达紝鍑犱綍鍍忕礌绾у吋瀹癸級銆傜鐢ㄤ笉闃绘柇 hover鈥斺€旀偓鍋滀粛椤跺嚭鍙嶉
-   锛堝師鐢?disabled 灞炴€т細鎶戝埗 :hover 鍖归厤锛屾晠 TSX 鏀圭敤 aria-disabled + 鐐瑰嚮鎷︽埅锛夛紝
-   浠呬繚鎸佺疆鐏拌鎰燂紙涓嶆仮澶嶄笉閫忔槑锛夈€佹棤鎸夊帇鍥炶惤銆佹棤鍐呭彂鍏夛紱
-   tooltip 鐢?TSX 鏉′欢娓叉煋鍚屾鎶戝埗銆傚厜鏍囦负銆岀姝€嶇鍙锋槑纭紶杈句笉鍙敤 */
+/* 禁用态按钮（第 2~12 段功能按钮不可用时）：背景已由 TSX 切换为禁用态切图
+   （风格与默认段一致，几何像素级兼容）。禁用不阻断 hover——悬停仍顶出反馈
+   （原生 disabled 属性会抑制 :hover 匹配，故 TSX 改用 aria-disabled + 点击拦截），
+   仅保持置灰观感（不恢复不透明）、无按压回落、无内发光；
+   tooltip 由 TSX 条件渲染同步抑制。光标为"禁止"符号明确提示不可用 */
 .bottom-bar__btn--disabled {
   cursor: not-allowed;
 }
 
-/* 鍙岀被鍚嶆彁鍗囩壒寮傛€э紙0,4,0锛変笌閫氱敤 hover 瑙勫垯鍚屽€硷紝浣嗗畾涔夊湪鍏跺悗锛?
-   transform 娌跨敤閫氱敤椤跺嚭閲忥紝浠呰鐩?opacity 淇濇寔缃伆鍗婇€忔槑瑙傛劅 */
+/* 双类名提升特异性（0,4,0）与通用 hover 规则同值，但定义在其后，
+   transform 沿用通用顶出量，仅覆盖 opacity 保持置灰半透明观感 */
 .bottom-bar__btn.bottom-bar__btn--disabled:hover .bottom-bar__visual {
   transform: none;
   opacity: 0.85;
 }
 
-/* 鎸夊帇绂佺敤鎸夐挳鏃犮€屽彲鐐瑰嚮銆嶅洖钀藉弽棣堬細淇濇寔 hover 椤跺嚭浣嶇疆涓嶅洖钀?*/
+/* 按压禁用按钮无"可点击"回落反馈：保持 hover 顶出位置不回落 */
 .bottom-bar__btn.bottom-bar__btn--disabled:active .bottom-bar__visual {
   transform: none;
   filter: none;
@@ -545,8 +545,8 @@
   cursor: default;
 }
 
-/* 鍔熻兘鍥炬爣锛氱粷瀵瑰眳涓簬瑙嗚灞傦紝灏哄涓?60px 璁捐楂樼殑 75%锛?920 涓?45px锛夛紝
-   涓庢寜閽珮搴﹀悓 clamp 鏇茬嚎缂╂斁锛沺ointer-events:none 浣跨偣鍑荤┛閫忓埌 button */
+/* 功能图标：绝对居中于视觉层，尺寸为 60px 设计高的 75%（1920 为 45px），
+   与按钮高度同 clamp 曲线缩放；pointer-events:none 使点击穿透到 button */
 .bottom-bar__icon {
   position: absolute;
   left: 50%;
@@ -558,10 +558,10 @@
   pointer-events: none;
 }
 
-/* 涓枃 tooltip锛氭偓鍋滄椂鏄剧ず浜庢寜閽笂鏂广€備负 button 鐨勫厔寮熻妭鐐癸紙wrapper 鍐咃級锛?
-   涓嶅彈 button clip-path 瑁佸壀锛泈rapper 宸?pointer-events:none锛屾樉绀?闅愯棌
-   渚濊禆鎮仠 button 鏃?:hover 娌跨鍏堥摼鐢熸晥锛?bottom-bar__item:hover锛夈€?
-   bottom 鐩稿 72px wrapper 椤剁紭 = 椤跺嚭鍚庢寜閽《閮紝鎭板ソ璺熼殢椤跺嚭浣嶇疆 */
+/* 中文 tooltip：悬浮时显示于按钮上方。作为 button 的兄弟节点（wrapper 内），
+   不受 button clip-path 裁剪；wrapper 为 pointer-events:none，显示/隐藏
+   依赖悬浮 button 时 :hover 沿继承链生效（bottom-bar__item:hover）。
+   bottom 相对 72px wrapper 顶缘 = 顶出后按钮视觉顶，恰好跟随顶出位置 */
 .bottom-bar__tip {
   position: absolute;
   left: 50%;
@@ -590,7 +590,7 @@
   visibility: visible;
 }
 
-/* .map-footer 瀹瑰櫒宸茶 pointer-events:none锛屽瓙鍏冪礌鎭㈠榧犳爣浜嬩欢鎺ユ敹 */
+/* .map-footer 容器已设 pointer-events:none，子元素恢复鼠标事件接收 */
 .map-footer .emergency-actions button,
 .map-footer .scale {
   pointer-events: auto;

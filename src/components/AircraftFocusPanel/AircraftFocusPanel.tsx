@@ -16,9 +16,8 @@
  * - 设备详情（text_17 + group_13/14/16）
  */
 import { useState } from 'react'
-import { deviceImages } from '../../assets/images/device'
-import { homeImages } from '../../assets/images/home'
-import dronePreviewVideo from '../../assets/videos/drone-preview.mp4'
+import { deviceImages, dronePreviewVideo } from '../../assets/device'
+import { homeImages } from '../../assets/home'
 import './AircraftFocusPanel.css'
 
 // 面板固定高度，用于计算垂直居中偏移

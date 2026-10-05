@@ -1,8 +1,8 @@
 import { useState, useRef, useLayoutEffect, useCallback } from 'react'
 import { useDeviceLinkStore, usePlaneStatusStore } from '../../stores/index'
 import { getBatteryIcon, getStatusColor, type DeviceTelemetry } from '../../config/index'
-import { deviceImages } from '../../assets/images/device'
-import { homeImages } from '../../assets/images/home'
+import { deviceImages } from '../../assets/device'
+import { homeImages } from '../../assets/home'
 import { AircraftFocusPanel } from '../AircraftFocusPanel/AircraftFocusPanel'
 import './DeviceManagementPanel.css'
 

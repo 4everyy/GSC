@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import './PanelKit.css'
 import { createPortal } from 'react-dom'
-import { deviceImages } from '../../assets/images/device/index'
+import { deviceImages } from '../../assets/device/index'
 import { AircraftListPanel, type AircraftListItem } from '../home/panels/FlightCommandPanels'
 
 /**
