@@ -1,9 +1,13 @@
+/**
+ * @file BottomBar.tsx
+ * @description 底部功能按钮条：13 段背景图拼接 + 功能图标
+ * @author 4everyy
+ * @date 2026-10-07
+ */
 import { memo } from 'react'
 import { BOTTOM_BAR_ITEMS, type BottomBarPanel } from '../../../lib/formationLayout'
 
-/** 底部按钮条渲染 props：选中设备集合（禁用态判定）+ 各面板开合状态与互斥切换入口；
- *  formationFlightUnlocked——编队飞行按钮专属解锁标记：前置集结任务全部落坪定格后
- *  为 true（HomePage rallyPointLandedAll 订阅），未完成集结时按钮保持置灰 */
+/** 底部按钮条渲染 props：选中设备集合（禁用态判定）+ 各面板开合状态与互斥切换入口 */
 interface BottomBarProps {
   selectedDevices: Set<number>
   panelOpenState: Record<BottomBarPanel, boolean>
@@ -11,11 +15,7 @@ interface BottomBarProps {
   formationFlightUnlocked: boolean
 }
 
-/* 底部水平居中按钮条（自 HomePage.tsx 拆出）：13 段背景图拼接，第 2~12 段叠加功能图标。
- * 三层结构：.bottom-bar__item（负 margin + tooltip，pointer-events:none）>
- * .bottom-bar__btn（72px 命中层：clip-path 并集轮廓，静止不动）>
- * .bottom-bar__visual（60px 视觉层：底部对齐，hover 弹性向上顶出）。
- * 命中层不动 + 视觉层上移，鼠标不会因按钮顶出而脱离 hover（避免抖动循环） */
+/* 底部水平居中按钮条（自 HomePage.tsx 拆出）：13 段背景图拼接，第 2~12 段叠加功能图标。 */
 export const BottomBar = memo(function BottomBar({
   selectedDevices,
   panelOpenState,
@@ -25,13 +25,7 @@ export const BottomBar = memo(function BottomBar({
   return (
     <nav className="bottom-bar" aria-label="底部功能按钮条">
       {BOTTOM_BAR_ITEMS.map((item, index) => {
-        // 禁用态（按选中设备数量）：单机功能需恰好选中 1 台，多机功能需至少选中 1 台；
-        // 不满足时按钮进入禁用态（禁用态切图替换默认背景，激活态视觉与 tooltip
-        // 一并抑制）。不用原生 disabled 属性——它会抑制浏览器 :hover 匹配，
-        // 导致置灰按钮 hover 不顶出；改用 aria-disabled 语义标记 + 点击拦截，
-        // 悬停反馈（置灰态顶出）仍可用。
-        // 编队飞行按钮附加门控：前置集结任务未完成（未全部落坪定格，编队需自集结
-        // 落坪位置续飞）时保持置灰，集结完成后解锁——此时仍需满足选中数量条件
+        // 禁用态（按选中设备数量）：单机功能需恰好选中 1 台，多机功能需至少选中 1 台
         const disabled =
           (!!item.disabledBackground &&
             (item.mode === 'single' ? selectedDevices.size !== 1 : selectedDevices.size < 1)) ||
@@ -56,11 +50,7 @@ export const BottomBar = memo(function BottomBar({
               <span
                 className="bottom-bar__visual"
                 style={{
-                  // 切图文件名（bottom-bar-seg-01.png 等）含连字符，url() 统一加引号
-                  // 以避免 unquoted URL 的解析歧义；激活态高亮背景由下方独立层
-                  // .bottom-bar__active-glow 承载（button 的 clip-path 会裁剪发光边缘，
-                  // 且元素背景无法绘制到自身盒外，视觉层内无法完整呈现激活态切图）
-                  // 禁用态直接替换默认背景（两套切图规格一致，几何像素级兼容）
+                  // 切图文件名（bottom-bar-seg-01.png 等）含连字符，url() 统一加引号以避免 unquoted URL 的解析歧义
                   backgroundImage: `url("${disabled ? (item.disabledBackground ?? item.background) : item.background}")`,
                 }}
               >
@@ -83,8 +73,7 @@ export const BottomBar = memo(function BottomBar({
                 className="bottom-bar__active-glow"
                 style={{
                   backgroundImage: `url("${item.activeBackground}")`,
-                  // 画布宽 = 段宽 + 16（左右各 8px 发光边缘）：left/width 按段宽换算百分比
-                  // （left = -8/段宽、width = (段宽+16)/段宽），实体区与默认段像素级重合
+                  // 画布宽 = 段宽 + 16（左右各 8px 发光边缘）：left/width 按段宽换算百分比（left = -8/段宽、width = (段宽+16)/段宽）
                   left: `${Math.round((-8 / item.width) * 100 * 100) / 100}%`,
                   width: `${Math.round(((item.width + 16) / item.width) * 100 * 100) / 100}%`,
                 }}

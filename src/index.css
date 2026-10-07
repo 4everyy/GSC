@@ -1,8 +1,4 @@
-/* ====== MiSans 字体（本地，断网可用） ======
-   小米 MiSans，SIL OFL 1.1 免费商用（https://hyperos.mi.com/font）。
-   文件取自社区镜像 https://github.com/whjkd2005/MiSans-Fonts，已落库 src/assets/fonts/。
-   全站统一使用 'MiSans-Regular'（Regular / 400）。
-   额外保留 family 别名 'MiSans' 指向同一文件，作为安全兜底（无额外开销）。 */
+/* MiSans 字体（本地，断网可用）小米 MiSans，SIL OFL 1.1 免费商用… */
 @font-face {
   font-family: 'MiSans';
   src: url('./assets/fonts/MiSans-Regular.ttf') format('truetype');
@@ -34,10 +30,7 @@
   font-display: swap;
 }
 
-/* 原生表单元素（<button>/<input>/<select>/<textarea>）默认【不继承】:root 的字体，
-   会回落到系统字体（这是浏览器 UA 样式行为）。此处统一显式声明，
-   使全站原生表单元素均使用 MiSans-Regular——
-   含设备管理面板的关闭/清除筛选/展开按钮、离线地图弹窗按钮、首页急停按钮等。 */
+/* 原生表单元素（<button>/<input>/<select>/<textarea>）默认【不继承】：root 的字体 */
 button,
 input,
 select,

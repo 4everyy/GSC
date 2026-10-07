@@ -1,3 +1,9 @@
+/**
+ * @file index.ts
+ * @description 全局公共配置：类型定义/图标映射/常量（告警、机型等）
+ * @author 4everyy
+ * @date 2026-10-07
+ */
 import { homeImages } from '../assets/home/index'
 import { deviceImages } from '../assets/device/index'
 
@@ -24,11 +30,7 @@ export interface Aircraft {
   deviceIndex: number
 }
 
-/* 态势图飞机图标换为「机身 + 底部光晕」组合（与设备管理面板同素材）：
-   红=任务中 / 蓝=待命 / 灰=离线 / 黄≈原橙色（素材无橙色，取视觉最接近的黄色）。
-   扩展至 9 架：queryPlaneStatus 实测返回 9 架无人机（deviceIndex 0-8），
-   06-09 号机默认蓝（待命）——运行时图标颜色随接口 status 动态切换
-   （见 AircraftLayer STATUS_PLANE_ICON），此处仅为无接口数据时的静态回退 */
+/* 红=任务中 / 蓝=待命 / 灰=离线 / 黄≈原橙色… */
 export const aircraft: Aircraft[] = [
   { src: deviceImages.redPlane, bottomSrc: deviceImages.redBottom, className: 'aircraft aircraft--red', label: '01设备', deviceIndex: 0 },
   { src: deviceImages.yellowPlane, bottomSrc: deviceImages.yellowBottom, className: 'aircraft aircraft--orange', label: '03设备', deviceIndex: 2 },
@@ -41,20 +43,9 @@ export const aircraft: Aircraft[] = [
   { src: deviceImages.bluePlane, bottomSrc: deviceImages.blueBottom, className: 'aircraft aircraft--blue', label: '09设备', deviceIndex: 8 },
 ]
 
-/**
- * MapLibre 地图配置。
- *
- * 集中管理 MapLibre GL JS 的默认样式、中心点（WGS84）、缩放级别与交互选项，
- * 便于在多组件间共享与统一调整。
- */
+/** MapLibre 地图配置。 */
 
-/**
- * 默认中心点（WGS84）。
- *
- * 通过环境变量 VITE_MAPLIBRE_CENTER_LNG / VITE_MAPLIBRE_CENTER_LAT 配置。
- * 默认苏州市中心（120.6, 31.3），与本地瓦片数据覆盖范围匹配。
- * 深圳/其他区域部署时，在 .env.local 中覆盖即可。
- */
+/** 默认中心点（WGS84）。 */
 export const MAPLIBRE_DEFAULT_CENTER = {
   lng: Number(import.meta.env.VITE_MAPLIBRE_CENTER_LNG ?? 120.6),
   lat: Number(import.meta.env.VITE_MAPLIBRE_CENTER_LAT ?? 31.3),
@@ -65,29 +56,15 @@ export const MAPLIBRE_DEFAULT_ZOOM = Number(
   import.meta.env.VITE_MAPLIBRE_DEFAULT_ZOOM ?? 12,
 )
 
-/**
- * 地图样式与底图来源。
- *
- * 离线地图包方案下，地图样式由「离线地图包」驱动（见 src/features/offline-map，P1+ 实现）：
- * 运行时 MapLibre 通过 gcs-pkg:// 自定义协议从 IndexedDB 读取已导入的 MBTiles 包渲染；
- * 尚未导入任何包时，MapLibreContainer 渲染纯色占位底图。本文件只保留与样式无关的
- * 地图初始化常量（中心点 / 缩放 / 交互选项），不再持有任何瓦片服务器或样式 URL 配置。
- */
+/** 地图样式与底图来源。 */
 
-/**
- * MapLibre 地图初始化选项。
- */
+/** MapLibre 地图初始化选项。 */
 export const MAPLIBRE_MAP_OPTIONS = {
   /** 最大缩放级别（写死，与苏州离线包 z9-18 数据层级对齐） */
   maxZoom: 18,
   /** 最小缩放级别（写死，与苏州离线包 z9-18 数据层级对齐，z9 以下无瓦片数据） */
   minZoom: 9,
-  /**
-   * 关闭右下角版权归属控件。
-   *
-   * 默认 MapLibre 会渲染 AttributionControl，显示数据来源信息，
-   * 项目 UI 规范不需要这些控件，故全局关闭。
-   */
+  /** 关闭右下角版权归属控件。 */
   attributionControl: false,
 } as const
 
@@ -176,9 +153,7 @@ export interface Device {
   isCharging?: boolean
 }
 
-// 设备 mock 数据（firstTelemetry / deviceList）已删除：
-// 设备面板完全由 queryPlaneStatus 接口数据接管（api/index.ts mapPlaneToDevice），
-// planeStatusStore 初始为空列表，无任何兜底数据。
+// 设备面板完全由 queryPlaneStatus 接口…
 
 
 // 根据电池等级获取对应图标
@@ -207,12 +182,7 @@ export function getStatusColor(status: DeviceStatus): string {
   }
 }
 
-/**
- * 目标列表 mock 数据
- *
- * 与 devices.ts 同构：静态列表数据 + 筛选选项，
- * 后续接入后端时替换为接口数据即可。
- */
+/** 目标列表 mock 数据与 devices.ts 同构：静态列表数据 + 筛选选项，后续接入后端时替换为接口数据即可。 */
 
 export type TargetType = '车辆' | '人员'
 
@@ -250,11 +220,7 @@ export interface TargetItem {
 /** 目标类型筛选选项 */
 export const targetTypeOptions = ['车辆', '人员'] as const
 
-/** 初始目标列表：车辆与人员交错（车辆 01/03/05 + 人员 02/04），
- *  图标随 type 切换（车辆 → tank / 人员 → people），
- *  型号/价值/状态按设计稿行格式（如「99式坦克」「高价值」「移动」），
- *  详情字段（发现源/威胁半径/目标高度/打击方式/位置/直角坐标/时间）全部给 mock 值，
- *  行内详情展开后无任何属性为空 */
+/** 初始目标列表：车辆与人员交错（车辆 01/03/05 + 人员 02/04） */
 export const targetList: TargetItem[] = [
   {
     id: '01',
@@ -338,12 +304,7 @@ export const targetList: TargetItem[] = [
   },
 ]
 
-/**
- * 任务列表面板 mock 数据
- *
- * 与 devices.ts / targets.ts 同构：静态列表数据 + 筛选选项，
- * 后续接入后端时替换为接口数据即可。
- */
+/** 任务列表面板 mock 数据与 devices.ts / targets.ts 同构：静态列表数据 + 筛选选项 */
 
 export type TaskType = '巡检任务' | '打击任务'
 export type TaskStatus = '已下发' | '未下发'
@@ -353,9 +314,7 @@ export interface TaskDevice {
   id: string
   /** 设备名称（如「01中科晶锐」） */
   name: string
-  /** 卡片徽标类型：
-   *  online  绿色圆底 + 无人机图标 drone-white.png（代表该行已下发成功）
-   *  locate  蓝色圆底 + 定位图标（未下发成功的设备行） */
+  /** 卡片徽标类型：online  绿色圆底 + 无人机图标 drone-white.png（代表该行已下发成功）locate  蓝色圆底 + 定… */
   badge: 'online' | 'locate'
 }
 
@@ -369,9 +328,7 @@ export interface TaskItem {
   status: TaskStatus
   /** 创建时间（YYYY/MM/DD HH:mm:ss） */
   createdAt: string
-  /** 详情展开后显示的执行设备卡片列表
-   *  （左侧全部渲染，视口最多显示 4 行，超出下拉滚动查看；
-   *   右侧「下发进程」= 全部设备中 online 行数 / 设备总数，以 x/x 形式展示） */
+  /** 详情展开后显示的执行设备卡片列表（左侧全部渲染，视口最多显示 4 行 */
   devices: TaskDevice[]
 }
 
@@ -415,8 +372,7 @@ export interface MonitorTaskItem {
   devices: MonitorDevice[]
 }
 
-/** 执行监控初始列表：首个任务默认展开（对应设计稿 box_2 展开态），
- *  下方两个为收起态任务行（box_13 / box_16） */
+/** 执行监控初始列表：首个任务默认展开（对应设计稿 box_2 展开态），下方两个为收起态任务行（box_13 / box_16） */
 export const monitorTaskList: MonitorTaskItem[] = [
   {
     id: 'm1',
@@ -471,9 +427,7 @@ export const monitorTaskList: MonitorTaskItem[] = [
   },
 ]
 
-/** 初始任务列表：首个任务默认展开（设计稿 group_10 展开态）。
- *  下发进程实时计算：全部设备中 online 行数（drone-white 图标）/ 设备总数，
- *  以 x/x 形式展示 */
+/** 初始任务列表：首个任务默认展开（设计稿 group_10 展开态）。 */
 export const taskList: TaskItem[] = [
   {
     id: '01',

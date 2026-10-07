@@ -1,28 +1,8 @@
-/*
- * @description: 区域巡检任务飞行动效覆盖层（多机）—— 一键创建成功返回预设
- *               巡检航线（inspectionRouteStore.planeLines）后，每条航线绑定一架
- *               执行飞机（按 config.aircraft 顺序取前 N 架，与 planeIdsByCount
- *               口径一致；巡检期间原地面图标由 AircraftLayer 整体隐藏，本层
- *               飞行动效图标接管呈现）。数据口径：plane_line 每条线首点为该机
- *               起飞点（后端按飞机当前位置生成，位于巡检区外），第二个点起才是
- *               巡检折线——巡航折线取 slice(1)（与 InspectionRouteLayer 画线口径
- *               一致），且转场段不绘制任何航线；相邻线的重叠边界行已在 store
- *               写入时裁掉（trimSharedRouteRows，见 stores/inspectionRoute.ts），
- *               各机沿本区域已断开的折线巡航。飞行动效：①自当前真实位置恒速
- *               20m/s 爬升至任务高度 200m；②以 60m/s 转场平飞至巡检折线起点；
- *               ③到达起点后以 40m/s 沿折线循环巡航（末点停留 600ms 后回起点
- *               重飞，无限循环直至重新创建/清空航线）。已飞轨迹：走过路径按
- *               10m 间距逐点采样，以 #C9C9C9 灰线叠加在区域配色航线上方
- *               （后建覆盖物居上层；灰线与航线同宽 8px 且不透明，完全覆盖已飞部分的
- *               区域配色航线，见 InspectionRouteLayer.LINE_COLORS），巡航回绕重飞一圈时
- *               轨迹清零重新累积；任务重建/清空时随动效一并清除。全程地理锚定：
- *               每帧经 adapter.project 重投影，地图平移/缩放时图标钉在航线
- *               地理位置上。飞行快照逐帧写入 flightAnimStore.reconFlights
- *               （planeId 键），本覆盖层订阅渲染 DroneFlightIcon 组合图标
- *               （底座+转向机身）与 .aircraft-altitude 同款高度标注
- *               （虚线垂线+实时数值）。
- * @author: cline
- * @created: 2026-09-29
+/**
+ * @file ReconFlightOverlay.tsx
+ * @description 巡检航线（inspectionRouteStore.planeLines）后
+ * @author 4everyy
+ * @date 2026-10-07
  */
 
 import { useEffect, useRef } from 'react'
@@ -30,7 +10,7 @@ import { type MapAdapter, type PolylineHandle } from '../../../map-engines/types
 import { aircraft } from '../../../config/index'
 import { useInspectionRouteStore } from '../../../stores/inspectionRoute'
 import { useFlightAnimStore, usePlaneStatusStore } from '../../../stores/index'
-import { useRealtimeStore } from '../../../features/realtime/wsClient'
+import { useRealtimeStore } from '../../../features/realtime/realtimeStore'
 import { resolvePlaneSrc } from '../../../lib/planeIcons'
 import { DroneFlightIcon } from './DroneFlightIcon'
 import type { RouteLinePoint } from '../../../api/index'
@@ -49,10 +29,7 @@ const HOLD_AT_END_MS = 600
 const ALT_VISUAL_SCALE = 0.3
 /** 已飞轨迹采点间距（m）：走过路径每移动该距离补一个轨迹顶点 */
 const TRAIL_STEP_M = 10
-/** 已飞轨迹视觉：灰色 #C9C9C9（航线本体按区域配色，见
- *  InspectionRouteLayer.LINE_COLORS）；线宽与航线同宽 8px（与
- *  InspectionRouteLayer.LINE_WIDTH 保持同步）且不透明度 1——同宽全遮盖，
- *  走过的部分不再从两侧露出区域配色航线 */
+/** 已飞轨迹视觉：灰色 #C9C9C9（航线本体按区域配色，见InspectionRouteLayer.LINE_COLORS） */
 const TRAIL_COLOR = '#C9C9C9'
 const TRAIL_WIDTH = 8
 /** 已飞轨迹覆盖物 id 前缀（与航线 inspection-route-line- 命名空间隔离） */
@@ -81,7 +58,7 @@ interface ReconDrone {
   planeId: string
   /** 机身切图（状态驱动取色，与地面图标同口径） */
   icon: string
-  /** 起飞点经纬度（当前位置：遥测 GPS → rawPlanes 坐标 → plane_line 首点兜底） */
+  /** 起飞点经纬度… */
   startLng: number
   startLat: number
   /** 起始高度（m）：遥测实测 → rawPlanes.altitude → 0 */
@@ -109,10 +86,7 @@ interface ReconFlightOverlayProps {
   adapter: MapAdapter | null
 }
 
-/**
- * 巡检飞行动效覆盖层：订阅 flightAnimStore.reconFlights（rAF 每帧写入），
- * 渲染多机 DroneFlightIcon + 高度标注；动画循环由本组件按 planeLines 驱动。
- */
+/** 巡检飞行动效覆盖层：订阅 flightAnimStore.reconFlights（rAF 每帧写入） */
 export function ReconFlightOverlay({ adapter }: ReconFlightOverlayProps) {
   const rafRef = useRef<number | null>(null)
   const reconFlights = useFlightAnimStore((s) => s.reconFlights)
@@ -131,16 +105,13 @@ export function ReconFlightOverlay({ adapter }: ReconFlightOverlayProps) {
     const lines = useInspectionRouteStore.getState().planeLines
     if (!adapter || lines.length === 0) return
 
-    // ---- 执行飞机绑定：按 config.aircraft 顺序取前 N 架（N = 航线条数，
-    //      与 TaskPanels planeIdsByCount(targetCount) 生成的执行对象一一对应） ----
+    // 执行飞机绑定：按 config.aircraft 顺序取前 N 架（N = 航线条数
     const { telemetry } = useRealtimeStore.getState()
     const { devices, rawPlanes } = usePlaneStatusStore.getState()
     const drones: ReconDrone[] = []
     for (let i = 0; i < lines.length; i++) {
       const cfg = aircraft[i]
-      // 首点为该机起飞点（后端按飞机当前位置生成，位于巡检区外）：巡检折线
-      // 自第二个点起（与 InspectionRouteLayer 画线口径一致），避免把「起飞点
-      // →航线起点」转场段误当航线巡航/连线
+      // 首点为该机起飞点（后端按飞机当前位置生成，位于巡检区外）：巡检折线自第二个点起（与 InspectionRouteLayer 画线口径一致）
       const rawLine = lines[i]
       const line = rawLine.length > 1 ? rawLine.slice(1) : rawLine
       if (!cfg || line.length < 1) continue
@@ -148,8 +119,7 @@ export function ReconFlightOverlay({ adapter }: ReconFlightOverlayProps) {
       const realId = raw?.id
       const planeId = realId ?? `recon-${i}`
       const icon = resolvePlaneSrc(devices, cfg.deviceIndex, cfg.src)
-      // 当前位置取数优先级：WS 遥测实测 GPS → queryPlaneStatus 坐标 → plane_line
-      // 首点（后端起飞点；最后者转场距离最短，直接原地爬升后进入巡航）
+      // 当前位置取数优先级：WS 遥测实测 GPS → queryPlaneStatus 坐标 → plane_line首点…
       const snap = realId !== undefined ? telemetry[realId] : undefined
       const tLng = snap?.longitude
       const tLat = snap?.latitude
@@ -234,9 +204,7 @@ export function ReconFlightOverlay({ adapter }: ReconFlightOverlayProps) {
       return { x: r.left + pt.x, y: r.top + pt.y }
     }
 
-    // 已飞轨迹采点：距上一顶点 ≥ TRAIL_STEP_M 时追加当前地理锚点并增量更新
-    // 覆盖物（首点惰性创建）。#C9C9C9 灰线叠加在区域配色航线上方，与航线同宽
-    // 8px + 不透明度 1，完全遮盖已飞部分的区域配色航线
+    // 已飞轨迹采点：距上一顶点 ≥ TRAIL_STEP_M 时追加当前地理锚点并增量更新覆盖物（首点惰性创建）。
     const pushTrail = (di: number, geo: { lng: number; lat: number }) => {
       const r = rt[di]
       const last = r.pts[r.pts.length - 1]
@@ -262,8 +230,7 @@ export function ReconFlightOverlay({ adapter }: ReconFlightOverlayProps) {
         const transitEnd = d.climbDuration + d.transitDuration
         const cycle = d.cruiseDuration + HOLD_AT_END_MS
         if (elapsed < d.climbDuration) {
-          // —— 阶段一：恒速高度调整 —— 水平钉在起飞点，高度线性逼近任务高度
-          //（原地爬升不产生已飞轨迹）
+          // —— 阶段一：恒速高度调整 —— 水平钉在起飞点，高度线性逼近任务高度（原地爬升不产生已飞轨迹）
           const t = Math.min(1, elapsed / d.climbDuration)
           const alt = d.startAlt + (FLIGHT_ALTITUDE - d.startAlt) * t
           const g = projectToViewport(d.startLng, d.startLat)
@@ -278,9 +245,7 @@ export function ReconFlightOverlay({ adapter }: ReconFlightOverlayProps) {
             groundY: g.y,
           }
         } else if (elapsed < transitEnd) {
-          // —— 阶段二：转场平飞 —— 当前位置 → 航线起点，两端每帧重投影，60m/s
-          //  匀速；转场段（起始位置→巡检区域起点）不标记颜色，仅飞机图标
-          //  沿直线移动，不留 #C9C9C9 已飞灰痕
+          // —— 阶段二：转场平飞 —— 当前位置 → 航线起点，两端每帧重投影，60m/s匀速
           const t = Math.min(1, (elapsed - d.climbDuration) / d.transitDuration)
           const a = projectToViewport(d.startLng, d.startLat)
           const b = projectToViewport(d.line[0].longitude, d.line[0].latitude)
@@ -294,9 +259,7 @@ export function ReconFlightOverlay({ adapter }: ReconFlightOverlayProps) {
             groundY: a.y + (b.y - a.y) * t,
           }
         } else {
-          // —— 阶段三：航线巡航 —— 沿折线按累计距离定位（周期取模无限循环：
-          // 0~cruiseDuration 飞行 → 末点停留 600ms → 回起点重飞），所在段
-          // 两端每帧重投影，机头对准当前段投影方向；已飞部分灰线覆盖航线
+          // —— 阶段三：航线巡航 —— 沿折线按累计距离定位…
           const cruiseElapsed = (elapsed - transitEnd) % cycle
           // 回绕检测：巡航进度回退即新一圈开始，轨迹清零自航线起点重新累积
           if (cruiseElapsed < r.prevCruiseElapsed) r.pts = []

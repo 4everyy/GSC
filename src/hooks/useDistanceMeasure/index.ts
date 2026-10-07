@@ -1,3 +1,9 @@
+/**
+ * @file index.ts
+ * @description 测距工具 Hook：地图取点测距、预览与已提交结果渲染
+ * @author 4everyy
+ * @date 2026-10-07
+ */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { type LngLat, type MapAdapter, type MarkerHandle, type PolylineHandle } from '../../map-engines'
 import { createCommittedController, type CommittedController, createDistanceLabelElement, createEndMarkerElement, createFinishPanelElement, createStartMarkerElement, PIN_ANCHOR, repositionFinishPanel, formatDistance, haversineDistance, makeMeasureSessionId, midpoint, createPreviewController, type PreviewController } from './renderers'
@@ -6,40 +12,13 @@ import { createCommittedController, type CommittedController, createDistanceLabe
 // 兼容 re-export：旧版单文件曾从 hook 文件直接导出这两个工具函数
 export { haversineDistance, formatDistance } from './renderers'
 
-/**
- * 测距工具 Hook。
- *
- * 使用方式：
- * ```tsx
- * const measure = useDistanceMeasure({ adapter })
- * <button onClick={() => measure.toggle()}>测距</button>
- * ```
- *
- * 功能：
- * - 激活后点击地图依次添加测距点，自动绘制折线
- * - 起点绿色图钉，其余所有点（含中间点和终点）均为红色图钉
- * - 每段线段单独显示距离标签，悬浮在该段中点上方
- * - 移动鼠标时显示橡皮筋虚线预览 + 当前预览段距离
- * - 右键或 Esc 退出测距模式，清理「进行中」的测距（已「确定」的记录保留）
- * - finish() 确认结束本次测距：结果保留在地图上并可累积，再次点击测距工具开始新测距时，
- *   不会删除已「确定」的记录
- * - 标记到终点（≥2 点）时，在最新终点图钉旁附加「完成测距」面板（取消 / 确定）
- *
- * 实现拆分（本目录）：
- * - geo.ts：球面距离 / 距离格式化 / 最近线段等纯计算
- * - dom.ts：图钉、距离标签、完成面板、悬浮删除按钮等 DOM 工厂 + 面板避让重定位
- * - preview.ts：橡皮筋预览控制器（虚线 + 动态距离标签）
- * - committedMeasurements.ts：已提交测距的悬停高亮 / 悬浮删段控制器
- * - index.ts（本文件）：React 状态与地图事件编排
- */
+/** 测距工具 Hook。 */
 export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) {
   const [active, setActive] = useState(false)
   const [points, setPoints] = useState<LngLat[]>([])
   const [totalDistance, setTotalDistance] = useState(0)
 
-  // 覆盖物 id 管理
-  // 每次激活生成唯一 session，所有覆盖物 id 带该前缀：适配器按 id 索引覆盖物，
-  // id 复用会让旧覆盖物残留且无法移除（故已「确定」的测距记录必须用不同 id）
+  // 覆盖物 id 管理每次激活生成唯一 session，所有覆盖物 id 带该前缀：适配器按 id 索引覆盖物
   const sessionRef = useRef<string>(makeMeasureSessionId())
   // 初值不读 sessionRef（渲染期读 ref 违规）；toggle 激活时必先赋新值再使用
   const polylineId = useRef<string>('')
@@ -53,13 +32,12 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
   const adapterRef = useRef(adapter)
   // points 的 ref 镜像：mousemove 闭包需读取最新已落点，避免闭包陈旧
   const pointsRef = useRef<LngLat[]>([])
-  // toggle / finish 的 ref 镜像：createMarkerElement（声明早于二者）需读取最新值，
-  // 用于终点图钉旁「完成测距」面板的 取消/确定 按钮回调
+  // toggle / finish 的 ref 镜像：createMarkerElement（声明早于二者）需读取最新值
   const toggleRef = useRef<() => void>(() => {})
   const finishRef = useRef<() => void>(() => {})
   // 「完成测距」面板 DOM 引用：用于边界避让重定位（避免被地图边缘裁切）
   const finishPanelElRef = useRef<HTMLElement | null>(null)
-  // repositionFinishPanel 的 ref 镜像：addPoint（声明早于该回调）需调用最新实现
+  // addPoint…
   const repositionRef = useRef<() => void>(() => {})
 
   // 橡皮筋预览控制器（虚线 + 动态距离标签）：惰性创建，跨渲染复用
@@ -86,11 +64,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
     return committedCtlRef.current
   }
 
-  /**
-   * 根据索引创建测距点标记元素（起点用绿色图钉，其余全部用红色图钉）。
-   * 最新落点（终点）且已构成有效测距（≥2 点）时，在其图钉旁附加「完成测距」面板
-   * （取消 / 确定 二选一），方便就近结束测距。
-   */
+  /** 根据索引创建测距点标记元素（起点用绿色图钉，其余全部用红色图钉）。 */
   const createMarkerElement = useCallback((index: number, pointCount: number): HTMLElement => {
     const el = index === 0 ? createStartMarkerElement() : createEndMarkerElement()
     const isLast = index === pointCount - 1
@@ -148,12 +122,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
     }
   }, [adapter])
 
-  /**
-   * 更新分段距离标签：每段线段一个标签，显示该段距离，
-   * 悬浮在线段中点上方（中点取经纬度线性平均，视觉足够准确）。
-   * 每次落点后重建所有标签（数量随段数变化，重建最简单可靠）。
-   * 同时累计总距离，供提示条展示。
-   */
+  /** 更新分段距离标签：每段线段一个标签，显示该段距离，悬浮在线段中点上方（中点取经纬度线性平均，视觉足够准确）。 */
   const updateSegmentLabels = useCallback((next: LngLat[]) => {
     if (!adapter) return
 
@@ -218,11 +187,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
     setTotalDistance(0)
   }, [adapter])
 
-  /**
-   * 激活/退出测距模式。
-   * - 仅清理「进行中」的测距；已「确定」(finish) 的记录保留在地图上、不受影响。
-   * - 每次激活生成新的唯一 session，确保新测距的覆盖物 id 不与已提交记录冲突。
-   */
+  /** 激活/退出测距模式。 */
   const toggle = useCallback(() => {
     setActive((prev) => {
       const next = !prev
@@ -235,18 +200,9 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
     })
   }, [cleanup])
 
-  /**
-   * 确认结束本次测距：把当前已绘制覆盖物「提交」为一条持久记录，
-   * 覆盖物保留在地图上，仅解除进行中跟踪（之后 cleanup()/toggle() 不会再移除它们）。
-   *
-   * 与 toggle()/Esc/右键（取消当前测距并清空进行中绘制）的区别：
-   * - finish 保留结果并使其累积：多次测距结果可同时留在地图上；
-   *   再次点击测距工具开始新测距时，已「确定」的记录不受影响。
-   * - cleanup()/toggle()/Esc/右键 只清理「进行中」的测距，不动已提交记录。
-   */
+  /** 确认结束本次测距：把当前已绘制覆盖物「提交」为一条持久记录，覆盖物保留在地图上 */
   const finish = useCallback(() => {
-    // 提交：把当前进行中覆盖物 id 快照成一条记录，使其脱离后续清理，
-    // 并为其折线附加悬停交互（高亮 + 悬浮删段，见 committedMeasurements.ts）
+    // 提交：把当前进行中覆盖物 id 快照成一条记录，使其脱离后续清理，并为其折线附加悬停交互（高亮 + 悬浮删段
     if (adapter) {
       const polyId = polylineHandle.current ? polylineId.current : null
       const record: CommittedMeasurement = {
@@ -284,7 +240,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
     repositionFinishPanel(panel, adapter ? adapter.getContainer() : null)
   }, [adapter])
 
-  // 同步 toggle / finish / reposition → ref，供声明较早的函数读取最新实现
+  // 同步 toggle / finish / reposition → ref
   useEffect(() => {
     repositionRef.current = repositionNow
   }, [repositionNow])
@@ -390,11 +346,7 @@ export function useDistanceMeasure({ adapter }: { adapter: MapAdapter | null }) 
 }
 
 
-/**
- * 一条已「确定」的测距记录。
- * finish() 时把当前进行中覆盖物的 id 快照进来；之后 cleanup()/toggle()/Esc/右键
- * 都不再移除它们，使多次测距结果可累积保留在地图上。
- */
+/** 一条已「确定」的测距记录。 */
 export interface CommittedMeasurement {
   markerIds: string[]
   polylineId: string | null

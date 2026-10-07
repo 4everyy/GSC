@@ -1,0 +1,185 @@
+/* VideoMonitorJoystick.css —— 从 VideoMonitorFeed.css 抽离（视频监测屏）：云台方向摇杆（素材层/四向键/扇形管道高亮）。
+   由样式入口 VideoMonitorPage.css 保序 @import。 */
+/* 摇杆：素材组合（joystick-ring-outer 外圈 / joystick-ring-inner 内圈 / joystick-crosshair 中心图标 / joystick-arrow 四向键） */
+
+.vm-joystick {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  width: 108px;
+  height: 108px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.vm-joystick > img {
+  display: block;
+  position: absolute;
+  pointer-events: none;
+}
+
+/* 最外围：joystick-ring-outer.svg（108×108 黑 0.4 透明圆底），铺满摇杆容器 */
+
+.vm-js-outer {
+  left: 0;
+  top: 0;
+  width: 108px;
+  height: 108px;
+}
+
+/* 内层：joystick-ring-inner.svg（56×56 黑 0.2 透明圆），套住中心图标（偏移 26 = (108−56)/2 居中） */
+
+.vm-js-inner {
+  left: 26px;
+  top: 26px;
+  width: 56px;
+  height: 56px;
+}
+
+/* 中心：joystick-crosshair.svg 取景图标（26×26，偏移 41 = (108−26)/2 居中） */
+
+.vm-js-center {
+  left: 41px;
+  top: 41px;
+  width: 26px;
+  height: 26px;
+}
+
+/* 四向键按钮：26×26 透明热区（容器 pointer-events:none，仅按钮恢复 auto 可点）。 */
+
+.vm-js-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s;
+  /* 置于扇形层之上：箭头保持清晰，命中区不被高亮层遮挡 */
+  z-index: 2;
+}
+
+.vm-js-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.vm-js-btn:focus-visible {
+  outline: 1px solid rgba(30, 218, 223, 0.8);
+  outline-offset: 1px;
+}
+
+/* 方向定位（translate 属性独立于 transform，旋转不在此处处理） */
+
+.vm-js-btn--up {
+  translate: 0 -41px;
+}
+
+.vm-js-btn--right {
+  translate: 41px 0;
+}
+
+.vm-js-btn--down {
+  translate: 0 41px;
+}
+
+.vm-js-btn--left {
+  translate: -41px 0;
+}
+
+/* 管道扇形高亮层：按压时沿环带「管道」整段填充主题色（不会超出背景容器）。 */
+
+.vm-js-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  background: conic-gradient(
+    from var(--sector-from),
+    transparent 0deg,
+    rgba(30, 218, 223, 0.5) 8deg,
+    rgba(30, 218, 223, 0.5) 82deg,
+    transparent 90deg
+  );
+  -webkit-mask: radial-gradient(closest-side, transparent 27px, #000 28.5px, #000 52.5px, transparent 54px);
+  mask: radial-gradient(closest-side, transparent 27px, #000 28.5px, #000 52.5px, transparent 54px);
+  transition: opacity 0.12s ease;
+}
+
+.vm-js-glow--up {
+  --sector-from: -45deg;
+}
+
+.vm-js-glow--right {
+  --sector-from: 45deg;
+}
+
+.vm-js-glow--down {
+  --sector-from: 135deg;
+}
+
+.vm-js-glow--left {
+  --sector-from: 225deg;
+}
+
+/* 点击（按压期间）：按钮 :active 通过相邻兄弟选择器点亮对应管道 */
+
+.vm-js-btn:active + .vm-js-glow {
+  opacity: 1;
+}
+
+/* 长按持续态：容器 data-holding 驱动对应管道点亮 + 呼吸动画（按住期间一直反馈） */
+
+.vm-joystick[data-holding='up'] .vm-js-glow--up,
+.vm-joystick[data-holding='right'] .vm-js-glow--right,
+.vm-joystick[data-holding='down'] .vm-js-glow--down,
+.vm-joystick[data-holding='left'] .vm-js-glow--left {
+  opacity: 1;
+  animation: vm-js-glow-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes vm-js-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* 按钮内箭头图标：joystick-arrow.svg（10×13，默认朝左——尖在左、平底在右）。 */
+
+.vm-js-arrow-icon {
+  display: block;
+  /* 随按钮放大：10×13 等比 → 13×16.9 */
+  width: 13px;
+  height: 16.9px;
+  pointer-events: none;
+}
+
+.vm-js-btn--up .vm-js-arrow-icon {
+  transform: rotate(90deg);
+}
+
+.vm-js-btn--right .vm-js-arrow-icon {
+  transform: rotate(180deg);
+}
+
+.vm-js-btn--down .vm-js-arrow-icon {
+  transform: rotate(-90deg);
+}
+
+.vm-js-btn--left .vm-js-arrow-icon {
+  transform: rotate(0deg);
+}
+

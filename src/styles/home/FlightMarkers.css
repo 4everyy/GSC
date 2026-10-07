@@ -1,20 +1,16 @@
-/* FlightMarkers —— 取点图钉与跟随光标 / 航线连线 / 模拟飞行图标 / 环绕图形 / 集结坪
-   自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
-   HomePage.css 按拆分前的层叠顺序 @import 各文件。 */
+/* 规则内容未改动… */
 .tap-return-mode .map-base,
 .tap-return-mode .map-base canvas {
   cursor: none;
 }
 
-/* 环绕飞行取点模式：面板打开期间地图区域隐藏原生光标，复用指点返航跟随图钉
-   （tap-return-marker）方案——由 orbit-flight-mode 类驱动图钉钉尖对准鼠标 */
+/* 环绕飞行取点模式：面板打开期间地图区域隐藏原生光标，复用指点返航跟随图钉（tap-return-marker）方案——由 orbit-fli… */
 .orbit-flight-mode .map-base,
 .orbit-flight-mode .map-base canvas {
   cursor: none;
 }
 
-/* 编队飞行取点模式：面板打开期间地图区域隐藏原生光标，复用指点返航跟随图钉
-   （tap-return-marker）方案——由 formation-flight-mode 类驱动图钉钉尖对准鼠标 */
+/* 编队飞行取点模式：面板打开期间地图区域隐藏原生光标，复用指点返航跟随图钉（tap-return-marker）方案——由 formation… */
 .formation-flight-mode .map-base,
 .formation-flight-mode .map-base canvas {
   cursor: none;
@@ -42,9 +38,7 @@
   height: 100%;
 }
 
-/* 指点返航落点正下方返航区域圆圈（设计稿 image-wrapper_4）：
-   48x48、rgba(255,255,255,0.2) 填充、2px 白描边圆形，flex 居中 20x24 停机坪图标；
-   圆圈顶部距落点 60px（图钉高 56px + 4px 间隙），与图钉垂直排列 */
+/* 48x48、rgba(255,255,255,0.2) 填充、2p… */
 .tap-return-zone {
   position: fixed;
   z-index: 1499;
@@ -67,11 +61,7 @@
   height: 24px;
 }
 
-/* 指点返航落点「确定 | 取消」按钮条：视口 fixed 定位（与落点图钉同一坐标空间），
-   视觉复用区域降落确认条（121×32、4px 圆角、半透明蓝底 + 1px 蓝描边 + 阴影，
-   内部标签/分隔线直接复用 area-select-confirm-bar__* 类）；
-   left/top 由内联样式注入（水平居中于落点、位于落点圆圈下方 8px），
-   transform 仅做水平居中偏移；pointer-events:auto 支持点击（图钉/圆圈均为 none） */
+/* 指点返航落点「确定 | 取消」按钮条：视口 fixed 定位（与落点图钉同一坐标空间） */
 .tap-return-confirm-bar {
   position: fixed;
   z-index: 1501;
@@ -89,10 +79,7 @@
   user-select: none;
 }
 
-/* 指点返航连线（SVG 视口屏幕空间）：fixed 全屏画布铺满视口（100vw×100vh），
-   无 viewBox 时 SVG 用户坐标即视口像素，line 的 x/y 直接使用 clientX/clientY；
-   z-index 低于落点圆圈(1499)/图钉(1500)，连线自图标与图钉下方穿过；
-   pointer-events:none 不拦截地图取点与面板交互 */
+/* 指点返航连线（SVG 视口屏幕空间）：fixed 全屏画布铺满视口（100vw×100vh） */
 .tap-return-route {
   position: fixed;
   left: 0;
@@ -103,9 +90,7 @@
   pointer-events: none;
 }
 
-/* 环绕飞行盘旋圆 + 最近点连线：与指点返航连线同方案的视口 SVG——
-   circle/line 坐标为视口像素（圆心 = 定格取点，半径 = 盘旋半径米 ÷ 每像素米数），
-   半径步进/缩放/重新取点时联动刷新；不拦截交互 */
+/* 与指点返航连线同方案的视口 SVG—— circle/line 坐标为视口像素… */
 .orbit-flight-graphics {
   position: fixed;
   left: 0;
@@ -115,13 +100,7 @@
   z-index: 1498;
   pointer-events: none;
 }
-/* 模拟飞行无人机（底座 + 飞机组合）：确认航线后沿航线循环飞行的组合图标——
-   fixed 视口定位，left/top 由内联样式按航线插值坐标驱动；底座固定策略：
-   底座（blue_bottom.svg 等同色套图）作为地面基准正置固定不随航向转动，
-   航向旋转 rotate(航向角) 由内联样式下沉到机身层（.drone-flight__plane），
-   仅飞机图标转向使机头自适应对准航线轨迹切线方向（覆盖本处 translate 的
-   居中锚定）；z-index 高于图钉(1500)使飞行图标完整可见；
-   pointer-events:none 不拦截交互 */
+/* 模拟飞行无人机（底座 + 飞机组合）：确认航线后沿航线循环飞行的组合图标—— fixed 视口定位 */
 .drone-flight {
   position: fixed;
   z-index: 1501;
@@ -131,9 +110,7 @@
   pointer-events: none;
 }
 
-/* 底座层：与静止飞机标记完全同规格（AircraftLayer .aircraft-icon__bottom：
-   64px 等比宽、高自动，top/left 50% + 负偏移精确居中于 48px 盒，中心与机身重合），
-   正置固定不旋转（居中 translate 由 CSS 承担，自身不承载航向变换） */
+/* 底座层：与静止飞机标记完全同规格（AircraftLayer .aircraft-icon__bottom：64px 等比宽、高自动 */
 .drone-flight__base {
   position: absolute;
   top: 50%;
@@ -145,11 +122,7 @@
   pointer-events: none;
 }
 
-/* 机身层：与静止飞机标记完全同规格（AircraftLayer .aircraft-icon__top：
-   40px 等比宽、高自动，居中于 48px 盒）——居中锚定的 translate(-50%,-50%)
-   与航向旋转合并由内联样式注入（translate + rotate 复合变换，见 DroneFlightIcon）：
-   机头（切图机头默认朝右，rotate 直接采用 atan2 屏幕角，0°=正右，见 useFlightAnimations）
-   对准航线轨迹切线方向；transform-origin 居中 + will-change 提示合成层，rAF 逐帧旋转不掉帧 */
+/* 机身层：与静止飞机标记完全同规格（AircraftLayer .aircraft-icon__top：40px 等比宽、高自动 */
 .drone-flight__plane {
   position: absolute;
   top: 50%;
@@ -161,8 +134,7 @@
   will-change: transform;
   pointer-events: none;
 }
-/* 航点飞行取点阶段（waypoint-picking：面板开启且未定格航点）：光标为航点标记图钉（32×56 切图，钉尖热点 16 55 对准鼠标）；
-   左键定格航点后类移除，光标恢复默认样式 */
+/* 航点飞行取点阶段（waypoint-picking：面板开启且未定格航点）：光标为航点标记图钉（32×56 切图，钉尖热点 16 55 对准鼠标） */
 .waypoint-picking .map-base,
 .waypoint-picking .map-base canvas {
   cursor: none;
@@ -174,8 +146,7 @@
   cursor: none;
 }
 
-/* 航点飞行航点图钉（32×56 切图，仅图钉无 H 停机坪圈）：钉尖对准鼠标/定格点，
-   未点击时跟随鼠标移动，左键点击后定格 */
+/* 航点飞行航点图钉（32×56 切图，仅图钉无 H 停机坪圈）：钉尖对准鼠标/定格点，未点击时跟随鼠标移动，左键点击后定格 */
 .waypoint-flight-marker {
   position: fixed;
   z-index: 1500;
@@ -185,9 +156,7 @@
   pointer-events: none;
 }
 
-/* 航点飞行连线（SVG 视口屏幕空间）：选中飞机中心 → 鼠标/航点图钉，
-   1.5px #00FF95；未点击时 stroke-dasharray 虚线实时跟随，
-   左键点击定格后实线；pointer-events:none 不拦截地图取点 */
+/* 航点飞行连线（SVG 视口屏幕空间）：选中飞机中心 → 鼠标/航点图钉，1.5px #00FF95 */
 .waypoint-flight-route {
   position: fixed;
   left: 0;
@@ -197,9 +166,7 @@
   z-index: 1498;
   pointer-events: none;
 }
-/* 航线飞行航线（SVG 视口屏幕空间）：飞机中心 → 航点1 → 航点2…（1.5px #00FF95），
-   取点中尾段连至鼠标为虚线，右键/Esc 结束后全部定格为实线；
-   pointer-events:none 不拦截地图取点 */
+/* 航线飞行航线（SVG 视口屏幕空间）：飞机中心 → 航点1 → 航点2…（1.5px #00FF95） */
 .route-flight-route {
   position: fixed;
   left: 0;
@@ -210,8 +177,7 @@
   pointer-events: none;
 }
 
-/* 航线飞行编号航点图钉：设计稿橙色切图 32×56 + 白色序号叠加。
-   钉尖对准取点位置；pointer-events:none 不拦截取点 */
+/* 航线飞行编号航点图钉：设计稿橙色切图 32×56 + 白色序号叠加。 */
 .route-flight-marker {
   position: fixed;
   z-index: 1500;
@@ -247,8 +213,7 @@
   cursor: pointer;
 }
 
-/* 删除航点按钮（设计稿 text-wrapper_2）：78×32 蓝色半透明底 + 1px 蓝描边 + 圆角 4 +
-   投影，白色 14px 文案居中；悬浮/双击图钉后出现在图钉右侧（间距 8px，对齐图钉头部） */
+/* 删除航点按钮（设计稿 text-wrapper_2）：78×32 蓝色半透明底 + 1px 蓝描边 + 圆角 4 +投影 */
 .route-flight-marker__delete {
   position: absolute;
   left: 40px;
@@ -270,9 +235,7 @@
   padding: 0;
 }
 
-/* 隐形桥接：向左延伸 8px 覆盖图钉（32px）与按钮（left 40px）之间的间隙——
-   伪元素属于按钮命中区（图钉子树内），鼠标从图钉移向按钮穿过间隙时
-   不触发图钉的 mouseleave，按钮不会提前消失，可顺畅点击 */
+/* 隐形桥接：向左延伸 8px 覆盖图钉（32px）与按钮（left 40px）之间的间隙——伪元素属于按钮命中区（图钉子树内） */
 .route-flight-marker__delete::before {
   content: '';
   position: absolute;
@@ -282,8 +245,7 @@
   height: 100%;
 }
 
-/* route-flight-cursor-pin：航线飞行取点跟随图钉（设计稿橙色切图 32×56）——
-   钉尖对准鼠标，取点结束（右键/Esc）后随 hover 清除消失 */
+/* route-flight-cursor-pin：航线飞行取点跟随图钉（设计稿橙色切图 32×56）——钉尖对准鼠标 */
 .route-flight-cursor-pin {
   position: fixed;
   z-index: 1502;
@@ -293,9 +255,7 @@
   pointer-events: none;
 }
 
-/* 区域降落降落坪编队（点击「航线生成」后）：选中飞机中心 → 对应降落坪图标中心的
-   1px #00FF95 绿色实线（SVG 视口屏幕空间）；pointer-events:none 不拦截地图交互，
-   z-index 高于已确认区域填充(1500)避免连线被紫色半透明层压暗 */
+/* 区域降落降落坪编队（点击「航线生成」后）：选中飞机中心 → 对应降落坪图标中心的1px #00FF95 绿色实线（SVG 视口屏幕空间） */
 .area-landing-route {
   position: fixed;
   left: 0;
@@ -306,8 +266,7 @@
   pointer-events: none;
 }
 
-/* 区域降落降落坪图标：44×44 居中锚定在各排列点位上（translate(-50%,-50%)），
-   pointer-events:none 不遮挡已确认区域的「删除重绘」按钮 */
+/* 区域降落降落坪图标：44×44 居中锚定在各排列点位上（translate(-50%,-50%)） */
 .area-landing-spot {
   position: fixed;
   width: 44px;
@@ -317,19 +276,15 @@
   z-index: 1502;
 }
 
-/* 集结点精准落坪终态：飞机图标叠加层提升至 1503——定格飞机完整显示在
-   其他飞行中标记之上；仅集结点终态（altitude=0）叠加本类 */
+/* 集结点精准落坪终态：飞机图标叠加层提升至 1503——定格飞机完整显示在其他飞行中标记之上 */
 .drone-flight--landed {
   z-index: 1503;
 }
 
-/* BottomBar —— 底部操作栏与水平居中按钮条
-   自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
-   HomePage.css 按拆分前的层叠顺序 @import 各文件。 */
+/* 规则内容未改动，HomeP… */
 /* ====== 底部操作栏 ====== */
 .map-footer {
-  /* 容器不接收鼠标事件：透明盒横向铺满底部会遮挡水平居中按钮条的 hover 命中区，
-     仅子元素（应急按钮/比例尺）恢复接收 */
+    /* 容器不接收鼠标事件：透明盒横向铺满底部会遮挡水平居中按钮条的 hover 命中区，仅子元素（应急按钮/比例尺）恢复接收 */
   pointer-events: none;
   position: absolute;
   right: clamp(80px, 5.2vw, 100px);
@@ -377,8 +332,7 @@
 
 
 /* ====== 底部水平居中按钮条 ====== */
-/* 13 段弧形背景切图拼接：容器绝对定位于底部水平居中，与 .map-footer 同一底部基线，
-   各切缝为斜边，按切缝角度逐缝补偿水平间距使垂直缝宽视觉相等（见下方 nth-child 规则） */
+/* 13 段弧形背景切图拼接：容器绝对定位于底部水平居中 */
 .bottom-bar {
   position: absolute;
   left: 50%;
@@ -386,27 +340,17 @@
   transform: translateX(-50%);
   z-index: 5;
   display: flex;
-  /* 不使用统一 gap：各段切图自带不相等的透明内边距，且切缝为倾斜不同的斜边，
-     （端部约 45 度、中部近垂直），统一水平间距无法得到相等的视觉缝宽，
-     改为下方 .bottom-bar__item:nth-child 逐缝 margin-right 精确补偿 */
+    /* 不使用统一 gap：各段切图自带不相等的透明内边距，且切缝为倾斜不同的斜边，（端部约 45 度、中部近垂直） */
 }
 
-/* 各段外层 wrapper：承担逐缝负 margin 并承载居中 tooltip。整体 pointer-events:none
-   （自身不参与命中测试），命中完全由内层 button 的 clip-path 多边形决定，
-   避免 wrapper 矩形在负 margin 重叠区拦截相邻段的鼠标事件 */
+/* 各段外层 wrapper：承担逐缝负 margin 并承载居中 tooltip。 */
 .bottom-bar__item {
   position: relative;
   display: block;
   pointer-events: none;
 }
 
-/* 逐缝水平间距：以"垂直于斜缝方向的视觉缝宽统一为 12px"为目标，
-   margin = 12 / cos(切缝角) 减去零间距拼接的水平缝宽 h0；h0 随角度变化，
-   scripts/equalize_bottom_bar_gaps.py 对各切图不透明边缘做最小二乘拟合求得；
-   切图自带大量不相等的透明内边距（端部缝 h0 约 61px、中部仅 9px），故多数
-   margin 为负值——仅重叠相邻切图的透明区域，不遮挡实体像素。
-   clamp 缩放曲线与按钮高度 clamp(36px, 3.75vw, 72px) 一致：
-   1920px 视口取设计值（绝对值大的一端），960px 最小视口取其一半 */
+/* 逐缝水平间距：以"垂直于斜缝方向的视觉缝宽统一为 12px"为目标 */
 .bottom-bar__item:nth-child(1) { margin-right: clamp(-44.43px, -2.3141vw, -22.21px); } /* 缝角 5.4 度 */
 .bottom-bar__item:nth-child(2) { margin-right: clamp(-22.57px, -1.1755vw, -11.29px); } /* 缝 3.7 度 */
 .bottom-bar__item:nth-child(3) { margin-right: clamp(-14.58px, -0.7594vw, -7.29px); } /* 缝 6.6 度 */
@@ -420,11 +364,7 @@
 .bottom-bar__item:nth-child(11) { margin-right: clamp(-22.58px, -1.176vw, -11.29px); } /* 缝 3.7 度 */
 .bottom-bar__item:nth-child(12) { margin-right: clamp(-44.45px, -2.3151vw, -22.23px); } /* 缝 5.4 度 */
 
-/* 命中层 button：高 72px（= 60px 视觉高 + 12px 顶出预留），宽度由内容
-   aspect-ratio（切图原始宽 / 72）联动保持与 60px 方案完全一致。
-   自身静止不动——无论内部视觉层顶出与否，命中区（clip-path 并集轮廓）
-   保持不变，鼠标不会因按钮上移而脱离 hover（避免抖动循环）；
-   pointer-events:auto 恢复命中（wrapper 整体禁用） */
+/* 命中层 button：高 72px（= 60px 视觉高 + 12px 顶出预留） */
 .bottom-bar__btn {
   position: relative;
   display: block;
@@ -436,9 +376,7 @@
   pointer-events: auto;
 }
 
-/* 视觉层：承载切图背景 + 功能图标，底部对齐命中盒（静止时与原 60px 方案
-   像素级一致）。hover 时以回弹曲线向上顶出 12px（1920 基准，随 clamp 缩放）；
-   :active 按压时回落一半并压暗，模拟按下"手感" */
+/* 视觉层：承载切图背景 + 功能图标，底部对齐命中盒（静止时与原 60px 方案像素级一致）。 */
 .bottom-bar__visual {
   position: absolute;
   left: 0;
@@ -473,9 +411,7 @@
     filter 0.1s ease-out;
 }
 
-/* Hover 内发光：叠在视觉层上，随其一同被 button clip-path 裁剪，
-   并随轮廓收缩，不溢出按钮边框。各段切图透明度大致不一，单独 brightness
-   在深色段几乎不可见，内发光方案 13 个按钮反馈完全一致 */
+/* Hover 内发光：叠在视觉层上，随其一同被 button clip-path 裁剪，并随轮廓收缩，不溢出按钮边框。 */
 .bottom-bar__visual::after {
   content: '';
   position: absolute;
@@ -490,8 +426,7 @@
   opacity: 1;
 }
 
-/* 首尾固定装饰段（bottom-bar__btn--static，无功能图标）：纯装饰，hover/按压无任何反馈，
-   不顶出、不压暗、无内发光、无过渡动画，光标恢复默认样式 */
+/* 纯装饰，hover/按压无任何反馈，不顶出、不压暗、无内发光… */
 .bottom-bar__btn--static {
   cursor: default;
 }
@@ -514,17 +449,12 @@
   opacity: 0;
 }
 
-/* 禁用态按钮（第 2~12 段功能按钮不可用时）：背景已由 TSX 切换为禁用态切图
-   （风格与默认段一致，几何像素级兼容）。禁用不阻断 hover——悬停仍顶出反馈
-   （原生 disabled 属性会抑制 :hover 匹配，故 TSX 改用 aria-disabled + 点击拦截），
-   仅保持置灰观感（不恢复不透明）、无按压回落、无内发光；
-   tooltip 由 TSX 条件渲染同步抑制。光标为"禁止"符号明确提示不可用 */
+/* 禁用态按钮（第 2~12 段功能按钮不可用时）：背景已由 TSX 切换为禁用态切图（风格与默认段一致，几何像素级兼容）。 */
 .bottom-bar__btn--disabled {
   cursor: not-allowed;
 }
 
-/* 双类名提升特异性（0,4,0）与通用 hover 规则同值，但定义在其后，
-   transform 沿用通用顶出量，仅覆盖 opacity 保持置灰半透明观感 */
+/* 双类名提升特异性（0,4,0）与通用 hover 规则同值，但定义在其后，transform 沿用通用顶出量 */
 .bottom-bar__btn.bottom-bar__btn--disabled:hover .bottom-bar__visual {
   transform: none;
   opacity: 0.85;
@@ -545,8 +475,7 @@
   cursor: default;
 }
 
-/* 功能图标：绝对居中于视觉层，尺寸为 60px 设计高的 75%（1920 为 45px），
-   与按钮高度同 clamp 曲线缩放；pointer-events:none 使点击穿透到 button */
+/* 功能图标：绝对居中于视觉层，尺寸为 60px 设计高的 75%（1920 为 45px），与按钮高度同 clamp 曲线缩放 */
 .bottom-bar__icon {
   position: absolute;
   left: 50%;
@@ -558,10 +487,7 @@
   pointer-events: none;
 }
 
-/* 中文 tooltip：悬浮时显示于按钮上方。作为 button 的兄弟节点（wrapper 内），
-   不受 button clip-path 裁剪；wrapper 为 pointer-events:none，显示/隐藏
-   依赖悬浮 button 时 :hover 沿继承链生效（bottom-bar__item:hover）。
-   bottom 相对 72px wrapper 顶缘 = 顶出后按钮视觉顶，恰好跟随顶出位置 */
+/* 中文 tooltip：悬浮时显示于按钮上方。 */
 .bottom-bar__tip {
   position: absolute;
   left: 50%;

@@ -1,20 +1,9 @@
 @import './TaskPanelList.css';
 @import './TaskPanelDetail.css';
 
-/* TaskListPanel.css —— 样式入口
- * TaskPanelList：面板外壳 / 页签 / 筛选 / 任务列表与任务行
- * TaskPanelDetail：展开详情 / 执行设备卡片 / 下发进程仪表 / 操作按钮 / 弹窗 */
+/* 面板外壳 / 页签 / 筛选 / 任务列表与任务行TaskPa… */
 
-/**
- * 执行监控 tab 样式（设计稿 section_6 / box_2 / box_3 / box_13 / box_16）
- *
- * 尺寸基线（设计稿）：
- * - 任务卡片：行内容高度与任务规划 tab（.task-item__row）一致 clamp(36px, 2.6vw, 48px)，
- *   底部另含 428x7 进度槽，展开态与收起态背景切图不同
- * - 详情区：宽度 434，高度随执行对象行数自适应（行数 × 48px + 底部装饰 11px），
- *   背景切图 monitor-detail-bg 随高度整体缩放，避免行数不足时残留空白
- * - 执行对象行：行内容距左 24px
- */
+/* - 任务卡片：行… */
 
 .task-monitor {
   width: 100%;
@@ -24,8 +13,7 @@
   min-height: 0;
 }
 
-/* 列表主体：撑满面板剩余高度，超出时纵向滚动；
-   滚动条样式隐藏但保留滚动功能（与任务规划 tab 一致） */
+/* 列表主体：撑满面板剩余高度，超出时纵向滚动 */
 .task-monitor__list {
   display: flex;
   flex-direction: column;
@@ -57,8 +45,7 @@
   height: calc(clamp(36px, 2.6vw, 48px) + 7px);
 }
 
-/* 任务行：行高与其他面板列表行一致（同 .task-item__row），垂直居中；gap 保底间距，
-   中间两列 margin:0 auto 平分剩余空间，所有列间隙严格均匀 */
+/* 任务行：行高与其他面板列表行一致（同 .task-item__row），垂直居中 */
 .task-monitor__row {
   display: flex;
   align-items: center;
@@ -71,8 +58,7 @@
   outline: none;
 }
 
-/* 行背景切图锚定卡片铺满全高（双态：常规 / 展开-蓝）。
-   切图自带底部轨道凹槽，与进度槽同一坐标系，视觉上与行融为一体 */
+/* 行背景切图锚定卡片铺满全高（双态：常规 / 展开-蓝）。 */
 .task-monitor__row-bg {
   position: absolute;
   inset: 0;
@@ -108,8 +94,7 @@
   text-overflow: ellipsis;
 }
 
-/* 状态列：不伸缩，左右 auto margin 平分剩余空间（与时间列联动均匀分布）；
-    列表仅存在「执行中」状态，色与行内文案一致（白灰） */
+/* 状态列：不伸缩，左右 auto margin 平分剩余空间（与时间列联动均匀分布） */
 .task-monitor__status {
   flex: none;
   margin: 0 auto;
@@ -131,8 +116,7 @@
   white-space: nowrap;
 }
 
-/* 末列（整体）：停止图标 + 展开箭头，组内紧凑间距 6px；
-   __actions 贴行右 padding（11px），组内收紧不影响与右边缘的距离 */
+/* 末列（整体）：停止图标 + 展开箭头，组内紧凑间距 6px */
 .task-monitor__actions {
   display: inline-flex;
   align-items: center;
@@ -175,11 +159,7 @@
   object-fit: fill;
 }
 
-/* 进度流动光带：依附任务行底部（428x3 进度槽内）。
-   渐变首尾同色（青→绿→青），单个渐变周期 = 槽宽 428px，相邻周期衔接无色差跳变；
-   元素宽度 200%（铺两组同周期渐变），动画每循环位移恰好一个周期（428px）：
-   亮带滑出右端的同一瞬间，下一组从左端滑入补位，
-   实现「右端滑出 ↔ 左端滑入」自然承接的连续无限流动 */
+/* 进度流动光带：依附任务行底部（428x3 进度槽内）。 */
 .task-monitor__progress-line {
   position: absolute;
   left: 0;
@@ -194,8 +174,7 @@
   will-change: transform;
 }
 
-/* 流动方向：从左到右（-50% → 0，位移 = 一个渐变周期 428px）。
-   首尾帧视觉完全一致（周期性平铺），循环点无任何跳变 */
+/* 流动方向：从左到右（-50% → 0，位移 = 一个渐变周期 428px）。 */
 @keyframes task-monitor-flow {
   from {
     transform: translateX(-50%);
@@ -217,8 +196,7 @@
 .task-monitor__detail {
   position: relative;
   width: 434px;
-  /* 不再固定 216px：高度 = 执行对象行数 × 48px + 底部装饰预留 11px，
-     行数不足 4 时自动裁掉残留的空白背景 */
+    /* 不再固定 216px：高度 = 执行对象行数 × 48px + 底部装饰预留 11px，行数不足 4 时自动裁掉残留的空白背景 */
   padding-bottom: 11px;
   box-sizing: border-box;
   background: url('../../assets/task-panel/monitor-detail-bg.png') 100% no-repeat;

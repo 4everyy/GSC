@@ -1,0 +1,439 @@
+/* LoginDronesKeyframes.css —— 从 LoginDrones.css 抽离（登录页无人集群装饰动画）：关键帧/响应式窄屏隐藏/减少动态效果/登录冻结。
+   由样式入口 LoginDrones.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* ====== 关键帧 ====== */
+
+@keyframes login-drone-cruise-a {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-2deg);
+  }
+  30% {
+    transform: translate3d(6vw, -3vh, 0) rotate(2deg);
+  }
+  65% {
+    transform: translate3d(11vw, 2vh, 0) rotate(-1deg);
+  }
+  100% {
+    transform: translate3d(5vw, -5vh, 0) rotate(2deg);
+  }
+}
+
+@keyframes login-drone-cruise-b {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(2deg);
+  }
+  40% {
+    transform: translate3d(-7vw, 3vh, 0) rotate(-2deg);
+  }
+  75% {
+    transform: translate3d(-12vw, -2vh, 0) rotate(1deg);
+  }
+  100% {
+    transform: translate3d(-4vw, 4vh, 0) rotate(-2deg);
+  }
+}
+
+@keyframes login-drone-cruise-c {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(8vw, -4vh, 0);
+  }
+  100% {
+    transform: translate3d(-3vw, -2vh, 0);
+  }
+}
+
+@keyframes login-drone-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(0.6deg);
+  }
+}
+
+@keyframes login-prop-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes login-drone-cone {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translateX(-50%) scaleY(0.9);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  55% {
+    opacity: 0.35;
+  }
+  72%,
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scaleY(1.05);
+  }
+}
+
+@keyframes login-trail-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes login-robo-patrol {
+  0% {
+    transform: translate3d(0, 0, 0) scaleX(1);
+  }
+  46% {
+    transform: translate3d(-9vw, 0, 0) scaleX(1);
+  }
+  50% {
+    transform: translate3d(-9.5vw, 0, 0) scaleX(-1);
+  }
+  96% {
+    transform: translate3d(0, 0, 0) scaleX(-1);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scaleX(1);
+  }
+}
+
+@keyframes login-robo-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2.5px);
+  }
+}
+
+@keyframes login-robo-leg {
+  0%,
+  100% {
+    transform: rotate(12deg);
+  }
+  50% {
+    transform: rotate(-12deg);
+  }
+}
+
+@keyframes login-robo-shank {
+  0%,
+  100% {
+    transform: rotate(7deg);
+  }
+  50% {
+    transform: rotate(-9deg);
+  }
+}
+
+@keyframes login-robo-beacon {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0.15;
+  }
+}
+
+/* ====== 响应式：窄屏隐藏，避免遮挡登录卡片 ====== */
+
+@media (max-width: 900px) {
+  .login-drone--2,
+  .login-trail--2,
+  .login-robo,
+  .login-drone--3,
+  .login-trail--3 {
+    display: none;
+  }
+}
+
+/* ====== 减少动态效果：静止展示，仅保留极低频呼吸 ====== */
+
+@media (prefers-reduced-motion: reduce) {
+  .login-drone,
+  .login-drone__body,
+  .login-drone__prop,
+  .login-drone__cone,
+  .login-trail,
+  .login-robo,
+  .login-robo__torso,
+  .login-robo__leg,
+  .login-robo__shank,
+  .login-robo__beacon,
+  .login-robo__shadow {
+    animation: none;
+  }
+
+  .login-drone__cone {
+    opacity: 0.5;
+  }
+
+  .login-trail {
+    opacity: 0.5;
+  }
+}
+/* perf: freeze drones on login success */
+.login-page--success .login-drone,
+.login-page--success .login-drone__body,
+.login-page--success .login-drone__prop,
+.login-page--success .login-drone__cone,
+.login-page--success .login-trail,
+.login-page--success .login-robo,
+.login-page--success .login-robo__torso,
+.login-page--success .login-robo__leg,
+.login-page--success .login-robo__shank,
+.login-page--success .login-robo__beacon,
+.login-page--success .login-robo__shadow {
+  animation-play-state: paused;
+}
+
+/* 规则内容未改动… */
+
+.login-card {
+  position: relative;
+  width: min(400px, 92vw);
+  padding: 2px; /* 流光描边厚度 */
+  border-radius: 10px;
+  background: rgba(135, 235, 255, 0.14);
+  clip-path: polygon(
+    18px 0,
+    calc(100% - 18px) 0,
+    100% 18px,
+    100% calc(100% - 18px),
+    calc(100% - 18px) 100%,
+    18px 100%,
+    0 calc(100% - 18px),
+    0 18px
+  );
+  animation: login-card-in 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+
+.login-tilt:hover .login-card__inner::after {
+  opacity: 1;
+}
+
+.login-card--success {
+  animation: login-card-success 0.6s ease both;
+}
+
+.login-stage {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 3vh 16px;
+  perspective: 1100px; /* 卡片 3D 视差透视 */
+}
+
+.login-tilt {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform 0.25s ease-out;
+  will-change: transform;
+}
+
+.login-tilt:hover {
+  transition: transform 0.08s ease-out;
+}
+
+@keyframes login-beam-rotate {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes login-hud-blink {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes login-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(34px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.login-head {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin-bottom: clamp(22px, 3.4vh, 32px);
+}
+
+.login-logo {
+  position: relative;
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  color: #87ebff;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 12px rgba(135, 235, 255, 0.65));
+}
+
+.login-title {
+  font-family: 'MiSans-Semibold';
+  font-size: clamp(18px, 1.5vw, 22px);
+  letter-spacing: 0.16em;
+  margin-right: -0.16em; /* 抵消末字间距，保证视觉居中 */
+  background: linear-gradient(
+    100deg,
+    #9feaff 0%,
+    #f2fdff 28%,
+    #6fe3ff 55%,
+    #f2fdff 82%,
+    #9feaff 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: login-title-flow 5.5s linear infinite;
+}
+
+@keyframes login-title-flow {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+.login-title::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.login-title::before {
+  color: #46f0ff;
+  animation: login-title-glitch-a 4s steps(1) infinite;
+}
+
+.login-title::after {
+  color: #ff5ce1;
+  animation: login-title-glitch-b 4s steps(1) infinite;
+}
+
+@keyframes login-title-glitch-a {
+  0%,
+  88%,
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+  89% {
+    opacity: 0.75;
+    transform: translate(-2.5px, 1.5px);
+    clip-path: inset(12% 0 58% 0);
+  }
+  91% {
+    opacity: 0.75;
+    transform: translate(2px, -1px);
+    clip-path: inset(62% 0 8% 0);
+  }
+  93% {
+    opacity: 0.75;
+    transform: translate(-1.5px, 0);
+    clip-path: inset(38% 0 34% 0);
+  }
+  94% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes login-title-glitch-b {
+  0%,
+  88%,
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+  90% {
+    opacity: 0.6;
+    transform: translate(2.5px, -1.5px);
+    clip-path: inset(52% 0 22% 0);
+  }
+  92% {
+    opacity: 0.6;
+    transform: translate(-2px, 1px);
+    clip-path: inset(8% 0 72% 0);
+  }
+  93.5% {
+    opacity: 0.6;
+    transform: translate(1.5px, 0);
+    clip-path: inset(70% 0 6% 0);
+  }
+  94.5% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+.login-title {
+  position: relative;
+}
+
+@media (max-width: 720px) {
+  .login-dial {
+    width: min(460px, 96vw);
+  }
+
+  .login-circuit,
+  .login-crosshair {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-hud-top,
+  .login-shockwave__ring,
+  .login-title__cursor,
+  .login-dot--ok,
+  .login-submit__charge,
+  .login-circuit__flow,
+  .login-dial,
+  .login-dial__ticks,
+  .login-dial__ring,
+  .login-crosshair__ring {
+    animation: none;
+  }
+
+  .login-circuit {
+    animation: none;
+    opacity: 1;
+  }
+
+  .login-crosshair {
+    display: none;
+  }
+}

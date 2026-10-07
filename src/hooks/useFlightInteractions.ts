@@ -1,9 +1,8 @@
-﻿/**
- * useFlightInteractions —— 飞行面板交互逻辑（自 HomePage.tsx 拆出）。
- *
- * 汇总 5 套地图取点监听（指点返航 / 环绕飞行 / 编队飞行 / 航点飞行 / 航线飞行）
- * 与面板关闭、航线失效时的动画终止编排等 useEffect；各 effect 的声明顺序与
- * 拆分前的 HomePage 保持一致，监听器卸载清理在各自 effect 内完成。
+/**
+ * @file useFlightInteractions.ts
+ * @description useFlightInteractions —— 飞行面板交互逻辑（自 HomePage.tsx 拆出）。
+ * @author 4everyy
+ * @date 2026-10-07
  */
 import { useEffect } from 'react'
 import { type useExclusivePanels } from './useExclusivePanels'
@@ -90,8 +89,7 @@ export function useFlightInteractions(
     stopRouteFlightAnimation,
   } = animations
 
-  // 面板收起时（手动取消/点击其他功能按钮互斥切换）终止循环飞行动画；
-  // 「确认」不再收起面板，因此确认后循环持续播放，仅手动取消可终止
+  // 面板收起时（手动取消/点击其他功能按钮互斥切换）终止循环飞行动画
   useEffect(() => {
     if (!tapReturnOpen) {
       stopTapReturnFlight()
@@ -99,8 +97,7 @@ export function useFlightInteractions(
       setTapReturnConfirmed(false)
     }
   }, [tapReturnOpen, stopTapReturnFlight, setTapReturnConfirmed])
-  // 返航面板关闭（取消/互斥切换）时清除返航航线连线并终止循环飞行动画；
-  // 「确认」不再收起面板，因此确认后循环持续播放，仅手动取消可终止
+  // 返航面板关闭（取消/互斥切换）时清除返航航线连线并终止循环飞行动画
   useEffect(() => {
     if (!returnHomeOpen) {
       setReturnHomeLines(null)
@@ -109,8 +106,7 @@ export function useFlightInteractions(
       stopReturnHomeFlights()
     }
   }, [returnHomeOpen, stopReturnHomeFlights, setReturnHomeLines, setReturnHomeConfirmed])
-  // 区域降落面板关闭（取消/互斥切换）或航线失效（删除重绘/区域清除）时终止循环飞行；
-  // 「确认」不再收起面板，因此确认后循环持续播放，仅手动取消可终止
+  // 区域降落面板关闭（取消/互斥切换）或航线失效（删除重绘/区域清除）时终止循环飞行
   useEffect(() => {
     if (!areaLandingOpen || !areaLandingRect || !areaLandingRouteGenerated) {
       stopAreaLandingFlights()
@@ -118,27 +114,20 @@ export function useFlightInteractions(
       setAreaLandingConfirmed(false)
     }
   }, [areaLandingOpen, areaLandingRect, areaLandingRouteGenerated, stopAreaLandingFlights, setAreaLandingConfirmed])
-  // 集结点面板关闭（取消/互斥切换）或航线失效（删除重绘/区域清除/重新生成）时终止循环飞行；
-  // 「确认」不再收起面板，因此确认后循环持续播放，仅手动取消可终止。
-  // 例外：切换到编队飞行面板（formationFlightOpen=true）时保留集结动画/区域/确认态——
-  // 集结落坪定格后续飞编队场景需要落坪末帧坐标与集结区域矩形延续显示（编队航线自
-  // 落坪位置起算，见 HomePage getFormationFlightGeometry）；编队面板收起或再切到
-  // 其他面板时 formationFlightOpen 亦为 false，仍按原逻辑终止并复位
+  // 集结点面板关闭（取消/互斥切换）或航线失效（删除重绘/区域清除/重新生成）时终止循环飞行
   useEffect(() => {
     if ((!rallyPointOpen && !formationFlightOpen) || !rallyPointRect || !rallyPointRouteGenerated) {
       stopRallyPointFlights()
       setRallyPointConfirmed(false)
     }
   }, [rallyPointOpen, formationFlightOpen, rallyPointRect, rallyPointRouteGenerated, stopRallyPointFlights, setRallyPointConfirmed])
-  // 编队飞行面板关闭（取消/互斥切换）或航线失效时终止循环飞行；「确认」不收起面板，
-  // 因此确认后循环持续播放，仅手动取消面板才终止
+  // 编队飞行面板关闭（取消/互斥切换）或航线失效时终止循环飞行
   useEffect(() => {
     if (!formationFlightOpen || !formationFlightRouteGenerated) {
       stopFormationFlightFlights()
     }
   }, [formationFlightOpen, formationFlightRouteGenerated, stopFormationFlightFlights])
-  // 环绕飞行面板关闭（取消/互斥切换）或航线失效（重新取点/取消重绘）时终止盘旋飞行；
-  // 「确认」不再收起面板，因此确认后盘旋持续播放，仅手动取消可终止
+  // 环绕飞行面板关闭（取消/互斥切换）或航线失效（重新取点/取消重绘）时终止盘旋飞行
   useEffect(() => {
     if (!orbitFlightOpen || !orbitPoint || !orbitRouteGenerated) {
       stopOrbitFlight()
@@ -147,10 +136,7 @@ export function useFlightInteractions(
     }
   }, [orbitFlightOpen, orbitPoint, orbitRouteGenerated, stopOrbitFlight, setOrbitFlightConfirmed])
 
-  // 指点返航取点：面板打开期间点击地图（.map-base 容器内）即取点——document capture 阶段监听，
-  // 面板/底栏/顶栏等 UI 上的点击因不在地图容器内而被忽略；再次点击覆盖上一次落点；
-  // 右键两阶段取消：取点阶段（未定格）右键等效「取消」收起面板，落点定格后右键
-  // 清除落点并恢复取点光标，可继续重新标点
+  // 指点返航取点：面板打开期间点击地图（.map-base 容器内）即取点——document capture 阶段监听
   useEffect(() => {
     if (!tapReturnOpen) return
     const handleMapClick = (e: MouseEvent) => {
@@ -166,8 +152,7 @@ export function useFlightInteractions(
       // 新落点未确认：重置确认标记，按钮条随之显示
       setTapReturnPointConfirmed(false)
     }
-    // mousemove 实时更新图钉跟随点（鼠标在地图内时跟随、移到 UI 上时清除），
-    // 以 DOM 图钉替代原生取点光标（54×54 切图超 32×32 光标上限会回退成十字准线）
+    // mousemove 实时更新图钉跟随点（鼠标在地图内时跟随、移到 UI 上时清除）
     const handleMouseMove = (e: MouseEvent) => {
       if (!adapter) return
       const container = adapter.getContainer()
@@ -177,11 +162,7 @@ export function useFlightInteractions(
       }
       setTapReturnHover({ x: e.clientX, y: e.clientY })
     }
-    // 右键取消（两阶段，仅在地图上生效，点击 UI 不取消，均阻止默认右键菜单）：
-    // - 取点阶段（尚未定格落点，图钉跟随鼠标）：右键等效面板「取消」按钮——
-    //   终止循环飞行动画、清除落点/确认标记并收起面板（与 onCancel 动作一致）；
-    // - 落点定格后：右键清除落点（含已生成航线/循环飞行一并终止），光标恢复
-    //   取点跟随图钉，可继续点选新落点；面板保持打开
+    // 右键取消（两阶段，仅在地图上生效，点击 UI 不取消，均阻止默认右键菜单）：- 取点阶段（尚未定格落点，图钉跟随鼠标）：右键等效面板「取消」按钮——终止循环飞行动画
     const handleTapReturnContextMenu = (e: MouseEvent) => {
       if (!adapter) return
       const container = adapter.getContainer()
@@ -210,11 +191,7 @@ export function useFlightInteractions(
     }
   }, [tapReturnOpen, tapReturnPoint, adapter, stopTapReturnFlight, setTapReturnPoint, setTapReturnPointConfirmed, setTapReturnHover, setTapReturnConfirmed, setTapReturnOpen])
 
-  // 环绕飞行取点：面板打开期间鼠标在地图容器内移动时图钉实时跟随（钉尖对准鼠标，
-  // 替代原生光标），鼠标移到面板/UI 上时隐藏跟随图钉；左键点击地图定格环绕中心
-  // （携带经纬度回填面板坐标输入框，再次点击可重新取点），点击 UI（面板/底栏）不取点；
-  // 右键两阶段取消：取点阶段（未定格）右键等效「取消」收起面板（按钮弹回），
-  // 中心定格后右键等效「取消重绘」——清除中心与航线恢复取点，面板保持打开
+  // 环绕飞行取点：面板打开期间鼠标在地图容器内移动时图钉实时跟随（钉尖对准鼠标，替代原生光标），鼠标移到面板/UI 上时隐藏跟随图钉
   useEffect(() => {
     if (!orbitFlightOpen) return
     const handleOrbitMouseMove = (e: MouseEvent) => {
@@ -239,11 +216,7 @@ export function useFlightInteractions(
       setOrbitPinMenuOpen(false)
       setOrbitPoint({ x: e.clientX, y: e.clientY, lat: ll.lat, lng: ll.lng })
     }
-    // 右键取消（两阶段，仅在地图上生效，点击 UI 不取消，均阻止默认右键菜单）：
-    // - 取点阶段（尚未定格环绕中心）：右键等效面板「取消」按钮——清除环绕中心与
-    //   航线标记并收起面板（按钮随之弹回，与 onCancel 动作一致）；
-    // - 中心定格后：右键等效图钉菜单「取消重绘」——清除环绕中心与实线航线，
-    //   光标恢复取点跟随图钉，可继续标记新中心；面板保持打开
+    // - 取点阶段（尚未定格环绕中心）：右键等效面板「取消」按钮——清…
     const handleOrbitContextMenu = (e: MouseEvent) => {
       if (!adapter) return
       const container = adapter.getContainer()
@@ -265,11 +238,7 @@ export function useFlightInteractions(
     }
   }, [orbitFlightOpen, orbitPoint, adapter, setOrbitFlightHover, setOrbitPoint, setOrbitRouteGenerated, setOrbitPinMenuOpen, setOrbitFlightOpen])
 
-  // 编队飞行取点：面板打开且尚未定格航点期间，鼠标在地图容器内移动时图钉实时跟随
-  // （钉尖对准鼠标，替代原生光标）；左键点击地图定格航点（携带经纬度回填面板坐标
-  // 输入框）后光标恢复正常样式并停止跟随（再次左键点击可重新取点）；右键两阶段
-  // 取消：取点阶段（未定格）右键等效「取消」收起面板（按钮弹回），航点定格后
-  // 右键清除标记恢复取点（面板保持打开）；点击 UI（面板/底栏）不取点也不取消
+  // 编队飞行取点：面板打开且尚未定格航点期间，鼠标在地图容器内移动时图钉实时跟随（钉尖对准鼠标，替代原生光标）
   useEffect(() => {
     if (!formationFlightOpen) return
     const handleFormationMouseMove = (e: MouseEvent) => {
@@ -291,11 +260,7 @@ export function useFlightInteractions(
       const ll = adapter.unproject({ x: e.clientX - bounds.left, y: e.clientY - bounds.top })
       setFormationFlightPoint({ x: e.clientX, y: e.clientY, lat: ll.lat, lng: ll.lng })
     }
-    // 右键取消（两阶段，仅在地图上生效，点击 UI 不取消，均阻止默认右键菜单）：
-    // - 取点阶段（尚未定格航点）：右键等效面板「取消」按钮——收起面板（按钮随之
-    //   弹回；终止循环动画与清除取点状态由面板关闭 effect 统一处理，与 onCancel 一致）；
-    // - 航点定格后：右键清除定格标记（面板保持打开、编队飞行按钮仍为点击态），
-    //   光标随即恢复标记态继续取点
+    // - 取点阶段（尚未定格航点）：右键等效面板「取消」按钮——收起面…
     const handleFormationContextMenu = (e: MouseEvent) => {
       if (!adapter) return
       const container = adapter.getContainer()
@@ -330,17 +295,13 @@ export function useFlightInteractions(
     }
   }, [formationFlightOpen, setFormationFlightHover, setFormationFlightPoint, setFormationFlightRouteGenerated, setFormationFlightConfirmed])
 
-  // 盘旋圆随缩放重算：缩放结束后 getMetersPerPixel 变化，tick 触发重渲染重算像素半径
+  // 盘旋圆随缩放重算：缩放结束后 getMetersPerPixel 变化
   useEffect(() => {
     if (!adapter || !orbitFlightOpen) return
     return adapter.onZoomEnd(() => setOrbitZoomTick((t) => t + 1))
   }, [adapter, orbitFlightOpen, setOrbitZoomTick])
 
-  // 航点飞行取点：点击「航线生成」进入取点模式后，鼠标在地图容器内移动时图钉
-  // 实时跟随 + 选中飞机到鼠标的绿色虚线（鼠标移到设备面板/底栏/航点飞行面板等
-  // UI 上时隐藏图钉与虚线，移回态势区域后恢复——与指点返航/环绕一致）；
-  // 左键点击地图定格航点（虚线变实线）并结束本轮取点，后续操作（确认/取消）继续；
-  // 点击 UI（面板/底栏）不取点——capture 阶段监听，同指点返航
+  // 航点飞行取点：点击「航线生成」进入取点模式后，鼠标在地图容器内移动时图钉实时跟随 + 选中飞机到鼠标的绿色虚线…
   useEffect(() => {
     if (!waypointFlightOpen || !waypointPickingActive || waypointPoint) return
     const toLngLat = (clientX: number, clientY: number) => {
@@ -354,9 +315,7 @@ export function useFlightInteractions(
     const handleMouseMove = (e: MouseEvent) => {
       if (!adapter) return
       const container = adapter.getContainer()
-      // 鼠标移出地图（设备面板/底栏/航点飞行面板等 UI）：清除跟随点——图钉与
-      // 实时虚线随之隐藏，移回态势区域后恢复跟随（UI 上原生光标本就为系统默认，
-      // 不在 .waypoint-picking 的 cursor:none 作用范围）
+      // 鼠标移出地图（设备面板/底栏/航点飞行面板等 UI）：清除跟随点——图钉与实时虚线随之隐藏
       if (!container || !(e.target instanceof Node) || !container.contains(e.target)) {
         setWaypointHover(null)
         return
@@ -373,8 +332,7 @@ export function useFlightInteractions(
       if (!ll) return
       setWaypointPoint({ x: e.clientX, y: e.clientY, lat: ll.lat, lng: ll.lng })
     }
-    // 右键取消：取点阶段（尚未定格航点）右键点击关闭面板（等价「取消」）并阻止默认右键菜单；
-    // 定格航点后监听已解除，右键不再取消，只能通过面板「取消」按钮关闭
+    // 右键取消：取点阶段（尚未定格航点）右键点击关闭面板（等价「取消」）并阻止默认右键菜单
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault()
       setWaypointFlightOpen(false)
@@ -389,8 +347,7 @@ export function useFlightInteractions(
     }
   }, [waypointFlightOpen, waypointPickingActive, waypointPoint, adapter, setWaypointFlightOpen, setWaypointHover, setWaypointPoint])
 
-  // 航点飞行面板关闭（取消/确认/互斥切换）时：清除跟随点、定格航点与取点模式，
-  // 图钉与连线随状态清除消失
+  // 航点飞行面板关闭（取消/确认/互斥切换）时：清除跟随点、定格航点与取点模式，图钉与连线随状态清除消失
   useEffect(() => {
     if (!waypointFlightOpen) {
       stopWaypointFlight()
@@ -403,11 +360,7 @@ export function useFlightInteractions(
     }
   }, [waypointFlightOpen, stopWaypointFlight, setWaypointHover, setWaypointPoint, setWaypointRouteGenerated, setWaypointPickingActive, setWaypointFlightConfirmed])
 
-  // 航线飞行取点：点击「航线生成」进入取点模式后，左键点击地图逐点追加编号航点，
-  // 鼠标与最新航点间保持虚线连线（鼠标移到设备面板/底栏/航线飞行面板等 UI 上时
-  // 隐藏取点图钉与跟随虚线，移回态势区域后恢复——与航点飞行一致，已定格航点
-  // 与航线保持显示）；右键/Esc 结束取点（已有航点则保持虚线航线，
-  // 解除「确认」置灰）；点击 UI（面板/底栏）不取点——同航点飞行
+  // 航线飞行取点：点击「航线生成」进入取点模式后，左键点击地图逐点追加编号航点
   useEffect(() => {
     if (!routeFlightOpen || !routeFlightPicking) return
     const toLngLat = (clientX: number, clientY: number) => {
@@ -424,8 +377,7 @@ export function useFlightInteractions(
       return !!container && e.target instanceof Node && container.contains(e.target)
     }
     const handleMouseMove = (e: MouseEvent) => {
-      // 鼠标移出地图（设备面板/底栏/航线飞行面板等 UI）：清除跟随点——取点图钉
-      // 与鼠标跟随虚线随之隐藏（已定格航点与航线保持显示），移回态势区域后恢复
+      // 鼠标移出地图（设备面板/底栏/航线飞行面板等 UI）：清除跟随点——取点图钉与鼠标跟随虚线随之隐藏（已定格航点与航线保持显示）
       if (!inMap(e)) {
         setRouteFlightHover(null)
         return
@@ -481,8 +433,7 @@ export function useFlightInteractions(
     }
   }, [routeFlightOpen, stopRouteFlightAnimation, setRouteFlightPicking, setRouteFlightPoints, setRouteFlightHover, setRouteFlightFinished, setRouteFlightGenerated, setRoutePinMenu, setRoutePinPinned, setRouteFlightConfirmed])
 
-  // 删除航线航点：移除对应下标的航点，剩余航点自动重连成新航线（图钉序号随之重排）；
-  // 同时收起删除菜单（航点下标即将失效）
+  // 删除航线航点：移除对应下标的航点，剩余航点自动重连成新航线（图钉序号随之重排）
   const handleDeleteRoutePoint = (index: number) => {
     // 航点删除导致航线变化：终止进行中的循环飞行（动画点位即将与航线错位）
     stopRouteFlightAnimation()
@@ -509,8 +460,7 @@ export function useFlightInteractions(
     }
   }, [routeFlightPicking, setRoutePinMenu, setRoutePinPinned])
 
-  // 落点变化/清除（重新取点、取消/重开面板）时：清除旧连线并复位「确认」置灰，
-  // 需再次点击「航线生成」重画
+  // 落点变化/清除（重新取点、取消/重开面板）时：清除旧连线并复位「确认」置灰，需再次点击「航线生成」重画
   useEffect(() => {
     setTapReturnRouteReady(false)
     setTapReturnLine(null)

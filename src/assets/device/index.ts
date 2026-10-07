@@ -1,3 +1,9 @@
+/**
+ * @file index.ts
+ * @description 设备管理模块图片资源统一出口
+ * @author 4everyy
+ * @date 2026-10-07
+ */
 import altitudeIcon from './altitude-icon.png'
 import batteryCharging from './battery-charging.png'
 import batteryFull from './battery-full.png'

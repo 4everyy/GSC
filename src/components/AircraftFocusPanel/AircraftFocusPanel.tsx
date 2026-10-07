@@ -1,19 +1,8 @@
 /**
- * AircraftFocusPanel —— 无人机聚焦视图面板。
- *
- * 双击首页无人机图标后触发，显示固定尺寸（229×569px）的设备详情面板，
- * 包含：设备名称+电池信号指示、视频画面、变焦控制、云台参数、设备详情。
- *
- * 设计稿还原（.box_10）：
- * - 顶部标题栏（group_5）：名称 + 电池 + 信号 + 关闭按钮
- * - 分隔线（group_6）
- * - 视频画面（image_3）：213×213
- * - 变焦控制（group_7）：左右切换框 + 下拉箭头
- * - 变焦倍数按钮组（group_8）：2x / 5x / 10x
- * - 分隔线（group_9）
- * - 云台参数（text_10 + group_10/11）
- * - 分隔线（group_12）
- * - 设备详情（text_17 + group_13/14/16）
+ * @file AircraftFocusPanel.tsx
+ * @description AircraftFocusPanel —— 无人机聚焦视图面板。
+ * @author 4everyy
+ * @date 2026-10-07
  */
 import { useState } from 'react'
 import { deviceImages, dronePreviewVideo } from '../../assets/device'
@@ -32,12 +21,7 @@ interface AircraftFocusPanelProps {
   onClose: () => void
   /** 是否可见（控制淡入/滑入动画） */
   visible?: boolean
-  /**
-   * 触发面板的无人机图标位置（百分比，相对 .map-stage）。
-   * 面板将出现在图标右侧，且图标正好卡在面板左边缘的垂直中心。
-   * - left = iconX% + 48px（图标宽度，面板紧贴图标右边缘，不遮挡图标）
-   * - top = iconY% + 24px - PANEL_HEIGHT/2（让面板垂直中心对齐图标中心）
-   */
+  /** 触发面板的无人机图标位置（百分比，相对 .map-stage）。 */
   aircraftPosition?: { x: number; y: number }
   /** 方向罗盘操作回调 */
   onDirection?: (direction: 'up' | 'down' | 'left' | 'right') => void
@@ -73,9 +57,7 @@ export function AircraftFocusPanel({
       }`}
       role="dialog"
       aria-label={`${name} 聚焦视图`}
-      // data-hover-panel 让 usePanelClamp 将本面板纳入边缘自适应平移兜底，
-      // 避免面板在 .map-stage（overflow:hidden）边缘被裁剪显示不全。
-      // 平移通过独立的 `translate` 属性注入，与下方 transform 滑入动画互不干扰。
+      // data-hover-panel 让 usePanelClamp 将本面板纳入边缘自适应平移兜底
       data-hover-panel
       style={
         aircraftPosition

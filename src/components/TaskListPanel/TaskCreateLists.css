@@ -1,0 +1,470 @@
+/* TaskCreateLists.css —— 从 TaskCreatePanel.css 抽离（任务创建面板）：任务区选择标题/工具栏/任务区列表/目标选择列表/底部操作区。
+   由样式入口 TaskCreatePanel.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* ====== 任务区选择标题行 ====== */
+.task-create__area-head {
+  display: flex;
+  align-items: center;
+  /* 承接 label 原 24px 上间距，保证该行与上方内容间距不变 */
+  margin-top: 24px;
+  gap: 7px;
+}
+
+/* 标题行内 label 不再自带 margin，与右侧图标真正同行垂直居中 */
+.task-create__area-head .task-create__label {
+  margin: 0;
+}
+
+/* 信息图标（image-wrapper_15：15x15 圆形问号 + 2x9 小竖条） */
+.task-create__info-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.task-create__info-icon > img:first-child {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.task-create__info-dot {
+  position: absolute;
+  left: 7px;
+  top: 3px;
+  width: 2px;
+  height: 9px;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ====== 任务区工具栏（全选 + 添加任务区） ====== */
+.task-create__area-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0 0;
+  flex-shrink: 0;
+}
+
+/* 单选模式工具栏（任务类型=区域巡检·任务区单选）：无全选按钮，「添加任务区」右对齐 */
+.task-create__area-toolbar--single {
+  justify-content: flex-end;
+}
+
+.task-create__select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* 左内边距 4px：复选框与任务区行内复选框（距行左缘 4px）竖向对齐 */
+  padding: 6px 0 6px 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
+  line-height: 1;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.task-create__select-all img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 添加任务区按钮：设计稿 group_33 —— 128x32、2px 圆角、浅蓝底+蓝边 */
+.task-create__add-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 128px;
+  height: 32px;
+  padding: 0;
+  box-sizing: border-box;
+  background-color: rgba(75, 188, 249, 0.1);
+  border: 1px solid rgba(14, 167, 249, 1);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.task-create__add-area:hover {
+  background-color: rgba(75, 188, 249, 0.28);
+}
+
+/* 内容区 image-text_9：宽 94px、左距 17px，图标 20x20 与文字两端对齐 */
+.task-create__add-area-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 94px;
+}
+
+.task-create__add-area img {
+  display: block;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.task-create__add-area-inner span {
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+  color: #fff;
+}
+/* ====== 任务区列表（group_34/37：行首图标块 + 序号 + 三列信息） ====== */
+/* 行：flex-row 精确 margin 复刻设计稿，行宽 100% = 内容区宽 */
+.task-create__area-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 40px;
+}
+
+
+.task-create__area-header .task-create__area-col,
+.task-create__area-item .task-create__area-col {
+  font-size: 14px;
+  line-height: 19px;
+  white-space: nowrap;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 任务区行（40px 高，点击整行切换勾选） */
+.task-create__area-item {
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  /* 行样式：宽度 100%、白 16% 底、无圆角 */
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 0;
+  cursor: pointer;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  text-align: left;
+  transition: background-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.task-create__area-item:hover {
+  background-color: rgba(255, 255, 255, 0.24);
+}
+
+/* 序号列：复选框距行容器左缘 4px（设计稿标注）+ 序号文字（间距 8px） */
+.task-create__area-col--index {
+  display: flex;
+  align-items: center;
+  margin-left: 4px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.task-create__area-index-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+  background-color: rgba(75, 163, 228, 1);
+  border-radius: 2px;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 行内复选框：两态切图（checkbox-checked / checkbox-unchecked），16x16 */
+.task-create__area-checkbox {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 2px;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 选中态：蓝底 + 白色对勾（对勾切图为透明底，蓝底由此处提供，与设计稿行首图标一致） */
+.task-create__area-checkbox--checked {
+  background-color: rgba(75, 163, 228, 1);
+}
+
+/* 行内单选框（任务类型=区域巡检·任务区单选）16x16 圆形，纯 CSS 绘制（切图资源无单选框），配色与复选框选中蓝一致 */
+.task-create__area-radio {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: transparent;
+  transition: border-color 0.15s ease;
+}
+
+/* 选中态：蓝色描边 + 中心 8px 蓝色实心圆点（内沿 14px，上下左右各留 3px） */
+.task-create__area-radio--checked {
+  border-color: rgba(75, 163, 228, 1);
+}
+
+.task-create__area-radio--checked::before {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 8px;
+  margin: 3px;
+  border-radius: 50%;
+  background-color: rgba(75, 163, 228, 1);
+}
+/* 全选框三态容器（通用规范：部分选中 indeterminate = 蓝底 + 白色横线） */
+.task-create__tri-state {
+  position: relative;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.task-create__tri-state img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 部分选中：隐藏底图，绘制蓝底 + 居中白色横线 */
+.task-create__tri-state--indeterminate img {
+  visibility: hidden;
+}
+
+.task-create__tri-state--indeterminate::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background-color: rgba(75, 163, 228, 1);
+}
+
+.task-create__tri-state--indeterminate::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 1px;
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* 名称/类型/面积列：固定 56px 宽 + 设计稿列间距（49/71/70px） */
+.task-create__area-col--name {
+  margin-left: 49px;
+  width: 56px;
+  flex-shrink: 0;
+}
+
+.task-create__area-col--type {
+  margin-left: 71px;
+  width: 56px;
+  flex-shrink: 0;
+}
+
+.task-create__area-col--area {
+  margin-left: 70px;
+  width: 56px;
+  flex-shrink: 0;
+}
+
+/* 序号列固定，其余三列平分序号列（单选框 + 序号）间距保持不变：margin-left 4px +… */
+.task-create__area-list--single .task-create__area-item {
+  padding-right: 8px;
+}
+
+.task-create__area-list--single .task-create__area-col--name {
+  margin-left: 16px;
+  width: auto;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.task-create__area-list--single .task-create__area-col--type {
+  margin-left: 12px;
+  width: auto;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.task-create__area-list--single .task-create__area-col--area {
+  margin-left: 12px;
+  width: auto;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* ====== 目标选择列表（任务类型=目标打击时替换任务区列表） ====== */
+/* 目标编号列：与任务区名称列同宽/同间距（距序号列 49px、宽 56px） */
+.task-create__area-col--code {
+  margin-left: 49px;
+  width: 56px;
+  flex-shrink: 0;
+}
+
+/* 目标行右侧图标（设计稿 thumbnail_23：12x18，距目标类型列 97px） */
+.task-create__target-icon {
+  width: 12px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+  margin-left: 97px;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 任务区列表：最多完整展示 4 行 —— max-height = 4×(40px 行高 + 4px 行距) = 176px，超出出竖向滚动条 */
+.task-create__area-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  width: 100%;
+  max-height: 176px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* 细滚动条（Firefox） */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
+}
+
+/* 细滚动条（Chromium/Safari）：4px 宽白色半透明圆角滑块，贴合面板深色风格 */
+.task-create__area-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.task-create__area-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+}
+
+.task-create__area-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 空列表占位（区域巡检：区域列表接口无 TeamReconnaissance 类型数据 / 目标打击：暂无目标） */
+.task-create__area-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
+/* ====== 底部操作区（group_36：渐变底 + 双按钮） ====== */
+.task-create__footer {
+  position: relative; /* 锚定顶部分割线伪元素 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  /* 底部按钮区固定 64px 高，随面板 flex 布局贴底 */
+  height: 64px;
+  flex-shrink: 0;
+  /* 底栏文字（按钮）统一：14px MiSans 330 白色 */
+  color: #fff;
+  font-size: 14px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+    /* 底栏水平+底部出血：背景渐变与顶部分割线直抵面板左右边框内缘（与标题行一致） */
+  margin: 0 calc(-1 * clamp(8px, 0.83vw, 16px)) calc(-1 * clamp(10px, 0.83vw, 16px));
+  /* 底栏内容（按钮组）距面板左右边框内缘 16px，双按钮居中排布 */
+  padding: 0 16px;
+  box-sizing: border-box;
+  /* 底部按钮区整体背景：白色 30% 自底部向上渐隐（设计稿 group_36） */
+  background: linear-gradient(360deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+/* 按钮区顶部分割线（设计稿 group_35：中间亮两侧淡的渐隐线） */
+.task-create__footer::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  border-radius: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.2) 0.17%,
+    rgba(255, 255, 255, 0.8) 50%,
+    rgba(255, 255, 255, 0.2) 100%
+  );
+}
+
+.task-create__btn {
+  height: 32px;
+  width: 120px;
+  padding: 0;
+  border-radius: 2px 2px 2px 2px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
+  font-style: normal;
+  text-transform: none;
+  text-align: center;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: filter 0.15s ease, background-color 0.15s ease;
+}
+
+/* 一键创建：实心蓝（text-wrapper_7） */
+.task-create__btn--primary {
+  background: #0ea7f9;
+  border: none;
+  color: #ffffff;
+}
+
+.task-create__btn--primary:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 0 10px 2px rgba(14, 167, 249, 0.4);
+}
+
+.task-create__btn--primary:active {
+  filter: brightness(0.95);
+}
+
+/* 专业模式：蓝描边半透明底（text-wrapper_8） */
+.task-create__btn--outline {
+  background: rgba(75, 188, 249, 0.1);
+  border: 1px solid #0ea7f9;
+  color: #ffffff;
+  text-align: center;
+}
+
+.task-create__btn--outline:hover {
+  background-color: rgba(75, 188, 249, 0.28);
+}
+
+.task-create__btn--outline:active {
+  background-color: rgba(75, 188, 249, 0.4);
+}

@@ -1,32 +1,16 @@
+/**
+ * @file LoginPage.tsx
+ * @description 登录页（仅账号密码登录，Canvas 科技感背景）
+ * @author 4everyy
+ * @date 2026-10-07
+ */
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react'
 import { loginWithCredentials, DEFAULT_CREDENTIALS } from '../../api/index'
 import './LoginPage.css'
 import { IconDrone, IconUser, IconLock, IconEye, IconEyeOff, IconCheck, HexDecor, DroneUnit, RoboDogUnit } from '../../components/login/icons'
 import { useLoginCanvas, prefersReducedMotion } from '../../hooks/useLoginCanvas'
 
-/**
- * LoginPage —— 登录页「终极科技版」（仅账号密码登录，无注册 / 忘记密码入口）。
- *
- * - 登录走 loginWithCredentials()：用户名原样上送，密码字段固定传值（见 api/auth.ts）；
- * - 每次刷新页面：用户名/密码固定填充初始值，且「记住用户名」「记住密码」默认勾选
- *   （2026-09-18 约定，见 credentials.ts / api/auth.ts）；
- * - 视觉：深海军蓝 + 青色 HUD 科技风。动效清单：
- *   Canvas：星链粒子（鼠标排斥/连线/拖尾）、闪烁星空（十字光芒）、底部全息波浪地形、
- *           中心 3D 线框星球（经纬网 + 双卫星轨道，登录成功粒子向球心汇聚）；
- *   DOM/CSS：透视网格、流星、扫描线、六边形、能量光柱、流动刻度、HUD 四角角标、
- *           顶部状态灯 + 实时时钟、鼠标准星（延迟跟随）、刻度罗盘环、双侧电路走线流光、
- *           卡片 3D 视差 + 镜面高光 + conic 流光描边 + HUD 角标 + 入场扫描、
- *           打字机标题 + glitch 残影、输入框浮动标签 + 聚焦光线、按钮充能条 + 掠光、
- *           登录成功全屏冲击波 + 卡片扩散徽标、
- *           无人集群装饰层（四旋翼无人机巡航 + 探照扫描 + 机械狗巡逻，见 LoginDrones.css）。
- *   页面无多余文案（无英文装饰文本）：仅标题 / 输入框 / 两个记住选项 / 登录按钮。
- *
- * 性能（2026-09-18 卡顿优化）：
- * - 登录成功（phase=success）立即给根节点加 `login-page--success` 类冻结全部背景装饰动画，
- *   Canvas 同步停帧（见 useLoginCanvas），主线程让给切换动画与主应用挂载；
- * - 卡片 3D 视差：mouseenter 缓存 rect，mousemove 复用，避免逐次强制布局；
- * - 鼠标准星：lerp 收敛后暂停 rAF，pointermove 再唤醒，静止时不占帧。
- */
+/** LoginPage —— 登录页「终极科技版」（仅账号密码登录，无注册 / 忘记密码入口）。 */
 
 /* ---------- 「记住用户名和密码」持久化 ---------- */
 
@@ -74,7 +58,7 @@ export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
   const typed = TITLE.slice(0, typedCount)
   const typingDone = typedCount >= TITLE.length
 
-  /* ====== 背景主 Canvas：星空 / 星链 / 波浪地形 / 3D 线框星球（实现见 useLoginCanvas） ====== */
+  /* 背景主 Canvas：星空 / 星链 / 波浪地形 / 3D 线框星球… */
   const canvasRef = useLoginCanvas(phaseRef)
 
   /* ====== 打字机标题：逐字显示 + 光标，完成后光标淡出 ====== */
@@ -172,8 +156,7 @@ export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
     }
   }, [])
 
-  /* 卡片 3D 视差：随鼠标轻微倾斜 + 镜面高光跟随（写 CSS 变量，避免逐帧 setState）。
-   * 性能：mouseenter 时缓存 rect，mousemove 直接复用（避免每次移动强制布局计算） */
+  /* 卡片 3D 视差：随鼠标轻微倾斜 + 镜面高光跟随（写 CSS 变量，避免逐帧 setState）。 */
   const tiltRectRef = useRef<DOMRect | null>(null)
   const cacheTiltRect = () => {
     tiltRectRef.current = tiltRef.current ? tiltRef.current.getBoundingClientRect() : null
@@ -520,10 +503,7 @@ export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
   )
 }
 
-/*
- * credentials.ts —— 「记住密码」凭据的本地存取与编解码。
- * 自 LoginPage.tsx 按功能拆分：逻辑未改动，仅移动位置。
- */
+/* credentials.ts —— 「记住密码」凭据的本地存取与编解码。 */
 
 
 export const REMEMBER_KEY = 'gsc_remember_credentials'
@@ -541,11 +521,7 @@ export function decodeText(s: string): string {
   }
 }
 
-/**
- * 计算登录页初始值（2026-09-18 约定）：
- * 每次刷新页面，用户名/密码均固定填充初始值（DEFAULT_CREDENTIALS），
- * 且「记住用户名」「记住密码」默认勾选；不读取本地保存的记录。
- */
+/** 每次刷新页面，用户名/密码均固定填充初始值（DEFAULT_CREDENTIALS），且… */
 export function computeInitialCredentials(): {
   username: string
   password: string

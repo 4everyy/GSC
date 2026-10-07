@@ -1,9 +1,6 @@
 /// <reference types="vite/client" />
 
-/**
- * Vite 环境变量类型扩展。
- * 在 .env 文件中配置的 VITE_ 前缀变量会在此声明，便于在代码中获得类型提示。
- */
+/** Vite 环境变量类型扩展。 */
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }

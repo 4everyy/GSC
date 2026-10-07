@@ -1,0 +1,154 @@
+/* VideoMonitorChrome.css —— 从 VideoMonitorPage.css 抽离（视频监测屏）：顶栏/主体框架。
+   由样式入口 VideoMonitorPage.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* 视频监测屏样式（1920×1080 设计稿按视窗等比缩放还原）。 */
+
+.vm-page {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #15181c;
+  color: #fff;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-weight: 330;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+
+/* ---------------- 顶栏 ---------------- */
+
+.vm-topbar {
+  position: relative;
+  height: 80px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: linear-gradient(90deg, #0a0a0a 0%, rgba(10, 10, 10, 0) 100%);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  z-index: 10;
+}
+
+.vm-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.vm-title {
+  margin: 0;
+  color: #fff;
+  font-size: 24px;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-weight: 520;
+  word-wrap: break-word;
+}
+
+/* 顶栏中部组：视图切换（四宫格 / 平铺）+ 其右侧 24px 的 48×48 锁定框 */
+
+.vm-topbar-center {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.vm-view-switch {
+  display: flex;
+}
+
+.vm-view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 160px;
+  height: 48px;
+  font-size: 18px;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.vm-view-btn:first-child {
+  border-radius: 6px 0 0 6px;
+  margin-right: -1px;
+}
+
+.vm-view-btn:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.vm-view-btn svg {
+  width: 32px;
+  height: 32px;
+}
+
+.vm-view-btn--active-true {
+  background: #fff;
+  color: #01040d;
+  border-color: #fff;
+}
+
+.vm-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+}
+
+.vm-online-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+}
+
+.vm-clock {
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* ---------------- 主体 ---------------- */
+
+.vm-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 40px 30px 20px 30px;
+  gap: 0;
+  position: relative;
+}
+
+.vm-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 40px;
+}
+
+.vm-main--grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.vm-main--tiled {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, calc((100% - 80px) / 3));
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
+}
+

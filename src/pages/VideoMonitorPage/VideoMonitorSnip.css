@@ -1,0 +1,159 @@
+/* VideoMonitorSnip.css —— 区域截图（工具列第 3 个按钮）：框选浮层/选框/尺寸标注/白闪/toast。
+   由样式入口 VideoMonitorPage.css 保序 @import。 */
+
+/* 截图模式激活态：工具按钮青色高亮提示 */
+.vm-tool--active {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(30, 218, 223, 0.8));
+}
+
+.vm-tool--active .vm-tool-icon {
+  filter: drop-shadow(0 0 4px rgba(30, 218, 223, 0.9));
+}
+
+/* 截图框选浮层：铺满画面接收指针事件（crosshair 十字光标） */
+.vm-snip-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 操作提示：浮层顶部居中 */
+.vm-snip-hint {
+  position: absolute;
+  top: 46px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.6);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-weight: 330;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 选区框：青色描边 + 轻微填充；超大 box-shadow 向四周压暗聚焦选区 */
+.vm-snip-box {
+  position: absolute;
+  border: 1px solid #1edadf;
+  background: rgba(30, 218, 223, 0.06);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 四角标记：青色 L 形强调（对齐系统主题色） */
+.vm-snip-corner {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #1edadf;
+  pointer-events: none;
+}
+
+.vm-snip-corner--tl {
+  left: -1px;
+  top: -1px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.vm-snip-corner--tr {
+  right: -1px;
+  top: -1px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.vm-snip-corner--bl {
+  left: -1px;
+  bottom: -1px;
+  border-right: none;
+  border-top: none;
+}
+
+.vm-snip-corner--br {
+  right: -1px;
+  bottom: -1px;
+  border-left: none;
+  border-top: none;
+}
+
+/* 选区尺寸标注：选框右下方黑底白字小标签 */
+.vm-snip-size {
+  position: absolute;
+  right: 0;
+  bottom: -24px;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 2px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* 截图成功白闪：快门效果（380ms 自动消失） */
+.vm-snip-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  background: #fff;
+  animation: vm-snip-flash 0.38s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes vm-snip-flash {
+  0% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* 截图结果提示 toast：画面底部居中浮现，2.6s 自动消失 */
+.vm-snip-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  z-index: 8;
+  max-width: 80%;
+  padding: 6px 14px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(30, 218, 223, 0.4);
+  border-radius: 2px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-weight: 330;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: vm-snip-toast-in 0.2s ease-out;
+}
+
+@keyframes vm-snip-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

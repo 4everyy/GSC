@@ -1,0 +1,474 @@
+/* FlightAreaDraw.css —— 从 FlightPanels.css 抽离（首页飞行面板）：区域降落框选交互/已确认范围/六边形绘制/类型选择/编辑态。
+   由样式入口 FlightPanels.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* ===== 区域降落框选交互模式（框选生成） ===== */
+/* 全屏拦截层：fixed 定位直接使用视口坐标（clientX/clientY），高 z-index 盖住全部界面 */
+/* ===== 已确认的区域降落范围 ===== */
+/* 半透明紫色填充（设计稿 background: rgba(113,96,242,0.3)）+ border-radius 0（直角） */
+.area-landing-confirmed {
+  position: fixed;
+  z-index: 1500;
+  background: rgba(113, 96, 242, 0.3);
+  border-radius: 0;
+  pointer-events: none;
+}
+
+/* 100×100、圆形项圈 rgba(113,96,242,0.1) 填充+ 8… */
+.area-landing-confirmed__badge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  background-color: rgba(113, 96, 242, 0.1);
+  border: 8px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* 徽章内降落坪图标（设计稿 image_3）：44×52，flex 居中 */
+.area-landing-confirmed__icon {
+  width: 44px;
+  height: 52px;
+  flex: none;
+  pointer-events: none;
+}
+
+/* 78×32、半透明蓝底 rgba(75,188,2… */
+.area-landing-confirmed__delete-btn {
+  position: absolute;
+  /* 移出绘制区域：位于区域左上外侧，右缘与区域左缘留 8px 间隙 */
+  right: calc(100% + 8px);
+  top: 0;
+  width: 78px;
+  height: 32px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(75, 188, 249, 0.4);
+  border: 1px solid rgba(75, 188, 249, 1);
+  border-radius: 4px;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans-Regular', sans-serif;
+  line-height: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.area-select-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background-color: transparent;
+}
+
+/* replaces… */
+.area-select-cursor {
+  position: fixed;
+  width: 54px;
+  height: 54px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 框选虚线框：2px 紫色虚线（#7160F2）、无圆角 */
+.area-select-frame {
+  position: absolute;
+  border: 2px dashed #7160f2;
+  border-radius: 0;
+  box-sizing: border-box;
+  background-color: transparent;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+/* 确认/取消按钮条：121x32、4px 圆角、半透明蓝底 + 1px 蓝描边 + 阴影（设计稿 box_29） */
+.area-select-confirm-bar {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  width: 121px;
+  height: 32px;
+  box-sizing: border-box;
+  background-color: rgba(75, 188, 249, 0.4);
+  border: 1px solid rgba(75, 188, 249, 1);
+  border-radius: 4px;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  user-select: none;
+}
+
+/* 文本标签（text_7/text_8）：14px MiSans、上边距 7px 对齐文字基准 */
+.area-select-confirm-bar__label {
+  flex: none;
+  margin: 7px 0 0 16px;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans-Regular', sans-serif;
+  line-height: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 取消标签：右侧同样保留 16px 间隙 */
+.area-select-confirm-bar__label--cancel {
+  margin-right: 16px;
+}
+
+/* 中间 1px 竖分隔线（group_10） */
+.area-select-confirm-bar__divider {
+  flex: none;
+  width: 1px;
+  height: 31px;
+  margin-left: 16px;
+  background-color: rgba(75, 188, 249, 1);
+}
+
+/* 区域列表「添加区域」六边形绘制遮罩（area-list 专用）与 .area-select-overlay 同层… */
+.hexagon-area-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background-color: transparent;
+}
+
+/* 全幅 SVG 画布：蒙版/六边形/顶点节点均绘制其上 */
+.hexagon-area-overlay__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* 框选模式全程隐藏原生光标（选区定格后也保持标记光标跟随）：遮罩内的「确认/取消」标签覆盖为 cursor:none，避免悬停时露出系统箭头 */
+
+/* ============ 指点返航取点模式 ============ */
+/* 面板打开期间地图区域显示自定义取点光标（复用区域降落取点光标切图，热点 27 27 居中） */
+/* 六边形绘制定格后右下顶点信息卡：经纬度 + 面积（设计稿：12px MiSans 330 白色） */
+.hexagon-area-overlay__info {
+  position: absolute;
+  color: #fff;
+  font-size: 12px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+  line-height: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ===== 六边形绘制定格后「选择区域类型」面板（设计稿 228×167 毛玻璃卡片） ===== */
+.hexagon-area-type-panel {
+  position: absolute;
+  width: 228px;
+  height: 167px;
+  box-sizing: border-box;
+  background: rgba(75, 188, 249, 0.4);
+  border: 1px solid #4bbcf9;
+  border-radius: 4px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: auto;
+  user-select: none;
+  z-index: 2;
+}
+
+/* 标题「选择区域类型」：14px MiSans 520 白色 */
+.hexagon-area-type-panel__title {
+  position: absolute;
+  left: 16px;
+  top: 10px;
+  color: #fff;
+  font-size: 14px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 520;
+  word-wrap: break-word;
+  line-height: 14px;
+}
+
+/* 类型单选项：flex 行布局，单选图标/色块/标签沿同一垂直中轴自动居中对齐 */
+.hexagon-area-type-panel__option {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  height: 20px;
+  cursor: pointer;
+}
+
+/* 单选指示（off 态）：半透明白底圆 + 灰描边；选中态由 __radio--on + __radio-inner 呈现 */
+.hexagon-area-type-panel__radio {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid #bebebe;
+  border-radius: 9999px;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+/* 选中态外环：描边色由 TSX 内联注入（各类型主题色），底色提亮强调选中 */
+.hexagon-area-type-panel__radio--on {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 选中态内芯圆点：10×10 实心圆（颜色由 TSX 内联注入，与类型色块同色） */
+.hexagon-area-type-panel__radio-inner {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* 行 hover：未选中项外环提亮白描边提示可点（选中项保持类型色描边） */
+.hexagon-area-type-panel__option:hover
+  .hexagon-area-type-panel__radio:not(.hexagon-area-type-panel__radio--on) {
+  border-color: rgba(255, 255, 255, 0.85);
+}
+
+/* 隐藏原生单选框：仅承担受控语义与键盘可达性，视觉全部由自定义元素呈现 */
+.hexagon-area-type-panel__option input[type='radio'] {
+  position: absolute;
+  margin: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 键盘聚焦反馈：Tab 聚焦隐藏 input 时外环展示白色描边圈（:has 现代浏览器支持） */
+.hexagon-area-type-panel__option:has(input[type='radio']:focus-visible) .hexagon-area-type-panel__radio {
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 2px rgba(75, 188, 249, 0.45);
+}
+
+/* 类型色块：12×12、2px 圆角（距单选图标右 8px，行内垂直居中） */
+.hexagon-area-type-panel__swatch {
+  flex: none;
+  margin-left: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* 类型标签：14px MiSans 330 白色（色块右侧 4px，行内垂直居中） */
+.hexagon-area-type-panel__label {
+  flex: none;
+  margin-left: 4px;
+  color: #fff;
+  font-size: 14px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* 底部按钮条：左右 16px 边距、按钮间 16px 间距（16+90+16+90+16 = 面板宽 228） */
+.hexagon-area-type-panel__actions {
+  position: absolute;
+  left: 16px;
+  top: 125px;
+  display: flex;
+  gap: 16px;
+}
+
+/* 底部按钮（取消/确定）：90×32、2px 圆角、浅蓝底 + #0EA7F9 描边、文字居中 */
+.hexagon-area-type-panel__btn {
+  flex: none;
+  width: 90px;
+  height: 32px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(75, 188, 249, 0.1);
+  border: 1px solid #0ea7f9;
+  border-radius: 2px;
+  color: #fff;
+  font-size: 14px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.hexagon-area-type-panel__btn:hover {
+  background: rgba(75, 188, 249, 0.25);
+  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.3);
+}
+
+.hexagon-area-type-panel__btn:active {
+  background: rgba(75, 188, 249, 0.4);
+}
+
+/* 提交中（addNewTaskArea 上送）禁用：压暗去交互光标，防重复提交 */
+.hexagon-area-type-panel__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hexagon-area-type-panel__btn:disabled:hover {
+  background: rgba(75, 188, 249, 0.1);
+  box-shadow: none;
+}
+
+.hexagon-area-type-panel__btn--primary:disabled:hover {
+  background-color: #0ea7f9;
+  box-shadow: none;
+}
+
+/* 主按钮「确定」：实心蓝底（与区域面板「添加区域」主按钮同款视觉） */
+.hexagon-area-type-panel__btn--primary {
+  background-color: #0ea7f9;
+  border-color: #0ea7f9;
+}
+
+.hexagon-area-type-panel__btn--primary:hover {
+  background-color: #0ea7f9;
+  box-shadow: 0 0 6px 1px rgba(47, 199, 255, 0.45);
+}
+
+.hexagon-area-type-panel__btn--primary:active {
+  background-color: #0c96e0;
+}
+/* 降落区中心地面图标（定格且选中「降落区」时）：与指点返航落点圆圈（tap-return-zone，设计稿 image-wrapper_4）同款视觉——48×48 */
+.hexagon-area-overlay__landing-center {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 1);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hexagon-area-overlay__landing-center img {
+  width: 20px;
+  height: 24px;
+}/* ===== 六边形默认绘制·确认态「编辑 | 删除」面板（设计稿 121×32 毛玻璃） ===== */
+/* 右下顶点右侧 8px 处（left/top 由遮罩 onMove 投影命令式更新，随地图跟随） */
+.hexagon-area-edit-panel {
+  position: fixed;
+  box-sizing: border-box;
+  width: 121px;
+  height: 32px;
+  padding: 5px 0;
+  display: flex;
+  align-items: center;
+  background: rgba(75, 188, 249, 0.4);
+  border: 1px solid #4bbcf9;
+  border-radius: 4px;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  user-select: none;
+  z-index: 2;
+}
+
+/* 左右两个等宽按钮（编辑 | 删除），中间 1px 竖线分隔 */
+.hexagon-area-edit-panel__btn {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  font-weight: 330;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hexagon-area-edit-panel__divider {
+  flex: none;
+  width: 1px;
+  height: 100%;
+  background: #4bbcf9;
+  opacity: 0.6;
+}
+
+/* 编辑态区域外变暗蒙层 SVG：与 __svg 同样全幅铺满（视口坐标系，rect/mask的 100% 宽高才能覆盖整个视口） */
+.hexagon-area-overlay__edit-mask {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 编辑态边框双层 SVG（白 6px 实线 + 中央 2px 紫虚线）：与蒙层同规格全幅铺满 */
+.hexagon-area-overlay__edit-stroke {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 编辑态节点手柄容器：全幅 fixed（手柄 left/top 为视口坐标），容器自身pointer-events none 放行地图交互 */
+.hexagon-area-overlay__edit-handles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 编辑态「删除锚点」按钮：hover 顶点手柄时浮现于该顶点正上方（顶部空间不足时由 TSX 翻转到下方） */
+.hexagon-area-overlay__delete-anchor {
+  position: fixed;
+  box-sizing: border-box;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  height: 28px;
+  background: rgba(75, 188, 249, 0.4);
+  border: 1px solid #4bbcf9;
+  border-radius: 4px;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  font-weight: 330;
+  line-height: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  pointer-events: auto;
+  z-index: 3;
+}
+
+/* 规则内容未改动… */

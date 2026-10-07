@@ -48,8 +48,7 @@
   pointer-events: auto;
 }
 
-/* 创建任务内嵌态：表单内容（子标题栏 + 名称/数量 + 任务类型 + 任务区列表 + 底栏）比列表视图更高，
-   外壳整体加高以尽量完整展示，超高部分由 .task-create__body 内部滚动兜底 */
+/* 创建任务内嵌态：表单内容（子标题栏 + 名称/数量 + 任务类型 + 任务区列表 + 底栏）比列表视图更高，外壳整体加高以尽量完整展示 */
 .task-panel--create {
   height: clamp(600px, 40vw, 740px);
   transition: opacity 0.5s ease, transform 0.5s ease, height 0.3s ease;

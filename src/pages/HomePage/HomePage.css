@@ -1,16 +1,11 @@
+/* HomePage 主页页面样式 */
 @import '../../components/home/aircraft/AircraftLayer.css';
 @import '../../styles/home/FlightMarkers.css';
 @import '../../styles/home/FlightPanels.css';
 
-/**
- * HomePage.css —— 样式入口（仅 @import，按拆分前 homepage-part1~5 的层叠顺序拼接）。
- * 各文件均为全局类选择器，无 CSS Modules；HoverPanelPlacement.css 因含覆盖性
- * 修饰类规则，仍保持在所有基础样式之后导入。
- */
+/* HomePage.css —— 样式入口（仅 @import，按拆分前 homepage-part1~5 的层叠顺序拼接）。 */
 
-/* HomePageLayout —— 页面容器 / 地图舞台 / 限制区域
-   自 homepage-part1~5.css 按功能归组切分：规则内容未改动，
-   HomePage.css 按拆分前的层叠顺序 @import 各文件。 */
+/* 规则内容未改动… */
 /* ====== 页面容器 ====== */
 #root {
   margin: 0;
@@ -64,8 +59,7 @@
   pointer-events: auto;
 }
 
-/* 地图底图层：绝对定位铺满整个画布（含状态栏凸出区域）并置于最底层，
-   其余 UI 元素通过各自的 z-index 浮于其上 */
+/* 地图底图层：绝对定位铺满整个画布（含状态栏凸出区域）并置于最底层，其余 UI 元素通过各自的 z-index 浮于其上 */
 .map-base {
   position: absolute;
   inset: 0;
@@ -89,18 +83,9 @@
   transform: rotate(35deg);
 }
 
-/* ====== Hover 面板边缘自适应定位（方向修饰类）======
-   说明：
-   - 由 panelPlacement.ts 根据宿主（飞机）在视口中的百分比位置，
-     在宿主 className 上追加 `panel-left` / `panel-down` 修饰类；
-   - 默认（无修饰类）= 面板向「右 + 上」展开（设计稿原样）；
-   - `panel-left` = 水平翻转：面板改为向左侧展开，避免右侧空间不足溢出；
-   - `panel-down` = 垂直翻转：面板改为向下方展开，避免上方空间不足溢出。
-   - 本文件需在 HomePage.css 之后导入，以保证修饰类规则的特异性相同时可覆盖默认值。 */
+/* Hover 面板边缘自适应定位（方向修饰类）说明：- 由 panelPlacement.ts 根据宿主（飞机）在视口中的百分比位置 */
 
-/* ===== 飞机信息面板 =====
-   默认（向右+向上）：
-     left: calc(100% + 12px); top: 24px; transform: translateY(-100%); */
+/* 飞机信息面板默认（向右+向上）：left: calc(100% + 12px) */
 
 /* panel-left：面板改为出现在图标左侧 */
 .aircraft.panel-left .aircraft-hover-panel,
@@ -115,14 +100,7 @@
   transform: none;
 }
 
-/* ====== Hover 面板视口边缘平移修正（兜底）======
-   说明：
-   - usePanelClamp hook 在每次渲染/拖拽/resize 后，测量所有 [data-hover-panel]
-     的实际矩形，计算使其完全进入视口所需的平移量，通过 CSS 变量
-     `--clamp-x` / `--clamp-y` 注入面板元素；
-   - 这里用独立的 `translate` 属性叠加该平移，与各面板既有的 `transform`
-     （translateY(-100%) / translateX(-30%) / panel-down 的 none）解耦互不干扰；
-   - 变量缺省值为 0px，未启用 hook 时无副作用。 */
+/* Hover 面板视口边缘平移修正（兜底）说明：- usePanelClamp hook 在每次渲染/拖拽/resize 后 */
 [data-hover-panel] {
   translate: var(--clamp-x, 0px) var(--clamp-y, 0px);
 }

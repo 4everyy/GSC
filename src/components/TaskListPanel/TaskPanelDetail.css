@@ -23,8 +23,7 @@
   }
 }
 
-/* 内容区与横向分割线包为一组：作为竖向分割线的定位锚点，
-   其底边恰好落在横向分割线上 */
+/* 内容区与横向分割线包为一组：作为竖向分割线的定位锚点，其底边恰好落在横向分割线上 */
 .task-detail__main {
   position: relative;
   flex: 1;
@@ -42,12 +41,7 @@
   min-height: 0;
 }
 
-/* 竖向分割线：设备卡片右侧 24px（设计稿 box_7）。
-   定位于 .task-detail__main（内容区+横向分割线）层级：
-   自内容区顶边（即详情框顶边）起，止于横向分割线处，
-   将详情内容区域一分为二（左侧：时间轴+设备卡片；右侧：下发进程仪表），
-   下端指向底部按钮区域但不超出横向分割线。
-   内容与顶边的 16px 间距由 .task-detail__top 的 padding-top 提供 */
+/* 竖向分割线：设备卡片右侧 24px（设计稿 box_7）。 */
 .task-detail__v-divider {
   position: absolute;
   /* 24px(左内边距) + 249px(设备卡片宽) + 24px(与卡片右缘间距) */
@@ -71,8 +65,7 @@
   /* 右侧为下发进程仪表预留空间 */
   flex: 0 1 calc(100% - clamp(110px, 8.5vw, 130px));
   min-width: 0;
-  /* 视口最多展示 4 行：4 行卡片（4×36px）+ 3 个行间距（3×8px）= 168px，
-     不足 4 行时高度自适应；超出 4 行全部渲染，下拉滚动查看更多 */
+    /* 视口最多展示 4 行：4 行卡片（4×36px）+ 3 个行间距（3×8px）= 168px，不足 4 行时高度自适应 */
   max-height: 168px;
   overflow-y: auto;
 }
@@ -181,8 +174,7 @@
 }
 
 /* ====== 下发进程仪表（标签 + 数值 + 3D 圆环矢量图 radar-circle.svg） ====== */
-/* 容器占满竖向分割线右侧区域（左缘起于分割线，右缘止于内容区右缘），
-   标签 / 数值 / 圆环图均通过 align-items: center 在该区域内水平居中 */
+/* center 在… */
 .task-detail__gauge {
   position: absolute;
   /* 与 .task-detail__v-divider 定位一致：24px 左内边距 + 249px 设备卡片宽 + 24px 间距 */
@@ -198,8 +190,7 @@
   pointer-events: none;
 }
 
-/* 高亮底光：覆盖「下发进程」下方文案（x/x 数值）与 3D 圆环图片区域，
-   设计稿标注 98x80、水平居中、blur(2px)，置于文案与切图之下（z-index: -1） */
+/* 高亮底光：覆盖「下发进程」下方文案（x/x 数值）与 3D 圆环图片区域，设计稿标注 98x80、水平居中、blur(2px) */
 .task-detail__gauge::before {
   content: '';
   position: absolute;
@@ -255,9 +246,7 @@
   /* 间距由内部切图 top: 11px 精确控制（设计稿标注：x/x 数值距切图 11px） */
 }
 
-/* 底座主体：3D 圆环图标下方椭圆底座（设计稿 118x51、border-radius: 50%）。
-   整体自下而上透明渐变：底部 #6AF0FF（描边 85%、填充 55%）→ 顶部完全透明，中段缓慢过渡；
-   双层 background 分别裁剪 border-box（描边层）与 padding-box（填充层） */
+/* 底座主体：3D 圆环图标下方椭圆底座（设计稿 118x51、border-radius: 50%）。 */
 .task-detail__gauge-ring-wrap::before {
   content: '';
   position: absolute;
@@ -274,9 +263,7 @@
   pointer-events: none;
 }
 
-/* 外圈圆环：与底座同色、间隔 4px 的 1px 椭圆环（128x61、与底座同心）。
-   同样自下而上渐隐：纵向渐变背景（顶部完全透明 → 底部 60%），
-   双层 mask 挖空内容区，仅保留 1px 环线 */
+/* 外圈圆环：与底座同色、间隔 4px 的 1px 椭圆环（128x61、与底座同心）。 */
 .task-detail__gauge-ring-wrap::after {
   content: '';
   position: absolute;
@@ -295,12 +282,7 @@
   pointer-events: none;
 }
 
-/* 3D 圆环（Figma「资源 423」官方导出 SVG，viewBox 106x75，
-   含 mask/clip 完整层间遮挡结构）：
-   顶部距 x/x 数值文案 11px（设计稿标注）；悬浮于椭圆底座之上 —— 图底距椭圆底边 21px，
-   按中心对齐。尺寸与 viewBox 严格等比（106:75），避免压缩变形。
-   结构为双层 image 同图叠加：底层暗态垫底，上层亮态经椭圆扇形
-   clipPath 按下发进程（ready/total）自 12 点方向顺时针逐段点亮 */
+/* 顶部距 x/x… */
 .task-detail__gauge-ring {
   position: absolute;
   left: 50%;
@@ -319,15 +301,12 @@
   opacity: 0.65;
 }
 
-/* 上层亮态：原图全彩，叠加轻微青色辉光强化「点亮」感；
-   显示范围由 TSX 注入的椭圆扇形 clipPath 控制（随进度扩大） */
+/* 上层亮态：原图全彩，叠加轻微青色辉光强化「点亮」感 */
 .task-detail__gauge-ring-fill {
   filter: drop-shadow(0 0 4px rgba(106, 240, 255, 0.45));
 }
 
-/* 分割线：最后一个设备数据行与操作按钮之间（设计稿 434x1）。
-   上方间距 16px；下方 16px 间距改由 .task-detail__actions 的 margin-top 提供，
-   以保证 .task-detail__main 的底边恰好落在横向分割线上 */
+/* 分割线：最后一个设备数据行与操作按钮之间（设计稿 434x1）。 */
 .task-detail__divider {
   flex-shrink: 0;
   width: 434px;
@@ -343,8 +322,7 @@
   display: flex;
   align-items: center;
   gap: clamp(8px, 0.73vw, 14px);
-  /* 与横向分割线的间距 16px（分割线不再设 margin-bottom，
-     以保证 .task-detail__main 底边落在横向分割线上） */
+    /* 与横向分割线的间距 16px（分割线不再设 margin-bottom，以保证 .task-detail__main 底边落在横向分割线上） */
   margin: 16px 0 0 clamp(20px, 1.8vw, 32px);
   flex-shrink: 0;
 }
@@ -544,5 +522,4 @@
   box-shadow: 0 0 6px rgba(139, 249, 235, 0.25);
 }
 
-/* 下发进程数值（.task-detail__gauge-value）以 x/x 形式展示：
-   全部设备中就绪（online）行数 / 设备总数 */
+/* 下发进程数值（.task-detail__gauge-value）以 x/x 形式展示：全部设备中就绪（online）行数 / 设备总数 */

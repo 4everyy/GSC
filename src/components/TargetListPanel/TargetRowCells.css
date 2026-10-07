@@ -1,0 +1,278 @@
+/* TargetRowCells.css —— 从 TargetRow.css 抽离（目标列表面板-目标行）：目标行数据列/状态（后半）。
+   由样式入口 TargetRow.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+.target-row__detail-preview-corner--bl {
+  left: 0;
+  bottom: 0;
+  transform: rotate(180deg);
+}
+
+.target-row__detail-preview-corner--br {
+  right: 0;
+  bottom: 0;
+  transform: rotate(90deg);
+}
+
+.target-row__detail-preview-img {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  left: 28px;
+  right: 28px;
+  width: calc(100% - 56px);
+  height: 100%;
+  margin: auto;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.target-row__detail-preview-link {
+  position: absolute;
+  width: 32px;
+  height: 1px;
+  background: #8bf9eb;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.target-row__detail-preview-link--tl {
+  left: 4.5px;
+  top: 5.5px;
+  transform-origin: left center;
+  transform: rotate(45deg);
+}
+
+.target-row__detail-preview-link--tr {
+  right: 5.5px;
+  top: 4.5px;
+  transform-origin: right center;
+  transform: rotate(-45deg);
+}
+
+.target-row__detail-preview-link--bl {
+  left: 5.5px;
+  bottom: 4.5px;
+  transform-origin: left center;
+  transform: rotate(-45deg);
+}
+
+.target-row__detail-preview-link--br {
+  right: 4.5px;
+  bottom: 5.5px;
+  transform-origin: right center;
+  transform: rotate(45deg);
+}
+
+.target-row__detail-preview-edge {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.target-row__detail-preview-edge--top {
+  left: 28px;
+  right: 28px;
+  top: 0;
+  height: 1px;
+  background: repeating-linear-gradient(90deg, #8bf9eb 0 8px, transparent 8px 16px);
+}
+
+.target-row__detail-preview-edge--bottom {
+  left: 28px;
+  right: 28px;
+  bottom: 0;
+  height: 1px;
+  background: repeating-linear-gradient(90deg, #8bf9eb 0 8px, transparent 8px 16px);
+}
+
+.target-row__detail-preview-edge--left {
+  top: 28px;
+  bottom: 28px;
+  left: 0;
+  width: 1px;
+  background: repeating-linear-gradient(180deg, #8bf9eb 0 8px, transparent 8px 16px);
+}
+
+.target-row__detail-preview-edge--right {
+  top: 28px;
+  bottom: 28px;
+  right: 0;
+  width: 1px;
+  background: repeating-linear-gradient(180deg, #8bf9eb 0 8px, transparent 8px 16px);
+}
+
+.target-row__detail-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+  margin-top: clamp(12px, 0.94vw, 18px);
+  flex-shrink: 0;
+    /* 光学垂直居中（多视口像素实测）：MiSans 数字/CJK 墨迹在行盒内系统性偏上约 0.104em（13px 时 ≈1.35px） */
+  transform: translateY(calc(var(--detail-time-fs) * -0.104));
+}
+
+.target-row__detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: clamp(8px, 0.63vw, 12px);
+  margin-left: auto;
+  margin-right: 6.22%;
+  max-width: 87.78%;
+  height: clamp(14px, 0.99vw, 19px);
+  margin-top: clamp(8px, 0.65vw, 12px);
+}
+
+.target-row__detail-footer .target-row__detail-label {
+  text-align: left;
+  text-align-last: auto;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.target-row__detail-time.target-row__detail-time--teal {
+  color: #8af8ea;
+}
+
+.target-row__detail-time {
+  font-size: var(--detail-time-fs);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  white-space: nowrap;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.target-row__detail-deco {
+  display: block;
+  width: 100%;
+  height: clamp(8px, 0.57vw, 11px);
+  object-fit: fill;
+  margin-top: calc(clamp(8px, 0.65vw, 12px) - clamp(8px, 0.57vw, 11px));
+  flex-shrink: 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 规则内容未改动，仅调整文件… */
+
+.target-panel__delete-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, calc(100vw - 48px));
+  height: 220px;
+  border-radius: 6px;
+  background-image: linear-gradient(180deg, rgba(35, 90, 120, 0.96) 0, rgba(19, 54, 96, 0.97) 100%);
+  box-shadow: 0px 16px 48px 0px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.target-panel__delete-dialog-accent {
+  width: 100%;
+  height: 2px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, rgba(85, 206, 222, 0) 0%, rgba(85, 206, 222, 0.9) 50%, rgba(85, 206, 222, 0) 100%);
+}
+
+.target-panel__delete-dialog-title {
+  margin-top: 14px;
+  font-size: clamp(12px, 1.25vw, 20px);
+  font-weight: 500;
+  line-height: 20px;
+  color: rgba(255, 255, 255, 1);
+  text-align: center;
+}
+
+.target-panel__delete-dialog-message {
+  margin-top: 36px;
+  color: #fff;
+  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  line-height: 18px;
+  text-align: center;
+}
+
+.target-panel__delete-dialog-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: auto 16px 18px;
+}
+
+.target-panel__delete-dialog-btn {
+  flex: 1;
+  height: 32px;
+  border: 0;
+  border-radius: 2px;
+  color: #fff;
+  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  line-height: 14px;
+  cursor: pointer;
+}
+
+.target-panel__delete-dialog-btn:hover {
+  filter: brightness(1.15);
+}
+
+.target-panel__delete-dialog-btn--confirm {
+  background-color: rgba(14, 167, 249, 1);
+}
+
+.target-panel__delete-dialog-btn--cancel {
+  background-color: rgba(75, 188, 249, 0.1);
+  border: 1px solid rgba(14, 167, 249, 1);
+  box-sizing: border-box;
+}
+
+/* 目标类型筛选「清除」能力补充样式（独立文件） */
+
+/* 下拉当前选中项：青色高亮 */
+.target-panel__dropdown-item--active {
+  color: #46dce7;
+  font-weight: 600;
+}
+
+/* 下拉「请选择」清除项：弱化占位色 + 底部分隔线 */
+.target-panel__dropdown-item--clear {
+  color: rgba(255, 255, 255, 0.45);
+  border-bottom: 1px solid rgba(120, 200, 220, 0.25);
+  margin-bottom: clamp(2px, 0.16vw, 3px);
+}
+
+.target-panel__dropdown-item--clear:hover {
+  color: #fff;
+}
+
+/* 选择框内 × 快速清除按钮 */
+.target-panel__select-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(12px, 0.9vw, 16px);
+  height: clamp(12px, 0.9vw, 16px);
+  margin-right: clamp(2px, 0.16vw, 4px);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  flex: none;
+}
+
+.target-panel__select-clear:hover {
+  background: rgba(120, 240, 255, 0.85);
+  color: #16323f;
+}
+

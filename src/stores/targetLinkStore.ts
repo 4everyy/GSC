@@ -1,36 +1,14 @@
 /**
- * targetLinkStore —— 首页态势图目标图标与目标列表面板的联动状态。
- *
- * TargetListPanel 挂载于 MapToolbar 内部，与 HomePage 平级，无法通过 props 传递
- * hover/点击联动/标记重点/删除等状态，故用 zustand 全局 store 承载
- * （与 deviceLinkStore 同模式，目标 id 对应 config/targets.ts targetList 的 id）：
- * - targets：当前会话的目标列表（含地图坐标 x/y 百分比），
- *   由本地 mock 数据填充（config/targets.ts，纯前端无接口）；
- * - targetAnchors：目标图标的地理锚点（id → WGS84 经纬度）。空对象 = 未初始化；
- *   地图视图首次稳定（初始 flyTo 结束的 moveend）后由 useTargetMapAnchor 按
- *   当前屏幕位置批量固化；此后地图 move 事件按锚点重投影 x/y（图标随地图移动），
- *   图标拖拽结束后按新位置反算刷新对应锚点；
- * - deletedTargetIds：确认删除后的「假删除」（软删除）目标 id 集合：
- *   列表与地图图标层渲染时过滤集合内目标（表现上消失），
- *   targets 数组与 mock 源数据保留，面板「刷新」清空集合即恢复显示；
- * - hoveredTargetId：hover 中的目标 id（列表行与地图图标双向同步）；
- * - clickedTargetId：点击联动态的目标 id（列表行点击与地图图标点击双向同步，
- *   再次点击同一目标解除联动）；
- * - markedIds：已标记重点的目标 id 集合（列表旗标与地图图标标记背景同步）；
- * - selectedTargetIds：已勾选目标 id 集合（列表勾选框与地图图标单击双向同步，
- *   与 deviceLinkStore.selectedDevices 同模式）；
- * - targetPanelOpenRequests：面板打开请求计数器（首页地图图标点击时 +1，
- *   MapToolbar 监听后打开目标列表面板，与 devicePanelOpenRequests 同模式）；
- * - focusTargetRequest：列表聚焦请求（首页地图图标单击时写入目标 id + 递增序号 +
- *   expand 标记；expand=true 选中点击：列表自动展开对应行详情（手风琴式收起其他行）
- *   并滚动到列表可视中心；expand=false 再次点击取消选中：收起该行详情；
- *   处理完成由列表侧清除，避免之后手动重开面板时重复聚焦）。
+ * @file targetLinkStore.ts
+ * @description targetLinkStore —— 首页态势图目标图标与目标列表面板的联动状态。
+ * @author 4everyy
+ * @date 2026-10-07
  */
 import { create } from 'zustand'
 import { targetList, type TargetItem } from '../config/index'
 import { type LngLat } from '../map-engines/types'
 
-/** 目标地图图标坐标（map-stage 百分比），与飞机初始位置相对集中但不重叠：无人机簇居中偏左上，目标簇居中偏右下 */
+/** 目标地图图标坐标（map-stage 百分比），与飞机初始位置相对集中但不重叠：无人机簇居中偏左上 */
 export const TARGET_MAP_POSITIONS: Record<string, { x: number; y: number }> = {
   '01': { x: 53, y: 54 },
   '02': { x: 65, y: 53 },
@@ -43,18 +21,11 @@ export const TARGET_MAP_POSITIONS: Record<string, { x: number; y: number }> = {
 export interface TargetMarkerItem extends TargetItem {
   x: number
   y: number
-  /** 后端真实经纬度（WGS84，queryTargetStatus 映射写入）；undefined = mock 数据（锚点由播种派生） */
+  /** 后端真实经纬度（WGS84，queryTargetStatus 映射写入） */
   lngLat?: LngLat
 }
 
-/**
- * 目标初始地理锚点相对「当前离线地图包中心」的偏移（度）。
- *
- * 由 TARGET_MAP_POSITIONS 的百分比布局按 zoom 14 视口尺度换算
- * （1080p 下约 1% 宽 ≈ 0.00045° 经度、1% 高 ≈ 0.00035° 纬度，屏幕 y 向下
- * 为正故纬度偏移取反），保证播种后布局与原百分比布局观感一致
- * （目标簇居中偏右下）。key 与 config/targets.ts targetList 的 id 对应。
- */
+/** 目标初始地理锚点相对「当前离线地图包中心」的偏移（度）。 */
 export const TARGET_ANCHOR_OFFSETS: Record<string, LngLat> = {
   '01': { lng: 0.0014, lat: -0.0039 },
   '02': { lng: 0.0068, lat: -0.0046 },
@@ -63,10 +34,7 @@ export const TARGET_ANCHOR_OFFSETS: Record<string, LngLat> = {
   '05': { lng: 0.0045, lat: -0.007 },
 }
 
-/**
- * 按离线地图包中心派生全部目标的地理锚点（种子播种用）。
- * targetList 中无偏移配置的目标回退到 (0,0)（包中心）。
- */
+/** 按离线地图包中心派生全部目标的地理锚点（种子播种用）。 */
 export function buildTargetAnchors(center: LngLat): Record<string, LngLat> {
   const anchors: Record<string, LngLat> = {}
   for (const t of targetList) {
@@ -91,13 +59,11 @@ interface TargetLinkState {
   selectedTargetIds: Set<string>
   /** 「假删除」（软删除）目标 id 集合：渲染层过滤隐藏，刷新时清空恢复 */
   deletedTargetIds: Set<string>
-  /** Open-panel request counter: +1 each time a target icon is clicked on home page */
+  /** +1 each time a targ… */
   targetPanelOpenRequests: number
-  /** 列表聚焦请求：id 为目标 id，seq 递增保证重复点击同一目标也能触发监听 effect；
-   *  expand=true 展开详情并居中，expand=false 收起详情（取消选中场景） */
+  /** 列表聚焦请求：id 为目标 id，seq 递增保证重复点击同一目标也能触发监听 effect */
   focusTargetRequest: { id: string; seq: number; expand: boolean } | null
-  /** 地图聚焦请求（目标列表面板单行勾选时写入）：id=目标 id，seq 递增保证
-   *  重复勾选同一目标也能触发监听 effect；HomePage 消费后清除 */
+  /** 地图聚焦请求（目标列表面板单行勾选时写入）：id=目标 id，seq 递增保证重复勾选同一目标也能触发监听 effect */
   mapFocusTargetRequest: { id: string; seq: number } | null
   setTargets: (targets: TargetMarkerItem[]) => void
   setHoveredTargetId: (id: string | null) => void
@@ -114,9 +80,7 @@ interface TargetLinkState {
   setSelectedTargetIds: (ids: Set<string>) => void
   /** Ask MapToolbar to open the target list panel */
   requestOpenTargetPanel: () => void
-  /** 请求列表聚焦指定目标（首页地图图标单击时调用）：
-   *  expand=true：自动展开对应行详情并滚动到列表可视中心（手风琴式收起其他行）；
-   *  expand=false：收起对应行详情（图标再次点击取消选中时） */
+  /** 请求列表聚焦指定目标（首页地图图标单击时调用）：expand=true：自动展开对应行详情并滚动到列表可视中心（手风琴式收起其他行） */
   requestFocusTarget: (id: string, expand: boolean) => void
   /** 清除聚焦请求（列表完成展开与滚动后调用，避免重复消费） */
   clearFocusTargetRequest: () => void
@@ -124,8 +88,7 @@ interface TargetLinkState {
   requestMapFocusTarget: (id: string) => void
   /** 清除地图聚焦请求（HomePage 消费后调用，避免重复消费） */
   clearMapFocusTargetRequest: () => void
-  /** 确认删除：目标「假删除」（仅打软删除标记不物理移除 mock 数据，刷新可恢复），
-   *  并同步清理勾选/标记集合与点击联动态 */
+  /** 确认删除：目标「假删除」（仅打软删除标记不物理移除 mock 数据，刷新可恢复），并同步清理勾选/标记集合与点击联动态 */
   softDeleteTargets: (ids: string[]) => void
   /** 恢复全部软删除目标（面板「刷新」时调用，从 mock 态恢复显示） */
   restoreTargets: () => void

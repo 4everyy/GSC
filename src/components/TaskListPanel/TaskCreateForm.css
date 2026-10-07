@@ -1,0 +1,390 @@
+/* TaskCreateForm.css —— 从 TaskCreatePanel.css 抽离（任务创建面板）：面板骨架/子标题栏/滚动区/表单标签/名称数量表单/分段选择器。
+   由样式入口 TaskCreatePanel.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* 创建任务面板（设计稿 group_23）——内嵌于任务管理面板内容区展示内嵌透底策略：复用任务面板外壳（.task-panel）的蓝绿渐变背景与边框 */
+.task-create {
+  /* 内嵌布局：占满任务面板外壳（标题栏/分隔线以下）全部剩余空间 */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  /* 透底：背景/边框/圆角均由外壳提供 */
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  /* 面板自身不设内边距：标题栏/底栏全出血贴边；中间选择区域间距由 .task-create__body 的 margin 提供 */
+  padding: 0;
+  color: #fff;
+  font-family: 'MiSans-Regular';
+  font-weight: 400;
+  /* 允许标题栏以负边距出血到外壳内边距区（原 overflow: hidden 会裁切出血部分） */
+  overflow: visible;
+
+  /* 淡入/淡出 */
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+/* 右上角装饰竖线已移除（设计稿 image_9 不再需要） */
+.task-create--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ====== 子标题栏（48px：图标 + 文字，左缘渐变高亮底）====== */
+.task-create__header {
+  position: relative; /* 定位底部渐变分割线 ::after */
+  display: flex;
+  align-items: center;
+  gap: 14px; /* 箭头图标与标题文字间距 14px */
+  height: 48px;
+  /* 整行背景：白色左实右渐隐横条（0.4 → 0.20@54% → 0） */
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.2) 54%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  flex-shrink: 0;
+    /* 全出血：负边距抵消外壳 .task-panel 的水平内边距（clamp(8px, 0.83vw, 16px)） */
+  margin: 0 calc(-1 * clamp(8px, 0.83vw, 16px));
+  /* 返回箭头距面板左缘 26px，右缘 16px（自出血边缘起算） */
+  padding: 0 16px 0 26px;
+  box-sizing: border-box;
+}
+
+/* 标题区域底部分割线：1px 渐变（左实右渐隐），横向贯通至面板左右边界 */
+.task-create__header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.5) 0.17%,
+    rgba(255, 255, 255, 0.8) 9.67%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  border-radius: 0px 0px 0px 0px;
+  pointer-events: none;
+}
+
+/* 标题组：仅文字（+图标已移除），行背景渐变统一由 .task-create__header 提供 */
+.task-create__heading {
+  display: flex;
+  align-items: center;
+}
+
+.task-create__title {
+  margin-left: 0;
+  /* 设计稿：创建任务 16px MiSans 450 白色 */
+  color: #fff;
+  font-size: 16px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 450;
+  word-wrap: break-word;
+  line-height: 1;
+}
+
+/* 返回箭头按钮：标题左侧白色左箭头（back-arrow.svg），点击返回任务列表视图 */
+.task-create__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.2s ease;
+}
+
+.task-create__back:hover {
+  opacity: 0.75;
+}
+
+.task-create__back img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ====== 可滚动内容区：超出面板高度时竖向滚动（标题栏/底栏固定） ====== */
+.task-create__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* 标题行以下文字统一基准：14px MiSans 330 白色（子规则仅保留状态色差异） */
+  color: #fff;
+  font-size: 14px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+    /* 水平出血：负边距抵消外壳水平内边距，使本区贯通面板全宽 */
+  margin: 16px calc(-1 * clamp(8px, 0.83vw, 16px));
+  padding: 0 16px;
+  box-sizing: border-box;
+  /* 隐藏滚动条但保留竖向滚动功能 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.task-create__body::-webkit-scrollbar {
+  display: none;
+}
+
+/* 滚动内容底部留白，避免最后一行贴住底栏 */
+.task-create__body > *:last-child {
+  margin-bottom: 8px;
+}
+
+/* ====== 分隔线（group_25：白色渐隐线） ====== */
+
+/* ====== 表单标签 ====== */
+.task-create__label {
+  display: block;
+  margin: 24px 0 0;
+  /* 设计稿：标题行以下文字统一 14px MiSans 330 白色 */
+  font-size: 14px;
+  line-height: 19px;
+  white-space: nowrap;
+  color: #fff;
+}
+
+/* 任务名称输入框：与执行对象数量输入框同款（白 20% 底 + 白 60% 边框） */
+.task-create__input {
+  display: block;
+  width: 100%;
+  height: 28px;
+  /* 统一垂直节奏：任务名称以下每一项距上一项 24px */
+  margin-top: 8px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  outline: none;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
+  line-height: 26px;
+  color: #fff;
+}
+
+.task-create__input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* 必填项标记：label 前红色 * */
+.task-create__required-mark {
+  margin-right: 2px;
+  color: rgba(255, 96, 96, 1);
+  /* 星号放大加粗：比正文 label 更醒目；字号随视口等比缩放 */
+  font-size: clamp(13px, 0.94vw, 18px);
+  font-weight: 600;
+  line-height: 1;
+  /* 与 label 文字顶部对齐：inline-block 后按顶线对齐，星号向下延伸 */
+  display: inline-block;
+  vertical-align: top;
+  /* label 为 14px/行高19px，中文顶距行盒顶约3px；星号顶对齐后补 2px 使视觉顶线齐平 */
+  margin-top: 2px;
+}
+
+/* 必填校验失败态：红色边框高亮 */
+.task-create__input--error {
+  border-color: rgba(255, 96, 96, 1);
+  background-color: rgba(255, 96, 96, 0.12);
+}
+
+/* 必填校验提示文案：输入框下方红字 */
+.task-create__input-error {
+  display: block;
+  margin-top: 4px;
+  /* 错误提示：字号随正文统一 14px，红色为功能性状态色 */
+  font-size: 14px;
+  line-height: 19px;
+  color: rgba(255, 96, 96, 1);
+}
+
+.task-create__input:focus-visible {
+  outline: 1px solid rgba(70, 220, 231, 0.8);
+  outline-offset: -1px;
+}
+
+/* ====== 上部表单区（名称+数量） ====== */
+.task-create__row-top {
+  display: flex;
+  justify-content: space-between;
+  /* 上方 16px 间距由 .task-create__body 的 margin-top 提供，此处不再叠加 */
+  margin-top: 0;
+  gap: clamp(4px, 0.42vw, 8px);
+}
+
+.task-create__fields {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.task-create__fields .task-create__label:first-child {
+  margin-top: 0;
+}
+
+/* 步进器（box_13：减号 24x28 + 输入区 446x28 + 加号 24x28）整体复用 create-input-bg 切图视觉… */
+.task-create__stepper {
+  display: flex;
+  width: 100%;
+  height: 28px;
+  margin-top: 8px;
+  box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.task-create__stepper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 100%;
+  padding: 0;
+  flex-shrink: 0;
+  /* 透明底：露出步进器统一背景，保证白色 +/- 图标可见 */
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.task-create__stepper-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.task-create__stepper-btn:active {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.task-create__stepper-btn img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.task-create__stepper-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  /* 无独立底/边框，与两侧按钮共享统一背景；左右分隔线区分按钮与输入区 */
+  background: transparent;
+  border-left: 1px solid rgba(255, 255, 255, 0.45);
+  border-right: 1px solid rgba(255, 255, 255, 0.45);
+  box-sizing: border-box;
+}
+
+.task-create__stepper-value input {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
+  line-height: 26px;
+  color: #fff;
+  text-align: left;
+}
+
+/* 步进器按钮默认外观重置（Firefox 等） */
+.task-create__stepper-btn:focus-visible {
+  outline: 1px solid rgba(70, 220, 231, 0.8);
+  outline-offset: -1px;
+}
+
+/* ====== 分段选择器（group_28/29/31：白 20% 底 + 选中滑块切图） ====== */
+.task-create__segment {
+  position: relative;
+  display: flex;
+  width: 100%;
+  /* 整体框一分为二：两个 tab 平分宽度 */
+  height: 36px;
+  margin-top: 8px;
+  padding: 2px;
+  gap: 0;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+/* 滑动指示器：选中态蓝色滑块，随选中项平滑滑动（transform 动画） */
+.task-create__segment-indicator {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  height: 32px;
+  background: #0ea7f9;
+  box-shadow: 0px 0px 8px 0px rgba(0, 0, 0, 0.4);
+  border-radius: 4px 4px 4px 4px;
+  border: 1px solid #ffffff;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.task-create__segment-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 平分容器宽度（一分为二）；高度 32px 与选中样式匹配 */
+  height: 32px;
+  flex: 1 1 0;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.4);
+  transition: color 0.2s ease;
+}
+
+.task-create__segment-item:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 选中态仅切换文字颜色；蓝色滑块由 .task-create__segment-indicator 滑动实现 */
+.task-create__segment-item--active {
+  color: rgba(255, 255, 255, 1);
+}
+
+.task-create__segment-item--active:hover {
+  color: rgba(255, 255, 255, 1);
+}
+

@@ -1,26 +1,8 @@
 /**
- * ErrorBoundary —— 全局渲染错误兜底边界。
- *
- * 职责：捕获子组件树在渲染、生命周期、构造函数中抛出的同步错误，
- *       展示降级 UI 而非整页白屏，并提供「重试」（重置内部 error 态以重新挂载子树）。
- *
- * 使用场景：包裹 HomePage（含地图引擎等复杂异步 / 第三方逻辑），保证任意单个模块
- *           崩溃都不波及整个地面站界面，并便于在控制台定位真实错误。
- *
- * 设计动机：React 渲染阶段抛出的异常若没有被任何 ErrorBoundary 捕获，
- *           会导致整个根组件树卸载 → 整页白屏（如「启用苏州离线包即白屏」事故）。
- *           本组件作为最后防线，避免同类问题再次造成不可恢复的白屏。
- *
- * 重试联动（2026-09-28）：可选 onReset 回调在点击「重试」时随内部状态一并调用——
- *       用于联动外层重建懒加载资源（如 App.tsx 的 React.lazy 实例：动态 import
- *       失败的 rejection 会被 lazy 永久缓存，须重建实例才能重新发起模块加载）。
- *
- * 自愈联动（2026-09-28 深度修复）：可选 onError 回调在捕获错误时上报错误 message——
- *       供外层按错误类型自动恢复（如动态模块失效时自动整页刷新重建模块图）；
- *       同时提供「刷新页面」按钮，作为模块链失效（旧 chunk 404 / dev 编辑中间态）的
- *       终极恢复手段——「重试」仅重建 lazy 实例，无法清掉浏览器已缓存的失效模块图。
- *
- * 限制：不捕获事件回调、异步代码（setTimeout / Promise rejection）、SSR 错误。
+ * @file ErrorBoundary.tsx
+ * @description ErrorBoundary —— 全局渲染错误兜底边界。
+ * @author 4everyy
+ * @date 2026-10-07
  */
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import './ErrorBoundary.css'
@@ -38,10 +20,7 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  // 注意：不用 class fields（state = ... / handleRetry = ...）——
-  // 它们会被编译为 _defineProperty babel helper，而 rolldown 会把该共享
-  // helper 归入 antd chunk，导致登录页 entry 反向依赖整个 antd（190KB+）。
-  // 改用构造函数直接赋值，登录首屏不再拉取 antd。
+  // 注意：不用 class fields（state = ... / handleRetry = ...）——它们会被编译为 _definePr…
   declare state: State
   private declare handleRetry: () => void
   private declare handleReload: () => void

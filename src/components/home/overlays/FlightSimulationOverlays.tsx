@@ -1,3 +1,9 @@
+/**
+ * @file FlightSimulationOverlays.tsx
+ * @description 模拟飞行覆盖层：航点/航线动画播放
+ * @author 4everyy
+ * @date 2026-10-07
+ */
 import { type FlightOverlaysProps } from './FlightOverlays'
 import { homeImages } from '../../../assets/home/index'
 import { aircraft } from '../../../config/index'
@@ -8,11 +14,7 @@ import { RallyPointAltitudeOverlay } from './RallyPointAltitudeOverlay'
 import { pairRallyPointSpots } from '../../../lib/formationLayout'
 import { useEffect, useState } from 'react'
 
-/**
- * FlightSimulationOverlays —— 模拟飞行覆盖层：航点/航线模拟飞行、区域降落与集结点编队航线（自 FlightOverlays 拆出）。
- * 面板状态与启停函数经 props 传入；模拟飞行动画状态经 flightAnimStore 选择器订阅——
- * rAF 每帧只重渲染本覆盖层，不再波及 HomePage 主体与各面板。
- */
+/** FlightSimulationOverlays —— 模拟飞行覆盖层：航点/航线模拟飞行 */
 
 export function FlightSimulationOverlays(props: FlightOverlaysProps) {
   const { panels, anims, aircraftPositions, selectedDevices, areaLandingSpots, rallyPointSpots, handleDeleteRoutePoint, adapter } = props
@@ -44,20 +46,14 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
   const routeFlightFlight = useFlightAnimStore((s) => s.routeFlightFlight)
   const areaLandingFlights = useFlightAnimStore((s) => s.areaLandingFlights)
   const rallyPointFlights = useFlightAnimStore((s) => s.rallyPointFlights)
-  // 集结任务完成判定：存在飞行快照且全部落地定格（altitude≤0，与
-  // drone-flight--landed 同口径）——完成后隐藏绿色航线连线，
-  // 仅保留定格飞机与集结坪图标（起飞点原图标自确认执行起即整体隐藏，
-  // 见 AircraftLayer rallyActivePlaneIds）
+  // 集结任务完成判定：存在飞行快照且全部落地定格（altitude≤0
   const rallyPointLanded =
     rallyPointFlights.length > 0 && rallyPointFlights.every((f) => f.landed === true)
-  // 编队模拟飞行动画运行中判定（仅取 length 原始值选择器）：rAF 逐帧写入新数组但
-  // length 不变，不触发本组件每帧重渲染，仅编队动画启停时变化一次；运行中时
-  // 下方集结落坪定格图标整体隐藏（由编队动画图标自落坪位置接管呈现，避免双份叠加）
+  // 编队模拟飞行动画运行中判定（仅取 length 原始值选择器）：rAF 逐帧写入新数组但length 不变
   const formationFlightCount = useFlightAnimStore((s) => s.formationFlightFlights.length)
   // 集结点「删除重绘」按钮需要终止循环动画（事件期调用，稳定引用）
   const stopRallyPointFlights = anims.stopRallyPointFlights
-  // 航线定格航点地理锚定：地图拖动/旋转/缩放的每一帧都触发 move 事件，
-  // 驱动本覆盖层重渲染，使已定格航点图钉与折线航线经 project 重投影持续钉在原地理位置
+  // 航线定格航点地理锚定：地图拖动/旋转/缩放的每一帧都触发 move 事件，驱动本覆盖层重渲染
   const [, setRouteMoveTick] = useState(0)
   useEffect(() => {
     if (!adapter || !routeFlightOpen || routeFlightPoints.length === 0) return
@@ -93,8 +89,7 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
           {routeFlightOpen &&
             (() => {
               if (routeFlightPoints.length === 0 && !routeFlightHover) return null
-              // 定格航点：经纬度 → 容器像素（project）→ 视口像素（加容器原点偏移）；
-              // 无适配器时退回定格屏幕坐标
+              // 定格航点：经纬度 → 容器像素（project）→ 视口像素（加容器原点偏移）
               const bounds = adapter ? adapter.getContainer().getBoundingClientRect() : null
               const projected = routeFlightPoints.map((p) => {
                 if (adapter && bounds) {
@@ -204,8 +199,7 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
                   setAreaLandingRect(null)
                   setAreaLandingCorners(null)
                   setAreaLandingRouteGenerated(false)
-                  // 删除重绘：清除定型区域后重新进入框选模式（光标恢复停机坪图标
-                  // 跟随鼠标），可立即重新绘制降落区域；绘制确认/取消后回到面板
+                  // 删除重绘：清除定型区域后重新进入框选模式（光标恢复停机坪图标跟随鼠标），可立即重新绘制降落区域
                   setAreaSelectSource('area-landing')
                   setAreaSelectMode(true)
                 }}
@@ -285,9 +279,7 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
             (() => {
               const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
               if (!stage) return null
-              // 选中飞机按设备序号升序取出，再按「总航程最小指派」配对集结坪：
-              // 飞机与集结坪按欧氏距离求最小总长一一配对，最短总长匹配天然无
-              // 几何交叉（三角形不等式保证），多条航线互不相交且总航程最短
+              // 选中飞机按设备序号升序取出，再按「总航程最小指派」配对集结坪：飞机与集结坪按欧氏距离求最小总长一一配对
               const picked = aircraft
                 .map((item, index) => ({ item, index }))
                 .filter(({ item }) => selectedDevices.has(item.deviceIndex))
@@ -368,14 +360,12 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
               <div
                 className="area-landing-confirmed__delete-btn"
                 onClick={() => {
-                  // 删除重绘：终止循环动画并清除航线生成态与已确认区域
-                  //（Geo 同步清除，防止 HomePage 地理锚定 onMove 重投影复活区域）
+                  // 删除重绘：终止循环动画并清除航线生成态与已确认区域（Geo 同步清除，防止 HomePage 地理锚定 onMove 重投影复活区域）
                   stopRallyPointFlights()
                   setRallyPointRouteGenerated(false)
                   setRallyPointRect(null)
                   setRallyPointRectGeo(null)
-                  // 重新进入框选模式（与区域降落同款交互）：光标恢复停机坪图标
-                  // 跟随鼠标，可立即重新绘制集结区域；绘制确认/取消后回到面板
+                  // 重新进入框选模式（与区域降落同款交互）：光标恢复停机坪图标跟随鼠标，可立即重新绘制集结区域
                   setAreaSelectSource('rally-point')
                   setAreaSelectMode(true)
                 }}
@@ -389,9 +379,7 @@ export function FlightSimulationOverlays(props: FlightOverlaysProps) {
 }
 
 
-/** 航线飞行编号航点图钉：设计稿橙色切图（32×56）+ 白色序号叠加，钉尖对准取点位置。
- *  取点结束后（interactive）可交互：悬浮/双击弹出「删除航点」按钮，点击删除该航点，
- *  剩余航点自动重连成航线（序号随之重排）；取点中保持 pointer-events:none 不拦截取点 */
+/** 航线飞行编号航点图钉：设计稿橙色切图（32×56）+ 白色序号叠加，钉尖对准取点位置。 */
 export function RoutePinMarker({
   num,
   x,

@@ -1,8 +1,6 @@
 @import './DeviceList.css';
 
-/* DeviceManagementPanel.css —— 样式入口
- * DeviceList：面板外壳 / 标题栏 / 筛选栏 / 设备列表与设备行
- * DeviceDetail：行内遥测详情 / 加载失败占位 / 聚焦视图面板 */
+/* 面板外壳 / 标题栏 / 筛选栏 / 设备列表与设备… */
 
 /* ====== 行内遥测详情（内联展开，不覆盖其他行） ====== */
 .device-row__detail {
@@ -40,8 +38,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  /* 左右两列（各为一个整体）之间的间距调大，配合 justify-content:center
-     仍保持两列作为整体水平居中。measure() 会自动重算等宽与 footer 对齐。 */
+    /* 左右两列（各为一个整体）之间的间距调大，配合 justify-content:center仍保持两列作为整体水平居中。 */
   gap: clamp(56px, 7vw, 96px);
 }
 
@@ -54,10 +51,7 @@
   min-width: 0;
 }
 
-/* 遥测详情两列等宽：宽度由运行时 JS（ResizeObserver）测量两列内容最大宽度后
-   统一设置，保证左右两列标签/数值严格对齐；flex:0 0 auto 确保不被拉伸或压缩，
-   配合 .device-row__detail-row 的 justify-content:center 让两列作为整体居中。
-   详见 DeviceManagementPanel.tsx 中 measure() 的等宽逻辑。 */
+/* 遥测详情两列等宽：宽度由运行时 JS（ResizeObserver）测量两列内容最大宽度后统一设置，保证左右两列标签/数值严格对齐 */
 .device-row__detail-row .device-row__detail-col {
   flex: 0 0 auto;
 }
@@ -85,9 +79,7 @@
   color: #fff;
   margin-left: 4px;
   flex-shrink: 0;
-  /* 标签列定宽（容纳最宽"速度(Y)"≈3.6em）：所有行的数值起点在同一竖直线上，
-     实现数值列左对齐；min-width 而非 width，footer 的"最后更新时间"（6em）
-     可自然撑开不受影响。标签与数值之间 16px 间距不变。 */
+    /* 标签列定宽（容纳最宽"速度(Y)"≈3.6em）：所有行的数值起点在同一竖直线上，实现数值列左对齐 */
   min-width: 3.6em;
 }
 
@@ -138,15 +130,10 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  /* 垂直居中（零高度增加）：detail 的 flex gap:8px 已在分隔线与 footer 之间产生
-     8px 间距，此处用负 margin -2px 抵消多出的部分，使上方间距 = 8 + (-2) = 6px，
-     与 detail padding-bottom:6px 上下对称，文字精确处于分隔线~底边空间的垂直中心。 */
+    /* 垂直居中（零高度增加）：detail 的 flex gap:8px 已在分隔线与 footer 之间产生8px 间距 */
   margin-top: -2px;
   width: 100%;
-  /* 让"最后更新时间"内容的右边与上方右列数值（自然宽度、左对齐）的右边对齐：
-     右列值未占满列宽，右侧留有空白，这里用 padding-right 将 footer 内容
-     从内容区右边缘向内收，补偿该空白。
-     注意：此处值由 measure() 运行时动态覆盖，静态值仅作初始占位。 */
+    /* 让"最后更新时间"内容的右边与上方右列数值（自然宽度、左对齐）的右边对齐：右列值未占满列宽 */
   padding-right: clamp(14px, 1vw, 16px);
 }
 

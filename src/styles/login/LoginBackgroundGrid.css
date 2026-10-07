@@ -1,0 +1,356 @@
+/* LoginBackgroundGrid.css —— 从 LoginBackground.css 抽离（登录页背景装饰层）：网格滚动/粒子/性能优化与冻结（后半）。
+   由样式入口 LoginBackground.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+.login-grid {
+  position: absolute;
+  inset: -60%;
+  /* 性能：顶部预留一圈网格滚动余量，动画改走 transform（合成层零重绘） */
+  top: calc(-60% - 56px);
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(135, 235, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(135, 235, 255, 0.06) 1px, transparent 1px);
+  background-size: 56px 56px;
+  transform: perspective(900px) rotateX(58deg) translateY(12%);
+  transform-origin: 50% 100%;
+  animation: login-grid-scroll 14s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes login-grid-scroll {
+  from {
+    transform: perspective(900px) rotateX(58deg) translateY(12%);
+  }
+  to {
+    /* 竖线沿自身方向平移视觉不变、横线滚动一个周期 56px，与原 background-position 效果一致 */
+    transform: perspective(900px) rotateX(58deg) translateY(calc(12% + 56px));
+  }
+}
+
+.login-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.login-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(ellipse 90% 80% at 50% 45%, transparent 55%, rgba(3, 12, 24, 0.55) 100%);
+  pointer-events: none;
+}
+
+.login-hex {
+  position: absolute;
+  z-index: 1;
+  /* 性能优化：去掉 drop-shadow（悬浮动画逐帧重绘），提高不透明度补偿亮度 */
+  color: rgba(135, 235, 255, 0.22);
+  animation: login-hex-float 16s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.login-hex--1 {
+  width: 140px;
+  left: 12%;
+  top: 16%;
+  animation-duration: 13s;
+}
+
+.login-hex--2 {
+  width: 90px;
+  right: 16%;
+  top: 24%;
+  animation-duration: 17s;
+  animation-delay: -5s;
+}
+
+.login-hex--3 {
+  width: 200px;
+  left: 6%;
+  bottom: 10%;
+  color: rgba(135, 235, 255, 0.1);
+  animation-duration: 21s;
+  animation-delay: -9s;
+}
+
+.login-hex--4 {
+  width: 64px;
+  right: 9%;
+  bottom: 18%;
+  animation-duration: 12s;
+  animation-delay: -3s;
+}
+
+@keyframes login-hex-float {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    transform: translateY(-26px) rotate(60deg);
+  }
+}
+
+.login-beam-v {
+  position: absolute;
+  bottom: -12%;
+  width: 2px;
+  height: 62vh;
+  z-index: 1;
+  background: linear-gradient(to top, rgba(135, 235, 255, 0.5), rgba(135, 235, 255, 0.06) 75%, transparent);
+  opacity: 0;
+  animation: login-beam-rise 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.login-beam-v::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(160, 245, 255, 0.9);
+  box-shadow: 0 0 14px 4px rgba(135, 235, 255, 0.6);
+}
+
+.login-beam-v--l {
+  left: 26%;
+}
+
+.login-beam-v--r {
+  right: 28%;
+  animation-delay: 3.2s;
+}
+
+@keyframes login-beam-rise {
+  0% {
+    transform: translateY(36vh);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.85;
+  }
+  70% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-66vh);
+    opacity: 0;
+  }
+}
+
+.login-ticks {
+  position: absolute;
+  top: -26px; /* 性能优化：上移一个周期（26px），transform 动画不露边 */
+  bottom: 0;
+  width: 10px;
+  z-index: 2;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(135, 235, 255, 0.4) 0 8px,
+    transparent 8px 26px
+  );
+  background-size: 10px 26px;
+  background-repeat: repeat-y;
+  opacity: 0.28;
+  mask: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent);
+  -webkit-mask: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent);
+  /* 性能优化：background-position 逐帧重绘 → transform 走合成层零重绘 */
+  will-change: transform;
+  animation: login-ticks-flow 2.6s linear infinite;
+  pointer-events: none;
+}
+
+.login-ticks--l {
+  left: clamp(40px, 5vw, 72px);
+}
+
+.login-ticks--r {
+  right: clamp(40px, 5vw, 72px);
+  animation-direction: reverse;
+}
+
+@keyframes login-ticks-flow {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(26px);
+  }
+}
+
+.login-ripple {
+  position: absolute;
+  z-index: 30;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(135, 235, 255, 0.9);
+  box-shadow:
+    0 0 16px rgba(135, 235, 255, 0.55),
+    inset 0 0 8px rgba(135, 235, 255, 0.4);
+  pointer-events: none;
+  animation: login-ripple-burst 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes login-ripple-burst {
+  from {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  to {
+    transform: scale(11);
+    opacity: 0;
+  }
+}
+
+.login-crosshair__v {
+  position: absolute;
+  background: rgba(135, 235, 255, 0.55);
+  box-shadow: 0 0 6px rgba(135, 235, 255, 0.5);
+}
+
+.login-crosshair__h {
+  width: 28px;
+  height: 1px;
+  margin: -0.5px 0 0 -14px;
+}
+
+.login-crosshair__v {
+  width: 1px;
+  height: 28px;
+  margin: -14px 0 0 -0.5px;
+}
+
+.login-crosshair__ring {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 1px solid rgba(135, 235, 255, 0.5);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: login-cross-spin 3.2s linear infinite;
+}
+
+.login-crosshair__dot {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+  border-radius: 50%;
+  background: #a0f5ff;
+  box-shadow: 0 0 9px rgba(135, 235, 255, 0.95);
+}
+
+@keyframes login-cross-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.login-dial__ticks {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    rgba(135, 235, 255, 0.3) 0deg 0.6deg,
+    transparent 0.6deg 6deg
+  );
+  mask: radial-gradient(circle, transparent 0 47%, #000 47.4% 49.6%, transparent 50%);
+  -webkit-mask: radial-gradient(circle, transparent 0 47%, #000 47.4% 49.6%, transparent 50%);
+  animation: login-dial-spin 28s linear infinite;
+}
+
+.login-dial__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed rgba(135, 235, 255, 0.22);
+}
+
+.login-dial__ring--1 {
+  inset: 3%;
+  animation: login-dial-spin 18s linear infinite;
+}
+
+.login-dial__ring--2 {
+  inset: 10%;
+  border-style: solid;
+  border-color: rgba(135, 235, 255, 0.12);
+  animation: login-dial-spin 24s linear infinite reverse;
+}
+
+@keyframes login-dial-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.login-submit__charge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+  animation: login-charge 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes login-charge {
+  0%,
+  100% {
+    transform: scaleX(0.12);
+    opacity: 0.35;
+  }
+
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+
+/* 性能优化（2026-09-18）：登录成功后冻结背景装饰动画phase=success 时 Canvas 已停帧（useLoginCanvas） */
+.login-page--success .login-grid,
+.login-page--success .login-glow,
+.login-page--success .login-meteor,
+.login-page--success .login-hex,
+.login-page--success .login-beam-v,
+.login-page--success .login-scanline,
+.login-page--success .login-ticks,
+.login-page--success .login-circuit__flow,
+.login-page--success .login-radar__sweep,
+.login-page--success .login-radar__ring,
+.login-page--success .login-dial__ticks,
+.login-page--success .login-dial__ring,
+.login-page--success .login-crosshair__ring,
+.login-page--success .login-submit__charge,
+.login-page--success .login-orbit {
+  animation-play-state: paused;
+}
+
+/* 规则内容未改动… */
+
+.login-page {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% -20%, #12325c 0%, transparent 55%),
+    radial-gradient(ellipse 80% 60% at 85% 110%, #0d2c4e 0%, transparent 60%),
+    #0a1a2f;
+  color: #eafcff;
+  font-family: 'MiSans-Regular';
+  user-select: none;
+}
+
+.login-page {
+  cursor: crosshair;
+}

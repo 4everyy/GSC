@@ -1,3 +1,9 @@
+/**
+ * @file MapLibreContainer.tsx
+ * @description MapLibre GL JS 地图容器组件（严格离线）
+ * @author 4everyy
+ * @date 2026-10-07
+ */
 import { Map as MLMap, type StyleSpecification, type MapSourceDataEvent } from 'maplibre-gl'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { MapLibreAdapter } from '../../map-engines/MapLibreAdapter'
@@ -9,24 +15,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import './MapLibreContainer.css'
 import { Progress } from 'antd'
 
-/**
- * MapLibreContainer —— MapLibre GL JS 地图容器组件（严格离线）。
- *
- * 职责：
- * - 初始化 MapLibre 地图实例并加载样式；
- * - 通过 onReady 暴露 MapEngineInstance（含 MapLibreAdapter），供上层业务使用；
- * - 支持自动定位（浏览器 Geolocation，WGS84 直用，无需坐标转换）；
- * - 组件卸载时调用 map.remove() 销毁实例。
- *
- * 严格离线（无在线兜底）：
- * - 运行时不读取 navigator.onLine，无「在线/离线」分支；
- * - 尚未导入任何离线地图包时，渲染纯色占位底图（PLACEHOLDER_STYLE）；
- * - styleSpec prop 由父组件注入（P1+：来源于已导入的 MBTiles 包），变化时热切换。
- *
- * 实现要点：
- * - 坐标系：WGS84（业务侧统一坐标）；
- * - SDK 加载：直接 import maplibre-gl，无需动态 script 注入。
- */
+/** MapLibreContainer —— MapLibre GL JS 地图容器组件（严格离线）。 */
 
 /** "我的位置"标注图标（蓝色光点 + 光晕），使用内联 SVG 无需图片资源 */
 const LOCATION_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
@@ -35,13 +24,7 @@ const LOCATION_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="44" he
   <circle cx="22" cy="22" r="7" fill="#1e90ff" stroke="#fff" stroke-width="2.5"/>
 </svg>`
 
-/**
- * 占位底图样式（严格离线）。
- *
- * 尚未导入任何离线地图包时使用：一个纯色背景层，使 MapLibre 能正常初始化、
- * adapter 可用、业务 DOM 覆盖物正常渲染。导入 MBTiles 包后，父组件通过
- * styleSpec prop 注入完整样式（含 gcs-pkg:// 瓦片源），热切换到此占位样式之上。
- */
+/** 占位底图样式（严格离线）。 */
 const PLACEHOLDER_STYLE: StyleSpecification = {
   version: 8,
   sources: {},
@@ -55,11 +38,7 @@ const PLACEHOLDER_STYLE: StyleSpecification = {
 }
 
 
-/**
- * 在 MapLibre 地图上添加"我的位置"标注：精度圆 + 蓝色光点 Marker。
- *
- * 使用 adapter 抽象接口，坐标系为 WGS84。
- */
+/** 在 MapLibre 地图上添加"我的位置"标注：精度圆 + 蓝色光点 Marker。 */
 function addLocationMarker(
   adapter: MapLibreAdapter,
   lng: number,
@@ -82,13 +61,7 @@ function addLocationMarker(
   })
 }
 
-/**
- * 自动定位到用户当前位置。
- *
- * 直接使用浏览器 Geolocation API（WGS84），定位结果可直接传入 MapLibre。
- * 传入 isCancelled 回调，避免异步定位返回时用户已开始编辑航线，
- * 此刻放弃 panTo 防止视野被移走。
- */
+/** 自动定位到用户当前位置。 */
 function runAutoLocate(
   adapter: MapLibreAdapter,
   isCancelled: () => boolean,
@@ -99,8 +72,7 @@ function runAutoLocate(
     (position) => {
       if (isCancelled()) return
       const { longitude, latitude } = position.coords
-      // 严格离线底图仅在包 bounds 内有瓦片：GPS 越界时平移视野会飞出瓦片
-      // 覆盖区、底图一片空白（用户不在包覆盖城市时必现）。此时保留默认中心。
+      // 严格离线底图仅在包 bounds 内有瓦片：GPS 越界时平移视野会飞出瓦片覆盖区、底图一片空白（用户不在包覆盖城市时必现）。
       if (bounds) {
         const [west, south, east, north] = bounds
         if (longitude < west || longitude > east || latitude < south || latitude > north) {
@@ -123,14 +95,7 @@ interface MapCenter {
   lat: number
 }
 
-/**
- * 地图渲染状态。
- *
- * 严格离线：运行时不读取 navigator.onLine，无「在线/离线」分支。
- * - loading：地图初始化中；
- * - success：地图加载成功（占位底图或离线包样式均可到达此状态）；
- * - error：地图初始化失败。
- */
+/** 地图渲染状态。 */
 export type MapStatus = 'loading' | 'success' | 'error'
 
 /** MapLibreContainer 组件属性 */
@@ -145,24 +110,15 @@ interface MapLibreContainerProps {
   autoLocate?: boolean
   /** 地图实例就绪回调，父级接收 MapEngineInstance（含 adapter + raw） */
   onReady?: (engine: MapEngineInstance) => void
-  /**
-   * 运行时热切换的样式 spec。变化时调用 map.setStyle（不重建实例）。
-   * 用于「离线地图包切换」：父组件注入由 MBTiles 包派生的完整样式
-   * （含 gcs-pkg:// 瓦片源）；未就绪时为 null / undefined（使用占位底图）。
-   */
+  /** 运行时热切换的样式 spec。 */
   styleSpec?: MapStyleSpec | null
-  /** 自动定位有效边界 [west, south, east, north]（离线包 bounds）；GPS 越界时放弃平移 */
+  /** 自动定位有效边界 [west, south, east, north]… */
   locateBounds?: readonly [number, number, number, number] | null
   /** 叠加在地图之上的 DOM 覆盖物（如飞行器、限制区） */
   children?: ReactNode
 }
 
-/**
- * MapLibre GL JS 地图容器组件。
- *
- * 初始化 MapLibre 地图实例，通过 onReady(MapEngineInstance) 接口
- * 向上层暴露地图能力。
- */
+/** MapLibre GL JS 地图容器组件。 */
 export function MapLibreContainer({
   className,
   center = MAPLIBRE_DEFAULT_CENTER,
@@ -191,7 +147,7 @@ export function MapLibreContainer({
   // 重试计数器：点击"重试"时递增，触发 Effect 1 重新初始化地图
   const [retryKey, setRetryKey] = useState(0)
 
-  // ============ Effect 1：初始化地图（依赖 retryKey，支持重试） ============
+  // Effect 1：初始化地图（依赖 retryKey，支持重试）
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -200,9 +156,7 @@ export function MapLibreContainer({
     setErrorMsg('')
 
     try {
-      // 严格离线引擎层强制：注册 gcs-block 拦截协议，并通过 transformRequest 把任何
-      // 绝对 http(s):// URL（Esri / OSM / tileserver 等在线兜底）重写为 gcs-block:// →
-      // 一律拦截（灰显，零网络）。gcs-pkg:// / data: / 同源路径原样放行。幂等，安全。
+      // 严格离线引擎层强制：注册 gcs-block 拦截协议，并通过 transformRequest 把任何绝对 http(s):// URL…
       registerOfflineNetworkGuard()
       const map = new MLMap({
         container: containerRef.current,
@@ -212,7 +166,7 @@ export function MapLibreContainer({
           : PLACEHOLDER_STYLE,
         center: [center.lng, center.lat],
         zoom,
-        // 严格离线网络守卫：拦截一切在线 http(s) 资源请求（瓦片 / style / glyph / sprite）。
+        // 严格离线网络守卫：拦截一切在线 http(s) 资源请求…
         transformRequest: createOfflineTransformRequest(),
         ...MAPLIBRE_MAP_OPTIONS,
       })
@@ -255,13 +209,7 @@ export function MapLibreContainer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retryKey])
 
-  // ============ Effect 1.5：运行时样式热切换（离线地图包切换） ============
-  // styleSpec 变化时切换样式，不重建实例，保留视图与业务 DOM 覆盖物。
-  // 首次加载（map 未就绪）由 Effect 1 的初始化直接使用 styleSpecRef。
-  // adapter 就绪后经 adapter.setStyle：setStyle 会清空运行期动态添加的
-  // source/layer（任务区域多边形、定位精度圈等——启动期在占位样式上先行
-  // 渲染的覆盖物），adapter 内部在新样式数据就绪后按创建参数重放恢复；
-  // adapter 未就绪（load 未完成）时此时尚无业务覆盖物，直接切换即可。
+  // Effect 1.5：运行时样式热切换（离线地图包切换）styleSpec 变化时切换样式，不重建实例，保留视图与业务 DOM 覆盖物。
   useEffect(() => {
     const map = mapRef.current
     if (!map || !styleSpec) return
@@ -317,32 +265,9 @@ export function MapLibreContainer({
   )
 }
 
-/**
- * MapLoadProgress —— 地图加载进度指示器（首页右下角）。
- *
- * 样式参考 antd「自定义进度条渐变色」示例：
- * <Progress type="dashboard" percent={93} strokeColor={conicColors} />
- *
- * 覆盖「应用启动 → 离线包就绪 → 瓦片渲染完毕」全流程（修复两类问题）：
- * 1. 进度条出现太晚 / 一出来就 95%：engineInstance 在地图 load（首批瓦片
- *    已渲染完）之后才暴露，真实瓦片事件早已错过。因此本组件挂载即显示，
- *    分阶段驱动：
- *    - 阶段 A（占位等待）：样式未注入（reloadKey 为空）或引擎未就绪，
- *      用时间曲线缓升假进度（上限 30%；引擎初始化带样式时上限 80%），
- *      保证黑底等待期始终有提示；
- *    - 阶段 B（真实统计）：样式已注入且引擎就绪（setStyle 进行中），
- *      监听 sourcedataloading / sourcedata(content) 的「已完成/总数」实时
- *      比值（35%~95% 单调递增）；若 onReady 时已 loaded（首次初始化路径，
- *      首批瓦片在监听前完成）直接收尾；
- *    - 阶段 C（收尾）：跳 100% → 停留 700ms → 淡出隐藏。
- * 2. 结束条件（任一先满足）：最后一批瓦片完成后 450ms 无新请求 / idle /
- *    兜底超时（占位等待 10s、瓦片统计 30s）。
- * - reloadKey（activeStyle 引用）变化 = 离线地图包热切换 setStyle，
- *   重置为可见并重新统计新一轮加载（进度从 0 重新走起）。
- */
+/** MapLoadProgress —— 地图加载进度指示器（首页右下角）。 */
 
-/** conic 渐变色：项目主色系提亮提饱和（亮青 #00e5ff → 天蓝 #35c8fb → 冰青 #8df3ff），
- *  配合 CSS drop-shadow 发光，避免与深色背景撞色 */
+/** conic 渐变色：项目主色系提亮提饱和（亮青 #00e5ff → 天蓝 #35c8fb → 冰青 #8df3ff） */
 const CONIC_COLORS = {
   '0%': '#00e5ff',
   '50%': '#35c8fb',
@@ -351,7 +276,7 @@ const CONIC_COLORS = {
 
 /** 组件属性 */
 interface MapLoadProgressProps {
-  /** MapLibre 原始地图实例（MapEngineInstance.raw，未就绪时为 undefined） */
+  /** MapLibre 原始地图实例（MapEngineInstance.raw */
   map?: unknown
   /** 热切换标识：引用变化时视为新一轮加载（离线地图包切换 setStyle） */
   reloadKey?: unknown
@@ -427,8 +352,7 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
   // 挂载即显示：覆盖启动初期的黑底等待阶段
   const [phase, setPhase] = useState<Phase>('active')
 
-  // 进度状态对象：ref 惰性初始化并持有：渲染期不读写，effect/事件回调内修改
-  //（重置 = Object.assign 覆写；ref 是可变逃生舱，不触发 immutability 规则）
+  // 进度状态对象：ref 惰性初始化并持有：渲染期不读写，effect/事件回调内修改…
   const stRef = useRef<ProgressState | null>(null)
   const settleTimer = useRef(0)
   const fadeTimer = useRef(0)
@@ -450,9 +374,7 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
         window.clearTimeout(globalTimer.current)
         window.clearTimeout(safetyTimer.current)
         Object.assign(s, makeState())
-        // 显示归零走 microtask：effect 体内同步 setState 会级联渲染（react-hooks
-        // 规则禁止）。phase 无需同步恢复——新一轮 finished=false，上一轮的
-        // leaving/hidden 由微任务重置为 active（旧收尾定时器已清理，不会覆盖）
+        // 显示归零走 microtask：effect 体内同步 setState 会级联渲染（react-hooks规则禁止）。
         queueMicrotask(() => {
           setPercent(0)
           setPhase('active')
@@ -487,8 +409,7 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
     let detach: (() => void) | null = null
     if (mlMap && reloadKey) {
       if (mlMap.loaded()) {
-        // 首次初始化路径：onReady 暴露实例时首批瓦片已渲染完（事件已错过），
-        // 无加载过程可统计，直接收尾
+        // 首次初始化路径：onReady 暴露实例时首批瓦片已渲染完（事件已错过），无加载过程可统计，直接收尾
         finish()
       } else {
         s.tracking = true
@@ -502,7 +423,6 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
         }
 
         // 瓦片开始加载（content）：进行中 +1，取消静默收尾（新瓦片陆续被发现）。
-        // metadata 事件（source 元数据就绪）不算瓦片，必须过滤
         const onTileLoading = (e: MapSourceDataEvent) => {
           if (e.dataType !== 'source' || e.sourceDataType !== 'content') return
           if (s.finished) return
@@ -513,8 +433,6 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
         }
 
         // 计入一枚已完成瓦片：全部归零后静默 SETTLE_MS 即收尾。
-        // maplibre 约定：每个 sourcedataloading(content) 之后必跟 sourcedata /
-        // sourcedataabort / error 之一，三处都计数才能保证 inflight 归零
         const completeTile = () => {
           if (s.finished) return
           if (s.inflight > 0) s.inflight -= 1
@@ -526,14 +444,13 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
           }
         }
 
-        // 瓦片结束（成功 sourcedata / 中止 sourcedataabort），同样只认 content
+        // 瓦片结束（成功 sourcedata / 中止 sourcedataabort）
         const onTileDone = (e: MapSourceDataEvent) => {
           if (e.dataType !== 'source' || e.sourceDataType !== 'content') return
           completeTile()
         }
 
-        // 瓦片失败（error 无 sourceDataType 字段）：仅在有进行中瓦片时计数，
-        // 避免与瓦片无关的 error 虚增 done 抬高进度
+        // 瓦片失败（error 无 sourceDataType 字段）：仅在有进行中瓦片时计数
         const onTileError = () => {
           if (s.inflight > 0) completeTile()
         }
@@ -566,8 +483,7 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
         return
       }
       const t = performance.now() - s.startedAt
-      // 引擎正以离线样式初始化（load 后 onReady 即收尾）→ 上限 80%；
-      // 其余等待（占位底图 / 引擎初始化）→ 上限 30%
+      // 引擎正以离线样式初始化（load 后 onReady 即收尾）→ 上限 80%
       const cap = reloadKey && !mlMap ? INIT_CAP : IDLE_CAP
       publish(cap * (1 - Math.exp(-t / IDLE_TAU_MS)))
     }, TICK_MS)
@@ -613,9 +529,7 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
         railColor="rgba(148, 163, 184, 0.18)"
         strokeWidth={10}
         size={96}
-        /* 百分比文字用 antd6 语义化 styles.indicator 内联注入：内联样式优先级
-           高于 antd CSS-in-JS 的 class 规则（默认 colorText 黑色），任何注入
-           顺序下都必定生效；配合 CSS 文件中的同名规则作双保险 */
+        /* 内联样式优先级高于 antd CSS-in-JS 的 clas… */
         styles={{
           indicator: {
             background:

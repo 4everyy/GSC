@@ -1,8 +1,8 @@
 /**
- * 视频监测屏 mock 数据与类型。
- *
- * 当前阶段先以静态数据驱动界面（设备/目标框/侧栏小卡/遥测面板），
- * 后续接入真实图传流时仅需替换此文件的数据来源（WebSocket / REST）。
+ * @file videoMonitorData.ts
+ * @description 视频监测屏 mock 数据与类型。
+ * @author 4everyy
+ * @date 2026-10-07
  */
 
 /** 画面内 AI 检测目标框 */
@@ -145,7 +145,8 @@ export const VIDEO_CHANNELS: VideoChannel[] = [
   {
     id: 'cam-04',
     name: '04中科晶锐',
-    online: true,
+    /* demo：本路设备离线，画面显示 load-fail.png「设备已离线」占位 */
+    online: false,
     battery: 100,
     actionBar: 'operate',
     telemetry: buildTelemetry({
@@ -170,10 +171,7 @@ export const MINI_DEVICES: MiniDeviceCard[] = Array.from({ length: 11 }, (_, i) 
   battery: 100,
 }))
 
-/**
- * 平铺视图通道：全部 15 路（4 主通道 + 11 小卡设备升格为完整通道卡）。
- * 小卡设备遥测按序号生成稳定伪数据（接真实流后由后端推送替换）。
- */
+/** 平铺视图通道：全部 15 路（4 主通道 + 11 小卡设备升格为完整通道卡）。 */
 export const TILED_CHANNELS: VideoChannel[] = [
   ...VIDEO_CHANNELS,
   ...MINI_DEVICES.map((d, i) => ({
@@ -197,5 +195,5 @@ export const TILED_CHANNELS: VideoChannel[] = [
   })),
 ]
 
-/** 在线设备总数：4 路主通道 + 11 张右栏小卡 = 15 */
-export const ONLINE_COUNT = 15
+/** 在线设备总数：按主通道 online 标记统计（离线通道不计入）+ 11 张右栏小卡 */
+export const ONLINE_COUNT = VIDEO_CHANNELS.filter((c) => c.online).length + MINI_DEVICES.length

@@ -1,16 +1,12 @@
+/**
+ * @file index.ts
+ * @description geoAnchor 舞台百分比与地理坐标换算等通用工具
+ * @author 4everyy
+ * @date 2026-10-07
+ */
 import { type LngLat, type MapAdapter } from '../map-engines/types'
 
-/**
- * geoAnchor —— 舞台百分比坐标 ↔ 地理坐标换算工具。
- *
- * 首页态势图的 DOM 覆盖物（无人机/目标图标）以舞台容器（.map-stage 等）的
- * 百分比定位，而地图引擎（MapLibre）投影/反投影使用地图容器像素坐标。
- * 两个容器通常不完全重合（地图容器铺满画布含顶栏区域，舞台在顶栏下方），
- * 换算时须用 getBoundingClientRect 做原点偏移修正。
- *
- * 用途：DOM 覆盖物按地理锚点（LngLat）实时跟随地图视口移动（拖动/缩放地图
- * 时图标随之移动），拖拽覆盖物结束后再把新屏幕位置固化为地理锚点。
- */
+/** geoAnchor —— 舞台百分比坐标 ↔ 地理坐标换算工具。 */
 
 /** 舞台投影器：持有一次快照的容器几何，做百分比↔地理坐标互转 */
 export interface StageProjector {
@@ -20,10 +16,7 @@ export interface StageProjector {
   lngLatToStagePct(lngLat: LngLat): { x: number; y: number }
 }
 
-/**
- * 基于当前布局快照创建舞台投影器。
- * 每次换算前重建即可获得最新容器几何（地图/舞台尺寸与位置变化均被覆盖）。
- */
+/** 基于当前布局快照创建舞台投影器。 */
 export function createStageProjector(
   adapter: MapAdapter,
   stageEl: HTMLElement,
@@ -57,10 +50,7 @@ export function queryStageEl(selector: string): HTMLElement | null {
 
 // ============ 地理锚点持久化（按离线地图包作用域） ============
 
-/**
- * 校验单个锚点对象形状（lng/lat 均为有限数）。
- * localStorage 中的历史数据可能损坏，读取时逐项校验，坏项回退默认播种。
- */
+/** 校验单个锚点对象形状（lng/lat 均为有限数）。 */
 function isValidLngLat(v: unknown): v is LngLat {
   return (
     typeof v === 'object' && v !== null &&
@@ -69,14 +59,7 @@ function isValidLngLat(v: unknown): v is LngLat {
   )
 }
 
-/**
- * 读取按包作用域持久化的锚点表。
- *
- * @param baseKey 存储键前缀（如 'gcs:aircraft-anchors'，最终键为 `${baseKey}:${pkgId}`）
- * @param pkgId   当前离线地图包 id（不同城市/区域包各自独立保存一套锚点）
- * @param ids     期望的目标 id 列表（校验持久化数据与当前配置一一对应，缺失项不补）
- * @returns id → LngLat 映射；无数据/损坏/长度不符时返回空对象（调用方按默认偏移播种）
- */
+/** 读取按包作用域持久化的锚点表。 */
 export function loadScopedAnchors(
   baseKey: string,
   pkgId: string,
@@ -103,10 +86,7 @@ export function loadScopedAnchors(
   }
 }
 
-/**
- * 持久化锚点表（按包作用域）。写入失败（隐私模式/配额满）静默忽略，
- * 不影响当次会话的锚定功能。
- */
+/** 持久化锚点表（按包作用域）。 */
 export function saveScopedAnchors(
   baseKey: string,
   pkgId: string,
@@ -119,15 +99,7 @@ export function saveScopedAnchors(
   }
 }
 
-/**
- * htmlToElement —— 将 HTML 字符串转换为 DOM 元素。
- *
- * MapLibre 的 Marker 需要 HTMLElement（而非 HTML 字符串），
- * 而现有业务代码（waypointIcon / DroneSimulator）生成的是 HTML 字符串，
- * 此工具统一桥接两种调用方式。
- *
- * 实现使用 <template> 元素解析 HTML，避免直接 innerHTML 注入的全局污染。
- */
+/** htmlToElement —— 将 HTML 字符串转换为 DOM 元素。 */
 export function htmlToElement(html: string): HTMLElement {
   const template = document.createElement('template')
   template.innerHTML = html.trim()
@@ -138,25 +110,7 @@ export function htmlToElement(html: string): HTMLElement {
   return node
 }
 
-/**
- * panelPlacement —— hover 面板边缘自适应定位工具。
- *
- * 问题背景：
- * 飞机图标 / 巡检区域 / 禁飞区等元素可拖动或固定在视口任意位置，
- * 其 hover 信息面板默认向「右侧 + 上方」展开。当宿主元素靠近视口右/上/下边缘时，
- * 面板会溢出可视区域导致内容被裁剪、显示不全。
- *
- * 解决方案：
- * 根据宿主元素在视口中的百分比位置（0-100），判定面板应朝哪个方向展开更安全，
- * 返回一组方向修饰类名（如 `panel-right` / `panel-left`、`panel-up` / `panel-down`），
- * 由 CSS 据此翻转面板的 left/right 与 top/bottom 定位，保证面板始终完整可见。
- *
- * 设计要点：
- * - 输入仅依赖百分比位置，与拖拽 hook 的坐标系一致，无需 DOM 测量，实时性高；
- * - 阈值可配置，默认基于现有面板尺寸（宽约 203-229px、高约 69-117px）
- *   在常见 1280-1920 视口下换算为百分比的安全边距；
- * - 对不同面板类型（窄/宽、矮/高）提供阈值覆盖，避免一刀切。
- */
+/** panelPlacement —— hover 面板边缘自适应定位工具。 */
 
 export interface PanelThreshold {
   /** 右侧空间不足该百分比时，面板改为向左展开 */
@@ -185,14 +139,7 @@ export interface PanelPlacement {
   vertical: 'up' | 'down'
 }
 
-/**
- * 根据宿主元素的百分比位置，计算 hover 面板的安全展开方向。
- *
- * @param x 宿主元素水平百分比位置（0-100）
- * @param y 宿主元素垂直百分比位置（0-100）
- * @param threshold 判定阈值，可按面板尺寸覆盖
- * @returns 面板应采用的展开方向
- */
+/** 根据宿主元素的百分比位置，计算 hover 面板的安全展开方向。 */
 export function computePanelPlacement(
   x: number,
   y: number,
@@ -204,17 +151,7 @@ export function computePanelPlacement(
   }
 }
 
-/**
- * 将展开方向转换为 CSS 修饰类名数组，便于附加到宿主元素 className。
- *
- * 约定：
- * - 默认（无修饰类）= 向右 + 向上
- * - `panel-left` = 向左展开（覆盖默认向右）
- * - `panel-down` = 向下展开（覆盖默认向上）
- *
- * @param placement 展开方向
- * @returns 修饰类名数组
- */
+/** 将展开方向转换为 CSS 修饰类名数组，便于附加到宿主元素 className。 */
 export function placementToClasses(placement: PanelPlacement): string[] {
   const classes: string[] = []
   if (placement.horizontal === 'left') classes.push('panel-left')

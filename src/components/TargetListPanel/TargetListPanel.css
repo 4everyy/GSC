@@ -1,17 +1,8 @@
 @import './TargetRow.css';
 
-/* TargetListPanel.css —— 样式入口（按原层叠顺序等价重排）
- * TargetListPanelBase：面板外壳 / 标题 / 筛选下拉 / 底部操作栏
- * TargetListHeader：顶部筛选与下拉面板补充
- * TargetRow：目标行 / 标注 / 操作按钮
- * TargetDeleteDialog：删除确认弹窗
- * TargetFilterClear：筛选「清除」能力补充
- * TargetAddMenu：「新增」抽屉（人员 / 车辆） */
+/* 面板外壳 / 标题 /… */
 
-/*
- * TargetListPanelBase.css —— 面板骨架与其余未归组规则
- * 自 partN 机械拆分文件按功能归组：规则内容未改动，仅调整文件归属。
- */
+/* 规则内容未改动，仅调整… */
 
 .target-panel {
   position: absolute;
@@ -372,10 +363,7 @@
   background: rgba(4, 14, 26, 0.45);
 }
 
-/*
- * TargetListHeader.css —— 面板头部 / 筛选下拉 / 刷新提示条
- * 自 partN 机械拆分文件按功能归组：规则内容未改动，仅调整文件归属。
- */
+/* 规则内容未改动… */
 
 .target-panel__header-icon {
   display: flex;

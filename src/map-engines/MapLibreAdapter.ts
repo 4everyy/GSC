@@ -1,188 +1,15 @@
 /**
- * MapLibreAdapter —— MapLibre GL JS 适配器。
- *
- * 职责：
- * - 实现 MapAdapter 接口，封装 maplibregl.Map 的视图/覆盖物/事件 API；
- * - 把统一的 LngLat（WGS84）直接用于 MapLibre（MapLibre 原生即 WGS84，无需转换）。
- *
- * 实现要点：
- * - Marker：使用 maplibregl.Marker + 自定义 DOM 元素（HTMLelement）；
- *   拖拽由 Marker.setDraggable(true) + dragend 事件实现。
- * - Polyline：MapLibre 为"数据驱动"，每条折线对应一个 GeoJSON source + line layer；
- *   更新路径通过 source.setData(geojson) 实现。
- * - Circle：用 turf 风格的多边形近似（等角圆）绘制；为避免外部依赖，自实现圆形点生成。
- * - 销毁：removeOverlay 删除 source + 关联 layer；destroy 不 remove map（由容器组件负责）。
+ * @file MapLibreAdapter.ts
+ * @description MapLibreAdapter —— MapLibre GL JS 适配器（视图控制/覆盖物/事件编排；工具见 maplibre-utils，交互与重放见 maplibre-overlay-ops）。
+ * @author 4everyy
+ * @date 2026-10-07
  */
 import { Map as MLMap, Marker as MLMarker, LngLatBounds as MLLngLatBounds, type MarkerOptions as MLMarkerOptions, type MapMouseEvent as MLMapMouseEvent, type GeoJSONSource as MLGeoJSONSource, type StyleSpecification as MLStyleSpecification } from 'maplibre-gl'
 import { type CircleOptions, type FitBoundsOptions, type LngLat, type LngLatBounds, type MapAdapter, type MapStyleSpec, type MarkerHandle, type MarkerOptions, type PolylineHandle, type PolylineHighlightOptions, type PolylineInteractionOptions, type PolylineOptions, type PolygonOptions } from './types'
+import { EARTH_CIRCUMFERENCE, ICON_PIXEL_RATIO, circleCoordinates, nextId, pickAnchorString, rasterizeIcon, type GeoJSONFeatureCollection, type MapLibreOverlayEntry, type MLAnchorString } from './maplibre-utils'
+import { applyPolylineHighlight, attachPolylineInteraction, replayOverlaysAfterStyleChange } from './maplibre-overlay-ops'
 
-/** 本地 GeoJSON 最小类型定义（避免依赖 @types/geojson） */
-type GeoJSONPosition = number[]
-type GeoJSONLineString = { type: 'LineString'; coordinates: GeoJSONPosition[] }
-type GeoJSONPolygon = { type: 'Polygon'; coordinates: GeoJSONPosition[][] }
-type GeoJSONGeometry = GeoJSONLineString | GeoJSONPolygon
-type GeoJSONFeature = {
-  type: 'Feature'
-  geometry: GeoJSONGeometry
-  properties: Record<string, unknown> | null
-}
-type GeoJSONFeatureCollection = {
-  type: 'FeatureCollection'
-  features: GeoJSONFeature[]
-}
-
-/** Marker 锚点位置字符串（MapLibre 的 Anchor 取值集合） */
-type MLAnchorString =
-  | 'center'
-  | 'top'
-  | 'bottom'
-  | 'left'
-  | 'right'
-  | 'top-left'
-  | 'top-right'
-  | 'bottom-left'
-  | 'bottom-right'
-
-const EARTH_CIRCUMFERENCE = 40075016.686
-
-/** 内部覆盖物记录 */
-interface MapLibreOverlayEntry {
-  kind: 'marker' | 'polyline' | 'circle' | 'polygon'
-  /** Marker 实例（marker 类型） */
-  marker?: MLMarker
-  /** source id（polyline/circle 类型） */
-  sourceId?: string
-  /** layer id 列表（polyline 可能有多层光晕） */
-  layerIds?: string[]
-  /** 透明命中层 id（setPolylineInteractive 创建，纳入 layerIds 由 removeOverlay 统一清理） */
-  hitLayerId?: string
-  /** 高亮前的原始线宽（setPolylineHighlight 缓存，用于恢复） */
-  baseLineWidth?: number
-  /** 高亮前的原始线色（setPolylineHighlight 缓存，用于恢复） */
-  baseLineColor?: string
-  /** 创建参数重放闭包：setStyle 整体替换 style 会清空动态 source/layer
-   *  （DOM marker 不受影响），新样式数据就绪后按原参数重建该覆盖物；
-   *  marker 为 DOM 覆盖物无需重放（无此闭包） */
-  recreate?: () => void
-}
-
-/** 生成带前缀的唯一 id（用于 source/layer 命名） */
-let uidCounter = 0
-function nextId(prefix: string): string {
-  uidCounter += 1
-  return `${prefix}-${uidCounter}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-/**
- * 生成圆形多边形的 GeoJSON 坐标环（等角近似）。
- *
- * @param center 圆心 WGS84
- * @param radiusMeters 半径（米）
- * @param steps 采样点数，默认 64
- */
-function circleCoordinates(center: LngLat, radiusMeters: number, steps = 64): number[][] {
-  const coords: number[][] = []
-  const latRad = (center.lat * Math.PI) / 180
-  // 每米对应的度数近似
-  const metersPerDegLat = EARTH_CIRCUMFERENCE / 360
-  const metersPerDegLng = (EARTH_CIRCUMFERENCE / 360) * Math.cos(latRad)
-  const radiusDegLat = radiusMeters / metersPerDegLat
-  const radiusDegLng = radiusMeters / metersPerDegLng
-
-  for (let i = 0; i <= steps; i++) {
-    const angle = (2 * Math.PI * i) / steps
-    const lng = center.lng + radiusDegLng * Math.cos(angle)
-    const lat = center.lat + radiusDegLat * Math.sin(angle)
-    coords.push([lng, lat])
-  }
-  return coords
-}
-
-/** 沿线箭头贴图栅格化像素比（2x：保证高清屏下箭头边缘清晰） */
-const ICON_PIXEL_RATIO = 2
-
-/** 图标栅格缓存（url#尺寸 → ImageData）：同一资源多处复用免重复加载/重绘 */
-const iconRasterCache = new Map<string, ImageData>()
-
-/**
- * 图标异步栅格化：Image 加载（svg/png 同一入口）→ 按逻辑尺寸 × 像素比放大
- * 重绘到 canvas。SVG 原始 viewBox 通常极小（如 4×4），直接 addImage 会被
- * 栅格成 4×4 位图、放大显示后模糊；先重绘放大保证沿线箭头边缘清晰。
- * 同参数请求命中缓存（含 setStyle 重放后的再次注册）。
- */
-function rasterizeIcon(
-  url: string,
-  sizePx: number,
-  pixelRatio: number,
-): Promise<ImageData> {
-  const cacheKey = `${url}#${sizePx}`
-  const cached = iconRasterCache.get(cacheKey)
-  if (cached) return Promise.resolve(cached)
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas')
-        canvas.width = Math.round(sizePx * pixelRatio)
-        canvas.height = Math.round(sizePx * pixelRatio)
-        const ctx = canvas.getContext('2d')
-        if (!ctx) throw new Error('canvas 2d context unavailable')
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        // 导出 ImageData：MapLibre addImage 的 StyleImageSource 仅接受
-        // ImageData | HTMLImageElement（HTMLCanvasElement 类型不兼容）
-        const data = ctx.getImageData(0, 0, canvas.width, canvas.height)
-        iconRasterCache.set(cacheKey, data)
-        resolve(data)
-      } catch (err) {
-        reject(err instanceof Error ? err : new Error(String(err)))
-      }
-    }
-    img.onerror = () => reject(new Error(`icon load failed: ${url}`))
-    img.src = url
-  })
-}
-
-/**
- * 根据像素锚点（相对元素左上角）与元素尺寸，推断最匹配的 MapLibre 九宫格锚点字符串。
- *
- * MapLibre 不支持像素级锚点，只支持九宫格 + offset。
- * 九宫格锚点已能覆盖绝大多数业务需求（图钉底部、标签中心等），
- * 避免使用 marker.setOffset() —— 实测在某些浏览器/合成层下 setOffset
- * 会让 Marker 子元素被拉伸变形（如圆点变成椭圆）。
- *
- * 无法判断（负值锚点 / 无法测量尺寸）时返回 'center'，保持兼容。
- */
-function pickAnchorString(
-  anchor: { x: number; y: number },
-  width: number,
-  height: number,
-): MLAnchorString {
-  // 负值锚点（如距离标签的"上方偏移"）视为语义偏移，保持 center
-  if (anchor.x < 0 || anchor.y < 0) return 'center'
-  const ax = anchor.x
-  const ay = anchor.y
-  const nearTop = ay <= height * 0.15
-  const nearBottom = ay >= height * 0.85
-  const nearLeft = ax <= width * 0.15
-  const nearRight = ax >= width * 0.85
-  const centerH = !nearLeft && !nearRight
-  const centerV = !nearTop && !nearBottom
-  if (nearTop && centerH) return 'top'
-  if (nearBottom && centerH) return 'bottom'
-  if (centerV && nearLeft) return 'left'
-  if (centerV && nearRight) return 'right'
-  if (nearTop && nearLeft) return 'top-left'
-  if (nearTop && nearRight) return 'top-right'
-  if (nearBottom && nearLeft) return 'bottom-left'
-  if (nearBottom && nearRight) return 'bottom-right'
-  return 'center'
-}
-
-/**
- * 封装 maplibregl.Map，实现引擎无关的 MapAdapter 接口。
- *
- * MapLibre 原生使用 WGS84 坐标，因此本适配器不做坐标系转换。
- */
+/** 封装 maplibregl.Map，实现引擎无关的 MapAdapter 接口。 */
 export class MapLibreAdapter implements MapAdapter {
   readonly engine = 'maplibre' as const
 
@@ -233,8 +60,7 @@ export class MapLibreAdapter implements MapAdapter {
   }
 
   fitBounds(bounds: LngLatBounds, options?: FitBoundsOptions): void {
-    // 原生 fitBounds 按 512px 世界精确换算中心/缩放（MapLibre z0 世界 512px，
-    // 手算若用 256 瓦片常数会得到偏大约一级的 zoom——区域出屏/被面板遮挡的根源）
+    // 原生 fitBounds 按 512px 世界精确换算中心/缩放（MapLibre z0 世界 512px
     const mlBounds = new MLLngLatBounds([bounds.west, bounds.south], [bounds.east, bounds.north])
     this.map.fitBounds(mlBounds, {
       ...(options?.padding
@@ -279,10 +105,7 @@ export class MapLibreAdapter implements MapAdapter {
   // ============ 覆盖物：标注 ============
 
   addMarker(id: string, lngLat: LngLat, opts?: MarkerOptions): MarkerHandle {
-    // 选择最匹配的 MapLibre 九宫格锚点：
-    // - 提供自定义元素 + 像素锚点：测量元素尺寸后推断（图钉底部中心 → 'bottom'）
-    // - 仅提供像素锚点：无法测量尺寸，回退 'center'
-    // - 未提供：MapLibre 默认 'center'
+    // 选择最匹配的 MapLibre 九宫格锚点：- 提供自定义元素 + 像素锚点：测量元素尺寸后推断（图钉底部中心 → 'bottom'）- 仅提供像素锚点：无法测量尺寸
     let resolvedAnchor: MLAnchorString | undefined
     if (opts?.anchor && opts?.element) {
       const w = opts.element.offsetWidth
@@ -330,7 +153,6 @@ export class MapLibreAdapter implements MapAdapter {
 
   setMarkerElement(handle: MarkerHandle, element: HTMLElement): void {
     // MapLibre Marker 更换 DOM 需要重建（无原生 replaceElement）。
-    // 业务侧动画（无人机朝向）已直接操作 element.transform，故此方法多为占位。
     const marker = handle.raw as MLMarker
     const current = marker.getElement()
     if (current === element) return
@@ -404,11 +226,7 @@ export class MapLibreAdapter implements MapAdapter {
     }
     this.overlays.set(id, entry)
 
-    // 沿线方向箭头（可选，异步）：symbol-placement:'line' 使箭头沿折线逐段
-    // 自动旋转（图标 x 轴对齐切线 → 指向点序行进方向），叠加在主线之上。
-    // 贴图异步栅格化，挂层前校验覆盖物未被移除/重建、source 未被清
-    // （setStyle 热切换），避免孤儿 layer/image；箭头层 id 事后并入
-    // entry.layerIds 由 removeOverlay 统一清理
+    // 沿线方向箭头（可选，异步）：symbol-placement:'line' 使箭头沿折线逐段自动旋转（图标 x 轴对齐切线 → 指向点序行进方向）
     if (opts?.arrows) {
       const { iconUrl, iconSize = 24, spacing = 100, pulse = false, pulsePeriod = 1400 } = opts.arrows
       const arrowLayerId = nextId('arrow')
@@ -433,10 +251,7 @@ export class MapLibreAdapter implements MapAdapter {
             paint: { 'icon-opacity': opts.opacity ?? 1 },
           })
           layerIds.push(arrowLayerId)
-          // 箭头闪光呼吸动画（可选）：rAF 按正弦脉动 icon-opacity（0.45~1 × 基准
-          // 不透明度）与 icon-size（1~1.15 轻微放大），密排时呈流光闪烁效果。
-          // 循环自终止：覆盖物被移除/重建（entry 引用失效）或箭头层随 setStyle
-          // 被清时停止，无需显式 cancel
+          // 箭头闪光呼吸动画（可选）：rAF 按正弦脉动 icon-opacity（0.45~1 × 基准不透明度）与 icon-size（1~1.15 轻微放大）
           if (pulse) {
             const baseOpacity = opts.opacity ?? 1
             const startTime = performance.now()
@@ -485,55 +300,7 @@ export class MapLibreAdapter implements MapAdapter {
   }
 
   setPolylineInteractive(id: string, opts: PolylineInteractionOptions): () => void {
-    const entry = this.overlays.get(id)
-    // 仅折线、且存在主线层与 source 时才可附加交互；否则返回空函数保持幂等
-    if (!entry || entry.kind !== 'polyline' || !entry.sourceId) return () => {}
-    const mainLayerId = entry.layerIds?.[0]
-    if (!mainLayerId) return () => {}
-
-    // 复用既有命中层（幂等），否则新建一条与主线同 source 的透明宽线作为命中区
-    let hitLayerId = entry.hitLayerId
-    if (!hitLayerId || !this.map.getLayer(hitLayerId)) {
-      hitLayerId = nextId('hit')
-      this.map.addLayer({
-        id: hitLayerId,
-        type: 'line',
-        source: entry.sourceId,
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: {
-          // 完全透明：仅承担命中检测，不产生视觉
-          'line-color': '#000000',
-          'line-opacity': 0,
-          'line-width': opts.hitWidth ?? 18,
-        },
-      })
-      // 纳入 layerIds，removeOverlay 时随主线/光晕一并清理
-      entry.layerIds = [...(entry.layerIds ?? []), hitLayerId]
-      entry.hitLayerId = hitLayerId
-    } else if (opts.hitWidth !== undefined) {
-      // 复用命中层但传入新宽度时同步
-      this.map.setPaintProperty(hitLayerId, 'line-width', opts.hitWidth)
-    }
-
-    const onEnterFn = (e: MLMapMouseEvent) => {
-      opts.onEnter?.({ lng: e.lngLat.lng, lat: e.lngLat.lat })
-    }
-    const onMoveFn = (e: MLMapMouseEvent) => {
-      opts.onMove?.({ lng: e.lngLat.lng, lat: e.lngLat.lat })
-    }
-    const onLeaveFn = () => {
-      opts.onLeave?.()
-    }
-    this.map.on('mouseenter', hitLayerId, onEnterFn)
-    this.map.on('mousemove', hitLayerId, onMoveFn)
-    this.map.on('mouseleave', hitLayerId, onLeaveFn)
-
-    // 仅解绑事件；命中层交由 removeOverlay 统一删除（删除/卸载流程必经 removeOverlay）
-    return () => {
-      this.map.off('mouseenter', hitLayerId, onEnterFn)
-      this.map.off('mousemove', hitLayerId, onMoveFn)
-      this.map.off('mouseleave', hitLayerId, onLeaveFn)
-    }
+    return attachPolylineInteraction(this.map, this.overlays, id, opts)
   }
 
   setPolylineHighlight(
@@ -541,32 +308,7 @@ export class MapLibreAdapter implements MapAdapter {
     highlighted: boolean,
     opts?: PolylineHighlightOptions,
   ): void {
-    const entry = this.overlays.get(id)
-    if (!entry || entry.kind !== 'polyline') return
-    const mainLayerId = entry.layerIds?.[0]
-    if (!mainLayerId || !this.map.getLayer(mainLayerId)) return
-
-    if (highlighted) {
-      // 首次高亮时缓存原始线宽/线色，供恢复
-      if (entry.baseLineWidth === undefined) {
-        const w = this.map.getPaintProperty(mainLayerId, 'line-width') as number | undefined
-        entry.baseLineWidth = typeof w === 'number' ? w : 4
-      }
-      if (entry.baseLineColor === undefined) {
-        const c = this.map.getPaintProperty(mainLayerId, 'line-color') as string | undefined
-        entry.baseLineColor = typeof c === 'string' ? c : undefined
-      }
-      const scale = opts?.widthScale ?? 1.8
-      this.map.setPaintProperty(mainLayerId, 'line-width', (entry.baseLineWidth ?? 4) * scale)
-      if (opts?.color) this.map.setPaintProperty(mainLayerId, 'line-color', opts.color)
-    } else {
-      if (entry.baseLineWidth !== undefined) {
-        this.map.setPaintProperty(mainLayerId, 'line-width', entry.baseLineWidth)
-      }
-      if (entry.baseLineColor !== undefined) {
-        this.map.setPaintProperty(mainLayerId, 'line-color', entry.baseLineColor)
-      }
-    }
+    applyPolylineHighlight(this.map, this.overlays, id, highlighted, opts)
   }
 
   // ============ 覆盖物：圆形 ============
@@ -779,43 +521,7 @@ export class MapLibreAdapter implements MapAdapter {
 
   setStyle(style: MapStyleSpec): void {
     this.map.setStyle(style as MLStyleSpecification)
-    this.replayEngineOverlays()
-  }
-
-  /**
-   * setStyle 后重放引擎层覆盖物。
-   *
-   * setStyle 整体替换 style：运行期动态添加的 source/layer 全部被清空
-   * （DOM marker 挂在地图容器 DOM 上不受影响——「区域只剩名称标签、多边形
-   * 消失」缺陷的根因）。挂在 styledata 上逐次尝试按创建参数重建（recreate）：
-   * 新样式数据未就绪时 addSource/addLayer 抛「Style is not done loading」，
-   * 捕获后等待下一个 styledata 再试；已无引擎层覆盖物或全部处理完后解绑。
-   * 典型链路：启动期占位样式 → 离线包样式热切换（TaskAreaLayer 多边形、
-   * 自动定位精度圈等均经此恢复）。
-   * 注：setPolylineInteractive/setPolylineHighlight 的交互/高亮态不随重放
-   * 恢复——样式热切换仅发生在启动期，彼时尚无此类覆盖物。
-   */
-  private replayEngineOverlays(): void {
-    const replay = () => {
-      const entries = Array.from(this.overlays.entries())
-      if (entries.length === 0) {
-        this.map.off('styledata', replay)
-        return
-      }
-      try {
-        for (const [id, entry] of entries) {
-          // 等待期间被移除/已重建（entry 引用失效）的覆盖物跳过
-          if (this.overlays.get(id) !== entry) continue
-          // source 仍在当前 style（未被清空）则无需重建，防止重复添加
-          if (entry.sourceId && this.map.getSource(entry.sourceId)) continue
-          entry.recreate?.()
-        }
-        this.map.off('styledata', replay)
-      } catch {
-        // 新样式数据尚未就绪，等待下一个 styledata 再试
-      }
-    }
-    this.map.on('styledata', replay)
+    replayOverlaysAfterStyleChange(this.map, this.overlays)
   }
 
   // ============ 生命周期 ============

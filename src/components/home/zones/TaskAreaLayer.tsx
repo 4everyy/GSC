@@ -1,39 +1,8 @@
 /**
- * TaskAreaLayer —— 任务区域图层（真实后端数据）。
- *
- * 数据源：taskAreaStore（初始 mock 数据 + 用户本地绘制/编辑，纯前端）。
- * 渲染：每个区域一个多边形（类型主题色填充+描边）+ 质心名称标签（胶囊样式）。
- * 降落区（landingArea）额外在质心渲染地面图标标记（48×48 白描边半透明圆 +
- * 20×24 H 停机坪图标，与绘制遮罩/指点返航落点圆圈同款视觉），
- * 名称标签上移避让（图标上方 4px 间隙）。
- * 禁飞区（NoFlyArea）与绘制遮罩预览同款斜线样式：多边形仅 #BE0707 描边
- * （无实色填充）+ DOM SVG 覆盖层渲染 45° 斜线阴影（#BE070799、间距 8px、
- * 充满区域）——地理锚定（project 顶点 + onMove 每渲染帧重投影，与飞机/目标
- * 图标等 DOM 覆盖物同范式）；MapLibre fill-pattern 需 sprite 且随瓦片锚定
- * （间距随缩放变化），故不用引擎层实现。禁飞区名称标签也渲染在该覆盖层内
- * （SVG 之上）：引擎 marker 挂在 canvas 容器内、层叠低于覆盖层会被斜线盖住。
- *
- * 渲染时机与更新策略（增量同步，避免两类渲染缺陷）：
- * - store 状态即时渲染：mock/本地数据变化即刻反映到地图。
- * - 按 id 增量 diff：areas/hiddenIds/editingAreaId 变化时只增删/重建「变化了」
- *   的区域覆盖物，其余区域原样保留——否则隐藏单个区域会触发全量重绘
- *   （先删光全部再重建），其余可见区域闪动一下。
- * - 禁飞区斜线覆盖层持久挂载（首个禁飞区出现时创建），按区域增量增删
- *   pattern/polygon/label；全部禁飞区移除后整层销毁。
- * 卸载清理全部覆盖物。
- * 显隐由 layerStore.taskAreaVisible 控制（HomePage 条件渲染，本组件不感知）。
- * 常态 hover「编辑 | 删除」面板（本组件自带，与绘制遮罩确认态同款交互）：
- * 任何时刻（不限于绘制流程中）hover 任一已保存区域即在地图上浮现面板——
- * 「编辑」走区域列表行内编辑同款链路（taskAreaStore.requestEditArea →
- * HomePage 监听后挂载 HexagonAreaOverlay 进入编辑态），「删除」直接
- * removeArea；绘制/框选遮罩激活（areaSelectActive）或编辑中
- * （editingAreaId）时抑制——确认态面板由遮罩自带实现负责，避免双面板叠加。
- * 编辑态（taskAreaStore.editingAreaId 指向本图层某区域时）：本图层整体跳过
- * 该区域（多边形/标签/斜线一律不画），改由绘制遮罩（HexagonAreaOverlay）的
- * SVG 层绘制编辑视觉——去填充、rgba(255,255,255,0.60) 6px 白描边 + 中央
- * 2px #7160F2 虚线、顶点 vertex-handle.svg / 边中点 midpoint-handle.svg 节点手柄
- *（支持拖拽改变绘制区域：顶点拖拽移动角点、中点拖拽插入新顶点，蒙层高亮
- * 每帧跟随）；退出编辑后本图层恢复该区域持久样式。
+ * @file TaskAreaLayer.tsx
+ * @description TaskAreaLayer —— 任务区域图层（真实后端数据）。
+ * @author 4everyy
+ * @date 2026-10-07
  */
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -46,23 +15,19 @@ import { homeImages } from '../../../assets/home'
 const POLYGON_ID_PREFIX = 'task-area-polygon-'
 const LABEL_ID_PREFIX = 'task-area-label-'
 const LANDING_CENTER_ID_PREFIX = 'task-area-landing-center-'
-/** 禁飞区持久渲染视觉（与绘制遮罩预览完全一致）：
- *  45° 斜线阴影（左下→右上）颜色 #BE070799、间距 8px（2px 线宽）；
- *  多边形描边用其实色版本 #BE0707 */
+/** 禁飞区持久渲染视觉（与绘制遮罩预览完全一致）：45° 斜线阴影（左下→右上）颜色 #BE070799、间距 8px（2px 线宽） */
 const NOFLY_HATCH_COLOR = '#BE070799'
 const NOFLY_STROKE_COLOR = '#BE0707'
 /** 斜线 pattern id 前缀（每个禁飞区一个独立 pattern，纹理原点可各自锚定首顶点） */
 const NOFLY_HATCH_PATTERN_PREFIX = 'task-area-nofly-hatch-'
-/** hover「编辑 | 删除」面板尺寸（设计稿 121×32，与绘制遮罩确认态面板一致；
- *  复用同款 .hexagon-area-edit-panel 样式（position: fixed），经 portal 挂 body */
+/** hover「编辑 | 删除」面板尺寸… */
 const EDIT_PANEL_WIDTH = 121
 const EDIT_PANEL_HEIGHT = 32
 
 /** SVG 命名空间（document.createElementNS 用） */
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
-/** 多边形质心（顶点均值；任务区域范围小，均值近似即可）。
- *  区域名称标签/降落图标锚点定位用 */
+/** 多边形质心（顶点均值；任务区域范围小，均值近似即可）。 */
 function polygonCentroid(area: TaskArea): { lng: number; lat: number } {
   let lng = 0
   let lat = 0
@@ -74,9 +39,7 @@ function polygonCentroid(area: TaskArea): { lng: number; lat: number } {
   return { lng: lng / n, lat: lat / n }
 }
 
-/** 区域顶点的外包包围盒（WGS84）。
- *  导出供 HomePage 区域聚焦（AreaListPanel 行 hover → fitBounds 完整框入区域）
- *  复用，与引擎 fitBounds 的输入口径一致 */
+/** 区域顶点的外包包围盒（WGS84）。 */
 export function getAreaBounds(area: TaskArea): LngLatBounds {
   let west = Infinity
   let south = Infinity
@@ -91,8 +54,7 @@ export function getAreaBounds(area: TaskArea): LngLatBounds {
   return { west, south, east, north }
 }
 
-/** 射线法点在多边形内判定：区域多边形渲染在引擎层（本组件无 DOM hover），
- *  hover「编辑 | 删除」面板显隐由 window mousemove + 本几何判定驱动 */
+/** 射线法点在多边形内判定：区域多边形渲染在引擎层（本组件无 DOM hover） */
 function pointInPolygon(px: number, py: number, vs: { x: number; y: number }[]) {
   let inside = false
   for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
@@ -105,11 +67,7 @@ function pointInPolygon(px: number, py: number, vs: { x: number; y: number }[]) 
   return inside
 }
 
-/** 构建名称标签 DOM（深色胶囊 + 类型色描边；pointer-events 关闭避免挡地图交互）。
- *  isLanding 时外套 wrapper 并将胶囊 translateY(-40px)：质心同时挂着 48×48 地面
- *  图标（span -24~+24px），标签高约 24px → 上移 40px 后 span -52~-28px，
- *  与图标顶缘保持 4px 间隙避让（wrapper 作为 marker 根元素，transform 由
- *  引擎接管，位移只能加在子元素上） */
+/** 构建名称标签 DOM（深色胶囊 + 类型色描边；pointer-events 关闭避免挡地图交互）。 */
 function buildLabelElement(area: TaskArea, isLanding: boolean): HTMLElement {
   const meta = taskAreaTypeMeta(area.type)
   const pill = document.createElement('div')
@@ -130,9 +88,7 @@ function buildLabelElement(area: TaskArea, isLanding: boolean): HTMLElement {
   return wrapper
 }
 
-/** 构建降落区中心地面图标 DOM：与绘制遮罩/指点返航落点圆圈（tap-return-zone）
- *  同款视觉——48×48、rgba(255,255,255,0.2) 填充、2px 白描边圆形，
- *  flex 居中 20×24 H 停机坪图标；pointer-events 关闭不挡地图交互 */
+/** 构建降落区中心地面图标 DOM：与绘制遮罩/指点返航落点圆圈（tap-return-zone）同款视觉——48×48 */
 function buildLandingCenterElement(): HTMLElement {
   const el = document.createElement('div')
   el.style.cssText = [
@@ -164,11 +120,7 @@ interface HatchEntry {
   label: HTMLElement
 }
 
-/**
- * 禁飞区斜线阴影覆盖层：持久挂载（首个禁飞区出现时创建），按区域增量增删，
- * 地图移动经 onMove 整层重投影——隐藏/显示单个禁飞区不影响其余禁飞区
- * （不整层重建，避免其余区域斜线闪动）。
- */
+/** 禁飞区斜线阴影覆盖层：持久挂载（首个禁飞区出现时创建），按区域增量增删 */
 interface HatchLayer {
   /** 当前挂载的禁飞区条目（按区域 id 索引） */
   items: Map<string, HatchEntry>
@@ -196,8 +148,7 @@ function createHatchLayer(adapter: MapAdapter): HatchLayer {
   const defs = document.createElementNS(SVG_NS, 'defs')
   svg.appendChild(defs)
   root.appendChild(svg)
-  // 插到 canvas 容器之后：斜线在底图上方（MapLibre 的 marker 也挂在
-  // canvas 容器内、低于本覆盖层——禁飞区标签因此渲染在覆盖层内）
+  // 斜线在底图上方…
   const container = adapter.getContainer()
   const canvasContainer = container.querySelector('.maplibregl-canvas-container')
   if (canvasContainer) canvasContainer.after(root)
@@ -243,9 +194,7 @@ function createHatchLayer(adapter: MapAdapter): HatchLayer {
       const poly = document.createElementNS(SVG_NS, 'polygon')
       poly.setAttribute('fill', `url(#${patternId})`)
       svg.appendChild(poly)
-      // 名称标签（与其它区域同款胶囊样式）不走引擎 marker——marker 挂在
-      // canvas 容器内（低于本覆盖层），会被斜线阴影盖住，改渲染在覆盖层内、
-      // SVG 之上（DOM 顺序即层叠顺序）；translate(-50%,-50%) 令标签中心对准质心
+      // 名称标签（与其它区域同款胶囊样式）不走引擎 marker——marker 挂在canvas 容器内（低于本覆盖层），会被斜线阴影盖住
       const label = buildLabelElement(area, false)
       label.style.position = 'absolute'
       label.style.left = '0'
@@ -281,8 +230,7 @@ function createHatchLayer(adapter: MapAdapter): HatchLayer {
 interface TaskAreaLayerProps {
   /** 地图引擎适配器（未就绪时不渲染） */
   adapter: MapAdapter | null
-  /** 区域绘制/框选遮罩激活中（HomePage 的 areaSelectMode 非空）：抑制 hover
-   *  面板——绘制确认态的面板由 HexagonAreaOverlay 自带实现负责，避免叠加 */
+  /** 抑制 hover面板——绘制确认态的面板由 Hexag… */
   areaSelectActive?: boolean
 }
 
@@ -291,18 +239,11 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
   const hiddenIds = useTaskAreaStore((s) => s.hiddenIds)
   // 编辑中的区域 id（绘制遮罩「编辑」按钮写入）：编辑态专属视觉，见组件头注释
   const editingAreaId = useTaskAreaStore((s) => s.editingAreaId)
-  // hover 面板动作：编辑走 requestEditArea 跨层级信号（与区域列表行内编辑
-  // 同款链路），删除直接 removeArea
+  // hover 面板动作：编辑走 requestEditArea 跨层级信号（与区域列表行内编辑同款链路），删除直接 removeArea
   const requestEditArea = useTaskAreaStore((s) => s.requestEditArea)
   const removeArea = useTaskAreaStore((s) => s.removeArea)
 
-  // ===== 增量同步渲染（按 id diff）=====
-  // renderedRef 记录「当前已挂到地图上的区域」及其数据签名（type/name/vertices）：
-  // - 不再可见（隐藏/删除/进入编辑态）→ 移除其覆盖物；
-  // - 可见但签名变化（编辑确认/类型变更）→ 先移除再重建（引擎层 addPolygon
-  //   同 id 直接添加会泄漏旧 source/layer，必须先删后建）；
-  // - 新可见 → 绘制。其余区域覆盖物原样保留——隐藏某个区域时其余可见区域
-  //   不闪动。
+  // - 不再可见…
   const renderedRef = useRef(new Map<string, { sig: string }>())
   const hatchRef = useRef<HatchLayer | null>(null)
   useEffect(() => {
@@ -360,8 +301,7 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
             },
       )
       const centroid = polygonCentroid(area)
-      // 禁飞区名称标签不挂引擎 marker（canvas 容器内层叠低于斜线覆盖层会被
-      // 盖住），改随斜线一起渲染在覆盖层内（见 HatchLayer.addItem）
+      // 禁飞区名称标签不挂引擎 marker（canvas 容器内层叠低于斜线覆盖层会被盖住）
       if (!isNoFly) {
         adapter.addMarker(`${LABEL_ID_PREFIX}${id}`, centroid, {
           element: buildLabelElement(area, isLanding),
@@ -382,8 +322,7 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
     }
   }, [adapter, areas, hiddenIds, editingAreaId])
 
-  // 组件卸载 / adapter 更换时全量清理（增量记录与斜线覆盖层一并销毁；
-  // 正常的 areas/hiddenIds 变化不经过此 cleanup，避免全量重绘闪动）
+  // 组件卸载 / adapter 更换时全量清理…
   useEffect(() => {
     if (!adapter) return
     return () => {
@@ -398,14 +337,7 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
     }
   }, [adapter])
 
-  // ===== 常态 hover「编辑 | 删除」面板（与绘制遮罩确认态同款交互/样式） =====
-  // 区域多边形渲染在引擎层（无 DOM hover）——window mousemove 将光标与全部
-  // 可见区域（跳过已隐藏/编辑中）顶点实时投影做射线法命中：命中即面板锚定
-  // 到该区域第 3 顶点（右下）右侧 8px、垂直居中显示（右侧空间不足翻转到
-  // 左侧，视口钳制防溢出）；鼠标位于面板矩形近旁（外扩 8px，覆盖面板与
-  // 区域间隙）保持显示以便点击；平移/缩放地图经 onMove 重投影每帧跟随。
-  // 绘制/框选遮罩激活（areaSelectActive）或编辑中（editingAreaId）时抑制
-  // 并隐藏——确认态面板由遮罩负责，编辑态不放面板（右键先退出编辑）
+  // 常态 hover「编辑 | 删除」面板（与绘制遮罩确认态同款交互/样式）区域多边形渲染在引擎层（无 DOM hover）——window m…
   const hoverPanelRef = useRef<HTMLDivElement | null>(null)
   const hoverAreaIdRef = useRef<string | null>(null)
   const hoverPanelBoxRef = useRef<{ left: number; top: number } | null>(null)
@@ -420,9 +352,7 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
       hidePanel()
       return
     }
-    // hover 中的区域被隐藏/移除（区域列表操作）时立即收起面板：鼠标未移动
-    // 不触发 mousemove 重判，不校验会残留可点的「编辑 | 删除」按钮作用于
-    // 已隐藏区域（hiddenIds 入依赖即在本 effect 重跑时兜底校验）
+    // hover 中的区域被隐藏/移除（区域列表操作）时立即收起面板：鼠标未移动不触发 mousemove 重判
     const hoveredId = hoverAreaIdRef.current
     if (hoveredId) {
       const s = useTaskAreaStore.getState()
@@ -477,10 +407,7 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
         e.clientX <= box.left + EDIT_PANEL_WIDTH + 8 &&
         e.clientY >= box.top - 8 &&
         e.clientY <= box.top + EDIT_PANEL_HEIGHT + 8
-      // 面板隐藏时同步作废定位矩形：nearPanel 仅凭几何矩形判定、不校验区域
-      // 可见性，box 残留旧坐标会让鼠标移到面板原位置（即使对应区域已隐藏/
-      // 已移除）时凭空复现面板——矩形作废后，复现面板的唯一入口是重新命中
-      // 可见区域（pickAreaAt 已过滤隐藏区域）
+      // 面板隐藏时同步作废定位矩形：nearPanel 仅凭几何矩形判定
       if (!nearPanel) {
         hoverAreaIdRef.current = null
         hoverPanelBoxRef.current = null
@@ -491,8 +418,7 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
       const id = hoverAreaIdRef.current
       if (!id) return
       const s = useTaskAreaStore.getState()
-      // 跟随前校验隐藏/移除：隐藏区域不得再展示面板（平移地图时同步收起，
-      // 与 mousemove 命中判定同口径）
+      // 跟随前校验隐藏/移除：隐藏区域不得再展示面板（平移地图时同步收起，与 mousemove 命中判定同口径）
       if (s.hiddenIds.has(id) || !s.areas.some((a) => a.id === id)) {
         hidePanel()
         return
@@ -517,8 +443,7 @@ export function TaskAreaLayer({ adapter, areaSelectActive = false }: TaskAreaLay
           if (!id) return
           if (hoverPanelRef.current) hoverPanelRef.current.style.display = 'none'
           hoverAreaIdRef.current = null
-          // 与区域列表行内「编辑区域」同款跨层级信号：HomePage 监听后挂载
-          // 绘制遮罩进入该区域编辑态（areaSelectActive 随之翻转为抑制态）
+          // HomePage 监听后挂载绘制遮罩进入该区域编辑态…
           requestEditArea(id)
         }}
       >

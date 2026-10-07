@@ -1,0 +1,262 @@
+/* AircraftInfoPanel.css —— 从 AircraftLayer.css 抽离（首页飞行器图层）：在线hover信息面板/升空特效垂线/组合图标。
+   由样式入口 AircraftLayer.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* ====== 在线设备 Hover 信息面板（蓝色，设计稿精确还原） ====== */
+.aircraft-info-panel {
+  position: absolute;
+  left: calc(100% + 12px);
+  /* 面板底部对齐飞机图标的垂直中心线（图标 48px 高，即中点 24px 处） */
+  top: 24px;
+  transform: translateY(-100%);
+  width: 229px;
+  height: 117px;
+  background: rgba(75, 188, 249, 0.4);
+  border-radius: 4px;
+  border: 1px solid rgba(75, 188, 249, 1);
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  pointer-events: none;
+  color: #fff;
+  font-family: 'MiSans-Regular';
+  /* 整体 flex 纵向布局：顶部固定，底部三行信息并垂直居中 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* hover 时显示：所有非 gray 的在线飞行器 */
+.aircraft--draggable:not(.aircraft--gray):hover .aircraft-info-panel {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 顶部：标题行 + 分隔线（固定高度） */
+.aircraft-info-panel__top {
+  flex-shrink: 0;
+}
+
+/* 标题行：名称在左，电池/信号指示器在右- 保持固定 height:18px（紧凑视觉） */
+.aircraft-info-panel__header {
+  display: flex;
+  align-items: center;
+  margin: 8px 9px 0;
+  height: 18px;
+  overflow: visible;
+}
+
+.aircraft-info-panel__name {
+  font-size: 12px;
+  color: #fff;
+  white-space: nowrap;
+  line-height: 16px;
+  /* 将指示器推至右侧 */
+  margin-right: auto;
+}
+
+.aircraft-info-panel__indicators {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+/* 提升特异性以覆盖 .aircraft img (0,1,1) 与 .aircraft--{color} img (0,2,1) 规则。 */
+.aircraft-info-panel img.aircraft-info-panel__battery-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 33px;
+  object-fit: contain;
+  transform: none;
+}
+
+.aircraft-info-panel__battery-text {
+  font-size: 12px;
+  color: #fff;
+  white-space: nowrap;
+  line-height: 16px;
+}
+
+.aircraft-info-panel__signal-icon {
+  flex-shrink: 0;
+  margin-left: 4px;
+    /* 修复"信号偏下"：- display:block 消除 SVG 作为 inline 元素在 flex 中的 baseline 残留 */
+  display: block;
+  align-self: center;
+  transform: translateY(-2px);
+}
+
+/* 分隔线：贯穿面板全宽 */
+.aircraft-info-panel__divider {
+  height: 1px;
+  background: rgba(75, 188, 249, 0.5);
+  margin: 6px 1px 0;
+}
+
+/* 底部：位置/速度/模式+状态三行，垂直居中填充剩余空间 */
+.aircraft-info-panel__bottom {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 信息行 */
+.aircraft-info-panel__row {
+  display: flex;
+  align-items: center;
+  margin-left: 16px;
+  white-space: nowrap;
+}
+
+/* 竖线装饰条（青色） */
+.aircraft-info-panel__bar {
+  width: 2px;
+  height: 8px;
+  background: rgba(138, 248, 234, 1);
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.aircraft-info-panel__label {
+  font-size: 12px;
+  color: #fff;
+  line-height: 16px;
+  flex-shrink: 0;
+}
+
+.aircraft-info-panel__value {
+  font-size: 12px;
+  color: #fff;
+  line-height: 16px;
+  margin-left: 8px;
+}
+
+/* 双列行（模式 + 状态）：第二组竖线与前一组保持 73px 间隔 */
+.aircraft-info-panel__row--dual .aircraft-info-panel__bar--gap {
+  margin-left: 73px;
+}
+
+.aircraft--red {
+  left: 33%;
+  top: 22%;
+}
+
+.aircraft--orange {
+  left: 56%;
+  top: 18%;
+}
+
+.aircraft--blue {
+  left: 26%;
+  top: 48%;
+}
+
+.aircraft--blue2 {
+  left: 38%;
+  top: 36%;
+}
+
+/* ====== 升空特效（实时遥测）：飞机图标升空 + 地面投影垂线 ====== */
+/* 高度 → --aircraft-lift：容器整体上移（见 .aircraft） */
+.aircraft-altitude {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  width: 0;
+    /* 容器高=虚线高（=lift）：让 __value 的 top:50% 沿虚线垂直居中生效 */
+  height: var(--aircraft-lift, 0px);
+  transition: height 0.8s ease;
+  pointer-events: none;
+}
+
+/* 虚线本体：1.5px 宽绿色虚线（与航线连线 #00FF95 同色系）+ 微光晕 */
+.aircraft-altitude__stick {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  border-left: 1.5px dashed #00ff95;
+  filter: drop-shadow(0 0 3px rgba(0, 255, 149, 0.6));
+}
+
+/* 地面投影点：虚线底端 4px 实心绿点（中心对准虚线中线） */
+.aircraft-altitude__stick::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: -1.25px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #00ff95;
+  box-shadow: 0 0 4px rgba(0, 255, 149, 0.9);
+}
+
+/* 高度值标注：虚线右侧、沿虚线垂直居中，随遥测实时刷新 */
+.aircraft-altitude__value {
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  transform: translateY(-50%);
+  font-family: 'MiSans-Regular';
+  font-size: 11px;
+  line-height: 1.2;
+  color: #00ff95;
+  white-space: nowrap;
+  text-shadow:
+    0 0 4px rgba(0, 0, 0, 0.9),
+    0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* ====== 组合图标（机身 + 底部光晕，与设备管理面板同素材） ====== */
+/* 48×48 定位盒：占位尺寸与旧单图完全一致，选中光晕伪元素（top:24px 圆心）、hover 面板（top:24px 对齐） */
+.aircraft-icon {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+/* 底部光晕（原图 76×57）：宽 64px 等比（高≈48px），margin 负偏移精确居中于48px 盒——中心与旧单图锚点重合 */
+.aircraft .aircraft-icon__bottom {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 64px;
+  height: auto;
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* 机身（裁剪后 51~53×36~38，画布留白对称=内容中心）：宽 40px 等比 */
+.aircraft .aircraft-icon__top {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: auto;
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* 组合图标整体水平摆正：光晕（椭圆始终水平）与机身均不旋转，覆盖 .aircraft--{color} img 的航向旋转规则… */
+.aircraft--red .aircraft-icon__bottom,
+.aircraft--gray .aircraft-icon__bottom,
+.aircraft--orange .aircraft-icon__bottom,
+.aircraft--blue .aircraft-icon__bottom,
+.aircraft--blue2 .aircraft-icon__bottom,
+.aircraft--red .aircraft-icon__top,
+.aircraft--gray .aircraft-icon__top,
+.aircraft--orange .aircraft-icon__top,
+.aircraft--blue .aircraft-icon__top,
+.aircraft--blue2 .aircraft-icon__top {
+  transform: translate(-50%, -50%);
+}

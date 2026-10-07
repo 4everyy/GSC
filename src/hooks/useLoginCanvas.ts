@@ -1,3 +1,9 @@
+/**
+ * @file useLoginCanvas.ts
+ * @description 登录页 Canvas 背景动画 Hook（网格/光晕/无人机编队）
+ * @author 4everyy
+ * @date 2026-10-07
+ */
 import { useEffect, useRef } from 'react'
 
 /** 系统偏好「减少动态效果」时返回 true（打字机/动画降级依据） */
@@ -65,15 +71,7 @@ const QUALITY_PROFILES: Record<Quality, QualityProfile> = {
   },
 }
 
-/*
- * useLoginCanvas —— 登录页背景主 Canvas（星空 / 星链 / 波浪地形 / 3D 线框星球）。
- * phaseRef 由页面持有并镜像当前阶段，动画循环直接读取以避免 effect 重建中断动画。
- * 性能策略（2026-09-18 卡顿优化）：
- * - 设备像素预算：高 DPR / 4K 大屏降低有效 DPR，大幅削减每帧填充开销；
- * - 帧率监测自动降档（high → medium → low，只降不升）；
- * - resize 防抖且尺寸未变不重建；pointermove 缓存 rect，避免逐次布局查询；
- * - 登录成功（phase=success）立即停帧保留最后一帧，主线程让给切换动画与主应用挂载。
- */
+/* useLoginCanvas —— 登录页背景主 Canvas（星空 / 星链 / 波浪地形 / 3D 线框星球）。 */
 export function useLoginCanvas(phaseRef: { current: 'idle' | 'success' }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
@@ -108,7 +106,7 @@ export function useLoginCanvas(phaseRef: { current: 'idle' | 'success' }) {
     let pts: Particle[] = []
     let stars: Star[] = []
 
-    // 鼠标位置（canvas 坐标；rect 缓存，resize/scroll 时刷新，避免每次 pointermove 布局查询）
+    // 鼠标位置（canvas 坐标；rect 缓存，resize/scroll 时刷新
     const pointer = { x: -1e4, y: -1e4 }
     let canvasRect = canvas.getBoundingClientRect()
     const refreshRect = () => {
@@ -191,7 +189,7 @@ export function useLoginCanvas(phaseRef: { current: 'idle' | 'success' }) {
     const sinT = Math.sin(TILT)
     const cosT = Math.cos(TILT)
 
-    /** 球面点 (latDeg, lonDeg) 旋转投影到屏幕坐标（z<0 为正面，透明度由调用方分档控制） */
+    /** 球面点 (latDeg, lonDeg) 旋转投影到屏幕坐标（z<0 为正面 */
     function project(latDeg: number, lonDeg: number, rotY: number, R: number, cx: number, cy: number) {
       const lat = (latDeg * Math.PI) / 180
       const lon = (lonDeg * Math.PI) / 180 + rotY

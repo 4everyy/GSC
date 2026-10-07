@@ -1,6 +1,8 @@
-/*
- * icons.tsx —— 登录页内联 SVG 图标集。
- * 自 LoginPage.tsx 按功能拆分：逻辑未改动，仅移动位置。
+/**
+ * @file icons.tsx
+ * @description icons.tsx —— 登录页内联 SVG 图标集。
+ * @author 4everyy
+ * @date 2026-10-07
  */
 
 export function IconDrone({ className }: { className?: string }) {
@@ -115,12 +117,9 @@ export function HexDecor({ className }: { className?: string }) {
   )
 }
 
-/* ---------- 无人集群装饰动画（无人机 / 机械狗，CSS 动画驱动，见 LoginDrones.css） ---------- */
+/* 无人集群装饰动画（无人机 / 机械狗，CSS 动画驱动，见 LoginDrones.css） */
 
-/**
- * 四旋翼无人机线框：机身 + 云台相机 + 四臂 + 四组桨叶（`.login-drone__prop` 旋转）。
- * 对角桨反向旋转（--ccw），模拟真实四旋翼扭矩平衡。
- */
+/** 四旋翼无人机线框：机身 + 云台相机 + 四臂 + 四组桨叶（`.login-drone__prop` 旋转）。 */
 export function DroneUnit() {
   return (
     <svg
@@ -165,15 +164,7 @@ export function DroneUnit() {
   )
 }
 
-/**
- * 机械狗线框（Spot / Go2 风格，面朝右）：
- * - 一体化流线躯干：背部中段隆起（电池舱）+ 传感器圆顶 + 面板缝线；
- * - 圆角头部与前胸连贯，带面罩传感器线 + 相机点 + 头顶天线；
- * - 尾巴为上翘弧线（尾尖配 CSS 信号灯 .login-robo__beacon）；
- * - 四条两段式关节腿：大腿 -> 膝关节圆 -> 小腿 + 足垫，
- *   远侧腿低透明度垫后、近侧腿盖前，形成立体层次；
- *   对角步态（trot）：--fl/--br 同相，--fr/--bl 反相（见 LoginDrones.css）。
- */
+/** 机械狗线框（Spot / Go2 风格，面朝右）：- 一体化流线躯干：背部中段隆起（电池舱）+ 传感器圆顶 + 面板缝线 */
 export function RoboDogUnit() {
   return (
     <svg

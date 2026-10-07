@@ -1,0 +1,265 @@
+/* DeviceRows.css —— 从 DeviceList.css 抽离（设备管理面板列表）：设备行（复选框/图标/名称/状态/指标/遥测展开）。
+   由样式入口 DeviceList.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* ====== 设备行 ====== */
+.device-row-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.device-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: clamp(36px, 2.6vw, 44px);
+  /* 左右内边距与筛选栏一致，确保行内容左边缘与筛选栏左边缘对齐 */
+  padding: 0 clamp(8px, .63vw, 12px);
+  border-radius: 2px;
+  overflow: hidden;
+  box-sizing: border-box;
+  flex-shrink: 0;
+    /* 列布局规则：行首组内（复选框/图标/名称）与尾部组内（信号/箭头）间距固定不变 */
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.device-row__bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  display: block;
+  z-index: 0;
+}
+
+/* 行首组：复选框 + 编队图标 + 设备名称（组内固定 8px 间距，不随视口缩放）。 */
+.device-row__lead {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.device-row__checkbox {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
+  min-width: clamp(14px, 1.15vw, 20px);
+  border-radius: 2px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid #4b79e4;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.device-row__checkbox:hover {
+  background-color: rgba(75, 121, 228, 0.5);
+  border-color: rgba(75, 121, 228, 0.8);
+}
+
+.device-row__checkbox--checked {
+  background: #4b79e4;
+  border-color: #4b79e4;
+}
+
+.device-row__checkbox--checked:hover {
+  background-color: rgba(40, 85, 200, 0.95);
+}
+
+/* 设备类型图标（蓝/灰无人机缩略图） */
+.device-row__type-icon {
+  position: relative;
+  z-index: 1;
+  width: clamp(14px, 1.05vw, 19px);
+  height: clamp(14px, 1.05vw, 19px);
+  min-width: clamp(14px, 1.05vw, 19px);
+  margin-left: clamp(6px, .52vw, 10px);
+  object-fit: contain;
+  flex-shrink: 0;
+  -webkit-user-drag: none;
+}
+
+/* 设备名：定宽列，宽度曲线镜像最宽内容"0X中科晶锐"（2数字+4汉字 ≈ 5.2em）随行字号 clamp(10px,.73vw,14px)… */
+.device-row__name {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(10px, .73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+  flex: 0 1 clamp(53px, 3.9vw, 74px);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+/* 状态文字（任务中/待命/离线）：定宽列（4.4em 容纳最宽"任务中"+圆点），列内内容左对齐，所有行该列左边缘垂直对齐 */
+.device-row__status {
+  /* 状态文字固定白色，圆点颜色由内联样式（状态色）控制 */
+  color: #fff;
+  position: relative;
+  z-index: 1;
+    /* auto margin #1（共 4 处，见 .device-row 注释）：平分行内剩余空间 */
+  margin-left: auto;
+  /* 圆点+文字作为 inline-flex 整体在行内垂直居中 */
+  display: inline-flex;
+  align-items: center;
+  font-size: clamp(10px, .73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+    /* 定宽列（宽度曲线镜像最宽状态"任务中"+圆点），列内内容左对齐：所有行该列左边缘垂直对齐（列左对齐） */
+  flex: 0 0 clamp(41.5px, calc(2.5vw + 9px), 55px);
+  overflow: hidden;
+  text-align: left;
+}
+
+/* 状态圆点：与状态文字同色（currentColor），置于文字前 */
+.device-row__status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: currentColor;
+  margin-right: clamp(2px, .21vw, 4px);
+  flex-shrink: 0;
+}
+
+/* 指标组（高度/电量，图标+数值） */
+.device-row__metric {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: clamp(2px, .21vw, 4px);
+    /* 定宽列（宽度曲线镜像最宽内容"100%"：图标+间距+文字），列内内容左对齐：所有行该列左边缘垂直对齐（列左对齐） */
+  flex: 0 0 clamp(42.5px, calc(3vw + 10px), 59px);
+  overflow: hidden;
+}
+
+/* 高度列（紧邻状态列的 metric）：auto margin #2，平分行内剩余空间，使"状态列↔高度列"间距与其余 3 处列间距时刻相等 */
+.device-row__status + .device-row__metric {
+  margin-left: auto;
+}
+
+/* 电量列（前面还有一个 metric 的 metric）：auto margin #3 */
+.device-row__metric + .device-row__metric {
+  margin-left: auto;
+}
+
+.device-row__metric img {
+  /* 固定尺寸：确保所有电池图标大小一致（新图标均为24×24） */
+  width: clamp(12px, 1vw, 16px);
+  height: clamp(12px, 1vw, 16px);
+  /* 保持原始比例，不拉伸变形 */
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+  -webkit-user-drag: none;
+}
+
+.device-row__metric-value {
+  font-size: clamp(10px, .73vw, 14px);
+  white-space: nowrap;
+  line-height: 1;
+  color: #fff;
+}
+
+/* 尾部组：信号图标（打开云台）+ 展开箭头（查看详情），组内间距见下方 gap 说明 */
+.device-row__tail {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+    /* auto margin #4（共 4 处之一）：与状态/高度/电量列前的 3 个 auto margin平分行内剩余空间 */
+  margin-left: auto;
+    /* 区域面板倒数两列可见… */
+  gap: calc(32px - clamp(14px, 1.15vw, 20px));
+  flex-shrink: 0;
+}
+
+/* 信号图标：与展开箭头同属尾部组，组内固定 8px 间距 */
+.device-row__signal {
+  position: relative;
+  z-index: 1;
+  width: clamp(11px, .83vw, 16px);
+  height: clamp(11px, .83vw, 16px);
+  min-width: clamp(11px, .83vw, 16px);
+  object-fit: contain;
+  flex-shrink: 0;
+  -webkit-user-drag: none;
+}
+
+.device-row__action-icon {
+  position: relative;
+  z-index: 1;
+  width: clamp(12px, .94vw, 16px);
+  height: clamp(12px, .94vw, 16px);
+  min-width: clamp(12px, .94vw, 16px);
+  object-fit: contain;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.device-row__action-icon + .device-row__action-icon {
+  width: clamp(14px, 1.05vw, 19px);
+  height: clamp(14px, 1.05vw, 18px);
+  min-width: clamp(14px, 1.05vw, 19px);
+}
+
+.device-row__label-icon {
+  position: relative;
+  z-index: 1;
+  width: clamp(15px, 1.15vw, 21px);
+  height: clamp(13px, 1vw, 18px);
+  min-width: clamp(15px, 1.15vw, 21px);
+  object-fit: contain;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* 最右侧编队图标按钮：点击展开/收起该行遥测详情 */
+.device-row__expand {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(15px, 1.15vw, 21px);
+  height: clamp(15px, 1.15vw, 21px);
+  min-width: clamp(15px, 1.15vw, 21px);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+    /* 箭头 PNG（24×24）内部左侧约 4px 透明留白（占宽度 1/6），按按钮宽度等比负 margin-left 补偿 */
+  margin-left: calc(clamp(15px, 1.15vw, 21px) / -6);
+  flex-shrink: 0;
+  transition: filter 0.2s ease;
+}
+
+.device-row__expand img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  -webkit-user-drag: none;
+}
+
+/* 展开时图标已通过 up_arrow.png 替换，无需旋转 */

@@ -1,7 +1,4 @@
-/*
- * LoginForm.css —— 表单（输入框 / 记住密码 / 错误提示 / 提交按钮 / 加载与成功过渡）
- * 自 LoginPage partN 机械拆分文件按功能归组：规则内容未改动，仅调整文件归属。
- */
+/* 规则内容未改动… */
 
 .login-form {
   display: grid;

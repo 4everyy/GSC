@@ -1,3 +1,9 @@
+/**
+ * @file index.ts
+ * @description 任务面板图片资源统一出口
+ * @author 4everyy
+ * @date 2026-10-07
+ */
 import addAreaIcon from '../device/icon-add.png'
 import areaIndexIcon from './area-index-icon.png'
 import backArrow from './back-arrow.svg'
@@ -34,8 +40,7 @@ import stepperPlus from './stepper-plus.png'
 import stopIcon from './stop-icon.png'
 import strikeIcon from './strike-icon.png'
 import targetRightIcon from './target-right-icon.png'
-// target-motion-arrows.svg（三枚条纹箭头）现由 TargetMarkerLayer.css 以 CSS mask
-// url() 直接引用（作流动渐变的形状模板），不再经此桶文件导出
+// target-motion-arrows.svg（三枚条纹箭头）现由 TargetMarkerLayer.css 以 CSS mask ur…
 
 export const taskPanelImages = {
   addAreaIcon,

@@ -1,0 +1,517 @@
+/* ProPanelShell.css —— 从 TaskProPanel.css 抽离（专业模式面板）：面板骨架/子标题栏/步骤指示器/内容区/步骤1表单。
+   由样式入口 TaskProPanel.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* 背景/边框/圆角… */
+.task-pro {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  color: #fff;
+  /* 正文统一字体（除标题栏）：白 14px MiSans 330，允许长词断行 */
+  font-size: 14px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+  /* 允许标题栏以负边距出血到外壳内边距区（与 .task-create 一致；原 overflow: hidden 会裁切出血部分） */
+  overflow: visible;
+
+  /* 淡入/淡出 */
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.task-pro--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* 右上角装饰竖线已移除（与 .task-create 一致） */
+
+/* ====== 子标题栏（图标 + 创建任务 + 专业模式徽标 + 关闭） ====== */
+.task-pro__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  /* 箭头图标与标题文字间距 14px（与 .task-create__header 一致） */
+  gap: 14px;
+  height: 48px;
+  flex-shrink: 0;
+  /* 整行背景：白色左实右渐隐横条（与 .task-create__header 一致） */
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.2) 54%,
+    rgba(255, 255, 255, 0) 100%
+  );
+    /* 全出血：负边距抵消外壳 .task-panel 的水平内边距（clamp(8px, 0.83vw, 16px)） */
+  margin: 0 calc(-1 * clamp(8px, 0.83vw, 16px));
+  /* 返回箭头距面板左缘 26px，右缘 16px（与 .task-create__header 一致） */
+  padding: 0 16px 0 26px;
+  box-sizing: border-box;
+}
+
+/* 标题栏底部分割线（左实右渐隐） */
+.task-pro__header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.5) 0.17%,
+    rgba(255, 255, 255, 0.8) 9.67%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  pointer-events: none;
+}
+
+/* 返回箭头按钮：标题左侧白色左箭头（back-arrow.svg），点击返回创建任务基础信息页（与 .task-create__back 一致） */
+.task-pro__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.2s ease;
+}
+
+.task-pro__back:hover {
+  opacity: 0.75;
+}
+
+.task-pro__back img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 与 .task-create__title 一致：创建任务 16px MiSans 450 白色 */
+.task-pro__title {
+  color: #fff;
+  font-size: 16px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 450;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* 右上角叉号关闭按钮与专业模式徽标已移除：标题栏样式与常规模式创建任务一致（仅返回箭头 + 标题） */
+/* ====== 步骤指示器（设计稿：32px 大圆点纵排标签，4px 进度条亮蓝至当前步圆心、其后置灰） ====== */
+.task-pro__steps {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  flex-shrink: 0;
+    /* 水平出血抵消外壳内边距使容器直抵面板左右边框内缘，再以 37px 内边距令首/末球图标边缘距面板左右缘恰为 37px（设计稿） */
+  margin: 16px calc(-1 * clamp(8px, 0.83vw, 16px)) 0;
+  padding: 0 37px;
+  height: 58px;
+  box-sizing: border-box;
+}
+
+/* 进度条：单条全宽渐变，直抵面板左右边框内缘（步骤容器已水平出血，left/right 归零即可） */
+.task-pro__steps-bar {
+  position: absolute;
+  top: 14px; /* 圆点垂直中心 16px − 条高一半 2px */
+  left: 0;
+  right: 0;
+  height: 4px;
+    /* 设计稿单条渐变：透明蓝渐入(0→5%) → 亮蓝实心至下一节点圆心前 4%（间距≈19%，即 pct+15%）→ 过渡置灰（pct+20% */
+  background: linear-gradient(
+    90deg,
+    rgba(60, 139, 255, 0) 0%,
+    #3c8bff 5%,
+    #3c8bff calc(var(--pro-step-pct, calc(53px + (100% - 106px) * 0.5)) + 15%),
+    #a7abc0 calc(var(--pro-step-pct, calc(53px + (100% - 106px) * 0.5)) + 20%),
+    #a7abc0 96%,
+    rgba(167, 171, 192, 0) 100%
+  );
+  pointer-events: none;
+}
+
+/* 单个步骤：圆点在上、标签在下，纵向居中堆叠（设计稿间距 12px） */
+.task-pro__step {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+    /* 盒宽固定为球径 32px：space-between 下首/末球边缘精确落于容器 37px 内边距处 */
+  width: 32px;
+  height: 32px;
+}
+
+/* 序号圆点：默认灰底白描边（设计稿 #A7ABC0 + rgba(255,255,255,0.40) 描边） */
+.task-pro__step-num {
+  position: relative; /* 承载激活态光晕 ::before 的定位基准 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: #a7abc0;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  box-sizing: border-box;
+  z-index: 1;
+}
+
+/* 标签：默认 40% 白，当前步全白（设计稿 14px/330） */
+.task-pro__step-label {
+  /* 绝对定位于球正下方（球 32px + 间距 12px = 44px）水平居中，不撑宽 32px 步骤盒 */
+  position: absolute;
+  top: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  color: #fff;
+}
+
+/* 当前步骤：设计稿三图组合 —— step-active-dot.svg（32×32 蓝紫渐变实心圆 */
+.task-pro__step--active .task-pro__step-num {
+  border: none;
+  background: url('../../assets/task-panel/step-active-dot.svg') center / 32px 32px no-repeat;
+  color: #fff;
+}
+
+/* 光晕最底层：step-active-glow.svg（80×80，8px 描边圆 + blur(10px)），负 inset 居中放大 */
+.task-pro__step--active .task-pro__step-num::before {
+  content: '';
+  position: absolute;
+  inset: -24px; /* (80−32)/2，光晕层 80×80 与圆心对齐 */
+  background: url('../../assets/task-panel/step-active-glow.svg') center / contain no-repeat;
+  pointer-events: none;
+}
+
+/* 光圈中间层：step-active-ring.svg（48×48 渐变描边 + dropShadow 光效） */
+.task-pro__step--active .task-pro__step-num::after {
+  content: '';
+  position: absolute;
+  inset: -8px; /* (48−32)/2，光圈层 48×48 与圆心对齐 */
+  background: url('../../assets/task-panel/step-active-ring.svg') center / contain no-repeat;
+  pointer-events: none;
+}
+
+.task-pro__step--active .task-pro__step-label {
+  color: rgba(255, 255, 255, 1);
+}
+
+/* 已完成步骤（当前步之前）：亮蓝实心圆替代灰底，圆内序号换成白色对勾（step-check.svg） */
+.task-pro__step--done .task-pro__step-num {
+  background: #3c8bff;
+  border: none;
+}
+
+/* 对勾图标：24×24 切图缩放为 16×16 居中于 32px 圆点内 */
+.task-pro__step-check {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+/* ====== 可滚动内容区 ====== */
+.task-pro__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+    /* 水平出血抵消外壳 .task-panel 水平内边距 clamp(8px, 0.83vw, 16px) */
+  /* 顶部间距 24px：步骤条（含纵排标签）底缘到首行「打击方式」的间距（设计稿） */
+  margin: 24px calc(-1 * clamp(8px, 0.83vw, 16px)) 12px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.task-pro__body::-webkit-scrollbar {
+  display: none;
+}
+
+.task-pro__body > *:last-child {
+  margin-bottom: 8px;
+}
+
+/* ====== 步骤 1 策略适配表单：标签与控件上下两行（标签单起一行，控件占满下一行） ====== */
+.task-pro__form {
+  display: flex;
+  flex-direction: column;
+  /* 行间距 24px：每个标题行（打击方式/规划方式/目标打击等）与上方内容的间距（设计稿） */
+  gap: 24px;
+}
+
+.task-pro__row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+
+  .task-pro__row-label {
+    flex-shrink: 0;
+    font-size: 14px;
+    line-height: 1;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 1);
+  }
+
+  /* 行内附加控件（目标打击·巡检对象总选框跟随标签） */
+  .task-pro__row-label--inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+/* ====== 分段选择器（白透明底胶囊容器 + 蓝底白描边滑块） ====== */
+.task-pro__segment {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  /* 与常规模式分段器同款：36px 高、白 20% 底、6px 圆角、2px 内边距、无项间距 */
+  height: 36px;
+  padding: 2px;
+  box-sizing: border-box;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 6px;
+}
+/* 滑块：蓝底白描边，宽/位移由内联样式按选项数与索引计算（与常规模式一致） */
+.task-pro__segment-indicator {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  height: 32px;
+  background: #0ea7f9;
+  box-shadow: 0px 0px 8px 0px rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  border: 1px solid #ffffff;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.task-pro__segment-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.task-pro__segment-item:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 选中态仅切换文字颜色；蓝色滑块由 .task-pro__segment-indicator 滑动实现（与常规模式一致） */
+.task-pro__segment-item--active,
+.task-pro__segment-item--active:hover {
+  color: rgba(255, 255, 255, 1);
+}
+
+.task-pro__segment-item:focus-visible {
+  outline: 1px solid rgba(70, 220, 231, 0.8);
+  outline-offset: 1px;
+}
+
+  /* ====== 复选总选框（目标打击·巡检对象行内总选）：16px 蓝底白勾 / 半选白横线 / 空选灰框 ====== */
+  .task-pro__tri {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    border-radius: 2px;
+    border: 1px solid rgba(190, 190, 190, 0.4);
+    background: rgba(217, 217, 217, 0.1);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .task-pro__tri-mark {
+    width: 10px;
+    height: 1px;
+    border-radius: 8px;
+    background: transparent;
+    transition: background-color 0.15s ease;
+  }
+
+  /* 半选：白横线（设计稿「状态3」） */
+  .task-pro__tri--mixed {
+    background: #4ba3e4;
+    border-color: #4ba3e4;
+  }
+
+  .task-pro__tri--mixed .task-pro__tri-mark {
+    background: #fff;
+  }
+
+  /* 全选：白对勾（CSS 三段线绘制，无切图） */
+  .task-pro__tri--checked {
+    background: #4ba3e4;
+    border-color: #4ba3e4;
+    overflow: hidden;
+  }
+
+  .task-pro__tri--checked .task-pro__tri-mark {
+    width: 9px;
+    height: 5px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    background: transparent;
+    transform: rotate(-45deg) translateY(-1px);
+  }
+
+  .task-pro__tri:hover {
+    border-color: rgba(255, 255, 255, 0.7);
+  }
+
+  .task-pro__tri:focus-visible {
+    outline: 1px solid rgba(70, 220, 231, 0.8);
+    outline-offset: 1px;
+  }
+
+  /* ====== 复选胶囊组（目标打击·巡检对象：人/车可选，船/装备置灰） ====== */
+  .task-pro__chips {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .task-pro__chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 26px;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 2px;
+    outline: 1px solid rgba(255, 255, 255, 0.6);
+    outline-offset: -1px;
+    background: rgba(255, 255, 255, 0.4);
+    font-size: 14px;
+    line-height: 1;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 1);
+    cursor: pointer;
+    transition: background-color 0.15s ease, outline-color 0.15s ease;
+  }
+
+  .task-pro__chip:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.5);
+  }
+
+  /* 选中态：亮蓝描边（设计稿车=选中 #0EA7F9 描边） */
+  .task-pro__chip--checked {
+    outline-color: #0ea7f9;
+  }
+
+  /* 置灰态：整体降透明度不可点（设计稿船/装备） */
+  .task-pro__chip:disabled {
+    background: rgba(190, 190, 190, 0.4);
+    outline-color: rgba(190, 190, 190, 0.6);
+    color: rgba(190, 190, 190, 0.6);
+    cursor: not-allowed;
+  }
+
+  /* 胶囊内复选小方块：空=灰框透明底 / 选中=蓝底（与设计稿一致） */
+  .task-pro__chip-box {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    border-radius: 2px;
+    border: 1px solid rgba(190, 190, 190, 0.4);
+    background: rgba(217, 217, 217, 0.1);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .task-pro__chip--checked .task-pro__chip-box {
+    border-color: #4ba3e4;
+    background: #4ba3e4;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 选中方块内白勾 */
+  .task-pro__chip--checked .task-pro__chip-box::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 4px;
+    width: 8px;
+    height: 4px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg);
+  }
+
+  .task-pro__chip:disabled .task-pro__chip-box {
+    border-color: rgba(190, 190, 190, 0.4);
+    background: rgba(217, 217, 217, 0.1);
+  }
+
+  .task-pro__chip-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .task-pro__chip:focus-visible {
+    outline: 1px solid rgba(70, 220, 231, 0.8);
+  }
+

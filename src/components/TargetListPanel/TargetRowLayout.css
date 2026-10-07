@@ -1,0 +1,298 @@
+/* TargetRowLayout.css —— 从 TargetRow.css 抽离（目标列表面板-目标行）：目标行容器/布局（前半）。
+   由样式入口 TargetRow.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* 规则内容未改动，仅调整文件… */
+
+.target-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: clamp(36px, 2.6vw, 44px);
+  padding: 0 clamp(8px, 0.63vw, 12px);
+  border-radius: 2px;
+  overflow: hidden;
+  gap: clamp(4px, 0.31vw, 6px);
+  flex-shrink: 0;
+}
+
+.target-row__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  z-index: 0;
+}
+
+.target-row > *:not(.target-row__bg) {
+  position: relative;
+  z-index: 1;
+}
+
+.target-row__checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(14px, 1.15vw, 20px);
+  height: clamp(14px, 1.15vw, 20px);
+  min-width: clamp(14px, 1.15vw, 20px);
+  border-radius: 2px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid #4b79e4;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.target-row__checkbox:hover {
+  background-color: rgba(75, 121, 228, 0.5);
+  border-color: rgba(75, 121, 228, 0.8);
+}
+
+.target-row__checkbox--checked {
+  background: #4b79e4;
+  border-color: #4b79e4;
+}
+
+.target-row__lead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.target-row__icon {
+  width: clamp(15px, 1.15vw, 21px);
+  height: clamp(15px, 1.15vw, 21px);
+  min-width: clamp(15px, 1.15vw, 21px);
+  object-fit: contain;
+  flex-shrink: 0;
+  -webkit-user-drag: none;
+}
+
+.target-row__name {
+  color: #fff;
+  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  white-space: nowrap;
+  line-height: 1;
+  flex: 0 0 clamp(58px, 4.22vw, 81px);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.target-row__model {
+  color: #fff;
+  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  white-space: nowrap;
+  line-height: 1;
+  flex: 0 0 clamp(47px, 3.44vw, 66px);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.target-row__value {
+  color: #fff;
+  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  white-space: nowrap;
+  line-height: 1;
+  flex: 0 0 clamp(37px, 2.71vw, 52px);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.target-row__status {
+  color: #fff;
+  font-size: clamp(10px, 0.73vw, 14px);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  white-space: nowrap;
+  line-height: 1;
+  flex: 0 0 clamp(32px, 2.4vw, 46px);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.target-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.target-row__action {
+  object-fit: contain;
+  flex-shrink: 0;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+  -webkit-user-drag: none;
+}
+
+.target-row__action:hover {
+  opacity: 1;
+}
+
+.target-row__action--locate {
+  width: clamp(16px, 1.25vw, 24px);
+  height: clamp(16px, 1.25vw, 24px);
+}
+
+.target-row__action--delete {
+  width: clamp(13px, 1.05vw, 18px);
+  height: clamp(13px, 1.05vw, 18px);
+}
+
+.target-row__action--more {
+  width: clamp(16px, 1.25vw, 24px);
+  height: clamp(16px, 1.25vw, 24px);
+}
+
+.target-row-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.target-row__detail {
+  position: relative;
+  /* 详情字号变量：比行字体（clamp(10px,0.73vw,14px)）小一档，体现层级；分隔线光学补偿随字号等比缩放 */
+  --detail-time-fs: clamp(9px, 0.68vw, 13px);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: clamp(2px, 0.31vw, 4px);
+  padding: clamp(12px, 0.83vw, 16px) 0 0;
+  box-sizing: border-box;
+  background-image: linear-gradient(181deg, rgba(34, 92, 139, 0.1) 0, rgba(34, 92, 139, 0.8) 100%);
+  border-radius: 2px;
+  animation: targetRowDetailIn 0.2s ease;
+}
+
+.target-row__detail-row {
+  display: grid;
+  /* 行容器字号与标签一致：em 轨道按标签字号解析，与标签元素宽度严格相等，标签→值间距即纯 gap 轨道 */
+  font-size: var(--detail-time-fs);
+  grid-template-columns: 2px 4px 4em 16px 22.31% 2px 4px 5em 12px 1fr;
+  align-items: center;
+  width: 100%;
+  /* 标签（发现源/打击方式）距详情容器左缘 24px = padding18 + 竖条2 + 隔4；内容右缘 x≈410/434 */
+  padding-left: 18px;
+  padding-right: 5.53%;
+  box-sizing: border-box;
+  height: clamp(14px, 0.99vw, 19px);
+  margin-top: clamp(6px, 0.42vw, 8px);
+}
+
+.target-row__detail-row:first-child {
+  margin-top: 0;
+}
+
+.target-row__detail-row > :nth-child(1) { grid-column: 1; }
+
+.target-row__detail-row > :nth-child(2) { grid-column: 3; }
+
+.target-row__detail-row > :nth-child(3) { grid-column: 5; }
+
+.target-row__detail-row > :nth-child(4) { grid-column: 6; }
+
+.target-row__detail-row > :nth-child(5) { grid-column: 8; }
+
+.target-row__detail-row > :nth-child(6) { grid-column: 10; }
+
+.target-row__detail-bar {
+  width: 2px;
+  height: clamp(6px, 0.42vw, 8px);
+  background: #8af8ea;
+  justify-self: start;
+}
+
+.target-row__detail-label {
+  font-size: var(--detail-time-fs);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  white-space: nowrap;
+  line-height: 1.35;
+  color: #fff;
+  text-align: justify;
+  text-align-last: justify;
+  /* 标签宽取 5 字（5em，含 0.15em 字间隙）：5 字标签零字距填满，4 字标签拉伸后字距≈0.33em，两组右缘对齐 */
+  width: 5em;
+  min-width: 0;
+}
+
+.target-row__detail-row > :nth-child(2) {
+  width: 4em;
+}
+
+.target-row__detail-value {
+  font-size: var(--detail-time-fs);
+  font-family: 'MiSans';
+  font-weight: 330;
+  word-wrap: break-word;
+  white-space: nowrap;
+  line-height: 1.35;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  justify-self: start;
+}
+
+.target-row__detail-preview {
+  position: relative;
+    /* 图标区域（四角角标图标，30x30 无透明留白、left:0）左缘与上方「发现源/打击方式」文字左缘对齐：x=24 */
+  width: calc(94.47% - 24px);
+  height: 146px;
+  margin: 16px 5.53% 0 24px;
+  flex-shrink: 0;
+}
+
+.target-row__detail-preview-corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  z-index: 2;
+}
+
+.target-row__detail-preview-corner--tl {
+  left: 0;
+  top: 0;
+  transform: rotate(270deg);
+}
+
+.target-row__detail-preview-corner--tr {
+  right: 0;
+  top: 0;
+}
+

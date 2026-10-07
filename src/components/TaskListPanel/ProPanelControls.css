@@ -1,0 +1,405 @@
+/* ProPanelControls.css —— 从 TaskProPanel.css 抽离（专业模式面板）：分段选择器/复选总选框/复选胶囊组/四键步进器/拨动开关。
+   由样式入口 TaskProPanel.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+  /* ====== 四键步进器（-10 -1 值+单位 +1 +10） ====== */
+.task-pro__stepper4 {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 26px;
+  box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 2px;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+/* 越界标红：负数/超限实时反馈（PRD 验收 3） */
+.task-pro__stepper4--error {
+  border-color: rgba(255, 96, 96, 1);
+  background-color: rgba(255, 96, 96, 0.12);
+}
+
+.task-pro__stepper4-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 100%;
+  padding: 0;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font-size: 14px;
+  line-height: 1;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.task-pro__stepper4-btn + .task-pro__stepper4-btn {
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.task-pro__stepper4-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.task-pro__stepper4-btn:active {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.task-pro__stepper4-btn:focus-visible {
+  outline: 1px solid rgba(70, 220, 231, 0.8);
+  outline-offset: -1px;
+}
+
+/* 中间值区：左右分隔线，值右对齐 + 单位后缀 */
+.task-pro__stepper4-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  box-sizing: border-box;
+  border-left: 1px solid rgba(255, 255, 255, 0.45);
+  border-right: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.task-pro__stepper4-value input {
+  width: 56px;
+  height: 100%;
+  padding: 0;
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  line-height: 1;
+  color: #fff;
+  text-align: right;
+}
+
+.task-pro__stepper4-unit {
+  font-size: 14px;
+  line-height: 1;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ====== 拨动开关（识别开关）：关=灰描边居左 / 开=青底白点居右 ====== */
+.task-pro__switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 36px;
+  height: 18px;
+  padding: 0;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: 1px solid #c3c3c3;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.task-pro__switch--on {
+  border-color: #55cede;
+  background: rgba(85, 206, 222, 0.3);
+}
+
+.task-pro__switch-knob {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #c3c3c3;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.task-pro__switch--on .task-pro__switch-knob {
+  transform: translateX(18px);
+  background: #fff;
+}
+
+.task-pro__switch:focus-visible {
+  outline: 1px solid rgba(70, 220, 231, 0.8);
+  outline-offset: 1px;
+}
+
+/* 步骤 2 力量编成：全选栏 + 无人机遥测行列表（设计稿 434×48 白透底行 + 8px 行距）列表数据过多时在列表内部滚动… */
+.task-pro__force {
+  display: flex;
+  flex-direction: column;
+  /* 填满内容区（.task-pro__body）可视高度：全选栏固定 + 列表区 flex:1 内部滚动 */
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* last-child 的 8px 底距… */
+.task-pro__body > .task-pro__force {
+  margin-bottom: 0;
+}
+
+/* 全选栏：三态复选框 + 「全选」文案（设计稿位于列表上方独立行） */
+.task-pro__force-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+    /* 距上方（步骤条底缘）24px 由 .task-pro__body 的 margin-top 统一提供（与步骤 1 首行一致） */
+  padding: 0 8px 17px;
+}
+
+.task-pro__force-all-label {
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 1);
+}
+
+/* 行列表：48px 行高 + 8px 间距（设计稿 232→288→344 步进 56） */
+.task-pro__force-list {
+    /* 列轨道统一定义在父级一次：所有行经 subgrid 共享同一组七列轨道 */
+  display: grid;
+    /* 七列：复选框(16) 机图标可见宽(19.5 = 24 盒宽 − 2×2.25 切图透明边，img 居中溢出轨道两侧各 2.25px */
+  grid-template-columns: 48px max-content max-content max-content max-content minmax(0, 1fr);
+    /* row-gap=行距 8px */
+  gap: 8px 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  /* 滚动条已隐藏不占行宽，无需再为滚动条预留右侧空间，行背景与面板左右缘对齐 */
+  padding: 0;
+  list-style: none;
+  /* 隐藏滚动条但保留滚动功能 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.task-pro__force-list::-webkit-scrollbar {
+  display: none;
+}
+
+/* 行：白透底整条（设计稿 rgba(255,255,255,0.16)）。 */
+.task-pro__force-item {
+  /* 整行跨满父级七列（父网格自动放置到下一行轨道） */
+  grid-column: 1 / -1;
+  display: grid;
+    /* subgrid：行内七列与父列表轨道完全重合，列宽由父级按全表最宽内容统一求解，每行同名列起点像素级一致，数据列跨行严格左对齐 */
+  grid-template-columns: subgrid;
+  align-items: center;
+  height: 48px;
+  /* 行内内容距行左/右边界均 8px（设计稿） */
+  padding: 0 8px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* 步骤 2 行专用：经纬度列（末列 1fr）内容右对齐——经纬度贴行内容区右缘 */
+.task-pro__force-item .task-pro__force-geo {
+  justify-self: end;
+  overflow: hidden;
+}
+
+/* 旧浏览器回退（不支持 subgrid，如 Chrome<117）：父级退回 flex 纵排 */
+@supports not (grid-template-columns: subgrid) {
+  .task-pro__force-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .task-pro__force-item {
+    grid-template-columns: 48px 76px 56px 48px 58px minmax(0, 1fr);
+    column-gap: 6px;
+  }
+}
+
+/* 行内复选框：空=蓝描边灰底 / 选中=蓝底白勾（设计稿 data-状态 选中/未选择） */
+/* 复合首列：复选框(16) + 显式间距(8) + 机图标(24) = 定宽 48px flex 容器。 */
+.task-pro__force-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 48px;
+  flex-shrink: 0;
+}
+
+.task-pro__force-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border-radius: 2px;
+  border: 1px solid #4ba3e4;
+  background: rgba(217, 217, 217, 0.1);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.task-pro__force-check:not(:disabled):hover {
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
+.task-pro__force-check--checked {
+  background: #4ba3e4;
+  border-color: #4ba3e4;
+}
+
+/* 选中白勾（CSS 三段线绘制，无切图） */
+.task-pro__force-check-mark {
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  transform: rotate(-45deg) translateY(-1px);
+  transition: border-color 0.15s ease;
+}
+
+.task-pro__force-check--checked .task-pro__force-check-mark {
+  border-color: #fff;
+}
+
+.task-pro__force-check:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.task-pro__force-check:focus-visible {
+  outline: 1px solid rgba(70, 220, 231, 0.8);
+  outline-offset: 1px;
+}
+
+/* 遥测图标（无人机 icon-formation.png 切图 / 高度/电量 SVG）：24px，随行高垂直居中 */
+.task-pro__force-ic {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  /* PNG 切图按比例缩放不变形（SVG 同样适用） */
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 无人机图标（icon-formation.png 32×32，实测四周透明边各 3px；按 24px 显示折算透明边 2.25px/侧） */
+.task-pro__force-ic--drone {
+    /* flex 容器（步骤 3 分配头行 / 步骤 5 总览头行）：双侧负边距抵消透明边 */
+  margin-inline: 0;
+}
+
+/* 步骤 2 行内（grid subgrid）：负 margin 对 grid item 仅影响对齐起点、右缘不动，不适用 */
+.task-pro__force-item .task-pro__force-ic--drone {
+  margin-inline: 0;
+}
+
+/* 高度图标（deviceImages.altitudeIcon 切图）：按设备管理面板数据行同尺寸 14×14 渲染 */
+.task-pro__force-ic--alt {
+  width: 14px;
+  height: 14px;
+}
+
+/* 名称列：超长省略（默认不拉伸；步骤 2 行内改由后续各列均分剩余空间，见下方限定规则） */
+.task-pro__force-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 步骤 2 行专用：图标→名称可见间距精确 8px（列 gap 6px + 名称列 2px 左外边距） */
+.task-pro__force-item .task-pro__force-name {
+  margin-left: 2px;
+}
+
+/* 步骤 2 行专用：状态列与左侧设备名称列的间距在列 gap 基础上额外加 8px 拉开（16px 收紧为 8px；所有行同样偏移 */
+.task-pro__force-item .task-pro__force-status {
+  margin-left: 8px;
+}
+
+/* 状态列：8px 圆点 + 文案；待命=蓝点（#0EA7F9）/ 任务中=绿点（#34C759） */
+.task-pro__force-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 1);
+  white-space: nowrap;
+}
+
+.task-pro__force-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #0ea7f9;
+}
+
+.task-pro__force-status--busy .task-pro__force-status-dot {
+  background: #34c759;
+}
+
+/* 离线：灰点 + 文字弱化（整行复选框已 disabled 置灰，遥测列保持可读） */
+.task-pro__force-status--offline {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.task-pro__force-status--offline .task-pro__force-status-dot {
+  background: #a7abc0;
+}
+
+/* 高度 / 电量列：图标 + 数值 */
+.task-pro__force-alt,
+.task-pro__force-batt {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 1);
+  white-space: nowrap;
+}
+
+/* 少电（<20%）：百分比文字转红警示（与电池图标红条呼应） */
+.task-pro__force-batt--low {
+  color: #f32c30;
+}
+
+/* 经纬度列：右侧两行小字（经度/纬度） */
+.task-pro__force-geo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 1);
+  white-space: nowrap;
+}
+
+/* 前置提示（步骤 2/3 未选无人机）：柔红引导 */
+.task-pro__hint {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(255, 150, 130, 0.95);
+}
+

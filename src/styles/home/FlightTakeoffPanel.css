@@ -1,0 +1,121 @@
+/* FlightTakeoffPanel.css —— 从 FlightPanels.css 抽离（首页飞行面板）：起飞参数面板（含降落/返航/指点返航同位面板）。
+   由样式入口 FlightPanels.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* 规则内容未改动… */
+/* ====== 起飞参数面板（右上角） ====== */
+/* 降落/返航/指点返航面板与起飞面板同位（右上角），由互斥状态保证同一时刻仅显示其一 */
+.takeoff-panel,
+.hover-panel,
+.landing-panel,
+.return-home-panel,
+.tap-return-panel,
+.area-landing-panel,
+.waypoint-flight-panel,
+.route-flight-panel,
+.orbit-flight-panel,
+.rally-point-panel,
+.formation-flight-panel {
+  position: absolute;
+    /* 下移至告警信息面板正下方：top = 告警框高 clamp(61px,6.35vw,122px) + 4px 间隙 */
+  top: calc(clamp(61px, 6.35vw, 122px) + 4px);
+  right: clamp(8px, 0.83vw, 16px);
+  z-index: 20;
+    /* panel bottom must stay a… */
+  max-height: calc(
+    100% - clamp(61px, 6.35vw, 122px) - 4px - clamp(8px, 0.83vw, 16px) - 5 * clamp(32px, 3.33vw, 64px) -
+      3 * clamp(4px, 0.42vw, 8px) - 4px
+  );
+  overflow: hidden;
+  /* .map-stage 已设 pointer-events: none，在此恢复，面板内控件才可交互 */
+  pointer-events: auto;
+}
+
+/* let the panel body scroll so inner… */
+.takeoff-panel .panel-shell__body,
+.hover-panel .panel-shell__body,
+.landing-panel .panel-shell__body,
+.return-home-panel .panel-shell__body,
+.tap-return-panel .panel-shell__body,
+.area-landing-panel .panel-shell__body,
+.waypoint-flight-panel .panel-shell__body,
+.route-flight-panel .panel-shell__body,
+.orbit-flight-panel .panel-shell__body,
+.rally-point-panel .panel-shell__body,
+.formation-flight-panel .panel-shell__body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE / legacy Edge */
+}
+
+/* 隐藏滚动条但保留滚动：Chromium/WebKit（滚轮/触摸滚动不受影响） */
+.takeoff-panel .panel-shell__body::-webkit-scrollbar,
+.hover-panel .panel-shell__body::-webkit-scrollbar,
+.landing-panel .panel-shell__body::-webkit-scrollbar,
+.return-home-panel .panel-shell__body::-webkit-scrollbar,
+.tap-return-panel .panel-shell__body::-webkit-scrollbar,
+.area-landing-panel .panel-shell__body::-webkit-scrollbar,
+.waypoint-flight-panel .panel-shell__body::-webkit-scrollbar,
+.route-flight-panel .panel-shell__body::-webkit-scrollbar,
+.orbit-flight-panel .panel-shell__body::-webkit-scrollbar,
+.rally-point-panel .panel-shell__body::-webkit-scrollbar,
+.formation-flight-panel .panel-shell__body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* 区域降落/集结点面板：与全屏框选遮罩（z-index 2000）共存时浮于其上，否则按钮首次点击进入框选态时面板被遮罩盖住（看似未弹出） */
+.area-landing-panel,
+.rally-point-panel {
+  z-index: 2100;
+}
+
+/* 底部按钮「激活态」：点击起飞按钮后保持弹出 + 内发光（与 hover 视觉一致但持续，直至面板关闭） */
+.bottom-bar__btn--active .bottom-bar__visual {
+  transform: translateY(clamp(-12px, -0.625vw, -6px));
+  opacity: 1;
+}
+
+.bottom-bar__btn--active .bottom-bar__visual::after {
+  opacity: 1;
+}
+
+/* ====== 功能按钮激活态高于背景（第 2~12 段通用） ====== */
+/* 独立于 button 之外（wrapper 内）：button 的 clip-path 会裁掉切图四周的发光边/投影边缘 */
+.bottom-bar__active-glow {
+  position: absolute;
+  bottom: -13.89%;
+  height: 105.56%;
+  z-index: 5; /* 盖过相邻段负 margin 重叠的半透明段 */
+  background-color: transparent;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  pointer-events: none; /* wrapper 已禁命中，双保险：绝不拦截相邻段鼠标事件 */
+  opacity: 0;
+  transform: translateY(0);
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.2s ease;
+  will-change: transform;
+}
+
+/* 激活（起飞面板展开）时顶出，并保持与视觉层一致的顶出量（12px 弹性回弹曲线）。 */
+.bottom-bar__item--active-bg .bottom-bar__active-glow {
+  opacity: 1;
+  transform: translateY(clamp(-12px, -0.625vw, -6px));
+}
+
+/* 与视觉层 :active 反馈同步… */
+.bottom-bar__item--active-bg:active .bottom-bar__active-glow {
+  transform: translateY(clamp(-5px, -0.26vw, -2.5px));
+  filter: brightness(0.9);
+  transition:
+    transform 0.1s ease-out,
+    filter 0.1s ease-out;
+}
+
+/* 图标副本：居中于切图的实体区而非层几何中心（画布实体 y 6~66 → 中心 36/76 = 47.37% */
+.bottom-bar__icon--active-glow {
+  top: 47.37%;
+}
+

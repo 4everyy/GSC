@@ -1,0 +1,299 @@
+/* PanelKitShell.css —— 从 PanelKit.css 抽离（面板通用组件库样式）：面板外壳/骨架通用样式（前半）。
+   由样式入口 PanelKit.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* PanelShell 样式 —— 公共功能面板外壳（按蓝澜设计稿 260×469 复刻）。 */
+
+/* clip-path 不能放在根元素上——否则会裁掉框外的：:after 装饰三角 */
+.panel-shell {
+  width: 260px;
+  height: 469px;
+  box-sizing: border-box;
+  filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.3));
+  display: flex;
+  flex-direction: column;
+  font-family: 'MiSans', sans-serif;
+  color: #fff;
+}
+
+/* 背景层：铺满面板并按设计稿切去右上 45° 角（(242,0)→(260,18)） */
+.panel-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* z-index:-1 置于非定位内容（tab 栏/标题）之下，避免半透明背景盖住内容 */
+  z-index: -1;
+  border: 1px solid;
+  border-image: radial-gradient(circle, rgba(85, 206, 222, 1), rgba(85, 206, 222, 0)) 1 1;
+    /* 第一层：18×18 定位在右上角，沿主对角线 (242,0)→(260,18) 画 1px 亮线… */
+  background-image:
+    linear-gradient(
+      to bottom left,
+      transparent calc(50% - 1px),
+      rgba(85, 206, 222, 1) 50%,
+      transparent calc(50% + 1px)
+    ),
+    linear-gradient(rgba(75, 194, 249, 0.4), rgba(75, 194, 249, 0.4));
+  background-size:
+    18px 18px,
+    100% 100%;
+  background-position:
+    top right,
+    0 0;
+  background-repeat: no-repeat;
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+  pointer-events: none;
+}
+
+/* 右上角装饰三角：位于切角挖空的区域内（元素框内），顶点 (246,0)→(260,0)→(260,14) */
+.panel-shell::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 14px;
+  background: linear-gradient(to right, #5095b9 0%, #61adb7 100%);
+  clip-path: polygon(4px 0, 100% 0, 100% 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 标题（如「起飞」「降落」）：MiSans 600/16px 白，行高 21 于标题区内垂直居中 */
+.panel-shell__title {
+  display: block;
+  height: 21px;
+  font-size: 16px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 600;
+  font-synthesis: weight;
+  line-height: 21px;
+  margin: 8px 0 0 16px;
+}
+
+/* 内容区：占满标题与底部按钮之间的剩余空间，子面板内部自行布局 */
+.panel-shell__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 底部按钮行（244×32，m-bottom 8，两端对齐） */
+.panel-shell__actions {
+  display: flex;
+  justify-content: space-between;
+  width: 244px;
+  height: 32px;
+  margin: 0 0 8px 8px;
+}
+
+/* 确认/取消按钮：118×32，radius 2 */
+.panel-shell__btn {
+  width: 118px;
+  height: 32px;
+  padding: 0;
+  border-radius: 2px;
+  font-size: 14px;
+  font-family: 'MiSans', sans-serif;
+  line-height: 32px;
+  color: rgba(255, 255, 255, 1);
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.panel-shell__btn:hover {
+  filter: brightness(1.1);
+}
+
+.panel-shell__btn--confirm {
+  border: 0;
+  background-color: rgba(14, 167, 249, 1);
+}
+
+.panel-shell__btn--cancel,
+.panel-shell__btn--middle {
+  border: 1px solid rgba(14, 167, 249, 1);
+  background-color: rgba(75, 188, 249, 0.1);
+  box-sizing: border-box;
+}
+
+/* 三按钮布局（如指点返航面板「确认/航线生成/取消」）：按钮收窄为 76px，按钮间 8px 间距（76×3 + 8×2 = 244） */
+.panel-shell__actions--triple .panel-shell__btn {
+  width: 76px;
+}
+
+.panel-shell__actions--triple .panel-shell__btn--confirm,
+.panel-shell__actions--triple .panel-shell__btn--middle {
+  margin-right: 8px;
+}
+
+/* Muted confirm button (rally panel design text-wrapper_7): gray bg + 40pct white text */
+.panel-shell__btn--muted {
+  border: 0;
+  background-color: rgba(153, 153, 153, 0.8);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* gray border +… */
+.panel-shell__btn--middle-muted {
+  border: 1px solid rgba(153, 153, 153, 0.6);
+  background-color: rgba(153, 153, 153, 0.15);
+  color: rgba(255, 255, 255, 0.4);
+  cursor: not-allowed;
+}
+
+/* PanelTabs 样式 —— 「参数设置 / 飞机列表」tab 栏（从 TakeoffPanel.css 抽取）。 */
+
+/* tab 轨道 */
+.panel-tabs {
+  display: flex;
+  height: 36px;
+  margin-top: 8px;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 未选中 tab */
+.panel-tabs__tab {
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 1);
+  font-size: 14px;
+  font-family: 'MiSans', sans-serif;
+  font-weight: 400;
+  line-height: 36px;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 选中 tab：126×32 蓝色块 */
+.panel-tabs__tab--active {
+  flex: none;
+  width: 126px;
+  height: 32px;
+  margin: 2px 0 0 2px;
+  line-height: 32px;
+  background: linear-gradient(180deg, rgba(14, 167, 249, 1) 0%, rgba(9, 122, 209, 1) 100%);
+}
+
+/* 选中项在右侧（飞机列表）时镜像边距 */
+.panel-tabs__tab--active-last {
+  margin: 2px 2px 0 0;
+}
+
+/* SlideConfirmDialog —— 滑动二次确认弹窗样式（参照设计稿 400×220 弹窗） */
+
+/* 全屏遮罩：点击空白处取消。 */
+.slide-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* 弹窗主体：400×220、深蓝渐变底、8px 圆角、外阴影 */
+.slide-confirm {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 400px;
+  height: 220px;
+  background-image: linear-gradient(
+    180deg,
+    rgba(35, 90, 120, 0.96) 0,
+    rgba(19, 54, 96, 0.97) 100%
+  );
+  border-radius: 8px;
+  box-shadow: 0 16px 48px 0 rgba(0, 0, 0, 0.4);
+  user-select: none;
+}
+
+/* 顶部 2px 高亮条：青色渐变 */
+.slide-confirm__accent {
+  width: 100%;
+  height: 2px;
+  background-image: linear-gradient(90deg, rgba(85, 206, 222, 0.1), rgba(85, 206, 222, 0.9));
+  border-radius: 8px 8px 0 0;
+}
+
+/* 标题行：标题水平居中，行最右侧关闭按钮（位于顶条下方 14px） */
+.slide-confirm__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 27px;
+  margin: 14px 24px 0;
+}
+
+/* 标题组：相对弹窗水平居中，不受右侧关闭按钮影响 */
+.slide-confirm__header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slide-confirm__title {
+  color: rgba(255, 255, 255, 1);
+  font-size: 20px;
+  font-family: MiSans-Medium, MiSans-Regular, sans-serif;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+/* 右上角关闭按钮：24×24 点击热区 */
+.slide-confirm__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.slide-confirm__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.slide-confirm__close:hover svg path {
+  stroke: rgba(255, 255, 255, 0.95);
+}
+
+/* 指令信息行：居中「白色感叹号图标（18px 与文字一致）+ 文案」，标题行下方约 40px */
+.slide-confirm__message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 24px;
+  margin: 40px 0 0;
+}
+
+.slide-confirm__message-icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.slide-confirm__message-text {
+  color: rgba(255, 255, 255, 1);
+  font-size: 18px;
+  font-family: MiSans-Regular, sans-serif;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+/* 滑轨：320×40 胶囊、内阴影半透明黑底；done 后整轨变青 */

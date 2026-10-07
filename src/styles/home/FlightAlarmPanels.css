@@ -1,0 +1,67 @@
+/* FlightAlarmPanels.css —— 从 FlightPanels.css 抽离（首页飞行面板）：告警面板组（常驻告警框+详情弹层展开收起）。
+   由样式入口 FlightPanels.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* 告警面板组（常驻告警框 + 详情弹层）wrapper 承接原 .alarm-info-panel 的绝对定位… */
+.alarm-panels {
+  position: absolute;
+  top: 0;
+  right: clamp(8px, 0.83vw, 16px);
+  z-index: 6;
+  width: clamp(207px, 21.56vw, 414px);
+    /* max-height：底缘为右下控件竖排（view-controls 测距/2D/图层 3 按钮 + zoom ×2）预留完整占位 + 安全… */
+  max-height: calc(100% - 368px);
+  display: flex;
+  flex-direction: column;
+    /* 两框上下边直接贴紧（gap=0）：色调 box-shadow 已移除 */
+  gap: 0;
+  pointer-events: none;
+}
+
+/* 常驻框固定高度不参与收缩：保证压缩只作用于详情面板 */
+.alarm-panels .alarm-info-panel {
+  flex-shrink: 0;
+}
+
+/* 常驻告警框在 wrapper 内改为文档流定位（覆盖组件内 absolute + 右偏移），由其固定高度撑开 wrapper */
+.alarm-panels .alarm-info-panel {
+  position: relative;
+  top: auto;
+  right: auto;
+}
+
+/* 展开态（详情面板拼入）详情面板紧贴常驻框正下方（gap=0） */
+/* 展开态：缺口补齐（两面板衔接连续） */
+.alarm-panels--expanded .alarm-info-panel::before {
+  clip-path: none;
+}
+
+/* 收起衔接态（HomePage JS 驱动）：收起动画播放全程（ALARM_COLLAPSE_MS = 350ms）保持缺口补齐 */
+.alarm-panels--collapsing .alarm-info-panel::before {
+  clip-path: none;
+}
+/* 详情面板展开/收起动画详情面板常驻挂载于 wrapper 第二个 flex 项（alarm-panels__detail） */
+/* 默认（收起）态：轨道 0 高度 + visibility 隐藏——面板初始即收起，且不可交互（键盘 Tab / 读屏均不可达） */
+.alarm-panels__detail {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  min-height: 0;
+  visibility: hidden;
+  /* 收起态：easeInCubic 加速曲线，利落收回；visibility 延时 = 收起动画时长 */
+  transition:
+    grid-template-rows 0.35s cubic-bezier(0.5, 0, 0.75, 0),
+    visibility 0s 0.35s;
+}
+
+.alarm-panels--expanded .alarm-panels__detail {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  /* 展开态：easeOutExpo 曲线起步极快、长尾减速，丝滑且从容 */
+  transition:
+    grid-template-rows 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s 0s;
+}
+
+/* 面板本体：随轨道等高拉伸（不写死 height，仅 max-height 封顶）——展开时面板自常驻框下缘向下铺开：筛选条先现 */
+.alarm-panels__detail > .alarm-detail-panel {
+  min-height: 0;
+}

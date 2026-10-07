@@ -1,9 +1,15 @@
-import { useState, useRef, useLayoutEffect, useCallback } from 'react'
+/**
+ * @file DeviceManagementPanel.tsx
+ * @description 设备管理面板：标题栏 + 筛选栏（DeviceFilters）+ 设备列表（DeviceRow）+ 聚焦视图（AircraftFocusPanel）。
+ * @author 4everyy
+ * @date 2026-10-07
+ */
+import { useState, useRef, useCallback } from 'react'
 import { useDeviceLinkStore, usePlaneStatusStore } from '../../stores/index'
-import { getBatteryIcon, getStatusColor, type DeviceTelemetry } from '../../config/index'
 import { deviceImages } from '../../assets/device'
-import { homeImages } from '../../assets/home'
 import { AircraftFocusPanel } from '../AircraftFocusPanel/AircraftFocusPanel'
+import { DeviceRow } from './DeviceRow'
+import { DeviceFilters, FILTER_PLACEHOLDER, TYPE_ID_BY_LABEL, type FilterKey } from './DeviceFilters'
 import './DeviceManagementPanel.css'
 
 interface DeviceManagementPanelProps {
@@ -11,46 +17,8 @@ interface DeviceManagementPanelProps {
   visible?: boolean
 }
 
-// 筛选选项配置
-/** 状态筛选选项：与 queryPlaneStatus 状态文本一一对应（执行中/待命/离线/在线） */
-const STATUS_OPTIONS = ['执行中', '待命', '离线', '在线'] as const
-const TYPE_OPTIONS = ['无人机', '无人车', '无人船', '机器狗'] as const
-/** 类型文本 → typeId 码（联调口径：1-无人机；其余类型后端暂未定义，选中时列表为空） */
-const TYPE_ID_BY_LABEL: Record<string, string> = {
-  无人机: '1',
-}
-
-// 左列参数配置（3 行）
-const TELEMETRY_COL_LEFT: { label: string; key: keyof DeviceTelemetry }[] = [
-  { label: '经度', key: 'longitude' },
-  { label: '纬度', key: 'latitude' },
-  { label: '海拔', key: 'elevation' },
-]
-
-// 右列参数配置（3 行）
-const TELEMETRY_COL_RIGHT: { label: string; key: keyof DeviceTelemetry }[] = [
-  { label: '速度(Y)', key: 'velocityY' },
-  { label: '偏航角', key: 'yaw' },
-  { label: '横滚角', key: 'roll' },
-]
-
-// 第三行左列（高度/电压/延迟）
-const TELEMETRY_COL_LEFT_2: { label: string; key: keyof DeviceTelemetry }[] = [
-  { label: '高度', key: 'altitude' },
-  { label: '电压', key: 'voltage' },
-  { label: '延迟', key: 'delay' },
-]
-
-// 第三行右列（俯仰角/电量/GPS）
-const TELEMETRY_COL_RIGHT_2: { label: string; key: keyof DeviceTelemetry }[] = [
-  { label: '俯仰角', key: 'pitch' },
-  { label: '电\u3000量', key: 'battery' },
-  { label: 'GPS', key: 'gps' },
-]
-
 export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagementPanelProps) {
-  // 设备列表：订阅 planeStatusStore（数据全部来自 queryPlaneStatus 接口：
-  // MainApp 的 usePlaneStatusInit 在首页加载时请求并整体写入；初始为空列表）。
+  // 设备列表：订阅 planeStatusStore
   const deviceList = usePlaneStatusStore((s) => s.devices)
   // 选中/hover 状态迁移至全局 store，与首页飞机图标联动
   const selectedDevices = useDeviceLinkStore((s) => s.selectedDevices)
@@ -61,9 +29,9 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
   // 地图聚焦请求：单行勾上时飞转地图到该设备（全选走整体替换不触发）
   const requestMapFocusDevice = useDeviceLinkStore((s) => s.requestMapFocusDevice)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
-  const [openDropdown, setOpenDropdown] = useState<'status' | 'type' | null>(null)
-  const [statusFilter, setStatusFilter] = useState<string>('请选择')
-  const [typeFilter, setTypeFilter] = useState<string>('请选择')
+  const [openDropdown, setOpenDropdown] = useState<FilterKey | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string>(FILTER_PLACEHOLDER)
+  const [typeFilter, setTypeFilter] = useState<string>(FILTER_PLACEHOLDER)
 
   // ====== 聚焦视图面板：位于设备管理面板右侧、间距 8px（定位见 CSS） ======
   const [focusIndex, setFocusIndex] = useState<number | null>(null)
@@ -87,82 +55,6 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
     })
   }, [])
 
-  // 运行时对齐"最后更新时间"行与右列数值的右边：
-  // ref 指向当前展开行的 footer 与第二行右列（含最右数值的列）
-  const footerRef = useRef<HTMLDivElement | null>(null)
-  const [footerPadRight, setFooterPadRight] = useState<number>(33)
-
-  // 测量并设置 footer 的 padding-right，使其内容右边对齐右列数值右边
-  const measure = useCallback(() => {
-    const footer = footerRef.current
-    if (!footer) return
-    // 从 footer 向上找到详情容器，再查所有右列数值
-    const detail = footer.closest('.device-row__detail')
-    if (!detail) return
-
-    // 跨所有 detail-row 统一等宽：遍历 detail 内全部列（2行×2列=4列），
-    // 取全局最大宽度统一设置，保证左右两列及上下两行的标签/数值起始位置
-    // 完全对齐；配合 justify-content:center 让每行两列作为整体居中。
-    const allCols = detail.querySelectorAll<HTMLElement>('.device-row__detail-col')
-    // 先清除行内 width，让列回到内容自然宽度（flex:0 0 auto）
-    allCols.forEach((c) => {
-      c.style.width = ''
-    })
-    // 取所有列中最宽者
-    let maxColW = 0
-    allCols.forEach((c) => {
-      const w = c.offsetWidth
-      if (w > maxColW) maxColW = w
-    })
-    // 统一设置所有列宽度，实现跨行等宽对齐
-    allCols.forEach((c) => {
-      c.style.width = `${maxColW}px`
-    })
-    const footerRect = footer.getBoundingClientRect()
-    // 只取第一个 detail-row（速度Y/偏航角/横滚角所在行）的右列数值，
-    // 让 footer 与"速度那一列"的数值右边缘对齐，而非所有右列数值的最右者。
-    const firstRow = detail.querySelector<HTMLElement>('.device-row__detail-row')
-    const values = firstRow
-      ? firstRow.querySelectorAll<HTMLElement>(
-          '.device-row__detail-col:last-child .device-row__detail-value',
-        )
-      : []
-    let maxValueRight = -Infinity
-    values.forEach((v) => {
-      const r = v.getBoundingClientRect()
-      if (r.right > maxValueRight) maxValueRight = r.right
-    })
-    if (!Number.isFinite(maxValueRight)) return
-    // footer 内容右边 = footerRect.right - paddingRight；想要 == maxValueRight
-    const desired = footerRect.right - maxValueRight
-    if (desired >= 0 && desired <= footerRect.width) {
-      setFooterPadRight(Math.round(desired))
-    }
-  }, [])
-
-  useLayoutEffect(() => {
-    if (expandedIndex === null) return
-    // 等布局稳定后测量（含字体/动画首帧）
-    const id = window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(measure)
-    })
-    // 字体加载完成后重测（MiSans 可能异步加载，影响数值宽度）
-    let cancelled = false
-    document.fonts?.ready.then(() => {
-      if (!cancelled) measure()
-    })
-    // 监听尺寸变化（面板宽度 clamp 随 vw 变化）
-    const ro = new ResizeObserver(() => measure())
-    if (footerRef.current) ro.observe(footerRef.current)
-    window.addEventListener('resize', measure)
-    return () => {
-      cancelled = true
-      window.cancelAnimationFrame(id)
-      window.removeEventListener('resize', measure)
-      ro.disconnect()
-    }
-  }, [expandedIndex, measure])
-
   const toggleSelect = (index: number) => {
     // 勾上（原未选中）时请求地图飞转聚焦该设备；取消勾选不触发
     if (!selectedDevices.has(index)) requestMapFocusDevice(index)
@@ -178,12 +70,12 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
     .map((device, index) => ({ device, index }))
     .filter(({ device }) => {
       // 类型筛选：按接口 typeId 匹配（1-无人机；其余类型后端暂未定义，选中时结果为空）
-      if (typeFilter !== '请选择') {
+      if (typeFilter !== FILTER_PLACEHOLDER) {
         const expectId = TYPE_ID_BY_LABEL[typeFilter]
         if (expectId === undefined || device.typeId !== expectId) return false
       }
       // 状态筛选：按设备状态文字精确匹配
-      if (statusFilter !== '请选择' && device.statusText !== statusFilter) return false
+      if (statusFilter !== FILTER_PLACEHOLDER && device.statusText !== statusFilter) return false
       return true
     })
 
@@ -207,11 +99,11 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
     replaceSelectedDevices(next)
   }
 
-  const toggleDropdown = (which: 'status' | 'type') => {
+  const toggleDropdown = (which: FilterKey) => {
     setOpenDropdown((prev) => (prev === which ? null : which))
   }
 
-  const selectOption = (which: 'status' | 'type', value: string) => {
+  const selectOption = (which: FilterKey, value: string) => {
     if (which === 'status') {
       setStatusFilter(value)
     } else {
@@ -221,11 +113,11 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
   }
 
   // 清除筛选：重置为占位文本并关闭下拉
-  const clearFilter = (which: 'status' | 'type') => {
+  const clearFilter = (which: FilterKey) => {
     if (which === 'status') {
-      setStatusFilter('请选择')
+      setStatusFilter(FILTER_PLACEHOLDER)
     } else {
-      setTypeFilter('请选择')
+      setTypeFilter(FILTER_PLACEHOLDER)
     }
     setOpenDropdown(null)
   }
@@ -255,145 +147,17 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
       </div>
 
       {/* 筛选栏 */}
-      <div className="device-panel__filters">
-        {/* 全选复选框 */}
-        <div
-          className={`device-panel__select-all${isAllSelected ? ' device-panel__select-all--checked' : ''}${isIndeterminate ? ' device-panel__select-all--indeterminate' : ''}`}
-          onClick={toggleSelectAll}
-          role="checkbox"
-          aria-checked={isAllSelected ? 'true' : isIndeterminate ? 'mixed' : 'false'}
-          tabIndex={0}
-          onKeyDown={(e) => e.key === ' ' && (e.preventDefault(), toggleSelectAll())}
-        >
-          {isAllSelected && (
-            <svg
-              viewBox="0 0 12 12"
-              width="10"
-              height="10"
-              fill="none"
-              stroke="#fff"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="2,6 5,9 10,3" />
-            </svg>
-          )}
-          {isIndeterminate && (
-            <svg
-              viewBox="0 0 12 12"
-              width="10"
-              height="10"
-              fill="none"
-              stroke="#fff"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            >
-              <line x1="2" y1="6" x2="10" y2="6" />
-            </svg>
-          )}
-        </div>
-        <span className="device-panel__filter-label">状态</span>
-        <div
-          className={`device-panel__select${openDropdown === 'status' ? ' device-panel__select--open' : ''}`}
-          onClick={() => toggleDropdown('status')}
-        >
-          <span className={statusFilter !== '请选择' ? '' : 'device-panel__select-placeholder'}>
-            {statusFilter}
-          </span>
-          {statusFilter !== '请选择' && (
-            <button
-              type="button"
-              className="device-panel__select-clear"
-              onClick={(e) => {
-                e.stopPropagation()
-                clearFilter('status')
-              }}
-              aria-label="清除状态筛选"
-            >
-              <svg
-                viewBox="0 0 12 12"
-                width="8"
-                height="8"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              >
-                <line x1="2" y1="2" x2="10" y2="10" />
-                <line x1="10" y1="2" x2="2" y2="10" />
-              </svg>
-            </button>
-          )}
-          <img src={deviceImages.dropdown} alt="" />
-          {openDropdown === 'status' && (
-            <div className="device-panel__dropdown">
-              {STATUS_OPTIONS.map((opt) => (
-                <div
-                  key={opt}
-                  className="device-panel__dropdown-item"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    selectOption('status', opt)
-                  }}
-                >
-                  {opt}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <span className="device-panel__filter-label">类型</span>
-        <div
-          className={`device-panel__select${openDropdown === 'type' ? ' device-panel__select--open' : ''}`}
-          onClick={() => toggleDropdown('type')}
-        >
-          <span className={typeFilter !== '请选择' ? '' : 'device-panel__select-placeholder'}>
-            {typeFilter}
-          </span>
-          {typeFilter !== '请选择' && (
-            <button
-              type="button"
-              className="device-panel__select-clear"
-              onClick={(e) => {
-                e.stopPropagation()
-                clearFilter('type')
-              }}
-              aria-label="清除类型筛选"
-            >
-              <svg
-                viewBox="0 0 12 12"
-                width="8"
-                height="8"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              >
-                <line x1="2" y1="2" x2="10" y2="10" />
-                <line x1="10" y1="2" x2="2" y2="10" />
-              </svg>
-            </button>
-          )}
-          <img src={deviceImages.dropdown} alt="" />
-          {openDropdown === 'type' && (
-            <div className="device-panel__dropdown">
-              {TYPE_OPTIONS.map((opt) => (
-                <div
-                  key={opt}
-                  className="device-panel__dropdown-item"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    selectOption('type', opt)
-                  }}
-                >
-                  {opt}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <DeviceFilters
+        isAllSelected={isAllSelected}
+        isIndeterminate={isIndeterminate}
+        statusFilter={statusFilter}
+        typeFilter={typeFilter}
+        openDropdown={openDropdown}
+        onToggleSelectAll={toggleSelectAll}
+        onToggleDropdown={toggleDropdown}
+        onSelectOption={selectOption}
+        onClearFilter={clearFilter}
+      />
 
       {/* 设备列表 */}
       <div className="device-panel__body">
@@ -410,264 +174,21 @@ export function DeviceManagementPanel({ onClose, visible = true }: DeviceManagem
                 <span className="device-panel__list-empty-text">暂无设备</span>
               </div>
             ) : (
-              filteredDevices.map(({ device, index }) => {
-                const isSelected = selectedDevices.has(index)
-              const rowState = isSelected ? 'selected' : hoveredIndex === index ? 'hover' : 'normal'
-              const bgImage =
-                rowState === 'selected'
-                  ? deviceImages.rowBgBlue
-                  : rowState === 'hover'
-                    ? deviceImages.rowBgOrange
-                    : deviceImages.rowBgGray
-
-              const isExpanded = expandedIndex === index
-              const batteryIcon = device.isCharging
-                ? deviceImages.batteryCharging
-                : getBatteryIcon(device.batteryLevel)
-
-              return (
-                <div className="device-row-wrapper" key={index}>
-                  <div
-                    className={`device-row${isSelected ? ' device-row--selected' : ''}`}
-                    onMouseEnter={() => setHoveredIndex(index)}
-                    onMouseLeave={() => setHoveredIndex(null)}
-                  >
-                    <img className="device-row__bg" src={bgImage} alt="" draggable={false} />
-
-                    {/* 行首组：复选框 + 设备图标 + 设备名称（组内固定 8px 间距） */}
-                    <div className="device-row__lead">
-                    {/* 勾选框 */}
-                    <div
-                      className={`device-row__checkbox${isSelected ? ' device-row__checkbox--checked' : ''}`}
-                      onClick={() => toggleSelect(index)}
-                      role="checkbox"
-                      aria-checked={isSelected}
-                      tabIndex={0}
-                      onKeyDown={(e) =>
-                        e.key === ' ' && (e.preventDefault(), toggleSelect(index))
-                      }
-                    >
-                      {isSelected && (
-                        <svg
-                          viewBox="0 0 12 12"
-                          width="10"
-                          height="10"
-                          fill="none"
-                          stroke="#fff"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="2,6 5,9 10,3" />
-                        </svg>
-                      )}
-                    </div>
-
-                    {/* 编队图标 + 设备名 */}
-                    <img
-                      className="device-row__label-icon"
-                      src={homeImages.iconFormation}
-                      alt=""
-                      draggable={false}
-                    />
-                    <span className="device-row__name" title={device.name}>
-                      {device.name}
-                    </span>
-                    </div>
-
-                    {/* 状态文字 */}
-                    <span className="device-row__status">
-                      <span
-                        className="device-row__status-dot"
-                        style={{ backgroundColor: getStatusColor(device.status) }}
-                      />
-                      {device.statusText}
-                    </span>
-
-                    {/* 高度 */}
-                    <div className="device-row__metric">
-                      <img src={deviceImages.altitudeIcon} alt="" draggable={false} />
-                      <span className="device-row__metric-value">{device.altitudeValue}</span>
-                    </div>
-
-                    {/* 电量 */}
-                    <div className="device-row__metric">
-                      <img src={batteryIcon} alt="" draggable={false} />
-                      <span className="device-row__metric-value">{device.batteryValue}</span>
-                    </div>
-
-                    {/* 尾部组：信号图标（打开云台）+ 展开箭头（查看详情），组内固定 8px 间距 */}
-                    <div className="device-row__tail">
-                    {/* 信号图标：点击显示该无人机的聚焦视图面板 */}
-                    <img
-                      className="device-row__signal device-row__signal--clickable"
-                      src={deviceImages.signalIcon}
-                      alt=""
-                      draggable={false}
-                      role="button"
-                      tabIndex={0}
-                      title="打开云台"
-                      aria-label="打开云台"
-                      onClick={() => (focusIndex === index ? closeFocus() : openFocus(index))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          if (focusIndex === index) {
-                            closeFocus()
-                          } else {
-                            openFocus(index)
-                          }
-                        }
-                      }}
-                    />
-
-                    {/* 展开/收起箭头 */}
-                    <button
-                      className={`device-row__expand${isExpanded ? ' device-row__expand--active' : ''}`}
-                      type="button"
-                      onClick={() => toggleExpand(index)}
-                      aria-label={isExpanded ? '收起详情' : '展开详情'}
-                      aria-expanded={isExpanded}
-                    >
-                      <img src={isExpanded ? deviceImages.upArrow : deviceImages.downArrow} alt="" />
-                    </button>
-                    </div>
-                  </div>
-
-                  {/* 行详情 */}
-                  {isExpanded && (
-                    <>
-                      {device.status === 'offline' ? (
-                        /* 第二行：加载详情失败占位状态 */
-                        <div className="device-row__detail-failed">
-                          <div className="device-row__detail-failed-content">
-                            <img
-                              className="device-row__detail-failed-icon"
-                              src={deviceImages.loadFail}
-                              alt="设备已离线"
-                              draggable={false}
-                            />
-                            <span className="device-row__detail-failed-text">设备已离线</span>
-                          </div>
-                        </div>
-                      ) : device.telemetry ? (
-                        <>
-                          <div className="device-row__detail">
-                            {/* 统一两列布局 */}
-                            <div className="device-row__detail-row device-row__detail-row--multi">
-                              {/* 左列 */}
-                              <div className="device-row__detail-col">
-                                {TELEMETRY_COL_LEFT.map((item, ci) => (
-                                  <div className="device-row__detail-item" key={ci}>
-                                    <span className="device-row__detail-bar" />
-                                    <span className="device-row__detail-label">
-                                      {item.label}
-                                    </span>
-                                    <span className="device-row__detail-value">
-                                      {device.telemetry![item.key]}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* 右列 */}
-                              <div className="device-row__detail-col">
-                                {TELEMETRY_COL_RIGHT.map((item, ci) => (
-                                  <div className="device-row__detail-item" key={ci}>
-                                    <span className="device-row__detail-bar" />
-                                    <span className="device-row__detail-label">
-                                      {item.label}
-                                    </span>
-                                    <span className="device-row__detail-value">
-                                      {device.telemetry![item.key]}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* 第二行：高度/电压/延迟 | 俯仰角/电量/GPS */}
-                            <div className="device-row__detail-row device-row__detail-row--multi">
-                              {/* 左列 */}
-                              <div className="device-row__detail-col">
-                                {TELEMETRY_COL_LEFT_2.map((item, ci) => (
-                                  <div className="device-row__detail-item" key={ci}>
-                                    <span className="device-row__detail-bar" />
-                                    <span className="device-row__detail-label">
-                                      {item.label}
-                                    </span>
-                                    {item.key === 'delay' ? (
-                                      <span className="device-row__detail-value device-row__detail-value--green">
-                                        {device.telemetry![item.key]}
-                                        <img
-                                          className="device-row__detail-delay-icon"
-                                          src={deviceImages.wifiIcon}
-                                          alt=""
-                                          draggable={false}
-                                        />
-                                      </span>
-                                    ) : (
-                                      <span className="device-row__detail-value">
-                                        {device.telemetry![item.key]}
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* 右列 */}
-                              <div className="device-row__detail-col">
-                                {TELEMETRY_COL_RIGHT_2.map((item, ci) => (
-                                  <div className="device-row__detail-item" key={ci}>
-                                    <span className="device-row__detail-bar" />
-                                    <span
-                                      className={`device-row__detail-label${item.key === 'gps' ? ' device-row__detail-label--spaced' : ''}`}
-                                    >
-                                      {item.label}
-                                    </span>
-                                    {item.key === 'gps' ? (
-                                      <span className="device-row__detail-value device-row__detail-value--yellow">
-                                        {device.telemetry![item.key]}
-                                      </span>
-                                    ) : (
-                                      <span className="device-row__detail-value">
-                                        {device.telemetry![item.key]}
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* 分割线 */}
-                            <div className="device-row__detail-divider" />
-
-                            {/* 底部：最后更新时间 */}
-                            <div
-                              className="device-row__detail-footer"
-                              ref={footerRef}
-                              style={{ paddingRight: `${footerPadRight}px` }}
-                            >
-                              <span className="device-row__detail-label">最后更新时间</span>
-                              <span className="device-row__detail-time">
-                                {device.telemetry.time}
-                              </span>
-                            </div>
-                          </div>
-
-                          <img
-                            className="device-row__detail-deco"
-                            src={deviceImages.detailDeco}
-                            alt=""
-                            draggable={false}
-                          />
-                        </>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-              )
-              })
+              filteredDevices.map(({ device, index }) => (
+                <DeviceRow
+                  key={index}
+                  device={device}
+                  isSelected={selectedDevices.has(index)}
+                  isHovered={hoveredIndex === index}
+                  isExpanded={expandedIndex === index}
+                  onHover={(hovered) => setHoveredIndex(hovered ? index : null)}
+                  onToggleSelect={() => toggleSelect(index)}
+                  onToggleExpand={() => toggleExpand(index)}
+                  onToggleFocus={() =>
+                    focusIndex === index ? closeFocus() : openFocus(index)
+                  }
+                />
+              ))
             )}
           </div>
         </div>

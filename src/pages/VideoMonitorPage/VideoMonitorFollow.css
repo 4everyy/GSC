@@ -1,0 +1,340 @@
+/* VideoMonitorFollow.css —— 从 VideoMonitorPage.css 抽离（视频监测屏）：目标跟随参数面板/页面锁定态。
+   由样式入口 VideoMonitorPage.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* ---------------- 目标跟随参数设置面板（底部操作条「跟随」展开） ---------------- */
+
+/* 面板根：240px 宽、画面右上（距容器右缘 16px，距标题条底部 16px：top 54 = 38 + 16）；黑 0.8 半透明底 */
+
+.vm-follow {
+  position: absolute;
+  right: 16px;
+  top: 54px;
+  width: 240px;
+  z-index: 6;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 标题条：黑底、内边距 8px，rgba(255,255,255,0.80) / 14px / 630 */
+
+.vm-follow-title {
+  padding: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  font-weight: 630;
+  word-wrap: break-word;
+  background: #000;
+  box-sizing: border-box;
+}
+
+/* 主体：内边距 8px 8px 10px，字段间 10px 纵向排布 */
+
+.vm-follow-body {
+  padding: 10px 8px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+/* 字段：标签 + 控件纵向排布，字段内 2px 间距 */
+
+.vm-follow-field {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+/* 字段标签：white / 12px / 330 */
+
+.vm-follow-label {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 330;
+  word-wrap: break-word;
+}
+
+/* 目标ID 下拉：224×28 触发器（白 0.2 底 + 白 0.6 描边）+ 20×20 展开箭头 */
+
+.vm-follow-id-toggle {
+  position: relative;
+  width: 224px;
+  height: 28px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 2px;
+  outline: 1px solid rgba(255, 255, 255, 0.6);
+  outline-offset: -1px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.vm-follow-id-value {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  font-weight: 330;
+  word-wrap: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 箭头（IconChevron 默认向右），展开时向上 */
+
+.vm-follow-id-arrow {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: #fff;
+  transition: transform 0.15s;
+}
+
+.vm-follow-id-arrow--up {
+  transform: rotate(-90deg);
+}
+
+/* 目标ID 选项列表：绝对定位于触发器下方，黑 0.9 底 + 白 0.3 描边 */
+
+.vm-follow-id-list {
+  position: absolute;
+  left: 0;
+  top: 30px;
+  width: 224px;
+  max-height: 132px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.92);
+  border-radius: 2px;
+  outline: 1px solid rgba(255, 255, 255, 0.3);
+  outline-offset: -1px;
+  z-index: 7;
+}
+
+.vm-follow-id-item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  font-weight: 330;
+  word-wrap: break-word;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.vm-follow-id-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.vm-follow-id-item--active {
+  background: rgba(255, 255, 227, 0.25);
+  color: #fff;
+}
+
+/* 步进器行：-1(43×28) / 输入(93×28)+m / +1(43×28)，8px 间距 */
+
+.vm-follow-stepper {
+  align-self: stretch;
+  display: inline-flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+}
+
+/* -1 / +1 按钮：43×28、白 0.4 底 + 白描边 */
+
+.vm-follow-step-btn {
+  width: 43px;
+  height: 28px;
+  flex: none;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 380;
+  word-wrap: break-word;
+  background: rgba(255, 255, 255, 0.4);
+  border: none;
+  border-radius: 2px;
+  outline: 1px solid #fff;
+  outline-offset: -1px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.vm-follow-step-btn:hover {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+/* 数值输入组：93×28 输入框 + 单位 m（总宽 122） */
+
+.vm-follow-step-input {
+  position: relative;
+  width: 122px;
+  height: 28px;
+  flex: none;
+}
+
+.vm-follow-input {
+  width: 93px;
+  height: 28px;
+  padding: 0 10px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 380;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 2px;
+  outline: 1px solid rgba(255, 255, 255, 0.6);
+  outline-offset: -1px;
+  box-sizing: border-box;
+  transition: outline-color 0.15s;
+}
+
+.vm-follow-input:focus-visible {
+  outline-color: #fff;
+}
+
+.vm-follow-unit {
+  position: absolute;
+  left: 101px;
+  top: 4.5px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 380;
+  word-wrap: break-word;
+}
+
+/* 跟随方位四段：56×28 等宽分段（自动|左后|右后|右后），选中白底黑字 */
+
+.vm-follow-dir {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+}
+
+.vm-follow-dir-item {
+  width: 56px;
+  height: 28px;
+  flex: none;
+  padding: 0;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 380;
+  word-wrap: break-word;
+  background: transparent;
+  border: 1px solid #fff;
+  border-left: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.vm-follow-dir-item:first-child {
+  border-left: 1px solid #fff;
+}
+
+.vm-follow-dir-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.vm-follow-dir-item--active {
+  background: #fff;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+/* 确认（文案随操作变化：确认跟踪/确认跟随/确认打击）/ 取消：确认 107×32 白底黑字，取消 flex:1 白 0.1 底白描边 */
+
+.vm-follow-actions {
+  align-self: stretch;
+  padding: 5px 0;
+  display: inline-flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.vm-follow-btn {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 330;
+  word-wrap: break-word;
+  transition: background 0.15s;
+}
+
+.vm-follow-btn--primary {
+  width: 107px;
+  flex: none;
+  color: #000;
+  background: #fff;
+  border: none;
+  box-sizing: border-box;
+}
+
+.vm-follow-btn--primary:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.vm-follow-btn--ghost {
+  flex: 1 1 0;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  outline: 1px solid #fff;
+  outline-offset: -1px;
+  box-sizing: border-box;
+}
+
+.vm-follow-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* 跟随按钮激活态（跟随面板展开时） */
+
+.vm-action-item--active {
+  color: #1edadf;
+}
+
+/* ---------------- 页面锁定态（顶栏锁定框切换为 lock-active.svg） ---------------- */
+
+/* 锁定期间主体（视频区 + 右栏）整体屏蔽交互：点击/摇杆/工具列/操作条/参数面板/拖放/滚动一律不响应 */
+
+.vm-page--locked .vm-body,
+.vm-page--locked .vm-body * {
+  pointer-events: none;
+}
+
+/* 锁定的视觉反馈：主体内可操作控件统一半透明（画面本身保持原亮度） */
+
+.vm-page--locked .vm-tools,
+.vm-page--locked .vm-action,
+.vm-page--locked .vm-joystick,
+.vm-page--locked .vm-chip--fold,
+.vm-page--locked .vm-close,
+.vm-page--locked .vm-mini {
+  opacity: 0.45;
+}
+
+/* 顶栏视图切换按钮锁定时弱化并显示禁用光标（disabled 由 TSX 传入） */
+
+.vm-page--locked .vm-view-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

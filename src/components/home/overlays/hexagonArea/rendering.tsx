@@ -1,23 +1,23 @@
+/**
+ * @file rendering.tsx
+ * @description 区域绘制遮罩几何工具与命令式 DOM 渲染辅助
+ * @author 4everyy
+ * @date 2026-10-07
+ */
 import { taskPanelImages } from '../../../../assets/task-panel/index'
 import { TYPE_PANEL_WIDTH, TYPE_PANEL_HEIGHT, EDIT_VERTEX_HOLE_R, EDIT_MID_HOLE_R, HEX_STROKE_COLOR, NOFLY_HATCH_PATTERN_ID, NOFLY_HATCH_COLOR, EDIT_MASK_ID, EDIT_STROKE_COLOR, EDIT_STROKE_WEIGHT, EDIT_DASH_COLOR, EDIT_DASH_WIDTH, AREA_TYPE_OPTIONS } from './hooks'
 import { type RefObject, type MouseEvent as ReactMouseEvent } from 'react'
 
-/**
- * HexagonAreaOverlay（四边形区域绘制遮罩）几何工具与命令式 DOM 辅助。
- */
+/** HexagonAreaOverlay（四边形区域绘制遮罩）几何工具与命令式 DOM 辅助。 */
 
-/** 正四边形（正方形）顶点方位角（度；四角位于 45° 方位、边与屏幕坐标轴对齐，
- *  自左上角起顺时针，中心对称） */
+/** 正四边形（正方形）顶点方位角（度；四角位于 45° 方位、边与屏幕坐标轴对齐，自左上角起顺时针，中心对称） */
 const QUAD_VERTEX_ANGLES = [135, 45, -45, -135]
 /** 顶点单位向量（屏幕坐标：x 右为正、y 下为正），模块加载时预计算一次 */
 export const QUAD_UNITS = QUAD_VERTEX_ANGLES.map((deg) => {
   const rad = (deg * Math.PI) / 180
   return { x: Math.cos(rad), y: -Math.sin(rad) }
 })
-/**
- * 右下顶点（-45°，QUAD_VERTEX_ANGLES[2]）单位向量。
- * 拖动时四边形平移至「右下顶点 = 光标」：center = mouse - radius * BR_UNIT。
- */
+/** 右下顶点（-45°，QUAD_VERTEX_ANGLES[2]）单位向量。 */
 export const BR_UNIT = QUAD_UNITS[2]
 /** 右上顶点（45°，QUAD_VERTEX_ANGLES[1]）单位向量：「选择区域类型」面板定位锚点 */
 export const TR_UNIT = QUAD_UNITS[1]
@@ -51,9 +51,7 @@ function edgeOutwardNormal(
   return { x: (-dy / len) * sign, y: (dx / len) * sign }
 }
 
-/** 任意简单多边形整体向外偏移 pad 像素：逐顶点沿邻边外法线和的角平分线
- *  方向平移并按 miter 公式（1/cos(半角)）补偿，使每条边恰沿法线外移 pad
- *  （编辑蒙层镂空用；cos 钳制 0.3 防尖角偏移爆炸——插点后多边形可能不规则） */
+/** 任意简单多边形整体向外偏移 pad 像素：逐顶点沿邻边外法线和的角平分线方向平移并按 miter 公式（1/cos(半角)）补偿 */
 export function padPolygon(vs: { x: number; y: number }[], pad: number) {
   const n = vs.length
   if (n < 3) return vs
@@ -79,9 +77,7 @@ export function padPolygon(vs: { x: number; y: number }[], pad: number) {
   })
 }
 
-/** 射线法点在多边形内判定：确认态区域本体渲染在地图层（遮罩根
- *  pointer-events none 收不到 DOM hover），「编辑 | 删除」面板的 hover
- *  显隐由 window mousemove + 本几何判定驱动 */
+/** 射线法点在多边形内判定：确认态区域本体渲染在地图层（遮罩根pointer-events none 收不到 DOM hover） */
 export function pointInPolygon(px: number, py: number, vs: { x: number; y: number }[]) {
   let inside = false
   for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
@@ -97,10 +93,7 @@ export function pointInPolygon(px: number, py: number, vs: { x: number; y: numbe
 /** SVG 命名空间（命令式创建 mask 镂空圆用） */
 export const SVG_NS = 'http://www.w3.org/2000/svg'
 
-/** 构建编辑节点手柄 DOM：顶点手柄 20×20（vertex-handle.svg，grab 光标）、
- *  中点手柄 12×12（midpoint-handle.svg，copy 光标暗示可拖出新增点）。手柄自身
- *  pointer-events auto 接收按下（容器 none 不挡地图平移），命中后经容器
- *  mousedown 委托开启拖拽；数量/位置由 syncEditHandles 每帧同步 */
+/** 构建编辑节点手柄 DOM：顶点手柄 20×20（vertex-handle.svg，grab 光标） */
 export function buildEditHandleElement(kind: 'vertex' | 'mid'): HTMLDivElement {
   const el = document.createElement('div')
   const size = kind === 'vertex' ? 20 : 12
@@ -123,13 +116,7 @@ export function buildEditHandleElement(kind: 'vertex' | 'mid'): HTMLDivElement {
   return el
 }
 
-/**
- * 编辑节点手柄 + 蒙层镂空圆逐帧同步（updateConfirmedFrame 每帧调用）：
- * 前 n = 顶点（r10 盖住 20×20 图标）、后 n = 边中点（r6 盖住 12×12 图标）——
- * 数量随顶点数动态增删（中点手柄拖拽会插入新顶点、删点减少），被复用手柄的
- * 图标/尺寸/光标随 kind 变化即时重建（DOM 复用纠偏：删点/插点后原顶点手柄
- * 可能被复用为中点（或反之），必须重建否则旧图标残留错位）。
- */
+/** 编辑节点手柄 + 蒙层镂空圆逐帧同步（updateConfirmedFrame 每帧调用）：前 n = 顶点（r10 盖住 20×20 图标） */
 export function syncEditHandles(
   handles: HTMLDivElement,
   mask: SVGMaskElement,
@@ -166,11 +153,7 @@ export function syncEditHandles(
   }
 }
 
-/**
- * 「选择区域类型」面板定位：置于锚点（四边形右上顶点）右侧 8px、与顶点垂直
- * 居中；右侧空间不足时翻转到顶点左侧（面板右缘距顶点 8px），上下视口钳制防溢出。
- * 定格态与编辑态共用（编辑态由 onMove 每帧重算命令式更新）。
- */
+/** 「选择区域类型」面板定位：置于锚点（四边形右上顶点）右侧 8px、与顶点垂直居中 */
 export function computeTypePanelPos(tr: { x: number; y: number }, vw: number, vh: number) {
   const flip = tr.x + TYPE_PANEL_WIDTH + 8 > vw
   return {
@@ -181,8 +164,7 @@ export function computeTypePanelPos(tr: { x: number; y: number }, vw: number, vh
   }
 }
 
-/** 定格后右下顶点信息卡数据：经纬度（顶点真实反投影）+ 面积（与
- *  taskAreaStore.addArea 包围盒估算同口径，确保确认后列表面积与本卡一致） */
+/** 经纬度（顶点真实反投影）+ 面积… */
 export interface HexInfo {
   x: number
   y: number
@@ -219,13 +201,7 @@ export function computeHexInfo(
   }
 }
 
-/**
- * HexagonDrawingSvg —— 四边形绘制阶段全幅 SVG 画布（蒙版/四边形/顶点圆点）。
- *
- * 仅绘制阶段挂载（含按住拉伸与定格态；确认态整体卸载——四边形交
- * TaskAreaLayer 持久渲染，防绘制视觉覆盖持久样式）。拖动期间父组件经
- * maskRef/polyRef/dotsRef 命令式直写 d/cx/cy（零 React 重渲染，丝滑关键）。
- */
+/** HexagonDrawingSvg —— 四边形绘制阶段全幅 SVG 画布（蒙版/四边形/顶点圆点）。 */
 
 export interface HexagonDrawingSvgProps {
   /** 四边形几何（挂载/重挂载初值；拖动帧经 ref 命令式更新） */
@@ -304,15 +280,7 @@ export function HexagonDrawingSvg({
   )
 }
 
-/**
- * HexagonEditVisuals —— 四边形区域编辑态视觉（蒙层镂空/边框双层/手柄容器/
- * 「删除锚点」按钮）。
- *
- * 编辑中挂载：区域外蒙层（mask 镂空多边形 + 动态镂空圆，区域内保持全亮）、
- * 编辑边框双层（白 6px 实线 + 中央 2px #7160F2 虚线，同路径闭环）、节点手柄
- * 容器（数量/位置由 syncEditHandles 每帧同步）与「删除锚点」按钮（hover 顶点
- * 手柄浮现，显隐/定位由 useEditHandles 命令式管理）。
- */
+/** HexagonEditVisuals —— 四边形区域编辑态视觉（蒙层镂空/边框双层/手柄容器/「删除锚点」按钮）。 */
 
 /** 主组件透传的交互回调（来自 useEditHandles） */
 export interface HexagonEditVisualsHandlers {
@@ -330,7 +298,7 @@ export interface HexagonEditVisualsHandlers {
  * 独立 prop 传 RefObject 后直接绑定到 ref 属性是官方推荐用法。
  */
 interface HexagonEditVisualsProps extends HexagonEditVisualsHandlers {
-  /** 蒙层 mask ref（useEditHandles/updateConfirmedFrame 命令式操作） */
+  /** 蒙层 mask ref… */
   editMaskRef: RefObject<SVGMaskElement | null>
   /** 蒙层区域镂空 path ref */
   editAreaHoleRef: RefObject<SVGPathElement | null>
@@ -419,13 +387,7 @@ export function HexagonEditVisuals({
   )
 }
 
-/**
- * HexagonTypePanel —— 四边形定格后「选择区域类型」面板（2×2 单选 + 确定/取消）。
- *
- * 仅定格态展示：单选切换即时预览四边形填充视觉（父组件低频 setState）；
- * 「确定」写入 store 进入确认态、「取消」清除重画；位置由父组件
- * computeTypePanelPos 计算（四边形右上顶点右侧 8px、右侧空间不足翻转左侧）。
- */
+/** HexagonTypePanel —— 四边形定格后「选择区域类型」面板（2×2 单选 + 确定/取消）。 */
 
 export interface HexagonTypePanelProps {
   /** 面板视口定位（left/top；翻转场景已换算） */

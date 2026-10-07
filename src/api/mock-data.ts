@@ -1,18 +1,12 @@
+/**
+ * @file mock-data.ts
+ * @description 离线兜底 Mock 数据：接口不可用时为无人机状态与任务区域提供降级数据
+ * @author 4everyy
+ * @date 2026-10-07
+ */
 import type { PlaneRaw, PlaneStatusData, TaskAreaRaw } from './index'
 
-/**
- * 离线兜底 Mock 数据（2026-09-26）。
- *
- * 背景：后端接口暂不可达（/api/v1/control/** 网络不通），为使设备管理面板与
- * 区域列表演示/联调不被阻塞，此处按接口既有字段口径（PlaneRaw / TaskAreaRaw，
- * 与 2026-09-23 联调返回记录一致）静态还原一帧历史数据。
- *
- * 原则：
- * - 字段与真实接口完全同构（mapPlaneToDevice / mapTaskArea 直接消费，无需适配）；
- * - 坐标取苏州范围内（离线底图 suzhou.mbtiles 覆盖 119.9~121.3E, 30.7~31.9N）；
- * - 仅在请求失败（网络不通/HTTP 错误）时由 fetchPlaneStatus / fetchTaskAreaList
- *   兜底返回；接口恢复后真实数据自动覆盖，本文件不参与任何请求成功路径。
- */
+/** 离线兜底 Mock 数据（2026-09-26）。 */
 
 /** 生成六边形顶点序列的 vertex JSON 字符串（与后端 vertex 字段同构） */
 function hexRing(lng: number, lat: number, rLatDeg: number): string {
@@ -28,7 +22,7 @@ function hexRing(lng: number, lat: number, rLatDeg: number): string {
   return JSON.stringify(pts)
 }
 
-/** 2026-09-23 联调记录：queryPlaneStatus 全量设备列表（6 架，含全部状态码） */
+/** queryPlaneStatus 全量设备列表… */
 const MOCK_PLANE_LIST: PlaneRaw[] = [
   {
     id: '100000000001',
@@ -185,7 +179,7 @@ const MOCK_PLANE_LIST: PlaneRaw[] = [
   },
 ]
 
-/** queryPlaneStatus 兜底载荷（统计口径与列表一致：2 执行中 / 4 在线含待命 / 1 离线） */
+/** queryPlaneStatus 兜底载荷… */
 export const MOCK_PLANE_STATUS: PlaneStatusData = {
   planeOnline: 4,
   planeInAir: 2,
@@ -194,7 +188,7 @@ export const MOCK_PLANE_STATUS: PlaneStatusData = {
   statusName: 'plane_list',
 }
 
-/** 2026-09-23 联调记录：queryTaskAreaList 区域列表（5 类区域各 1 条，苏州范围） */
+/** queryTaskAreaList 区域列表… */
 export const MOCK_TASK_AREA_LIST: TaskAreaRaw[] = [
   {
     id: '2001',
@@ -253,19 +247,9 @@ export const MOCK_TASK_AREA_LIST: TaskAreaRaw[] = [
   },
 ]
 
-/**
- * 2026-09-24 联调记录：WS alert 频道推送帧（真实报文格式还原，ch:'alert' 信封 + data 单帧）。
- * 真实帧样例：
- * {"equipId":"1","id":"9ee4ff8c4a061c61","isRead":"0","level":2,"msg":"1飞入禁飞区",
- *  "round":1,"time":"2026:09:24 15:01:08","title":"禁飞区告警","ts":1790233268418,
- *  "type":"0","typeName":"plane"}
- *
- * 消费方式：由 wsClient.startRealtime 启动即注入（常显，不随链路状态移除）——
- * 走 mapBackendMessage → mapAlarmItem 同一映射管线（id→alarmId、level 1/2/3→
- * red/orange/blue、isRead→acknowledged、equipId→deviceId），告警面板零适配直接渲染。
- */
+/** 2026-09-24 联调记录：WS alert 频道推送帧（真实报文格式还原，ch:'alert' 信封 + data 单帧）。 */
 
-/** mock 告警帧：与 WS alert 频道推送帧同构（ch 信封 + data 单帧，字段口径见 mapAlarmItem） */
+/** mock 告警帧：与 WS alert 频道推送帧同构（ch 信封 + data 单帧 */
 export interface MockAlertFrame {
   ch: 'alert'
   /** 信封时间戳（Unix 毫秒） */

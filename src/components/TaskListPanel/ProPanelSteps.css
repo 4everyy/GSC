@@ -1,0 +1,507 @@
+/* ProPanelSteps.css —— 从 TaskProPanel.css 抽离（专业模式面板）：步骤3分配卡片/步骤4航线/步骤5总览/底部操作/小屏适配。
+   由样式入口 TaskProPanel.css 按原层叠顺序 @import，视觉效果与拆分前等价。 */
+/* ====== 步骤 3 任务分配：设备信息 + 任务区/目标合并卡片（设计稿 434×108 卡片，卡片间距 16px） ====== */
+.task-pro__assign {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 卡片：白透底整块 + 1px 白描边（设计稿 rgba(255,255,255,0.16)+border white） */
+.task-pro__assign-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+}
+
+/* 行 1 设备遥测：48px 高白透底（复用步骤 2 行内元素：名称/状态/高度/电量/经纬度样式） */
+.task-pro__assign-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 8px 0 8px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.16);
+  flex-shrink: 0;
+}
+
+/* 行 2 分配区容器：相对定位承载下拉层 */
+.task-pro__assign-barwrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 8px;
+}
+
+/* 分配勾选栏：418×28 白透底 + 白描边（设计稿 data-状态=nor） */
+.task-pro__assign-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  outline: 1px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 0;
+  padding-left: 4px;
+}
+
+/* 已选标签区：横向滑动（PRD 验收 4 区域过多时横向滑动），隐藏滚动条 */
+.task-pro__assign-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.task-pro__assign-tags::-webkit-scrollbar {
+  display: none;
+}
+
+/* 已选标签胶囊：89×20 白透底 + 勾选小方块 + 文案（设计稿 01区域名称），点击取消分配 */
+.task-pro__assign-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 4px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 1);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.task-pro__assign-tag:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.task-pro__assign-tag:focus-visible {
+  outline: 1px solid rgba(70, 220, 231, 0.8);
+  outline-offset: 1px;
+}
+
+.task-pro__assign-tag-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 未分配占位文案：卡片第二行无任何勾选时的弱化提示 */
+.task-pro__assign-empty {
+  font-size: 14px;
+  line-height: 1;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* 右侧下拉箭头：20×20 透明按钮，展开态旋转 180° */
+.task-pro__assign-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.task-pro__assign-arrow:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.task-pro__assign-arrow:focus-visible {
+  outline: 1px solid rgba(70, 220, 231, 0.8);
+}
+
+.task-pro__assign-arrow-ic {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.2s ease;
+}
+
+.task-pro__assign-arrow--open .task-pro__assign-arrow-ic {
+  transform: rotate(180deg);
+}
+
+/* 下拉选项层：白透底胶囊组，flex 自动换行（PRD 验收 4） */
+.task-pro__assign-drop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  box-sizing: border-box;
+  background: rgba(24, 48, 66, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+}
+
+/* 单个选项胶囊：三态复选框 + 编号名称（与已选标签同构） */
+.task-pro__assign-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 1);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.task-pro__assign-opt:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* 已勾选项：亮青描边提示 */
+.task-pro__assign-opt--checked {
+  background: rgba(75, 188, 249, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(14, 167, 249, 0.9);
+}
+
+.task-pro__assign-opt:focus-visible {
+  outline: 1px solid rgba(70, 220, 231, 0.8);
+}
+
+/* ====== 步骤 4 航线生成：按步骤 2 编成无人机逐行展示航线摘要（设计稿 434×48 白透底行 + 8px 行距） ====== */
+.task-pro__routes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 行：白透底整条（与步骤 2 编成行同构：48px 高 + 图标/名称/摘要/类型胶囊） */
+.task-pro__route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* 名称列：占满剩余宽度，超长省略 */
+.task-pro__route-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 航线名称：编号 + 打击/侦查航线 */
+.task-pro__route-line {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* 时间 / 长度摘要 */
+.task-pro__route-meta {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* 右侧类型胶囊：侦查=青蓝描边（设计稿） */
+.task-pro__route-tag {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 3px 10px;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  border: 1px solid rgba(85, 206, 222, 0.9);
+  background: rgba(85, 206, 222, 0.15);
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  color: #55cede;
+}
+
+/* 打击类型胶囊：橙描边警示 */
+.task-pro__route-tag--strike {
+  border-color: rgba(255, 159, 67, 0.9);
+  background: rgba(255, 159, 67, 0.15);
+  color: #ff9f43;
+}
+
+/* ====== 步骤 5 总览：顶部统计行（预计总完成时间 / 飞行总长，图标+灰标签+白数值） ====== */
+.task-pro__stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+    /* 水平边距由 .task-pro__body 的 16px 内边距统一提供（各行距面板左右缘恒 16px），此处不再叠加 padding */
+  padding: 0;
+}
+
+.task-pro__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.task-pro__stat-ic {
+  width: clamp(14px, 0.83vw, 16px);
+  height: clamp(14px, 0.83vw, 16px);
+  flex: none;
+}
+
+.task-pro__stat-label {
+  color: #fff;
+  font-weight: 330;
+}
+
+.task-pro__stat-value {
+  color: rgba(255, 255, 255, 1);
+  font-weight: 330;
+}
+
+/* ====== 步骤 5 总览：编成无人机遥测卡片（设计稿 434×100 白透底卡片 + 1px 白描边，头行 48px 实时遥测） ====== */
+.task-pro__ov-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+/* 卡片：白透底整块 + 1px 白描边（设计稿 rgba(255,255,255,0.16) + border white） */
+.task-pro__ov-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+}
+
+/* 头行：48px 高白透底遥测行（图标/名称/状态/高度/电量/经纬度） */
+.task-pro__ov-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.16);
+  flex-shrink: 0;
+}
+
+/* 名称列：占满剩余宽度，超长省略 */
+.task-pro__ov-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 状态列：8px 圆点 + 文案；待命=蓝点（#0EA7F9）/ 任务中=亮绿点（设计稿 #7BFF00） */
+.task-pro__ov-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 1);
+  white-space: nowrap;
+}
+
+.task-pro__ov-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #0ea7f9;
+}
+
+.task-pro__ov-status--busy .task-pro__ov-status-dot {
+  background: #7bff00;
+}
+
+/* 高度 / 电量列：图标 + 数值 */
+.task-pro__ov-alt,
+.task-pro__ov-batt {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 1);
+  white-space: nowrap;
+}
+
+/* 少电（<20%）：百分比文字转红警示 */
+.task-pro__ov-batt--low {
+  color: #f32c30;
+}
+
+/* 经纬度列：右侧两行小字（经度/纬度） */
+.task-pro__ov-geo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 1);
+  white-space: nowrap;
+}
+
+/* ====== 底部操作（返回上一步 / 一键生成 / 保存下一步 / 生成任务） ====== */
+.task-pro__footer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  /* 底部按钮区固定 64px 高，随面板 flex 布局贴底（与 .task-create__footer 一致） */
+  height: 64px;
+  flex-shrink: 0;
+    /* 底栏水平+底部出血：背景渐变与顶部分割线直抵面板左右边框内缘（与 .task-create__footer 一致） */
+  margin: 0 calc(-1 * clamp(8px, 0.83vw, 16px)) calc(-1 * clamp(10px, 0.83vw, 16px));
+  padding: 0 16px;
+  box-sizing: border-box;
+  /* 底部按钮区整体背景：白色 30% 自底部向上渐隐（与 .task-create__footer 一致） */
+  background: linear-gradient(360deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+/* 底栏顶部分割线（中间亮两侧淡） */
+.task-pro__footer::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.2) 0.17%,
+    rgba(255, 255, 255, 0.8) 50%,
+    rgba(255, 255, 255, 0.2) 100%
+  );
+}
+
+.task-pro__btn {
+  height: 32px;
+  width: 120px;
+  padding: 0;
+  border-radius: 2px;
+  font-family: 'MiSans', 'MiSans-Regular', sans-serif;
+  font-weight: 330;
+  font-size: 14px;
+  text-align: center;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: filter 0.15s ease, background-color 0.15s ease;
+}
+
+.task-pro__btn:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.6) brightness(0.7);
+  opacity: 0.55;
+}
+
+/* 返回上一步：弱化幽灵按钮 */
+.task-pro__btn--ghost {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+}
+
+.task-pro__btn--ghost:hover {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+
+/* 一键生成：蓝描边半透明底 */
+.task-pro__btn--outline {
+  background: rgba(75, 188, 249, 0.1);
+  border: 1px solid #0ea7f9;
+  color: #ffffff;
+}
+
+.task-pro__btn--outline:hover {
+  background-color: rgba(75, 188, 249, 0.28);
+}
+
+/* 保存下一步 / 生成任务：实心蓝 */
+.task-pro__btn--primary {
+  background: #0ea7f9;
+  border: none;
+  color: #ffffff;
+}
+
+.task-pro__btn--primary:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 0 10px 2px rgba(14, 167, 249, 0.4);
+}
+
+.task-pro__btn--primary:active {
+  filter: brightness(0.95);
+}
+
+/* ====== 小屏适配：编成行改自动高换行（表单行默认即为上下堆叠布局） ====== */
+@media (max-width: 480px) {
+  /* 小屏空间不足，放弃跨行对齐：父级回退 flex 纵排，行内改自动换行的独立网格 */
+  .task-pro__force-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .task-pro__force-item {
+    grid-column: auto;
+    /* 小屏换行布局：七列放宽为可换行的自适应轨道（auto-fill + minmax），行高自适应内容 */
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, auto));
+    height: auto;
+    /* 小屏换行布局：边距与桌面端一致，均为 8px */
+    padding: 8px;
+    row-gap: 6px;
+  }
+}

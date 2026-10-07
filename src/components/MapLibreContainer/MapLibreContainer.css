@@ -13,8 +13,7 @@
   height: 100%;
 }
 
-/* 叠加层：铺满容器并默认放行鼠标事件，确保地图可拖拽/缩放；
-   子覆盖物按需单独开启 pointer-events:auto 以恢复交互 */
+/* 叠加层：铺满容器并默认放行鼠标事件，确保地图可拖拽/缩放 */
 .maplibre-overlay {
   position: absolute;
   inset: 0;
@@ -76,15 +75,7 @@
   color: #fff;
 }
 
-/*
- * MapLoadProgress —— 地图加载进度指示器（首页右下角）。
- *
- * 定位避让：
- * - 右侧竖排控件（zoom-controls / view-controls）占满右缘 0~80px，
- *   本组件整体偏移到其左侧（right = 52~104px）；
- * - 底部 map-footer 为 10px 高透明条（bottom 8~17px），本组件整体上移避开；
- * - 容器 pointer-events:none，不拦截地图交互。
- */
+/* MapLoadProgress —— 地图加载进度指示器（首页右下角）。 */
 .map-load-progress {
   position: absolute;
   /* 右缘偏移 = 控件外边距(8~16) + 控件宽(32~64) + 间隙(12~24) */
@@ -101,9 +92,7 @@
   padding: 10px 14px 8px;
   border-radius: 12px;
   border: 1px solid rgba(70, 220, 231, 0.6);
-  /* 完全不透明的深蓝黑渐变底：此前 0.9~0.95 半透明会透出地图底色，
-     叠加青色辉光后整体观感发蓝，压低文字对比；改为不透明后百分比
-     文字（白→冰青渐变）在暗底上对比强烈 */
+    /* 完全不透明的深蓝黑渐变底：此前 0.9~0.95 半透明会透出地图底色，叠加青色辉光后整体观感发蓝，压低文字对比 */
   background: linear-gradient(160deg, #04090f 0%, #071021 55%, #0a1626 100%);
   box-shadow:
     0 0 0 1px rgba(0, 229, 255, 0.12),
@@ -125,13 +114,9 @@
   filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.55));
 }
 
-/* 百分比数字：白 → 冰青 → 天蓝垂直渐变文字，与深色容器底形成强对比。
-   注意：text-shadow 会渲染在渐变文字之上使其浑浊，故用 drop-shadow 发光 */
-/* 类名兼容：antd 6 已把百分比文字类名从 .ant-progress-text 改为
-   .ant-progress-indicator（此前只写旧类名导致样式从未生效、文字一直显示
-   默认黑色）。新旧类名并列书写，旧类名保留作 antd5 降级，无副作用 */
-/* 提高优先级：antd 的 CSS-in-JS 样式表注入顺序晚于本文件，
-   颜色/字号补 !important 兜底 */
+/* 百分比数字：白 → 冰青 → 天蓝垂直渐变文字，与深色容器底形成强对比。 */
+/* 类名兼容：antd 6 已把百分比文字类名从 .ant-progress-text 改为.ant-progress-indicator… */
+/* 提高优先级：antd 的 CSS-in-JS 样式表注入顺序晚于本文件，颜色/字号补 ! */
 .map-load-progress .ant-progress .ant-progress-indicator,
 .map-load-progress .ant-progress .ant-progress-text {
   background: linear-gradient(180deg, #ffffff 0%, #c8f8ff 50%, #5ee7ff 100%) !important;
