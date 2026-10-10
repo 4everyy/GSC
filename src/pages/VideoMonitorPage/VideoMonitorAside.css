@@ -21,9 +21,11 @@
 .vm-aside-list {
   flex: 1;
   min-height: 0;
-    /* 最多显示 6 个小卡，多余滚动下拉查看：6×126 卡高 + 5×24 间隙 + 2×4 上下内边距 = 884px */
-  max-height: 884px;
+  /* 整体高度随屏幕自适应：撑满 .vm-aside 剩余高度（小卡单卡 126px 高，宽度自适应列表内容宽），
+     放不下的小卡通过纵向滚动查看（按视窗高度决定可见张数） */
   overflow-y: auto;
+  /* 兜底：禁止横向滚动（小卡宽度已自适应内容宽，纵向滚动条占位时也不再横向溢出） */
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -48,8 +50,13 @@
 
 .vm-mini {
   position: relative;
-    /* flex:none 关键：不随容器压缩，11 张小卡超出 max-height 时触发 .vm-aside-list 的纵向滚动而非压扁变形 */
+    /* flex:none 关键：单卡高度固定（126px），小卡超出 .vm-aside-list 可视高度时
+       触发其纵向滚动而非压扁变形（列表整体高度随屏幕自适应）；
+       宽度自适应列表内容宽（.vm-aside 224px − 内边距 − 纵向滚动条占位），
+       避免固定 224px 宽在滚动条出现后横向溢出触发横向滚动条 */
   flex: none;
+  width: 100%;
+  max-width: 224px;
   height: 126px;
   border-radius: 2px;
   overflow: hidden;
@@ -73,26 +80,75 @@
   cursor: grabbing;
 }
 
-/* 叉号关闭后的空占位：格子保留不塌陷，弱化描边 + 提示文案，接受右栏设备拖入 */
+/* 离线设备小卡：画面区显示「设备已离线」占位（load-fail.png），整体弱化（降低不透明度）；
+   与在线小卡一致支持按住左键拖入主区空占位（升格为「设备已离线」完整画面卡） */
+.vm-mini--offline {
+  opacity: 0.55;
+}
+
+/* 叉号关闭后的空占位：格子保留不塌陷，「空视频位」占位（Camera 图标 + 文案）
+   与「拖动右侧设备至此占位」拖入提示相结合，整体居中，接受右栏设备拖入 */
 
 .vm-slot-empty {
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  box-sizing: border-box;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.03);
+  background:
+    radial-gradient(120% 80% at 50% 110%, rgba(30, 218, 223, 0.14), transparent 60%),
+    linear-gradient(180deg, #10141c 0%, #0a0e15 55%, #06080d 100%);
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.6);
   font-size: 14px;
   text-align: center;
   word-wrap: break-word;
 }
 
+/* 空占位内 Camera 图标（与主画面「空视频位」同素材，稍大适配大格） */
+.vm-slot-empty-icon {
+  display: block;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* 「空视频位」标题文案：规格同 vm-video-empty-text */
+.vm-slot-empty-title {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+}
+
+/* 「拖动右侧设备至此占位」提示：弱化的次级文案 + 拖拽悬停时主题色高亮 */
+.vm-slot-empty-hint {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 14px;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+  transition: color 0.15s;
+}
+
+.vm-slot-empty--over .vm-slot-empty-hint {
+  color: rgba(30, 218, 223, 0.9);
+}
+
 /* 设备拖拽悬停：主题色描边 + 微亮背景，提示可放置 */
 
 .vm-slot-empty--over {
-  background: rgba(30, 218, 223, 0.08);
+  background:
+    radial-gradient(120% 80% at 50% 110%, rgba(30, 218, 223, 0.2), transparent 60%),
+    linear-gradient(180deg, #10141c 0%, #0a0e15 55%, #06080d 100%);
   box-shadow: inset 0 0 0 2px rgba(30, 218, 223, 0.6);
-  color: rgba(30, 218, 223, 0.8);
+  color: rgba(30, 218, 223, 0.9);
 }
 
 .vm-mini-bar {
@@ -242,4 +298,4 @@
   flex: none;
   pointer-events: none;
 }
-
+

@@ -5,6 +5,5 @@
  * @date 2026-10-07
  */
 export { useMapEngine, usePlaneStatusInit, useTaskAreaInit } from './useMapEngine'
-export { useMapAnchorSync } from './useMapAnchorSync'
-export { useDraggable, type DragPosition } from './useDraggable'
+export { useMapAnchorSync, type DragPosition } from './useMapAnchorSync'
 export { usePanelClamp, type UsePanelClampOptions } from './usePanelClamp'

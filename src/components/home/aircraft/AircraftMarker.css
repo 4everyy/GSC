@@ -14,18 +14,6 @@
   width: auto; /* 宽度自适应内容 */
 }
 
-/* 可拖拽飞行器：鼠标手型 + 禁止选中文本，防止拖拽时高亮文字 */
-.aircraft--draggable {
-  cursor: grab;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-/* 拖拽进行中：改用 grabbing 光标 */
-.aircraft--draggable:active {
-  cursor: grabbing;
-}
-
 /* ====== 设备联动高亮（与设备管理面板双向同步）====== */
 /* hover 高亮：面板行 hover 或首页图标 hover 时，图标青色发光 */
 .aircraft.aircraft--hovered img {
@@ -195,8 +183,9 @@
   font-family: 'MiSans-Regular';
 }
 
-/* hover 时显示面板 */
-.aircraft--gray:hover .aircraft-hover-panel {
+/* hover 时显示面板：面板渲染由 TSX 按 isOffline 状态二选一驱动（与静态颜色类解耦），
+   故显示规则统一挂 .aircraft:hover——颜色配置与实时状态任意切换均正确联动 */
+.aircraft:hover .aircraft-hover-panel {
   opacity: 1;
   visibility: visible;
 }
@@ -300,4 +289,4 @@
     /* 将时间串推至末尾，与上方头部的"离线"状态右对齐 */
   margin-left: auto;
 }
-
+

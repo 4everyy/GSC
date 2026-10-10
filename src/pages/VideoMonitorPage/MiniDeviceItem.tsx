@@ -5,32 +5,33 @@
  * @date 2026-10-07
  */
 import { type DragEvent as ReactDragEvent } from 'react'
-import {
-  PlaceholderVideoStream,
-  hasDemoStream,
-  pickDemoVideo,
-} from './PlaceholderVideoStream'
+import { pickDemoVideo, OfflineVideoStream } from './PlaceholderVideoStream'
 
 /* ---------------- 右栏「其他在线设备」小卡 ---------------- */
 
 /**
- * 画面阶段：暂无真实图传流——demo 阶段小卡随机分配形态：
- * 顶部一行设备名称，画面区为随机样例视频或「空视频位」（跟踪状态/电量暂不展示）。
- * 接真实流后可在此恢复 vm-mini-bar（名称/跟踪中/电量）等完整小卡 UI。
+ * 画面阶段：暂无真实图传流——顶部一行设备名称，
+ * 在线设备画面区统一以样例视频呈现（右栏小卡不保留「空视频位」占位；跟踪状态/电量暂不展示）；
+ * 离线设备（online = false）画面区显示「设备已离线」占位（load-fail.png 图标）。
+ * 在线/离线小卡均可按住左键拖入主区空占位（锁定期间禁止拖拽）。
+ * 接真实流后可在此恢复 vm-mini-bar（名称/跟踪中/电量）等完整小卡 UI 并替换流地址。
  */
 export function MiniDeviceItem({
   name,
+  online = true,
   draggable = false,
   onDragStart,
 }: {
   name: string
-  /** 可按住鼠标左键拖动至主区空占位（HTML5 拖放源）；页面锁定时置 false 禁止拖拽 */
+  /** 设备在线状态：false 时画面区显示「设备已离线」占位（替代样例视频） */
+  online?: boolean
+  /** 可按住鼠标左键拖动至主区空占位（HTML5 拖放源）；页面锁定时置 false 禁止拖拽（离线设备同样支持） */
   draggable?: boolean
   onDragStart?: (e: ReactDragEvent<HTMLDivElement>) => void
 }) {
   return (
     <div
-      className="vm-mini"
+      className={`vm-mini ${online ? '' : 'vm-mini--offline'}`}
       draggable={draggable}
       onDragStart={onDragStart}
       title={draggable ? '可按住左键拖动到主区空占位' : undefined}
@@ -40,8 +41,8 @@ export function MiniDeviceItem({
         <span className="vm-mini-name">{name}</span>
       </div>
       <div className="vm-mini-video">
-        {/* demo 阶段：按设备名随机分配样例视频或空视频位（与主区通道同规则） */}
-        {hasDemoStream(name) ? (
+        {/* 离线设备 → load-fail.png「设备已离线」占位；在线设备 → 统一样例视频（接真实流后替换 src） */}
+        {online ? (
           <video
             className="vm-video-stream"
             src={pickDemoVideo(name)}
@@ -51,7 +52,7 @@ export function MiniDeviceItem({
             playsInline
           />
         ) : (
-          <PlaceholderVideoStream />
+          <OfflineVideoStream />
         )}
       </div>
     </div>

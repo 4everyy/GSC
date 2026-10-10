@@ -164,14 +164,46 @@ export const VIDEO_CHANNELS: VideoChannel[] = [
   },
 ]
 
-export const MINI_DEVICES: MiniDeviceCard[] = Array.from({ length: 11 }, (_, i) => ({
+export const MINI_DEVICES: MiniDeviceCard[] = Array.from({ length: 13 }, (_, i) => ({
   id: `mini-${i + 1}`,
   name: `${String(i + 5).padStart(2, '0')}中科晶锐`,
   tracking: true,
   battery: 100,
 }))
 
-/** 平铺视图通道：全部 15 路（4 主通道 + 11 小卡设备升格为完整通道卡）。 */
+/** 右栏离线设备小卡：排列在在线设备之后，画面显示「设备已离线」占位（同样可拖入主区空占位） */
+export const MINI_OFFLINE_DEVICES: MiniDeviceCard[] = Array.from({ length: 3 }, (_, i) => ({
+  id: `offline-mini-${i + 1}`,
+  name: `${String(i + 18).padStart(2, '0')}中科晶锐`,
+  tracking: false,
+  battery: 0,
+}))
+
+/** 离线设备升格为完整通道卡：online=false，画面显示「设备已离线」占位（load-fail.png）。
+    支持从右栏拖入主区空占位（叉掉后的格子），拖入后该格以离线占位画面展示；
+    同时并入 TILED_CHANNELS，保证平铺视图与四宫格视图的离线设备清单一致 */
+export const TILED_OFFLINE_CHANNELS: VideoChannel[] = MINI_OFFLINE_DEVICES.map((d, i) => ({
+  id: `tiled-${d.id}`,
+  name: d.name,
+  online: false,
+  battery: d.battery,
+  actionBar: 'operate' as const,
+  telemetry: buildTelemetry({
+    delay: 0,
+    lon: (116.36 + (11 + i) * 0.013).toFixed(3),
+    lat: (39.88 + (11 + i) * 0.008).toFixed(3),
+    alt: 40 + ((i * 11) % 50),
+    relAlt: 0,
+    yaw: ((11 + i) * 37) % 360,
+    pitch: 0,
+    roll: 0,
+    rtk: '无数据',
+  }),
+  targets: [],
+}))
+
+/** 平铺视图通道：全部 20 路（4 主通道 + 13 在线小卡 + 3 离线小卡升格为完整通道卡）——
+    设备清单与在线状态和四宫格视图（主区 4 路 + 右栏 13 在线 + 3 离线小卡）保持一致 */
 export const TILED_CHANNELS: VideoChannel[] = [
   ...VIDEO_CHANNELS,
   ...MINI_DEVICES.map((d, i) => ({
@@ -193,7 +225,8 @@ export const TILED_CHANNELS: VideoChannel[] = [
     }),
     targets: [],
   })),
+  ...TILED_OFFLINE_CHANNELS,
 ]
 
-/** 在线设备总数：按主通道 online 标记统计（离线通道不计入）+ 11 张右栏小卡 */
+/** 在线设备总数：按主通道 online 标记统计（离线通道不计入）+ 13 张右栏小卡 */
 export const ONLINE_COUNT = VIDEO_CHANNELS.filter((c) => c.online).length + MINI_DEVICES.length

@@ -7,7 +7,10 @@
   /* 面板底部对齐飞机图标的垂直中心线（图标 48px 高，即中点 24px 处） */
   top: 24px;
   transform: translateY(-100%);
-  width: 229px;
+  /* 宽度随内容自适应（中英文标签/数值位数变化不溢出），下限在设计稿 229px 基础上加宽；
+     内部各行均为 white-space: nowrap，max-content 即最长行（位置行）的自然宽度 */
+  width: max-content;
+  min-width: 244px;
   height: 117px;
   background: rgba(75, 188, 249, 0.4);
   border-radius: 4px;
@@ -27,8 +30,10 @@
   flex-direction: column;
 }
 
-/* hover 时显示：所有非 gray 的在线飞行器 */
-.aircraft--draggable:not(.aircraft--gray):hover .aircraft-info-panel {
+/* hover 时显示：在线飞行器。面板渲染由 TSX 按 isOffline 状态二选一驱动（离线机只渲染
+   aircraft-hover-panel），在线面板的显示规则统一挂 .aircraft:hover——与静态颜色类解耦，
+   设备配置颜色（gray 仅为配色而非状态）与实时状态任意切换均正确联动 */
+.aircraft:hover .aircraft-info-panel {
   opacity: 1;
   visibility: visible;
 }
@@ -104,11 +109,12 @@
   gap: 8px;
 }
 
-/* 信息行 */
+/* 信息行：左右各留 16px 对称内距（面板 max-content 随之加宽，保证位置行两侧间距相等） */
 .aircraft-info-panel__row {
   display: flex;
   align-items: center;
   margin-left: 16px;
+  margin-right: 16px;
   white-space: nowrap;
 }
 

@@ -231,7 +231,7 @@ export function HomePage() {
     return adapter.onMove(update)
   }, [adapter, rallyPointRectGeo, setRallyPointRect])
 
-  // 飞机图标拖拽 + 地理锚定：手动拖动图标+名称至首页任意位置
+  // 飞机图标地理锚定：图标位置由真实经纬度投影驱动（手动拖拽已移除）
   const planeLngLatKey = usePlaneStatusStore((s) =>
     aircraft
       .map((a) => {
@@ -273,7 +273,6 @@ export function HomePage() {
   const aircraftSeedAnchors = useAircraftSeedAnchors(activePackage, planeLngLatKey)
   const {
     positions: aircraftPositions,
-    onDragStart: onAircraftDragStart,
     getAnchor: getAircraftAnchor,
   } = useMapAnchorSync({
     adapter,
@@ -343,8 +342,6 @@ export function HomePage() {
           className="map-base"
           onReady={onEngineReady}
           styleSpec={activeStyle}
-          autoLocate
-          locateBounds={activePackage?.bounds ?? null}
         />
 
         <StatusHeader />
@@ -400,7 +397,6 @@ export function HomePage() {
           <TargetMarkerLayer
             adapter={adapter}
             seedAnchors={targetSeedAnchors}
-            anchorScope={activePackage?.id ?? null}
           />
           {/* 无人机图标：显隐由图层控制面板「设备标签」开关联动（layerStore），默认开 */}
           {deviceLabelsVisible && (
@@ -412,7 +408,6 @@ export function HomePage() {
                 returnHomeOpen={returnHomeOpen}
                 focusedAircraft={focusedAircraft}
                 onHoverDevice={setHoveredDevice}
-                onDragStart={onAircraftDragStart}
                 onAircraftClick={handleAircraftClick}
                 onAircraftDoubleClick={handleAircraftDoubleClick}
               />

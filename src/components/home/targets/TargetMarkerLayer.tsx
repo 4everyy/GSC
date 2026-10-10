@@ -1,15 +1,15 @@
 /**
  * @file TargetMarkerLayer.tsx
- * @description TargetMarkerLayer —— 首页态势图上的目标图标层。
+ * @description TargetMarkerLayer —— 首页态势图上的目标图标层。（原「手动拖拽目标图标」能力已移除，单击=勾选联动，位置完全由地理锚点投影驱动）
  * @author 4everyy
  * @date 2026-10-07
  */
-import { useEffect, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, type CSSProperties } from 'react'
 import { deviceImages } from '../../../assets/device'
 import { useTargetLinkStore, type TargetMarkerItem } from '../../../stores/targetLinkStore'
 import { type TargetType } from '../../../config/index'
 import { type LngLat, type MapAdapter } from '../../../map-engines/types'
-import { createStageProjector, queryStageEl, saveScopedAnchors } from '../../../utils/index'
+import { createStageProjector, queryStageEl } from '../../../utils/index'
 import './TargetMarkerLayer.css'
 
 /** 目标类型 → 前景图标（车辆 → tank / 人员 → people） */
@@ -18,9 +18,6 @@ const typeIcon: Record<TargetType, string> = {
   '人员': deviceImages.people,
 }
 
-/** 按下后位移超过该像素数判定为拖拽（小于则视为单击） */
-const DRAG_THRESHOLD_PX = 4
-
 /** 目标 id → 0..3 稳定哈希：随机化运动轨迹朝向（右下/左下/左上/右上，每档 90°） */
 const hashIdToTrailDir = (id: string): number => {
   let h = 0
@@ -28,24 +25,18 @@ const hashIdToTrailDir = (id: string): number => {
   return Math.abs(h) % 4
 }
 
-/** 目标锚点按包持久化的存储键前缀（最终键为 `前缀:包id`） */
-const TARGET_ANCHOR_STORAGE_KEY = 'gcs:target-anchors'
-
 const clampPct = (v: number) => Math.min(100, Math.max(0, v))
 
 interface TargetMarkerLayerProps {
-  /** 地图适配器（null = 引擎未就绪，目标图标退化为纯拖放不随地图移动） */
+  /** 地图适配器（null = 引擎未就绪，目标图标按初始/恢复位置静态显示） */
   adapter: MapAdapter | null
   /** 种子地理锚点（id → LngLat，由 HomePage 按当前离线地图包派生：localStorage 按包恢复优先 */
   seedAnchors: Record<string, LngLat> | null
-  /** 锚点持久化作用域（当前离线地图包 id；null = 不持久化） */
-  anchorScope: string | null
 }
 
 export function TargetMarkerLayer({
   adapter,
   seedAnchors,
-  anchorScope,
 }: TargetMarkerLayerProps) {
   const targets = useTargetLinkStore((s) => s.targets)
   const hoveredTargetId = useTargetLinkStore((s) => s.hoveredTargetId)
@@ -58,30 +49,12 @@ export function TargetMarkerLayer({
   const requestOpenTargetPanel = useTargetLinkStore((s) => s.requestOpenTargetPanel)
   // 列表聚焦请求：单击图标后目标列表自动展开对应行详情并滚动到可视中心
   const requestFocusTarget = useTargetLinkStore((s) => s.requestFocusTarget)
-  // 拖拽更新坐标（map-stage 百分比）
-  const moveTarget = useTargetLinkStore((s) => s.moveTarget)
   // 「假删除」（软删除）目标 id 集合：图标层过滤隐藏（刷新可恢复）
   const deletedIds = useTargetLinkStore((s) => s.deletedTargetIds)
-  // 地理锚定：锚点批量固化 / 单点刷新 / 地图移动批量重投影
+  // 地理锚定：锚点批量固化 / 地图移动批量重投影
   const setTargetAnchors = useTargetLinkStore((s) => s.setTargetAnchors)
-  const setTargetAnchor = useTargetLinkStore((s) => s.setTargetAnchor)
   const applyTargetPositions = useTargetLinkStore((s) => s.applyTargetPositions)
 
-  // 拖拽会话（ref 不触发重渲染）：pointerId 匹配当前指针才处理，moved 标记是否已超过阈值判定为拖拽
-  const dragState = useRef<{
-    id: string
-    pointerId: number
-    layerEl: HTMLElement
-    startX: number
-    startY: number
-    moved: boolean
-  } | null>(null)
-
-  // adapter 最新引用（供拖拽松手回调读取，避免闭包陈旧）。
-  const adapterRef = useRef(adapter)
-  useEffect(() => {
-    adapterRef.current = adapter
-  }, [adapter])
   // 锚定就绪标志：种子模式播种后置 true；屏幕固化模式首个 moveend 后置 true
   const anchorReadyRef = useRef(false)
 
@@ -143,82 +116,13 @@ export function TargetMarkerLayer({
     }
   }, [adapter, seedAnchors, setTargetAnchors, applyTargetPositions])
 
-  /** 按下：记录会话（是否拖拽在移动超阈值时才判定） */
-  const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>, t: TargetMarkerItem) => {
-    // 仅主键/触摸/笔；中键右键不参与
-    if (e.button !== 0) return
-    const layerEl = e.currentTarget.closest('.target-marker-layer') as HTMLElement | null
-    if (!layerEl) return
-    dragState.current = {
-      id: t.id,
-      pointerId: e.pointerId,
-      layerEl,
-      startX: e.clientX,
-      startY: e.clientY,
-      moved: false,
-    }
-    // 阻止图片原生拖拽与触摸滚动，保证拖拽跟手
-    e.preventDefault()
-  }
-
-  /** 移动：超阈值判定为拖拽，此后图标中心跟随指针（按层容器百分比换算） */
-  const handlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const ds = dragState.current
-    if (!ds || ds.pointerId !== e.pointerId) return
-    if (!ds.moved) {
-      const dx = e.clientX - ds.startX
-      const dy = e.clientY - ds.startY
-      if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return
-      ds.moved = true
-    }
-    const rect = ds.layerEl.getBoundingClientRect()
-    if (rect.width === 0 || rect.height === 0) return
-    const x = ((e.clientX - rect.left) / rect.width) * 100
-    const y = ((e.clientY - rect.top) / rect.height) * 100
-    moveTarget(ds.id, x, y)
-  }
-
-  /** 松手：若始终未超阈值则视为单击（勾选联动 + 请求开面板 + 列表聚焦展开/收起） */
-  const handlePointerUp = (e: ReactPointerEvent<HTMLDivElement>, t: TargetMarkerItem) => {
-    const ds = dragState.current
-    if (!ds || ds.pointerId !== e.pointerId) return
-    const wasDrag = ds.moved
-    dragState.current = null
-    if (wasDrag) {
-      if (anchorReadyRef.current) {
-        const stageEl = queryStageEl('.map-stage')
-        const currentAdapter = adapterRef.current
-        if (stageEl && currentAdapter) {
-          const projector = createStageProjector(currentAdapter, stageEl)
-          // store 最新值（拖拽中 moveTarget 已实时写入，渲染闭包 targets 是旧的）
-          const latest = useTargetLinkStore.getState().targets.find((tt) => tt.id === ds.id)
-          if (latest) {
-            setTargetAnchor(ds.id, projector.stagePctToLngLat(latest.x, latest.y))
-            // 按包持久化整套锚点（setTargetAnchor 同步完成后 getState 即最新）
-            if (anchorScope) {
-              saveScopedAnchors(
-                TARGET_ANCHOR_STORAGE_KEY,
-                anchorScope,
-                useTargetLinkStore.getState().targetAnchors,
-              )
-            }
-          }
-        }
-      }
-      return
-    }
+  /** 单击图标：勾选联动 + 请求开面板 + 列表聚焦展开/收起（原「拖拽/单击判定」简化为纯 click） */
+  const handleClick = (t: TargetMarkerItem) => {
     // 点击前已选中 → 本次点击是取消选中：列表收起该行详情（expand=false）
     const willSelect = !selectedTargetIds.has(t.id)
     toggleTarget(t.id)
     requestOpenTargetPanel()
     requestFocusTarget(t.id, willSelect)
-  }
-
-  /** 指针被系统打断（如触摸被接管）：结束会话，不触发单击 */
-  const handlePointerCancel = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const ds = dragState.current
-    if (!ds || ds.pointerId !== e.pointerId) return
-    dragState.current = null
   }
 
   // 「假删除」目标不渲染图标（软删除标记，刷新恢复后重现）
@@ -241,10 +145,7 @@ export function TargetMarkerLayer({
             key={t.id}
             className={`target-marker${isMarked ? ' target-marker--marked' : ''}${isActive ? ' target-marker--active' : ''}`}
             style={{ left: `${t.x}%`, top: `${t.y}%` }}
-            onPointerDown={(e) => handlePointerDown(e, t)}
-            onPointerMove={handlePointerMove}
-            onPointerUp={(e) => handlePointerUp(e, t)}
-            onPointerCancel={handlePointerCancel}
+            onClick={() => handleClick(t)}
             onMouseEnter={() => setHoveredTargetId(t.id)}
             onMouseLeave={() => setHoveredTargetId(null)}
             role="button"
@@ -270,7 +171,7 @@ export function TargetMarkerLayer({
                 确定性哈希保证刷新后不跳变），贴身外挂、绘制在背景图
                 之下。位置依附：作为 .target-marker
                 子元素自动继承图标的全部位置更新——地理锚定每帧重投影、
-                拖拽 moveTarget、初始播种——轨迹随图标同步移动（保持
+                初始播种——轨迹随图标同步移动（保持
                 既定方位偏移），无需单独锚定。--trail-angle 暂由随机
                 哈希赋值，接入真实航向后替换为航向角 */}
             <span
@@ -284,16 +185,12 @@ export function TargetMarkerLayer({
                 打击/跟踪/跟随各占一段（-76.67°/0°/+76.67°，段中心等距
                 76.67°，三段拼回完整马蹄、底部开口朝下），顺时针漩涡式展开
                 （角度/延迟详见 CSS 变量；背景图 orbit-segment.svg + 楔形
-                clip-path 命中区）。事件在容器统一阻止冒泡——按钮的
-                pointerdown/up 不进入图标拖拽会话，click/keydown 也不触发图标的
-                单击勾选与键盘 Enter 联动 */}
+                clip-path 命中区）。click/keydown 在容器统一阻止冒泡——
+                不触发图标的单击勾选与键盘 Enter 联动 */}
             <div
               className="target-marker__actions"
               role="toolbar"
               aria-label={`${t.name}操作`}
-              onPointerDown={(e) => e.stopPropagation()}
-              onPointerMove={(e) => e.stopPropagation()}
-              onPointerUp={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
             >

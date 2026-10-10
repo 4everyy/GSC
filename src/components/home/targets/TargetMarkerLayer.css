@@ -14,15 +14,13 @@
   height: 84px;
   transform: translate(-50%, -50%);
   pointer-events: auto; /* 恢复鼠标事件（父层 pointer-events:none） */
-  cursor: grab; /* 可拖拽：抓手光标 */
-  touch-action: none; /* 拖拽期间禁用触摸滚动/缩放手势，保证跟手 */
+  cursor: pointer; /* 可点击：手型光标 */
   user-select: none;
   -webkit-user-select: none;
 }
 
-/* 按住（拖拽中）：握拳光标 + 提到最上层，避免被其它图标遮挡 */
+/* 按下：提到最上层，避免被其它图标遮挡 */
 .target-marker:active {
-  cursor: grabbing;
   z-index: 2;
 }
 
@@ -289,16 +287,44 @@
       /* 周期 28px… */
   background: repeating-linear-gradient(
     135deg,
-    rgba(255, 206, 66, 1) 0px,
-    rgba(215, 158, 0, 0.2) 14px,
-    rgba(255, 206, 66, 1) 28px
+    rgba(255, 214, 90, 1) 0px,
+    /* 暗带 0.4：拉大明暗对比供流光"流动"，但不至于淹没中间箭头 */
+    rgba(230, 168, 0, 0.5) 14px,
+    rgba(255, 214, 90, 1) 28px
   );
   /* 形状 = target-motion-arrows.svg 三枚条纹箭头（alpha 模板，条纹透出层次） */
   -webkit-mask: url('../../../assets/task-panel/target-motion-arrows.svg') center / 100% 100%
     no-repeat;
   mask: url('../../../assets/task-panel/target-motion-arrows.svg') center / 100% 100% no-repeat;
   pointer-events: none; /* 纯装饰，不参与图标交互热区 */
+  will-change: opacity, background-position;
+  /* 双动画：流光位移（0.9s 无缝循环）+ 整体闪烁脉冲（0.8s 呼吸）；闪烁谷值
+     抬至 0.45——原 0.12 近乎熄灭，观感即"没有闪烁" */
   animation: target-trail-flow 0.9s linear infinite, target-trail-blink 0.8s ease-in-out infinite;
+}
+
+/* 高光扫掠层（::after）：同一箭头 mask 限定形状，一道白金色斜向亮带沿
+   运动方向周期掠过——三枚箭头被逐个"点亮"，中间箭头的闪耀由此显著增强 */
+.target-marker__trail::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(255, 240, 200, 0.95) 48%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(255, 240, 200, 0.95) 52%,
+    transparent 62%,
+    transparent 100%
+  );
+  -webkit-mask: url('../../../assets/task-panel/target-motion-arrows.svg') center / 100% 100%
+    no-repeat;
+  mask: url('../../../assets/task-panel/target-motion-arrows.svg') center / 100% 100% no-repeat;
+  background-size: 300% 300%;
+  animation: target-trail-sweep 1.8s ease-in-out infinite;
+  pointer-events: none;
 }
 
 /* 每周期平移 (19.8px,19.8px)——轴向位移 = 19.8×√2 ≈ 28px（条纹周期）→… */
@@ -311,6 +337,16 @@
   }
 }
 
+/* 高光亮带沿 135° 轴掠过：background-position 对角线循环（0%↔300% 无缝） */
+@keyframes target-trail-sweep {
+  0% {
+    background-position: -150% -150%;
+  }
+  100% {
+    background-position: 250% 250%;
+  }
+}
+
 @keyframes target-trail-blink {
   0%,
   100% {
@@ -319,13 +355,32 @@
     filter: brightness(1.6) drop-shadow(0 0 10px rgba(255, 200, 60, 0.9));
   }
   50% {
-    opacity: 0.12;
-    filter: brightness(0.75);
+    /* 谷值 0.12→0.45：闪烁可感知且不会视觉"消失"，暗相位仍保留箭头轮廓 */
+    opacity: 0.45;
+    filter: brightness(0.9);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* 系统减弱动效（如 Windows 关闭"动画效果"）时仅停用流光位移、扫掠与亮度
+     爆闪，保留低幅呼吸闪烁——方向箭头承载"目标运动朝向"的功能性信息，原
+     animation:none 会把闪烁一并停掉，观感即特效完全静止 */
   .target-marker__trail {
+    animation: target-trail-blink-soft 1.6s ease-in-out infinite;
+  }
+  .target-marker__trail::after {
     animation: none;
+    opacity: 0;
+  }
+}
+
+/* 减弱动效备用的低幅呼吸：仅透明度 1↔0.7，无位移、无滤镜闪动 */
+@keyframes target-trail-blink-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
   }
 }

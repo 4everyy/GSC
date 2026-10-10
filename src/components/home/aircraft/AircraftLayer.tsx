@@ -4,9 +4,11 @@
  * @author 4everyy
  * @date 2026-10-07
  */
-import { memo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react'
+import { memo, type CSSProperties } from 'react'
 import { computePanelPlacement, placementToClasses } from '../../../utils/index'
-import batteryMidIcon from '../../../assets/device/battery-mid.png'
+import { deviceImages } from '../../../assets/device/index'
+import { getBatteryIcon, type BatteryLevel } from '../../../config/index'
+import { formatTelemetryTime } from '../../../api/planeStatus'
 import { STATUS_PLANE_ICON } from '../../../lib/planeIcons'
 import { useDeviceLinkStore, useFlightAnimStore, usePlaneStatusStore } from '../../../stores/index'
 import { useRealtimeStore } from '../../../features/realtime/realtimeStore'
@@ -54,7 +56,6 @@ export interface AircraftLayerProps {
   returnHomeOpen: boolean
   focusedAircraft: number | null
   onHoverDevice: (deviceIndex: number | null) => void
-  onDragStart: (index: number, e: ReactMouseEvent) => void
   onAircraftClick: (deviceIndex: number) => void
   onAircraftDoubleClick: (index: number) => void
 }
@@ -67,7 +68,6 @@ function AircraftLayerInner({
   returnHomeOpen,
   focusedAircraft,
   onHoverDevice,
-  onDragStart,
   onAircraftClick,
   onAircraftDoubleClick,
 }: AircraftLayerProps) {
@@ -130,9 +130,47 @@ function AircraftLayerInner({
         const altitudeNum = hasLiveAltitude ? liveAltitude : parseFloat(altitudeText) || 0
         // 高度→升空像素纯线性 0.3px/m（无分段、无封顶）：匀速爬升/降落时图标上移与虚线伸缩幅度全程恒定（每 10m = 3px）
         const liftPx = Math.round(Math.max(0, altitudeNum * 0.3))
+        // ===== hover 面板字段：初始化取 queryPlaneStatus 映射值（device），WS 遥测到达后实时覆盖 =====
+        const wsSnap = planeId !== undefined ? wsTelemetry[planeId] : undefined
+        // 电量：WS 百分比（>0 才有效——后端 swarmState 暂不推电量恒为 0，仅电压，0 不采信）
+        // 优先，HTTP battery（小数×100，mapPlaneToDevice 已转换）兜底，均未上报显示 '--'
+        const wsBatteryRaw = wsSnap?.battery
+        const wsBatteryPct =
+          wsBatteryRaw !== undefined && Number.isFinite(wsBatteryRaw) && wsBatteryRaw > 0
+            ? Math.round(Math.max(0, Math.min(100, wsBatteryRaw)))
+            : undefined
+        const batteryText =
+          wsBatteryPct !== undefined ? `${wsBatteryPct}%` : (device?.batteryValue ?? '--')
+        const batteryLevel: BatteryLevel =
+          wsBatteryPct !== undefined
+            ? wsBatteryPct >= 75
+              ? 'full'
+              : wsBatteryPct >= 40
+                ? 'mid'
+                : 'low'
+            : (device?.batteryLevel ?? 'low')
+        const batteryIconSrc = device?.isCharging
+          ? deviceImages.batteryCharging
+          : getBatteryIcon(batteryLevel)
+        // 经纬度：WS 实测优先，HTTP 快照兜底（queryPlaneStatus longitude/latitude，fmt 三位小数）
+        const longitudeText =
+          wsSnap?.longitude !== undefined
+            ? wsSnap.longitude.toFixed(3)
+            : (device?.telemetry?.longitude ?? '--')
+        const latitudeText =
+          wsSnap?.latitude !== undefined
+            ? wsSnap.latitude.toFixed(3)
+            : (device?.telemetry?.latitude ?? '--')
+        // 速度：接口仅上报 Y（velocityNorth 北向速度），X/Z 无对应字段显示 '--'
+        const velocityYText =
+          wsSnap?.velocityY !== undefined
+            ? wsSnap.velocityY.toFixed(3)
+            : (device?.telemetry?.velocityY ?? '--')
+        // 状态：queryPlaneStatus planeStatusCode/planeStatus 权威口径（待命/执行中/在线/离线）
+        const statusText = device?.statusText ?? '--'
         return (
           <span
-            className={`${item.className} aircraft--draggable ${aircraftPanelClasses.join(' ')}${selectedDevices.has(item.deviceIndex) ? ' aircraft--selected' : ''}${hoveredDevice === item.deviceIndex ? ' aircraft--hovered' : ''}`}
+            className={`${item.className} ${aircraftPanelClasses.join(' ')}${selectedDevices.has(item.deviceIndex) ? ' aircraft--selected' : ''}${hoveredDevice === item.deviceIndex ? ' aircraft--hovered' : ''}`}
             key={item.deviceIndex}
             style={{
               left: `${aircraftPositions[index].x}%`,
@@ -142,7 +180,6 @@ function AircraftLayerInner({
             } as CSSProperties}
             onMouseEnter={() => onHoverDevice(item.deviceIndex)}
             onMouseLeave={() => onHoverDevice(null)}
-            onMouseDown={(e) => onDragStart(index, e)}
             onClick={() => onAircraftClick(item.deviceIndex)}
             onDoubleClick={() => onAircraftDoubleClick(index)}
           >
@@ -213,7 +250,10 @@ function AircraftLayerInner({
                   <div className="aircraft-hover-panel__info">
                     <span className="aircraft-hover-panel__bar" />
                     <span className="aircraft-hover-panel__label">离线时间：</span>
-                    <span className="aircraft-hover-panel__time">2026/08/03 23:45</span>
+                    {/* 离线时间取 queryPlaneStatus createTime（毫秒时间戳格式化），接口缺失显示 '--' */}
+                    <span className="aircraft-hover-panel__time">
+                      {formatTelemetryTime(rawPlanes[item.deviceIndex]?.createTime)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -227,10 +267,10 @@ function AircraftLayerInner({
                     <div className="aircraft-info-panel__indicators">
                       <img
                         className="aircraft-info-panel__battery-icon"
-                        src={batteryMidIcon}
+                        src={batteryIconSrc}
                         alt="电量"
                       />
-                      <span className="aircraft-info-panel__battery-text">46%</span>
+                      <span className="aircraft-info-panel__battery-text">{batteryText}</span>
                       <svg
                         className="aircraft-info-panel__signal-icon"
                         width="15"
@@ -253,23 +293,24 @@ function AircraftLayerInner({
                     <span className="aircraft-info-panel__bar" />
                     <span className="aircraft-info-panel__label">位置</span>
                     <span className="aircraft-info-panel__value">
-                      Lat:0000,&nbsp;Lon:0000,&nbsp;H:{altitudeText}
+                      经度:{longitudeText},&nbsp;纬度:{latitudeText},&nbsp;高度:{altitudeText}
                     </span>
                   </div>
                   <div className="aircraft-info-panel__row">
                     <span className="aircraft-info-panel__bar" />
                     <span className="aircraft-info-panel__label">速度</span>
                     <span className="aircraft-info-panel__value">
-                      X:000,&nbsp;&nbsp;Y:000,&nbsp;&nbsp;Z:000
+                      X:--,&nbsp;&nbsp;Y:{velocityYText},&nbsp;&nbsp;Z:--
                     </span>
                   </div>
                   <div className="aircraft-info-panel__row aircraft-info-panel__row--dual">
                     <span className="aircraft-info-panel__bar" />
                     <span className="aircraft-info-panel__label">模式</span>
-                    <span className="aircraft-info-panel__value">悬停</span>
+                    {/* 接口无模式字段，暂显 '--'；状态取 queryPlaneStatus 权威文本 */}
+                    <span className="aircraft-info-panel__value">--</span>
                     <span className="aircraft-info-panel__bar aircraft-info-panel__bar--gap" />
                     <span className="aircraft-info-panel__label">状态</span>
-                    <span className="aircraft-info-panel__value">待命</span>
+                    <span className="aircraft-info-panel__value">{statusText}</span>
                   </div>
                 </div>
               </div>

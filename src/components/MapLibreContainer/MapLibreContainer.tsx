@@ -10,21 +10,13 @@ import { MapLibreAdapter } from '../../map-engines/MapLibreAdapter'
 import { type MapEngineInstance, type MapStyleSpec } from '../../map-engines/types'
 import { MAPLIBRE_DEFAULT_CENTER, MAPLIBRE_DEFAULT_ZOOM, MAPLIBRE_MAP_OPTIONS } from '../../config/index'
 import { createOfflineTransformRequest, registerOfflineNetworkGuard } from '../../features/offline-map/index'
-import { htmlToElement } from '../../utils/index'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './MapLibreContainer.css'
 import { Progress } from 'antd'
 
 /** MapLibreContainer —— MapLibre GL JS 地图容器组件（严格离线）。 */
 
-/** "我的位置"标注图标（蓝色光点 + 光晕），使用内联 SVG 无需图片资源 */
-const LOCATION_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
-  <circle cx="22" cy="22" r="18" fill="#1e90ff" fill-opacity="0.15"/>
-  <circle cx="22" cy="22" r="11" fill="#1e90ff" fill-opacity="0.3"/>
-  <circle cx="22" cy="22" r="7" fill="#1e90ff" stroke="#fff" stroke-width="2.5"/>
-</svg>`
-
-/** 占位底图样式（严格离线）。 */
+/** 占位底图样式（严格离线）。中性深灰底：瓦片加载前不出现蓝色观感 */
 const PLACEHOLDER_STYLE: StyleSpecification = {
   version: 8,
   sources: {},
@@ -32,62 +24,11 @@ const PLACEHOLDER_STYLE: StyleSpecification = {
     {
       id: 'placeholder-background',
       type: 'background',
-      paint: { 'background-color': '#1a2a3a' },
+      paint: { 'background-color': '#101318' },
     },
   ],
 }
 
-
-/** 在 MapLibre 地图上添加"我的位置"标注：精度圆 + 蓝色光点 Marker。 */
-function addLocationMarker(
-  adapter: MapLibreAdapter,
-  lng: number,
-  lat: number,
-  accuracy: number,
-) {
-  adapter.addCircle('__user_location_accuracy__', { lng, lat }, accuracy, {
-    strokeColor: '#1e90ff',
-    strokeWeight: 1,
-    strokeOpacity: 0.4,
-    fillColor: '#1e90ff',
-    fillOpacity: 0.12,
-  })
-  adapter.addMarker('__user_location__', { lng, lat }, {
-    element: htmlToElement(
-      `<img src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(LOCATION_ICON_SVG)}" alt="location" />`,
-    ),
-    anchor: { x: 22, y: 22 },
-    draggable: false,
-  })
-}
-
-/** 自动定位到用户当前位置。 */
-function runAutoLocate(
-  adapter: MapLibreAdapter,
-  isCancelled: () => boolean,
-  bounds?: readonly [number, number, number, number] | null,
-) {
-  if (typeof navigator === 'undefined' || !navigator.geolocation) return
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      if (isCancelled()) return
-      const { longitude, latitude } = position.coords
-      // 严格离线底图仅在包 bounds 内有瓦片：GPS 越界时平移视野会飞出瓦片覆盖区、底图一片空白（用户不在包覆盖城市时必现）。
-      if (bounds) {
-        const [west, south, east, north] = bounds
-        if (longitude < west || longitude > east || latitude < south || latitude > north) {
-          return
-        }
-      }
-      adapter.panTo({ lng: longitude, lat: latitude })
-      addLocationMarker(adapter, longitude, latitude, position.coords.accuracy ?? 80)
-    },
-    () => {
-      /* 浏览器定位失败，保留默认中心点 */
-    },
-    { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
-  )
-}
 
 /** 地图中心点坐标 */
 interface MapCenter {
@@ -106,14 +47,10 @@ interface MapLibreContainerProps {
   center?: MapCenter
   /** 地图初始缩放级别，默认 12 */
   zoom?: number
-  /** 是否自动定位到用户当前位置（默认 false，受控） */
-  autoLocate?: boolean
   /** 地图实例就绪回调，父级接收 MapEngineInstance（含 adapter + raw） */
   onReady?: (engine: MapEngineInstance) => void
   /** 运行时热切换的样式 spec。 */
   styleSpec?: MapStyleSpec | null
-  /** 自动定位有效边界 [west, south, east, north]… */
-  locateBounds?: readonly [number, number, number, number] | null
   /** 叠加在地图之上的 DOM 覆盖物（如飞行器、限制区） */
   children?: ReactNode
 }
@@ -123,10 +60,8 @@ export function MapLibreContainer({
   className,
   center = MAPLIBRE_DEFAULT_CENTER,
   zoom = MAPLIBRE_DEFAULT_ZOOM,
-  autoLocate = false,
   onReady,
   styleSpec,
-  locateBounds,
   children,
 }: MapLibreContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -156,7 +91,7 @@ export function MapLibreContainer({
     setErrorMsg('')
 
     try {
-      // 严格离线引擎层强制：注册 gcs-block 拦截协议，并通过 transformRequest 把任何绝对 http(s):// URL…
+      // 严格离线引擎层强制：注册 gcs-block 拦截协议，并通过 transformRequest 把任何绝对 http(s):// URL 转为离线协议请求（详见 offline-map）
       registerOfflineNetworkGuard()
       const map = new MLMap({
         container: containerRef.current,
@@ -221,20 +156,6 @@ export function MapLibreContainer({
     }
   }, [styleSpec])
 
-  // ============ Effect 2：自动定位（受控，可取消） ============
-  useEffect(() => {
-    if (!autoLocate || status !== 'success') return
-    const adapter = adapterRef.current
-    if (!adapter) return
-
-    let cancelled = false
-    runAutoLocate(adapter, () => cancelled, locateBounds)
-
-    return () => {
-      cancelled = true
-    }
-  }, [autoLocate, status, locateBounds])
-
   return (
     <div className={`maplibre-container ${className ?? ''}`}>
       <div ref={containerRef} className="maplibre-canvas" />
@@ -276,7 +197,7 @@ const CONIC_COLORS = {
 
 /** 组件属性 */
 interface MapLoadProgressProps {
-  /** MapLibre 原始地图实例（MapEngineInstance.raw */
+  /** MapLibre 原始地图实例（MapEngineInstance.raw 的联合类型收敛） */
   map?: unknown
   /** 热切换标识：引用变化时视为新一轮加载（离线地图包切换 setStyle） */
   reloadKey?: unknown
@@ -529,7 +450,7 @@ export function MapLoadProgress({ map, reloadKey }: MapLoadProgressProps) {
         railColor="rgba(148, 163, 184, 0.18)"
         strokeWidth={10}
         size={96}
-        /* 内联样式优先级高于 antd CSS-in-JS 的 clas… */
+        /* 内联样式优先级高于 antd CSS-in-JS 的 class 样式 */
         styles={{
           indicator: {
             background:

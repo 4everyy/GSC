@@ -8,6 +8,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { type VideoChannel } from './videoMonitorData'
@@ -25,12 +26,8 @@ import { deviceImages } from '../../assets/device'
 import { IconChevron, IconClose } from './VideoMonitorIcons'
 import { Joystick } from './Joystick'
 import { FollowSettingsPanel } from './FollowSettingsPanel'
-import {
-  PlaceholderVideoStream,
-  OfflineVideoStream,
-  hasDemoStream,
-  pickDemoVideo,
-} from './PlaceholderVideoStream'
+import { OfflineVideoStream, pickDemoVideo } from './PlaceholderVideoStream'
+import { LiveVideoStream, LIVE_STREAM_CHANNEL_IDS } from './LiveVideoStream'
 
 /* ---------------- 画面抓拍 / 区域截图工具（工具列第 1 / 第 3 个按钮） ---------------- */
 
@@ -115,12 +112,25 @@ function downloadBlob(blob: Blob, filename: string) {
 
 /* ---------------- 单路视频画面 ---------------- */
 
+/** 拖拽把手排除区：这些控件上按下鼠标不触发画面拖动（摇杆/工具列/操作条/面板/输入/截图框选） */
+const DRAG_BLOCK_SELECTOR =
+  'button, input, .vm-joystick, .vm-tools, .vm-action, .vm-tele-panel, .vm-follow, .vm-snip-overlay'
+
 export function VideoChannelCard({
   channel,
   onClose,
   expanded = false,
   onToggleExpand,
   locked = false,
+  layoutFixed = false,
+  channelId,
+  dragging = false,
+  dragOver = false,
+  onChannelDragStart,
+  onChannelDragOver,
+  onChannelDragLeave,
+  onChannelDrop,
+  onChannelDragEnd,
 }: {
   channel: VideoChannel
   onClose?: () => void
@@ -128,8 +138,27 @@ export function VideoChannelCard({
   expanded?: boolean
   /** 切换展开/收起 */
   onToggleExpand?: () => void
-  /** 页面锁定态：禁用画面内全部操作（关闭/摇杆/工具列/操作条），解锁后恢复 */
+  /** 页面锁定态：禁用画面内全部操作（关闭/摇杆/工具列/操作条/参数面板/拖拽），解锁后恢复 */
   locked?: boolean
+  /** 布局固定（平铺视图）：不渲染关闭叉号、禁用拖拽源/放置目标——
+      叉掉关闭与拖动换位/设备拖入承接仅四宫格视图提供 */
+  layoutFixed?: boolean
+  /** 本画面所属格子（通道）id：主区画面拖动换位的拖拽标识 */
+  channelId: string
+  /** 本画面正处于拖拽源状态（半透明展示） */
+  dragging?: boolean
+  /** 其他画面/设备正拖拽悬停在本格上（青色描边提示可放置） */
+  dragOver?: boolean
+  /** 拖拽开始（携带本格 id） */
+  onChannelDragStart?: (channelId: string) => void
+  /** 拖拽悬停进入本格 */
+  onChannelDragOver?: (channelId: string) => void
+  /** 拖拽悬停离开本格 */
+  onChannelDragLeave?: (channelId: string) => void
+  /** 放置到本格：payload 为拖拽负载（「channel:」前缀 = 主区画面互换，否则为右栏设备顶替） */
+  onChannelDrop?: (channelId: string, payload: string) => void
+  /** 拖拽结束（含取消）：复位拖拽态 */
+  onChannelDragEnd?: (channelId: string) => void
 }) {
   const [panelOpen, setPanelOpen] = useState(false)
   /** 底部操作条展开态：默认收起为「操作」，点击展开 跟随/跟随/打击 三按钮 */
@@ -314,38 +343,78 @@ export function VideoChannelCard({
     }
   }
 
-  /* 画面阶段：暂无真实图传流——demo 演示阶段各通道随机分配形态：
-     约 2/3 通道播放两段样例视频中随机一路（信息条/摇杆/工具列/操作条完整 UI），
-     其余为「空视频位」（Camera.svg 图标 + 固定文案，名称仍在顶部信息条显示）。
-     设备离线（online = false）时优先显示「设备已离线」占位（load-fail.png 图标）。
-     接真实流后由后端流状态驱动，置 hasStream = true 即恢复完整 UI。 */
-  const hasStream = channel.online && hasDemoStream(channel.name)
+  /* 画面形态：在线设备恒有流（四宫格/平铺两视图数据一致——同一设备在两个视图
+     按设备名确定性播放同一路样例视频，右栏小卡同源，不再按名字哈希随机出现
+     「空视频位」）；设备离线（online = false）显示「设备已离线」占位。
+     接真实流后由后端流状态驱动（无流设备可在 PlaceholderVideoStream.tsx 恢复
+     「空视频位」形态：PlaceholderVideoStream / hasDemoStream 已保留）。 */
+  /* 真实流接入：名单内通道经 WHEP/WebRTC 播放现场直播流（LiveVideoStream，见该文件头说明），
+     其余通道播放按名字确定性分配的样例视频（各路流就绪后在 LIVE_STREAM_CHANNEL_IDS 扩展） */
+  const isLiveChannel = channel.online && LIVE_STREAM_CHANNEL_IDS.includes(channel.id)
+  const hasStream = channel.online
+
+  /* ---------- 主区画面拖动换位（HTML5 拖拽）：画面卡既是拖拽源也是放置目标 ---------- */
+
+  /** 无流/有流两处 section 根共用的拖拽源 + 放置目标属性 */
+  const channelDragProps = {
+    draggable: !locked && !expanded && !layoutFixed,
+    onDragStart: (e: ReactDragEvent<HTMLElement>) => {
+      /* 摇杆/工具列/操作条/面板等交互控件上按下不发起拖动 */
+      if ((e.target as HTMLElement).closest(DRAG_BLOCK_SELECTOR)) {
+        e.preventDefault()
+        return
+      }
+      /* 携带「channel:」前缀通道 id，与右栏设备拖拽（裸设备 id）区分 */
+      e.dataTransfer.setData('text/plain', `channel:${channelId}`)
+      e.dataTransfer.effectAllowed = 'move'
+      onChannelDragStart?.(channelId)
+    },
+    onDragOver: (e: ReactDragEvent<HTMLElement>) => {
+      if (locked || layoutFixed) return
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      onChannelDragOver?.(channelId)
+    },
+    onDragLeave: () => onChannelDragLeave?.(channelId),
+    onDrop: (e: ReactDragEvent<HTMLElement>) => {
+      e.preventDefault()
+      onChannelDrop?.(channelId, e.dataTransfer.getData('text/plain'))
+    },
+    onDragEnd: () => onChannelDragEnd?.(channelId),
+  }
 
   if (!hasStream) {
     return (
       <section
-        className={`vm-channel ${expanded ? 'vm-channel--expanded' : ''}`}
+        className={`vm-channel ${expanded ? 'vm-channel--expanded' : ''} ${
+          dragging ? 'vm-channel--dragging' : ''
+        } ${dragOver ? 'vm-channel--drop-over' : ''}`}
         aria-label={`${channel.name} 视频画面`}
+        {...channelDragProps}
       >
-        {/* 顶部一行：设备名称（原信息条位置）+ 右侧关闭叉号 */}
+        {/* 顶部一行：设备名称（原信息条位置）+ 右侧关闭叉号；
+            此分支仅为离线画面（在线设备恒有流）：叉号关闭后设备顶回右栏列表，
+            平铺视图（layoutFixed）布局固定，不提供叉掉 */}
         <header className="vm-channel-bar">
           <span className="vm-channel-name">{channel.name}</span>
           <span className="vm-channel-right">
-            <button
-              type="button"
-              className="vm-close"
-              disabled={locked}
-              title="关闭画面"
-              aria-label={`关闭 ${channel.name} 画面`}
-              onClick={onClose}
-            >
-              <IconClose />
-            </button>
+            {!layoutFixed && (
+              <button
+                type="button"
+                className="vm-close"
+                disabled={locked}
+                title="关闭画面"
+                aria-label={`关闭 ${channel.name} 画面`}
+                onClick={onClose}
+              >
+                <IconClose />
+              </button>
+            )}
           </span>
         </header>
         <div className="vm-video">
-          {/* 设备离线 → load-fail.png 占位；在线但暂无流 → 空视频位占位 */}
-          {channel.online ? <PlaceholderVideoStream /> : <OfflineVideoStream />}
+          {/* 设备离线 → load-fail.png「设备已离线」占位（可叉掉顶回右栏） */}
+          <OfflineVideoStream />
         </div>
       </section>
     )
@@ -353,20 +422,27 @@ export function VideoChannelCard({
 
   return (
     <section
-      className={`vm-channel ${expanded ? 'vm-channel--expanded' : ''}`}
+      className={`vm-channel ${expanded ? 'vm-channel--expanded' : ''} ${
+        dragging ? 'vm-channel--dragging' : ''
+      } ${dragOver ? 'vm-channel--drop-over' : ''}`}
       aria-label={`${channel.name} 视频画面`}
+      {...channelDragProps}
     >
-      {/* 画面区：demo 阶段播放按通道 id 随机分配的样例视频；接真实流后替换 src 即可 */}
+      {/* 画面区：真实流通道走 WHEP/WebRTC 播放器；demo 通道播放按 id 随机分配的样例视频 */}
       <div className="vm-video">
-        <video
-          ref={videoRef}
-          className="vm-video-stream"
-          src={pickDemoVideo(channel.name)}
-          autoPlay
-          muted
-          loop
-          playsInline
-        />
+        {isLiveChannel ? (
+          <LiveVideoStream videoRef={videoRef} />
+        ) : (
+          <video
+            ref={videoRef}
+            className="vm-video-stream"
+            src={pickDemoVideo(channel.name)}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        )}
       </div>
       <div className="vm-video-shade" />
 
@@ -390,33 +466,38 @@ export function VideoChannelCard({
             />
             {channel.battery}%
           </span>
-          {/* 电量右侧：关闭画面叉号按钮（锁定时禁用） */}
-          <button
-            type="button"
-            className="vm-close"
-            disabled={locked}
-            title="关闭画面"
-            aria-label={`关闭 ${channel.name} 画面`}
-            onClick={onClose}
-          >
-            <IconClose />
-          </button>
+          {/* 电量右侧：关闭画面叉号按钮（锁定时禁用；平铺视图布局固定，不提供叉掉） */}
+          {!layoutFixed && (
+            <button
+              type="button"
+              className="vm-close"
+              disabled={locked}
+              title="关闭画面"
+              aria-label={`关闭 ${channel.name} 画面`}
+              onClick={onClose}
+            >
+              <IconClose />
+            </button>
+          )}
         </span>
       </header>
 
       {/* AI 目标检测框按需求暂不显示（数据见 videoMonitorData.ts，恢复渲染即可） */}
 
-      {/* 左上折叠按钮：展开/收起遥测信息面板（锁定时禁用） */}
-      <button
-        type="button"
-        className={`vm-chip vm-chip--fold ${panelOpen ? 'vm-chip--fold-open' : ''}`}
-        disabled={locked}
-        aria-label={panelOpen ? '收起遥测信息' : '展开遥测信息'}
-        aria-expanded={panelOpen}
-        onClick={() => setPanelOpen((v) => !v)}
-      >
-        <IconChevron />
-      </button>
+      {/* 左上折叠按钮：展开/收起遥测信息面板（锁定时禁用）；
+          平铺视图与右栏小卡一致，仅展示画面不提供交互按钮 */}
+      {!layoutFixed && (
+        <button
+          type="button"
+          className={`vm-chip vm-chip--fold ${panelOpen ? 'vm-chip--fold-open' : ''}`}
+          disabled={locked}
+          aria-label={panelOpen ? '收起遥测信息' : '展开遥测信息'}
+          aria-expanded={panelOpen}
+          onClick={() => setPanelOpen((v) => !v)}
+        >
+          <IconChevron />
+        </button>
+      )}
 
       {/* 遥测信息面板：图传延迟 / 经纬度 / 姿态 / RTK / GPS（数据见 videoMonitorData.ts） */}
       {panelOpen && (
@@ -451,75 +532,80 @@ export function VideoChannelCard({
         />
       )}
 
-      {/* 摇杆 / 右侧工具列（图标取自 src/assets/video-monitor/*.svg）；锁定时禁用 */}
-      <Joystick disabled={locked} />
-      <div className="vm-tools">
-        {/* 第 1 个按钮：抓拍——截取当前画面整帧（原始分辨率）下载保存 */}
-        <button
-          type="button"
-          className="vm-tool"
-          disabled={locked}
-          title="抓拍"
-          aria-label="抓拍"
-          onClick={takeSnapshot}
-        >
-          <img className="vm-tool-icon" src={iconSnapshot} alt="" />
-        </button>
-        <button
-          type="button"
-          className="vm-tool"
-          disabled={locked}
-          title={recording ? '停止录像' : '录像'}
-          aria-label={recording ? '停止录像' : '录像'}
-          aria-pressed={recording}
-          onClick={() => {
-            /* 倒计时进行中忽略重复点击，避免重新计时 */
-            if (recordCountdown !== null) return
-            /* 录像中再点一次：停止录像并复位计时 */
-            if (recording) {
-              setRecording(false)
-              setRecordSeconds(0)
-              return
-            }
-            setRecordCountdown(3)
-          }}
-        >
-          {/* 录像进行中：图标切换为 Camera.svg（圆环+红色 REC 方块） */}
-          <img className="vm-tool-icon" src={recording ? cameraRecording : iconRecord} alt="" />
-        </button>
-        {/* 录像时长：录像中显示于录像按钮正下方（mm:ss，如 15:24） */}
-        {recording && (
-          <span className="vm-record-duration">{formatRecordDuration(recordSeconds)}</span>
-        )}
-        {/* 第 3 个按钮：区域截图——点击进入截图模式，画面上框选后自动截取当前帧下载 */}
-        <button
-          type="button"
-          className={`vm-tool ${snipMode ? 'vm-tool--active' : ''}`}
-          disabled={locked}
-          title={snipMode ? '取消截图' : '截图'}
-          aria-label={snipMode ? '取消截图' : '截图'}
-          aria-pressed={snipMode}
-          onClick={toggleSnipMode}
-        >
-          <img className="vm-tool-icon" src={iconCrop} alt="" />
-        </button>
-        <button
-          type="button"
-          className="vm-tool"
-          disabled={locked}
-          title={expanded ? '取消全屏' : '全屏'}
-          aria-label={expanded ? '取消全屏' : '全屏'}
-          aria-pressed={expanded}
-          onClick={onToggleExpand}
-        >
-          {/* 全屏态切换为 src/assets/home/fullscreen-exit.svg（取消全屏图标） */}
-          <img
-            className="vm-tool-icon"
-            src={expanded ? exitFullscreenIcon : iconFullscreen}
-            alt=""
-          />
-        </button>
-      </div>
+      {/* 摇杆 / 右侧工具列（图标取自 src/assets/video-monitor/*.svg）；锁定时禁用；
+          平铺视图不提供画面内交互（与右栏小卡一致） */}
+      {!layoutFixed && (
+        <>
+          <Joystick disabled={locked} />
+          <div className="vm-tools">
+            {/* 第 1 个按钮：抓拍——截取当前画面整帧（原始分辨率）下载保存 */}
+            <button
+              type="button"
+              className="vm-tool"
+              disabled={locked}
+              title="抓拍"
+              aria-label="抓拍"
+              onClick={takeSnapshot}
+            >
+              <img className="vm-tool-icon" src={iconSnapshot} alt="" />
+            </button>
+            <button
+              type="button"
+              className="vm-tool"
+              disabled={locked}
+              title={recording ? '停止录像' : '录像'}
+              aria-label={recording ? '停止录像' : '录像'}
+              aria-pressed={recording}
+              onClick={() => {
+                /* 倒计时进行中忽略重复点击，避免重新计时 */
+                if (recordCountdown !== null) return
+                /* 录像中再点一次：停止录像并复位计时 */
+                if (recording) {
+                  setRecording(false)
+                  setRecordSeconds(0)
+                  return
+                }
+                setRecordCountdown(3)
+              }}
+            >
+              {/* 录像进行中：图标切换为 Camera.svg（圆环+红色 REC 方块） */}
+              <img className="vm-tool-icon" src={recording ? cameraRecording : iconRecord} alt="" />
+            </button>
+            {/* 录像时长：录像中显示于录像按钮正下方（mm:ss，如 15:24） */}
+            {recording && (
+              <span className="vm-record-duration">{formatRecordDuration(recordSeconds)}</span>
+            )}
+            {/* 第 3 个按钮：区域截图——点击进入截图模式，画面上框选后自动截取当前帧下载 */}
+            <button
+              type="button"
+              className={`vm-tool ${snipMode ? 'vm-tool--active' : ''}`}
+              disabled={locked}
+              title={snipMode ? '取消截图' : '截图'}
+              aria-label={snipMode ? '取消截图' : '截图'}
+              aria-pressed={snipMode}
+              onClick={toggleSnipMode}
+            >
+              <img className="vm-tool-icon" src={iconCrop} alt="" />
+            </button>
+            <button
+              type="button"
+              className="vm-tool"
+              disabled={locked}
+              title={expanded ? '取消全屏' : '全屏'}
+              aria-label={expanded ? '取消全屏' : '全屏'}
+              aria-pressed={expanded}
+              onClick={onToggleExpand}
+            >
+              {/* 全屏态切换为 src/assets/home/fullscreen-exit.svg（取消全屏图标） */}
+              <img
+                className="vm-tool-icon"
+                src={expanded ? exitFullscreenIcon : iconFullscreen}
+                alt=""
+              />
+            </button>
+          </div>
+        </>
+      )}
 
       {/* 区域截图浮层：全画面接收框选（青色选框 + 四角标记 + 尺寸标注，四周压暗），
           松开左键即截取当前帧下载；ESC 或空白处单击取消 */}
@@ -578,66 +664,68 @@ export function VideoChannelCard({
       )}
 
       {/* 底部操作条：默认收起为「操作」按钮；点击展开 跟随/跟随/打击 三按钮，
-          展开态左侧为箭头向右的收起 chip（点击收起）；锁定时全部禁用 */}
-      {actionOpen ? (
-        <div className="vm-action">
-          <button
-            type="button"
-            className="vm-chip vm-chip--action"
-            disabled={locked}
-            aria-label="收起操作按钮"
-            aria-expanded="true"
-            onClick={() => setActionOpen(false)}
-          >
-            <IconChevron />
-          </button>
-          <div className="vm-action-pill">
+          展开态左侧为箭头向右的收起 chip（点击收起）；锁定时全部禁用；
+          平铺视图不提供画面内交互（与右栏小卡一致） */}
+      {!layoutFixed &&
+        (actionOpen ? (
+          <div className="vm-action">
             <button
               type="button"
-              className={`vm-action-item ${panelAction === 'track' ? 'vm-action-item--active' : ''}`}
+              className="vm-chip vm-chip--action"
               disabled={locked}
-              aria-expanded={panelAction === 'track'}
-              onClick={() => setPanelAction(panelAction === 'track' ? null : 'track')}
+              aria-label="收起操作按钮"
+              aria-expanded="true"
+              onClick={() => setActionOpen(false)}
             >
-              跟踪
+              <IconChevron />
             </button>
-            <i className="vm-action-sep" />
-            <button
-              type="button"
-              className={`vm-action-item ${panelAction === 'follow' ? 'vm-action-item--active' : ''}`}
-              disabled={locked}
-              aria-expanded={panelAction === 'follow'}
-              onClick={() => setPanelAction(panelAction === 'follow' ? null : 'follow')}
-            >
-              跟随
-            </button>
-            <i className="vm-action-sep" />
-            <button
-              type="button"
-              className={`vm-action-item ${panelAction === 'strike' ? 'vm-action-item--active' : ''}`}
-              disabled={locked}
-              aria-expanded={panelAction === 'strike'}
-              onClick={() => setPanelAction(panelAction === 'strike' ? null : 'strike')}
-            >
-              打击
-            </button>
+            <div className="vm-action-pill">
+              <button
+                type="button"
+                className={`vm-action-item ${panelAction === 'track' ? 'vm-action-item--active' : ''}`}
+                disabled={locked}
+                aria-expanded={panelAction === 'track'}
+                onClick={() => setPanelAction(panelAction === 'track' ? null : 'track')}
+              >
+                跟踪
+              </button>
+              <i className="vm-action-sep" />
+              <button
+                type="button"
+                className={`vm-action-item ${panelAction === 'follow' ? 'vm-action-item--active' : ''}`}
+                disabled={locked}
+                aria-expanded={panelAction === 'follow'}
+                onClick={() => setPanelAction(panelAction === 'follow' ? null : 'follow')}
+              >
+                跟随
+              </button>
+              <i className="vm-action-sep" />
+              <button
+                type="button"
+                className={`vm-action-item ${panelAction === 'strike' ? 'vm-action-item--active' : ''}`}
+                disabled={locked}
+                aria-expanded={panelAction === 'strike'}
+                onClick={() => setPanelAction(panelAction === 'strike' ? null : 'strike')}
+              >
+                打击
+              </button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="vm-action vm-action--single">
-          <div className="vm-action-pill">
-            <button
-              type="button"
-              className="vm-action-item"
-              disabled={locked}
-              aria-expanded="false"
-              onClick={() => setActionOpen(true)}
-            >
-              操作
-            </button>
+        ) : (
+          <div className="vm-action vm-action--single">
+            <div className="vm-action-pill">
+              <button
+                type="button"
+                className="vm-action-item"
+                disabled={locked}
+                aria-expanded="false"
+                onClick={() => setActionOpen(true)}
+              >
+                操作
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        ))}
     </section>
   )
 }

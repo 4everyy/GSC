@@ -20,6 +20,21 @@
   box-shadow: none;
 }
 
+/* 主区画面拖动换位：可拖画面显示移动光标（信息条/视频空白区域按住即可拖动） */
+.vm-channel[draggable='true'] {
+  cursor: move;
+}
+
+/* 拖拽源画面半透明展示，松手/取消后恢复 */
+.vm-channel--dragging {
+  opacity: 0.45;
+}
+
+/* 拖拽悬停放置目标：青色描边提示可放置（与右栏空占位拖入高亮一致） */
+.vm-channel--drop-over {
+  box-shadow: inset 0 0 0 2px #1edadf;
+}
+
 /* ĺžäź çťé˘ĺŽšĺ¨ďźplaceholder-video.mp4 ĺ ä˝č§é˘éşćťĄďźć¸ĺĺşč˛ä˝ä¸şĺ č˝˝ĺĺĺşďźćĽçĺŽćľćśäťćżć˘ <video> ç src */
 
 .vm-video,
@@ -451,4 +466,35 @@
 
 .vm-mini-video .vm-video-offline-text {
   font-size: 12px;
+}
+
+/* 平铺视图主区离线占位：信息条（38px）覆盖画面顶部，占位改为在信息条
+   下方的可见画面区内水平垂直居中（与右栏小卡画面区居中行为一致） */
+
+.vm-main--tiled .vm-video-empty {
+  top: 38px;
+}
+
+/* 直播流（WHEP/WebRTC）状态提示：居中覆盖在 <video> 之上（连接中 / 不可用等待推流） */
+
+.vm-live-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.vm-live-status-text {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  font-family: MiSans, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-weight: 330;
+  word-wrap: break-word;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 14px;
+  border-radius: 2px;
 }

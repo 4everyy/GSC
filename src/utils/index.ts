@@ -124,8 +124,8 @@ export interface PanelThreshold {
 }
 
 export const DEFAULT_PANEL_THRESHOLD: PanelThreshold = {
-  // 面板宽度约 203-229px，在 1280px 视口约占 16-18%；留 4% 余量
-  rightEdge: 20,
+  // 在线面板宽度 max-content 自适应（约 229-280px），在 1280px 视口约占 18-22%；留 4% 余量
+  rightEdge: 26,
   leftEdge: 8,
   // 面板高度约 69-117px，在 720px 视口约占 10-16%；留 4% 余量
   bottomEdge: 18,

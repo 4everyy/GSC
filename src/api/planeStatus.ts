@@ -139,7 +139,7 @@ function fmt(value: number | undefined, digits = 3, suffix = ''): string {
 }
 
 /** createTime 直显：数值毫秒时间戳格式化为 yyyy/MM/dd  HH:mm:ss */
-function formatTelemetryTime(createTime: string | undefined): string {
+export function formatTelemetryTime(createTime: string | undefined): string {
   if (createTime === undefined || createTime === '') return '--'
   const ts = Number(createTime)
   if (!Number.isFinite(ts)) return createTime

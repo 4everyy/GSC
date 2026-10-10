@@ -9,4 +9,6 @@ interface ImportMetaEnv {
   readonly VITE_BACKEND_ENABLED?: string
   /** 跳过登录页开关：默认走登录验证（先登录成功再进首页）；设为 true 跳过登录直接进首页 */
   readonly VITE_SKIP_LOGIN?: string
+  /** 视频监测屏真实直播流 WHEP 端点（默认现场 MediaMTX http://192.168.120.210:8889/live/whep） */
+  readonly VITE_WHEP_STREAM_URL?: string
 }

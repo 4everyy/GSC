@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file App.tsx
  * @description App —— 登录门控 + 主应用。
  * @author 4everyy
@@ -156,8 +156,8 @@ function App() {
                 inset: 0,
                 display: 'grid',
                 placeItems: 'center',
-                background: '#050b18',
-                color: '#9fd8ff',
+                background: '#0e1013',
+                color: '#aab4c0',
                 fontSize: 14,
                 letterSpacing: '0.3em',
               }}
