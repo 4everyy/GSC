@@ -43,3 +43,6 @@ public/maps/*-wal
 # browser diagnostic artifacts
 .diag-screenshot.png
 .edge-diag-profile/
+
+# Kilo Code AI tool config
+.kilo/

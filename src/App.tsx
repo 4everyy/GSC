@@ -44,8 +44,17 @@ const prefetchMainApp = () => {
   void loadMainApp()
 }
 
-/** 是否跳过登录页：默认跳过直接进首页（演示阶段） */
-const SKIP_LOGIN = import.meta.env.VITE_SKIP_LOGIN !== 'false'
+/** 桌面壳（Electron preload）注入的运行时开关：登录窗强制显示登录页，kiosk 窗强制跳过 */
+interface GscDesktopBridge {
+  requireLogin?: boolean
+  skipLogin?: boolean
+}
+const DESKTOP_BRIDGE = (window as Window & { __GSC_DESKTOP__?: GscDesktopBridge }).__GSC_DESKTOP__
+
+/** 是否跳过登录页：kiosk 窗强制跳过；登录窗强制不跳过；浏览器按 VITE_SKIP_LOGIN（默认跳过，演示阶段） */
+const SKIP_LOGIN =
+  DESKTOP_BRIDGE?.skipLogin === true ||
+  (DESKTOP_BRIDGE?.requireLogin !== true && import.meta.env.VITE_SKIP_LOGIN !== 'false')
 
 /** 模块失效类错误特征：动态 import 网络层失败（dev 编辑中间态 / 部署更新后旧模块图失效） */
 const MODULE_LOAD_FAILURE_RE =
@@ -169,7 +178,13 @@ function App() {
           {route === 'video' ? <VideoApp /> : <MainApp />}
         </Suspense>
       ) : (
-        <LoginPage onSuccess={() => setLoggedIn(true)} />
+        <LoginPage
+          onSuccess={() => {
+            setLoggedIn(true)
+            // 桌面壳：登录成功 → 主进程关闭登录窗，按显示器数量打开 kiosk 双屏
+            ;(window as Window & { gscDesktop?: { notifyLoginSuccess?: () => void } }).gscDesktop?.notifyLoginSuccess?.()
+          }}
+        />
       )}
     </ErrorBoundary>
   )

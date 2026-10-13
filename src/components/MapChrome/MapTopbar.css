@@ -151,6 +151,12 @@
   height: clamp(20px, 2.08vw, 40px);
 }
 
+/* 顶栏窗口控制组（缩小 ─ / 关闭 ✕）：抵消右栏内边距，贴近右缘。
+   leading 槽的 ScreenToggle 开关在组内共享 8px 间距，无需额外补偿 */
+.status-header__right .win-controls {
+  margin-right: -14px;
+}
+
 /* ====== 地图工具栏 ====== */
 .map-toolbar-wrapper {
   position: absolute;

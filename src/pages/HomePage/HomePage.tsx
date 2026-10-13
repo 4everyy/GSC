@@ -57,10 +57,19 @@ import { AreaSelectOverlay } from '../../components/home/overlays/AreaSelectOver
 import { BottomBar } from '../../components/home/bottom-bar/BottomBar'
 import { useMapFocusRequests } from './useMapFocusRequests'
 import { useAircraftSeedAnchors, useTargetLngLatKey, useTargetSeedAnchors } from './useSeedAnchors'
+import { CollapsedTaskbar } from '../../components/WindowControls/CollapsedTaskbar'
+import { closeWindow, minimizeWindow } from '../../lib/windowControls'
 
 
 export function HomePage() {
   // activeAlarm/pendingAlarm/alarmCollapsing 及双定时器全部…
+
+  // 页面收起态（浏览器收纳方案）：true 时画布隐藏，仅显示底部任务栏页签（桌面壳内走系统最小化，不经此态）
+  const [collapsed, setCollapsed] = useState(false)
+  // 缩小：桌面壳内最小化到系统任务栏（任务栏标签右键关闭）；纯浏览器内收纳为底部任务栏页签
+  const handleMinimize = () => {
+    if (minimizeWindow() === 'collapsed') setCollapsed(true)
+  }
 
   // 聚焦视图：双击无人机图标后显示设备详情面板（存储聚焦的飞机索引）
   const [focusedAircraft, setFocusedAircraft] = useState<number | null>(null)
@@ -332,7 +341,7 @@ export function HomePage() {
 
   return (
     <main
-      className={`design-viewport${tapReturnOpen && !tapReturnPoint ? ' tap-return-mode' : ''}${waypointFlightOpen ? ' waypoint-flight-mode' : ''}${waypointFlightOpen && waypointPickingActive && !waypointPoint ? ' waypoint-picking' : ''}${routeFlightOpen && routeFlightPicking ? ' route-flight-picking' : ''}${orbitFlightOpen && !orbitPoint ? ' orbit-flight-mode' : ''}${formationFlightOpen && !formationFlightPoint ? ' formation-flight-mode' : ''}`}
+      className={`design-viewport${collapsed ? ' design-viewport--collapsed' : ''}${tapReturnOpen && !tapReturnPoint ? ' tap-return-mode' : ''}${waypointFlightOpen ? ' waypoint-flight-mode' : ''}${waypointFlightOpen && waypointPickingActive && !waypointPoint ? ' waypoint-picking' : ''}${routeFlightOpen && routeFlightPicking ? ' route-flight-picking' : ''}${orbitFlightOpen && !orbitPoint ? ' orbit-flight-mode' : ''}${formationFlightOpen && !formationFlightPoint ? ' formation-flight-mode' : ''}`}
       aria-label="智能无人集群控制系统"
     >
       <div className="design-canvas">
@@ -344,7 +353,7 @@ export function HomePage() {
           styleSpec={activeStyle}
         />
 
-        <StatusHeader />
+        <StatusHeader onMinimize={handleMinimize} />
 
 
         <section className="map-stage">
@@ -529,6 +538,15 @@ export function HomePage() {
           </footer>
         </section>
       </div>
+
+      {/* 收起态（浏览器收纳方案）：底部任务栏页签，左键还原、右键关闭页签 */}
+      {collapsed && (
+        <CollapsedTaskbar
+          title="态势主屏"
+          onRestore={() => setCollapsed(false)}
+          onClose={closeWindow}
+        />
+      )}
     </main>
   )
 }

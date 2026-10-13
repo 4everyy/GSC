@@ -10,6 +10,8 @@ import { aircraft } from '../../../config/index'
 import { useFlightAnimStore } from '../../../stores/index'
 import { useEffect, useState } from 'react'
 import { type FlightOverlaysProps } from './FlightOverlays'
+import { bearingDeg, destinationLL } from '../../../lib/geo'
+import type { LngLat } from '../../../map-engines'
 
 /** 返航航线/指点返航/编队飞行/环绕取点定格/航点取点… */
 
@@ -290,10 +292,11 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
         />
       ))}
 
-      {/* 环绕飞行定格图钉 + 盘旋圆 + 最近点连线：左键点击地图定格环绕中心后，
-              以盘旋半径（米）按当前缩放（getMetersPerPixel）换算像素半径绘制绿色虚线圆，
-              并从选中飞机图标中心沿连线方向取圆周最近点画绿色虚线直线；
-              半径步进/缩放/重新取点时联动刷新；确认/取消面板时清除 */}
+      {/* 环绕飞行定格图钉 + 盘旋圆 + 最近点连线：左键点击地图定格环绕中心后绘制绿色虚线（生成后实线）。
+              盘旋圆为「地理圆的逐点投影」（72 段折线近似，与盘旋动效 useOrbitFlight 同一世界坐标口径）——
+              任意拖拽/缩放/右键旋转/俯仰视角下画面轨迹圆与飞机实际盘旋圆严格重合
+              （旧屏幕半径圆在俯仰/旋转视角下会失真偏离故弃用）；连线远端取圆周地理最近点
+              （圆心→飞机地理方位上的圆周点投影）；半径步进/视角变化/重新取点时逐帧联动刷新；确认/取消面板时清除 */}
       {orbitFlightOpen &&
         orbitPoint &&
         (() => {
@@ -301,29 +304,33 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
           const idx = aircraft.findIndex((a) => selectedDevices.has(a.deviceIndex))
           const stage = document.querySelector('.map-stage')?.getBoundingClientRect()
           if (idx === -1 || !stage) return null
-          const mpp = adapter.getMetersPerPixel()
-          const rPx = Math.max(2, orbitRadius / mpp)
-          // 定格环绕中心按经纬度重投影为当前视口坐标（容器原点偏移换算）：地图拖动/旋转/缩放后图钉与盘旋圆仍钉在同一地理位置不漂移
+          // 定格环绕中心等地理点按经纬度重投影为当前视口坐标（容器原点偏移换算）：地图拖动/旋转/缩放/俯仰后轨迹仍钉在同一地理位置不漂移
           const container = adapter.getContainer()
           const bounds = container.getBoundingClientRect()
-          const p = adapter.project({ lng: orbitPoint.lng, lat: orbitPoint.lat })
-          const center = { ...orbitPoint, x: bounds.left + p.x, y: bounds.top + p.y }
+          const projectLL = (ll: LngLat) => {
+            const p = adapter.project(ll)
+            return { x: bounds.left + p.x, y: bounds.top + p.y }
+          }
+          const centerLL: LngLat = { lng: orbitPoint.lng, lat: orbitPoint.lat }
+          const center = projectLL(centerLL)
           // 飞机图标按百分比挂在 .map-stage 上，换算视口像素取图标中心（+24）
           const planeX = stage.left + (aircraftPositions[idx].x / 100) * stage.width + 24
           const planeY = stage.top + (aircraftPositions[idx].y / 100) * stage.height + 24
-          // 圆周最近点：圆心沿「飞机→圆心」方向回退半径像素（无人机恰在圆心时取正右方）
-          const dx = center.x - planeX
-          const dy = center.y - planeY
-          const dist = Math.hypot(dx, dy)
-          const ux = dist > 1e-6 ? dx / dist : 1
-          const uy = dist > 1e-6 ? dy / dist : 0
+          // 圆周最近点：圆心沿「圆心→飞机」地理方位上的圆周点（与切入动效同口径；无人机恰在圆心时取正北）
+          const planeLL = adapter.unproject({ x: planeX - bounds.left, y: planeY - bounds.top })
+          const entry = projectLL(destinationLL(centerLL, bearingDeg(centerLL, planeLL), orbitRadius))
+          // 盘旋圆折线：自正北起 72 个均匀方位的圆周点逐点投影（首尾闭合）
+          const CIRCLE_SEGMENTS = 72
+          const circlePts: string[] = []
+          for (let i = 0; i <= CIRCLE_SEGMENTS; i++) {
+            const pt = projectLL(destinationLL(centerLL, (i * 360) / CIRCLE_SEGMENTS, orbitRadius))
+            circlePts.push(`${pt.x.toFixed(1)},${pt.y.toFixed(1)}`)
+          }
           return (
             <>
               <svg className="orbit-flight-graphics" aria-hidden="true">
-                <circle
-                  cx={center.x}
-                  cy={center.y}
-                  r={rPx}
+                <polyline
+                  points={circlePts.join(' ')}
                   fill="none"
                   stroke="#00FF95"
                   strokeWidth={1}
@@ -332,8 +339,8 @@ export function FlightMarkerOverlays(props: FlightOverlaysProps) {
                 <line
                   x1={planeX}
                   y1={planeY}
-                  x2={center.x - ux * rPx}
-                  y2={center.y - uy * rPx}
+                  x2={entry.x}
+                  y2={entry.y}
                   stroke="#00FF95"
                   strokeWidth={1}
                   strokeDasharray={orbitRouteGenerated ? undefined : '16 10'}

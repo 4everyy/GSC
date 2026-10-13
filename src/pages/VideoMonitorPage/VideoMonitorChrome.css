@@ -118,6 +118,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 页面收起态（浏览器收纳方案）：整页内容隐藏，仅显示底部任务栏页签 */
+.vm-page--collapsed .vm-topbar,
+.vm-page--collapsed .vm-body {
+  display: none;
+}
+
 
 /* ---------------- 主体 ---------------- */
 

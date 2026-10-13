@@ -7,9 +7,12 @@
 import { ALARM_BADGES } from '../../config/index'
 import { homeImages } from '../../assets/home/index'
 import { useAlarmPanelStore, usePlaneStatusStore } from '../../stores/index'
+import { WindowControls } from '../WindowControls/WindowControls'
+import { ScreenToggle } from '../ScreenToggle'
 
-/** 顶栏（WB-PF-002）：告警徽标状态自 alarmPanelStore 订阅（无 props） */
-export function StatusHeader() {
+/** 顶栏（WB-PF-002）：告警徽标状态自 alarmPanelStore 订阅（无 props）；
+ *  onMinimize：缩小按钮回调（页面据此收纳为底部任务栏页签，见 HomePage） */
+export function StatusHeader({ onMinimize }: { onMinimize?: () => void }) {
   const activeAlarm = useAlarmPanelStore((s) => s.activeAlarm)
   const handleAlarmClick = useAlarmPanelStore((s) => s.handleAlarmClick)
   // 集群统计（queryPlaneStatus data 顶层字段）：在线 = planeOnline/planeTotal
@@ -53,6 +56,8 @@ export function StatusHeader() {
           </span>
         ))}
         <img className="avatar" src={homeImages.userAvatar} alt="用户" />
+        {/* 顶栏窗口控制组：leading 槽放「视频监测屏」开关（对方屏关掉后可从此唤醒），缩小 ─ / 叉号 ✕ */}
+        <WindowControls onMinimize={onMinimize} leading={<ScreenToggle self="#/" />} />
       </div>
     </header>
   )

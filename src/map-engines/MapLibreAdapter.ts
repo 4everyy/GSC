@@ -88,6 +88,10 @@ export class MapLibreAdapter implements MapAdapter {
     return (EARTH_CIRCUMFERENCE * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, zoom + 8)
   }
 
+  getBearing(): number {
+    return this.map.getBearing()
+  }
+
   getContainer(): HTMLElement {
     return this.map.getContainer()
   }

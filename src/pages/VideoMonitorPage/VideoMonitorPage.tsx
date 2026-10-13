@@ -1,6 +1,6 @@
 /**
  * @file VideoMonitorPage.tsx
- * @description VideoMonitorPage —— 视频监测屏（双屏视角第二屏）。 依据 demo.txt 设计稿还原（1920×1080）： - 顶栏：系统标题「智能无人集群图传系统」/ 实时时钟 / 四宫格-平铺视图切换 / 在线数量； - 顶栏「平铺视图」切换按钮右侧 24px 处放置 48×48 框（背景与顶栏菜单栏一致）， 中心展示 lock.svg 图标（素材：src/assets/task-panel/lock.svg）； - 顶栏锁定框：点击在 lock.svg（未锁）↔ lock-active.svg（锁定）间切换；锁定期间页面下方 全部操作（视图切换/画面内摇杆/工具列/操作条/参数面板/拖拽/右栏折叠）均禁用， 仅锁定框本身可点击，解锁后方可继续对应操作； - 顶栏「在线数量」前的图标使用 src/assets/task-panel/link.svg； - 主区：四宫格视频画面（768×432 一路），含信息条（设备名/在线/电量）、 左下虚拟摇杆、右侧工具列（抓拍/录像/裁剪/全屏，图标取自 video-monitor 素材）、 底部操作条（默认「操作」按钮；点击展开 跟随|跟随|打击 三按钮，左侧箭头向右的 chip 收起）； - 点击操作条中的「跟踪/跟随/打击」在画面右侧（距容器右缘 16px、距标题条底部 16px）展开对应参数设置面板（目标跟踪/目标跟随/目标打击参数设置）： 目标ID（下拉）/ 跟随距离 / 跟随高度（-1/数值/+1 步进，单位 m）/ 跟随方位（自动|左后|右后|右后 四段）/ 确认打击 / 取消； - 右栏：「其他在线设备」小卡列表（跟踪中状态 + 电量），可折叠； - 信息条右上角叉号关闭画面后格子占位保留（渲染空占位）， 支持将右栏小卡设备按住鼠标左键拖入空占位升格为完整画面（拖入后从右栏移除）； 画面阶段：暂无真实图传流，在线画面恒有流、按设备名确定性播放样例视频（四宫格/平铺两视图数据一致，同一设备两视图画面相同）， 离线画面显示「设备已离线」占位（见 PlaceholderVideoStream.tsx）；叉号关闭后的空格子保留「空视频位」占位 （src/assets/task-panel/Camera.svg 图标 + 文案），等待右栏设备拖入承接； 后续接真实图传流时在 LiveVideoStream / PlaceholderVideoStream 中接入流地址即可。 注：画面内目标标记框（vm-target）按需求暂不显示，mock 数据保留在 videoMonitorData.ts，后续需要时在此恢复渲染即可。 登录门控：由 App.tsx 统一控制，未登录不会进入本屏。
+ * @description VideoMonitorPage —— 视频监测屏（双屏视角第二屏）。 依据 demo.txt 设计稿还原（1920×1080）： - 顶栏：系统标题「智能无人集群图传系统」/ 实时时钟 / 四宫格-平铺视图切换 / 在线数量； - 顶栏「平铺视图」切换按钮右侧 24px 处放置 48×48 框（背景与顶栏菜单栏一致）， 中心展示 lock.svg 图标（素材：src/assets/task-panel/lock.svg）； - 顶栏锁定框：点击在 lock.svg（未锁）↔ lock-active.svg（锁定）间切换；锁定期间页面下方 全部操作（视图切换/画面内摇杆/工具列/操作条/参数面板/拖拽/右栏折叠）均禁用， 仅锁定框本身可点击，解锁后方可继续对应操作； - 顶栏「在线数量」前的图标使用 src/assets/task-panel/link.svg； - 顶栏时间右侧提供窗口控制（共享 WindowControls 组件，态势主屏顶栏同款）：缩小（─）最小化窗口到任务栏（任务栏图标还原），叉号关闭（✕）关闭窗口，桌面壳下经 gscWin 桥走 IPC，浏览器内缩小为无操作（安全沙箱限制）、关闭退化为返回态势主屏 #/，锁定期间一并禁用； - 主区：四宫格视频画面（768×432 一路），含信息条（设备名/在线/电量）、 左下虚拟摇杆、右侧工具列（抓拍/录像/裁剪/全屏，图标取自 video-monitor 素材）、 底部操作条（默认「操作」按钮；点击展开 跟随|跟随|打击 三按钮，左侧箭头向右的 chip 收起）； - 点击操作条中的「跟踪/跟随/打击」在画面右侧（距容器右缘 16px、距标题条底部 16px）展开对应参数设置面板（目标跟踪/目标跟随/目标打击参数设置）： 目标ID（下拉）/ 跟随距离 / 跟随高度（-1/数值/+1 步进，单位 m）/ 跟随方位（自动|左后|右后|右后 四段）/ 确认打击 / 取消； - 右栏：「其他在线设备」小卡列表（跟踪中状态 + 电量），可折叠； - 信息条右上角叉号关闭画面后格子占位保留（渲染空占位）， 支持将右栏小卡设备按住鼠标左键拖入空占位升格为完整画面（拖入后从右栏移除）； 画面阶段：暂无真实图传流，在线画面恒有流、按设备名确定性播放样例视频（四宫格/平铺两视图数据一致，同一设备两视图画面相同）， 离线画面显示「设备已离线」占位（见 PlaceholderVideoStream.tsx）；叉号关闭后的空格子保留「空视频位」占位 （src/assets/task-panel/Camera.svg 图标 + 文案），等待右栏设备拖入承接； 后续接真实图传流时在 LiveVideoStream / PlaceholderVideoStream 中接入流地址即可。 注：画面内目标标记框（vm-target）按需求暂不显示，mock 数据保留在 videoMonitorData.ts，后续需要时在此恢复渲染即可。 登录门控：由 App.tsx 统一控制，未登录不会进入本屏。
  * @author 4everyy
  * @date 2026-10-07
  */
@@ -24,6 +24,10 @@ import { IconChevron, IconGrid4, IconTile } from './VideoMonitorIcons'
 import { TopBarClock } from './TopBarClock'
 import { VideoChannelCard } from './VideoChannelCard'
 import { MiniDeviceItem } from './MiniDeviceItem'
+import { WindowControls } from '../../components/WindowControls/WindowControls'
+import { ScreenToggle } from '../../components/ScreenToggle'
+import { CollapsedTaskbar } from '../../components/WindowControls/CollapsedTaskbar'
+import { closeWindow, minimizeWindow } from '../../lib/windowControls'
 
 /* ---------------- 页面 ---------------- */
 
@@ -116,8 +120,16 @@ export function VideoMonitorPage() {
   /** 锁定框状态：未锁定显示 lock.svg（白色），锁定后切换为 lock-active.svg（橙色闭锁）；
       锁定期间下方全部操作禁用，仅锁定框可点击解锁 */
   const [locked, setLocked] = useState(false)
+  /** 页面收起态（浏览器收纳方案）：true 时整页隐藏，仅显示底部任务栏页签（桌面壳内走系统最小化，不经此态） */
+  const [collapsed, setCollapsed] = useState(false)
   /** 页内展开画面 id：非 null 时该画面铺满整个视图（非浏览器全屏） */
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  /* 缩小：桌面壳内最小化到系统任务栏（任务栏标签右键关闭）；
+     纯浏览器内收纳为底部任务栏页签（左键还原、右键关闭页签） */
+  const handleMinimize = () => {
+    if (minimizeWindow() === 'collapsed') setCollapsed(true)
+  }
 
   /* ESC 收起展开画面（与全屏一致的交互预期）；锁定期间不响应 */
   useEffect(() => {
@@ -130,7 +142,9 @@ export function VideoMonitorPage() {
   }, [expandedId, locked])
 
   return (
-    <div className={`vm-page ${locked ? 'vm-page--locked' : ''}`}>
+    <div
+      className={`vm-page ${locked ? 'vm-page--locked' : ''} ${collapsed ? 'vm-page--collapsed' : ''}`}
+    >
       {/* 顶栏 */}
       <header className="vm-topbar">
         <div className="vm-topbar-left">
@@ -191,6 +205,8 @@ export function VideoMonitorPage() {
             <img className="vm-clock-icon" src={timeIcon} alt="" />
             <TopBarClock />
           </span>
+          {/* 时间右侧窗口控制组：leading 槽放「态势主屏」开关（对方屏关掉后可从此唤醒），锁定期间一并禁用 */}
+          <WindowControls disabled={locked} onMinimize={handleMinimize} leading={<ScreenToggle self="#/video" disabled={locked} />} />
         </div>
       </header>
 
@@ -381,6 +397,16 @@ export function VideoMonitorPage() {
           </aside>
         )}
       </div>
+
+      {/* 收起态（浏览器收纳方案）：底部任务栏页签，左键还原、右键关闭页签 */}
+      {collapsed && (
+        <CollapsedTaskbar
+          title="视频监测"
+          icon={cameraIcon}
+          onRestore={() => setCollapsed(false)}
+          onClose={closeWindow}
+        />
+      )}
     </div>
   )
 }

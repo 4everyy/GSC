@@ -1,0 +1,45 @@
+/* ScreenToggle.css —— 顶栏「另一屏」开关（桌面壳双屏唤醒入口），各屏顶栏共用。
+   与 WindowControls 同规格的 36×36 图标按钮（作为其 leading 槽位排进按钮组）：
+   图标为双 pane 显示屏，另一屏 pane 存活 = 青绿填充、关闭 = 暗色幽灵。
+   注意：主屏顶栏 .status-header 整体 pointer-events: none，开关单独恢复事件。 */
+
+.screen-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s, color 0.15s;
+}
+
+.screen-toggle:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.screen-toggle__icon {
+  display: block;
+}
+
+/* 另一屏 pane：暗色幽灵 = 已关，青绿填充 = 存活（与开启色一致） */
+.screen-toggle__pane {
+  fill: rgba(255, 255, 255, 0.16);
+  stroke: none;
+  transition: fill 0.15s;
+}
+
+.screen-toggle__pane.is-on {
+  fill: #2fbf8f;
+}
+
+.screen-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}

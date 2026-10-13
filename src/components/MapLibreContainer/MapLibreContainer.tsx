@@ -112,6 +112,10 @@ export function MapLibreContainer({
         const adapter = new MapLibreAdapter(map)
         adapterRef.current = adapter
         setStatus('success')
+        // dev 调试探针：暴露引擎实例供控制台/自动化测试读取（生产构建剔除）
+        if (import.meta.env.DEV) {
+          ;(window as unknown as Record<string, unknown>).__gscMapEngine = { adapter, raw: map }
+        }
         onReadyRef.current?.({ adapter, raw: map, engine: 'maplibre' })
       })
 

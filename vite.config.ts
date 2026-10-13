@@ -1,7 +1,7 @@
 /**
  * GSC 地面站 Vite 配置。
  */
-import { defineConfig, loadEnv, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Connect, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { createReadStream, existsSync, readFileSync, stat, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -59,39 +59,49 @@ function gscDevInject(): Plugin {
   }
 }
 
-/** dev 静态服务对 /maps/*.mbtiles 提供 HTTP Range 支持（数 GB 级离线包必需） */
+/** dev 静态服务对 /maps/*.mbtiles 提供 HTTP Range 支持（数 GB 级离线包必需）。
+ * 双端生效：dev（configureServer）与 preview（configurePreviewServer）共用同一中间件——
+ * 桌面壳启动器已切换为「生产构建 + vite preview」模式，离线地图在 preview 下同样需要 Range。 */
 function gscMbtilesRangePlugin(): Plugin {
+  /** 生成 Range 中间件；root 为静态根目录（dev/preview 均为项目根） */
+  const makeMiddleware = (root: string): Connect.NextHandleFunction => {
+    return (req, res, next) => {
+      const m = /^\/maps\/([A-Za-z0-9_-]+\.mbtiles)$/.exec(req.url ?? '')
+      if (!m) return next()
+      const file = join(root, 'public', 'maps', m[1])
+      stat(file, (err, st) => {
+        if (err || !st.isFile()) return next()
+        const size = st.size
+        const range = /bytes=(\d*)-(\d*)/.exec(String(req.headers.range ?? ''))
+        const send = (code: number, head: Record<string, string | number>) => {
+          res.writeHead(code, { 'Accept-Ranges': 'bytes', 'Content-Type': 'application/octet-stream', ...head })
+        }
+        if (!range) {
+          send(200, { 'Content-Length': size })
+          createReadStream(file).pipe(res)
+          return
+        }
+        const start = range[1] ? Number(range[1]) : 0
+        const end = Math.min(range[2] ? Number(range[2]) : size - 1, size - 1)
+        if (start < 0 || start > end || start >= size) {
+          send(416, { 'Content-Range': 'bytes */' + size })
+          res.end()
+          return
+        }
+        send(206, { 'Content-Range': `bytes ${start}-${end}/${size}`, 'Content-Length': end - start + 1 })
+        createReadStream(file, { start, end }).pipe(res)
+      })
+    }
+  }
   return {
     name: 'gsc-mbtiles-range',
     apply: 'serve',
     configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        const m = /^\/maps\/([A-Za-z0-9_-]+\.mbtiles)$/.exec(req.url ?? '')
-        if (!m) return next()
-        const file = join(server.config.root, 'public', 'maps', m[1])
-        stat(file, (err, st) => {
-          if (err || !st.isFile()) return next()
-          const size = st.size
-          const range = /bytes=(\d*)-(\d*)/.exec(String(req.headers.range ?? ''))
-          const send = (code: number, head: Record<string, string | number>) => {
-            res.writeHead(code, { 'Accept-Ranges': 'bytes', 'Content-Type': 'application/octet-stream', ...head })
-          }
-          if (!range) {
-            send(200, { 'Content-Length': size })
-            createReadStream(file).pipe(res)
-            return
-          }
-          const start = range[1] ? Number(range[1]) : 0
-          const end = Math.min(range[2] ? Number(range[2]) : size - 1, size - 1)
-          if (start < 0 || start > end) {
-            send(416, { 'Content-Range': 'bytes */' + size })
-            res.end()
-            return
-          }
-          send(206, { 'Content-Range': 'bytes ' + start + '-' + end + '/' + size, 'Content-Length': end - start + 1 })
-          createReadStream(file, { start, end }).pipe(res)
-        })
-      })
+      server.middlewares.use(makeMiddleware(server.config.root))
+    },
+    // vite preview（命令同为 serve）不调用 configureServer，需单独挂 configurePreviewServer
+    configurePreviewServer(server) {
+      server.middlewares.use(makeMiddleware(server.config.root))
     },
   }
 }
@@ -153,6 +163,14 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_API_PROXY_TARGET || 'http://192.168.120.43:2222'
   return {
     plugins: [gscMbtilesRangePlugin(), gscMaplibreWorkerPlugin(), react(), gscDevInject()],
+    resolve: {
+      alias: {
+        // js-clipper（@paddle-js-models/ocr 的传递依赖）源文件含 CP1252 编码的注释字节，
+        // rolldown 构建报 "stream did not contain valid UTF-8" 无法解析；
+        // alias 到仓库内转码副本（vendor/js-clipper/clipper.js，仅注释符号差异）。
+        'js-clipper': resolve(process.cwd(), 'vendor/js-clipper/clipper.js'),
+      },
+    },
     // maplibre-gl 内部使用 Web Worker，若被 Vite 依赖预打包会破坏 worker 引用
     // (maplibre-gl-worker.mjs)，导致 map 'load' 事件永不触发、UI 卡在加载中。
     // 排除后让浏览器直接按原始路径加载 worker。
@@ -186,6 +204,11 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: true,
+      // 服务启动即预热应用入口（连同 main.tsx 的整张模块依赖图提前转换），
+      // 消除 dev 模式首次打开页面时「浏览器边请求边等编译」的长白屏等待
+      warmup: {
+        clientFiles: ['./index.html', './src/main.tsx'],
+      },
       // 离线地图包体积大（数百 MB），chokidar 监听复制中的大文件会 EBUSY 崩溃
       // dev server；瓦片按需 fetch，无需热更新，直接忽略。
       watch: {

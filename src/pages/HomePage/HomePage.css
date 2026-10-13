@@ -32,6 +32,11 @@
   flex-direction: column;
 }
 
+/* 主屏收起态（浏览器收纳方案）：画布整体隐藏，仅显示底部任务栏页签 */
+.design-viewport--collapsed .design-canvas {
+  display: none;
+}
+
 /* ====== 地图舞台 ====== */
 .map-stage {
   position: relative;

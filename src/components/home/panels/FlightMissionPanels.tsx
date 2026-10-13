@@ -227,10 +227,20 @@ export function FlightMissionPanels({
                 .sort((a, b) => a - b)
                 .map((index) => rawPlanes[index]?.id)
                 .filter((id): id is string => !!id)[0]
+              // 起飞点同步携带 WGS84 经纬度（视口坐标反算）：拖拽/缩放地图后阶段一/二起飞点每帧重投影，飞机与地图相对位置不随拖拽改变
+              const planeX = stage.left + (aircraftPositions[idx].x / 100) * stage.width + 24
+              const planeY = stage.top + (aircraftPositions[idx].y / 100) * stage.height + 24
+              const mapRect = adapter.getContainer().getBoundingClientRect()
+              const planeLL = adapter.unproject({
+                x: planeX - mapRect.left,
+                y: planeY - mapRect.top,
+              })
               startOrbitFlight({
                 plane: {
-                  x: stage.left + (aircraftPositions[idx].x / 100) * stage.width + 24,
-                  y: stage.top + (aircraftPositions[idx].y / 100) * stage.height + 24,
+                  x: planeX,
+                  y: planeY,
+                  lng: planeLL.lng,
+                  lat: planeLL.lat,
                 },
                 center: {
                   x: orbitPoint.x,

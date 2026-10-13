@@ -27,4 +27,6 @@ export interface WaypointFlightMapAdapter {
   unproject(point: { x: number; y: number }): { lng: number; lat: number }
   /** 当前比例尺下每像素米数（可选；航线飞行地理锚定的地面速度换算用） */
   getMetersPerPixel?: () => number
+  /** 当前视角方位角（度，正北 0 顺时针；可选；环绕飞行世界航向换算屏幕航向用） */
+  getBearing?: () => number
 }

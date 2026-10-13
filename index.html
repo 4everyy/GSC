@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>智能无人集群控制系统</title>
+    <!--
+      必须是内联脚本且先于所有 module 脚本执行：
+      @paddle-js-models/ocr 内嵌 OpenCV.js 的 UMD 包装含有
+      `if (typeof Module === "undefined") Module = {}`，在严格模式（ESM）下
+      对未声明标识符赋值会抛 "ReferenceError: Module is not defined"。
+      生产构建的 advancedChunks 会把该依赖并入 vendor chunk，其求值时机早于
+      VideoMonitorPage 里的 paddleOcrShim.ts，导致登录页/首页即崩。
+      此处全局预置 window.Module 后 typeof 判定为已定义、跳过赋值，
+      与 src/pages/VideoMonitorPage/paddleOcrShim.ts 语义一致（后者保留作兜底）。
+    -->
+    <script>
+      window.Module = window.Module ?? {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

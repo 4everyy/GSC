@@ -173,6 +173,9 @@ export interface MapAdapter {
   /** 计算当前缩放级别下，每像素对应的实际米数。 */
   getMetersPerPixel(): number
 
+  /** 当前视角方位角（度，正北 0 顺时针；可选，环绕飞行世界航向换算屏幕航向用） */
+  getBearing?(): number
+
   /** 获取地图容器 DOM 元素。 */
   getContainer(): HTMLElement
   /** 容器像素坐标 → 经纬度（WGS84），用于屏幕选区换算地理坐标 */

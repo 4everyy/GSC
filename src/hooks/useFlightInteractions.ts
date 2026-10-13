@@ -8,6 +8,7 @@ import { useEffect } from 'react'
 import { type useExclusivePanels } from './useExclusivePanels'
 import { type useFlightAnimations } from './useFlightAnimations'
 import { type useMapEngine } from './index'
+import { useFlightAnimStore } from '../stores/index'
 
 type Panels = ReturnType<typeof useExclusivePanels>
 type Animations = ReturnType<typeof useFlightAnimations>
@@ -51,6 +52,7 @@ export function useFlightInteractions(
     setOrbitFlightOpen,
     orbitPoint,
     orbitRouteGenerated,
+    orbitFlightConfirmed,
     setOrbitFlightHover,
     setOrbitPoint,
     setOrbitRouteGenerated,
@@ -216,15 +218,23 @@ export function useFlightInteractions(
       setOrbitPinMenuOpen(false)
       setOrbitPoint({ x: e.clientX, y: e.clientY, lat: ll.lat, lng: ll.lng })
     }
-    // - 取点阶段（尚未定格环绕中心）：右键等效面板「取消」按钮——清…
+    // 右键取消（仅地图上生效，点击 UI 不取消，阻止默认右键菜单）：
+    // - 取点阶段（尚未定格环绕中心）：右键等效面板「取消」按钮——收起面板；
+    // - 已定格环绕中心（未确认）：右键清除中心与航线恢复取点（等效图钉「取消重绘」），面板保持展开；
+    // - 确认执行中（盘旋飞行动画进行）：右键不做任何取消操作——执行中的飞行动态仅可通过面板「取消」按钮终止
     const handleOrbitContextMenu = (e: MouseEvent) => {
       if (!adapter) return
       const container = adapter.getContainer()
       if (!container || !(e.target instanceof Node) || !container.contains(e.target)) return
       e.preventDefault()
+      // 确认执行中（滑动确认后盘旋动画进行）：右键仅屏蔽默认右键菜单，不触发任何取消——
+      // 防止地图右键误触终止执行中的飞行任务；同时兜底动画 store 实际状态，杜绝状态不同步漏判
+      const orbitFlying = !!useFlightAnimStore.getState().orbitFlight
+      if (orbitFlightConfirmed || orbitFlying) return
       setOrbitPoint(null)
       setOrbitRouteGenerated(false)
       setOrbitPinMenuOpen(false)
+      // 尚未取点：右键等效面板「取消」按钮收起面板；已取点未确认：保持展开可重新取点
       if (!orbitPoint) setOrbitFlightOpen(false)
     }
     document.addEventListener('mousemove', handleOrbitMouseMove)
@@ -236,7 +246,7 @@ export function useFlightInteractions(
       document.removeEventListener('contextmenu', handleOrbitContextMenu)
       setOrbitFlightHover(null)
     }
-  }, [orbitFlightOpen, orbitPoint, adapter, setOrbitFlightHover, setOrbitPoint, setOrbitRouteGenerated, setOrbitPinMenuOpen, setOrbitFlightOpen])
+  }, [orbitFlightOpen, orbitPoint, orbitFlightConfirmed, adapter, setOrbitFlightHover, setOrbitPoint, setOrbitRouteGenerated, setOrbitPinMenuOpen, setOrbitFlightOpen])
 
   // 编队飞行取点：面板打开且尚未定格航点期间，鼠标在地图容器内移动时图钉实时跟随（钉尖对准鼠标，替代原生光标）
   useEffect(() => {

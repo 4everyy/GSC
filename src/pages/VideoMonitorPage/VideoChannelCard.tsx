@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type DragEvent as ReactDragEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { type VideoChannel } from './videoMonitorData'
@@ -28,6 +29,8 @@ import { Joystick } from './Joystick'
 import { FollowSettingsPanel } from './FollowSettingsPanel'
 import { OfflineVideoStream, pickDemoVideo } from './PlaceholderVideoStream'
 import { LiveVideoStream, LIVE_STREAM_CHANNEL_IDS } from './LiveVideoStream'
+import { detectBlueMarks } from './blueMarkDetect'
+import { readBlueMarkText, preloadBlueMarkOcr } from './ocrBlueMark'
 
 /* ---------------- 画面抓拍 / 区域截图工具（工具列第 1 / 第 3 个按钮） ---------------- */
 
@@ -49,6 +52,10 @@ const formatSnapStamp = (d = new Date()) => {
   const p = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
 }
+
+/** 单击截图固定尺寸（视频原始像素）：以鼠标点击处为中心截取 */
+const CLICK_SNAP_W = 320
+const CLICK_SNAP_H = 240
 
 /** object-fit: cover 显示映射：容器内选区 → 视频原始像素源区域（等比缩放 + 居中偏移） */
 function coverSourceRect(
@@ -86,6 +93,23 @@ async function captureVideoFrame(
   if (!ctx) return null
   ctx.drawImage(video, src.x, src.y, src.w, src.h, 0, 0, canvas.width, canvas.height)
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+}
+
+/** 为 Promise 加超时上限（OCR 首次初始化/识别异常时不阻塞页面交互） */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(`${label} 超时`)), ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (err) => {
+        window.clearTimeout(timer)
+        reject(err)
+      },
+    )
+  })
 }
 
 /** 抓拍整帧：按视频原始分辨率截取当前画面为 PNG Blob（不丢像素、不受 cover 裁切影响） */
@@ -227,6 +251,11 @@ export function VideoChannelCard({
     return () => window.clearTimeout(timer)
   }, [snipToast])
 
+  /* PaddleOCR 模型预热：加载本地 public/paddle-ocr/ 模型（数 MB），之后命中蓝标识别时直接推理 */
+  useEffect(() => {
+    void preloadBlueMarkOcr().catch(() => {})
+  }, [])
+
   /* 录像倒计时：每秒递减一次（3→2→1），最后一位数走满 1 秒后自动收起浮层并进入录像态 */
   useEffect(() => {
     if (recordCountdown === null) return
@@ -269,6 +298,156 @@ export function VideoChannelCard({
       setSnipToast(`已保存抓拍：${filename}`)
     } catch (err) {
       setSnipToast(`抓拍失败：${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  /** OCR 读取命中蓝标截图的文字内容：完成后经 toast 与 console 输出识别到的 ID 文本。
+   *  首选点击瞬间的裁剪画布（场景不再变化，最可靠）；文字随标签淡化时读不出，
+   *  再间隔 500ms 重取同区域视频帧重试（最多 3 次）。跨帧结果做一致性投票：
+   *  真实 ID 在多个亮帧重复出现，单帧误识内容逐帧不同——取出现最多的结果。
+   *  注意：PaddleOCR 推理在主线程执行（tesseract 时代跑在 Worker 里），
+   *  重试轮数不宜多，否则持续阻塞点击/截图等交互。 */
+  const ocrHitMark = async (
+    firstCrop: HTMLCanvasElement | null,
+    drawCrop: (() => HTMLCanvasElement) | null,
+    label: string,
+  ) => {
+    try {
+      const results: string[] = []
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const cropCanvas = attempt === 0 && firstCrop ? firstCrop : drawCrop?.()
+        if (!cropCanvas || !cropCanvas.width) continue
+        if (attempt > 0) await new Promise((resolve) => window.setTimeout(resolve, 500))
+        /* 首次尝试放宽超时：本地模型可能仍在初始化加载中 */
+        const text = await withTimeout(
+          readBlueMarkText(cropCanvas),
+          attempt === 0 ? 60000 : 15000,
+          '蓝标文字识别',
+        )
+        if (text) {
+          console.info(`[蓝标ID识别] ${label} 第 ${attempt + 1} 次读取：${text}`)
+          results.push(text)
+          /* 同一文本出现 2 次即认为稳定，提前结束 */
+          if (results.filter((r) => r === text).length >= 2) break
+        }
+      }
+      if (!results.length) {
+        console.warn(`[蓝标ID识别] ${label} 截图区域未读出文字内容`)
+        setSnipToast(`${label} 未读出文字内容`)
+        return
+      }
+      /* 跨帧投票：出现次数最多者，同票取更长 */
+      let text = results[0]
+      let bestCount = 0
+      for (const r of results) {
+        const count = results.filter((x) => x === r).length
+        if (count > bestCount || (count === bestCount && r.length > text.length)) {
+          text = r
+          bestCount = count
+        }
+      }
+      console.info(
+        `[蓝标ID识别] ${label} 最终 ID：${text}（候选：${results.join(' | ')}）`,
+      )
+      setSnipToast(`${label} 识别到 ID 文本：${text}`)
+    } catch (err) {
+      setSnipToast(`${label} 文字识别失败：${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  /** 左键单击画面：先识别当前帧内自带的蓝色 ID 标记（视频像素烧录，见 blueMarkDetect.ts），
+   *  截图固定为以点击处为中心的定尺区域（视频原始像素，不随命中标记变化），
+   *  命中标记时异步 OCR 截图内的蓝色 ID 文字（toast/console 输出），
+   *  截图经 cover 映射到原始分辨率下载。 */
+  const captureClickRegion = async (e: ReactMouseEvent<HTMLDivElement>) => {
+    if (locked || snipMode || e.button !== 0) return
+    const video = videoRef.current
+    if (!video || video.readyState < 2 || !video.videoWidth) {
+      setSnipToast('视频尚未就绪，请稍后重试')
+      return
+    }
+    const box = e.currentTarget.getBoundingClientRect()
+    /* 1) 识别当前帧内的蓝色 ID 标记（原始像素坐标），并在画面上短暂描框。
+       demo 视频里的标记随画面闪烁/漂移，当前帧没有时短暂等待重扫（最多约 1s） */
+    let marks = detectBlueMarks(video)
+    for (let i = 0; i < 4 && !marks.length; i++) {
+      await new Promise((resolve) => window.setTimeout(resolve, 250))
+      marks = detectBlueMarks(video)
+    }
+
+    /* 2) 点击点 → 视频原始像素坐标，吸附命中/临近（留白 0.6 倍标记尺寸）的最近标记 */
+    const scale = Math.max(box.width / video.videoWidth, box.height / video.videoHeight)
+    const offsetX = (box.width - video.videoWidth * scale) / 2
+    const offsetY = (box.height - video.videoHeight * scale) / 2
+    const srcX = (e.clientX - box.left - offsetX) / scale
+    const srcY = (e.clientY - box.top - offsetY) / scale
+    let hit = -1
+    let bestDist = Infinity
+    marks.forEach((m, i) => {
+      const pad = Math.max(m.w, m.h) * 0.6
+      if (srcX < m.x - pad || srcX > m.x + m.w + pad) return
+      if (srcY < m.y - pad || srcY > m.y + m.h + pad) return
+      const dx = srcX - (m.x + m.w / 2)
+      const dy = srcY - (m.y + m.h / 2)
+      const dist = dx * dx + dy * dy
+      if (dist < bestDist) {
+        bestDist = dist
+        hit = i
+      }
+    })
+
+    /* 3) 截图选区：固定面积（视频原始像素 CLICK_SNAP_W×CLICK_SNAP_H）、以点击处为中心，
+       不随命中标记变化；OCR 首选点击瞬间画布（同一份像素），弱帧时按同区域重取帧重试 */
+    const sw = Math.min(CLICK_SNAP_W, video.videoWidth)
+    const sh = Math.min(CLICK_SNAP_H, video.videoHeight)
+    const sx = clampNum(srcX - sw / 2, 0, video.videoWidth - sw)
+    const sy = clampNum(srcY - sh / 2, 0, video.videoHeight - sh)
+    const sel: SnipRect = {
+      x: offsetX + sx * scale,
+      y: offsetY + sy * scale,
+      w: sw * scale,
+      h: sh * scale,
+    }
+    let ocrCanvas0: HTMLCanvasElement | null = null
+    if (sw >= 2 && sh >= 2) {
+      ocrCanvas0 = document.createElement('canvas')
+      ocrCanvas0.width = sw
+      ocrCanvas0.height = sh
+      ocrCanvas0.getContext('2d')?.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh)
+    }
+
+    try {
+      const blob = await captureVideoFrame(video, sel, box.width, box.height)
+      if (!blob) {
+        setSnipToast('所选区域不在视频画面内')
+        return
+      }
+      const stamp = formatSnapStamp()
+      const filename =
+        hit >= 0
+          ? `识别截图_${channel.name}_蓝标${hit + 1}_${stamp}.png`
+          : `点击截图_${channel.name}_${stamp}.png`
+      downloadBlob(blob, filename)
+      setSnipFlash(true)
+      window.setTimeout(() => setSnipFlash(false), 380)
+      /* 命中蓝标：异步 OCR 读取 ID 文字内容，完成后更新 toast 与描框标注（不阻塞截图下载） */
+      if (hit >= 0 && ocrCanvas0) {
+        void ocrHitMark(
+          ocrCanvas0,
+          () => {
+            const v = videoRef.current
+            const cv = document.createElement('canvas')
+            if (!v || v.readyState < 2) return cv
+            cv.width = sw
+            cv.height = sh
+            cv.getContext('2d')?.drawImage(v, sx, sy, sw, sh, 0, 0, sw, sh)
+            return cv
+          },
+          `蓝标${hit + 1}`,
+        )
+      }
+    } catch (err) {
+      setSnipToast(`截图失败：${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
@@ -428,8 +607,9 @@ export function VideoChannelCard({
       aria-label={`${channel.name} 视频画面`}
       {...channelDragProps}
     >
-      {/* 画面区：真实流通道走 WHEP/WebRTC 播放器；demo 通道播放按 id 随机分配的样例视频 */}
-      <div className="vm-video">
+      {/* 画面区：真实流通道走 WHEP/WebRTC 播放器；demo 通道播放按 id 随机分配的样例视频。
+          左键单击画面：识别蓝色 ID 标记并吸附截图（命中标记时），浏览器下载列表可见 */}
+      <div className="vm-video" onClick={captureClickRegion}>
         {isLiveChannel ? (
           <LiveVideoStream videoRef={videoRef} />
         ) : (

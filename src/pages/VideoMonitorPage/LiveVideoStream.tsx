@@ -20,8 +20,11 @@ export const DEFAULT_WHEP_URL = 'http://192.168.120.210:8889/live/whep'
 export const LIVE_WHEP_URL: string = import.meta.env.VITE_WHEP_STREAM_URL || DEFAULT_WHEP_URL
 
 /** 接入真实直播流的通道 id：当前现场仅一路 /live 源，先接入 01 号主通道；
- *  后续多机各路流就绪后，把对应通道 id 追加进来（并为通道映射各自的流地址）。 */
-export const LIVE_STREAM_CHANNEL_IDS: readonly string[] = ['cam-01']
+ *  后续多机各路流就绪后，把对应通道 id 追加进来（并为通道映射各自的流地址）。
+ *  【暂停拉流】现场要求先暂停 rtsp://192.168.120.210:8554/live 的拉流：
+ *  清空名单即不再发起 WHEP 连接（cam-01 回退播放样例视频）；
+ *  恢复拉流时改回 ['cam-01'] 即可。 */
+export const LIVE_STREAM_CHANNEL_IDS: readonly string[] = []
 
 /** 组件状态：连接中 / 播放中 / 不可用（未推流或握手失败，自动重试中） */
 type LiveStatus = 'loading' | 'playing' | 'error'
